@@ -1,76 +1,70 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { getBotManager } from "@/lib/bot-manager"
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get("userId") // In real app, get from auth
+    const userId = request.headers.get("x-user-id") || "demo-user"
+    const botManager = getBotManager(userId)
 
-    // Mock bot data - in real app, fetch from database
-    const bots = [
-      {
-        id: "1",
-        name: "BTC DCA Master",
-        strategy: "dca",
-        pair: "BTC/USDT",
-        status: "running",
-        profit: 1247.32,
-        profitPercent: 12.4,
-        trades: 156,
-        winRate: 78.2,
-        investment: 10000,
-        createdAt: "2024-01-01T00:00:00Z",
-        lastTrade: "2024-01-07T12:00:00Z",
-        riskLevel: "Low",
-        settings: {
-          interval: "daily",
-          amount: 50,
-          priceDeviation: 5,
-        },
-      },
-    ]
+    const bots = await botManager.getAllBots()
 
-    return NextResponse.json({
-      success: true,
-      bots,
-      total: bots.length,
-    })
+    return NextResponse.json({ success: true, bots })
   } catch (error) {
-    console.error("Error fetching bots:", error)
-    return NextResponse.json({ success: false, error: "Failed to fetch bots" }, { status: 500 })
+    console.error("Failed to get bots:", error)
+    return NextResponse.json({ success: false, error: "Failed to get bots" }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const botConfig = await request.json()
+    const userId = request.headers.get("x-user-id") || "demo-user"
+    const botManager = getBotManager(userId)
 
-    // Validate bot configuration
-    if (!botConfig.name || !botConfig.strategy || !botConfig.pair) {
+    const body = await request.json()
+    const {
+      name,
+      exchange,
+      strategy,
+      symbol,
+      apiKey,
+      secretKey,
+      riskLevel,
+      lotSize,
+      takeProfit,
+      stopLoss,
+      dcaInterval,
+      investment,
+      parameters,
+    } = body
+
+    // Validate required fields
+    if (!name || !exchange || !strategy || !symbol || !apiKey || !secretKey) {
       return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
     }
 
-    // In real app, save to database and start bot
-    const newBot = {
-      id: Date.now().toString(),
-      ...botConfig,
-      status: "created",
-      profit: 0,
-      profitPercent: 0,
-      trades: 0,
-      winRate: 0,
-      createdAt: new Date().toISOString(),
-      lastTrade: null,
+    const botId = await botManager.createBot({
+      name,
+      exchange,
+      strategy,
+      symbol,
+      apiKey,
+      secretKey,
+      riskLevel: riskLevel || 50,
+      lotSize: lotSize || 0.001,
+      takeProfit: takeProfit || 5,
+      stopLoss: stopLoss || 3,
+      dcaInterval: dcaInterval || "1h",
+      investment: investment || 100,
+      parameters: parameters || {},
+    })
+
+    if (!botId) {
+      return NextResponse.json({ success: false, error: "Failed to create bot" }, { status: 500 })
     }
 
-    console.log("Creating new bot:", newBot)
-
-    return NextResponse.json({
-      success: true,
-      bot: newBot,
-      message: "Bot created successfully",
-    })
+    return NextResponse.json({ success: true, botId })
   } catch (error) {
-    console.error("Error creating bot:", error)
+    console.error("Failed to create bot:", error)
     return NextResponse.json({ success: false, error: "Failed to create bot" }, { status: 500 })
   }
 }

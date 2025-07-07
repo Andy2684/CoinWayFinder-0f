@@ -16,53 +16,155 @@ import {
   Edit,
   Trash2,
   AlertTriangle,
+  Loader2,
 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { tradingBotEngine, type TradingBot } from "@/lib/trading-bot-engine"
 import { CreateBotDialog } from "./create-bot-dialog"
+import { toast } from "@/hooks/use-toast"
+
+interface Bot {
+  _id: string
+  name: string
+  strategy: string
+  symbol: string
+  status: "running" | "paused" | "stopped" | "error"
+  config: {
+    riskLevel: number
+    lotSize: number
+    takeProfit: number
+    stopLoss: number
+    investment: number
+  }
+  stats: {
+    totalTrades: number
+    winningTrades: number
+    totalProfit: number
+    totalLoss: number
+    winRate: number
+    createdAt: string
+    lastTradeAt?: string
+  }
+  exchange: string
+  createdAt: string
+  updatedAt: string
+}
 
 export function ActiveBots() {
-  const [bots, setBots] = useState<TradingBot[]>([])
+  const [bots, setBots] = useState<Bot[]>([])
   const [loading, setLoading] = useState(true)
+  const [actionLoading, setActionLoading] = useState<string | null>(null)
 
   useEffect(() => {
-    // Load bots from the engine
-    const loadBots = () => {
-      const allBots = tradingBotEngine.getAllBots()
-      setBots(allBots)
-      setLoading(false)
-    }
-
     loadBots()
-
-    // Set up polling to update bot stats
-    const interval = setInterval(loadBots, 5000) // Update every 5 seconds
-
+    const interval = setInterval(loadBots, 10000) // Update every 10 seconds
     return () => clearInterval(interval)
   }, [])
 
-  const toggleBotStatus = async (botId: string) => {
-    const bot = bots.find((b) => b.id === botId)
-    if (!bot) return
+  const loadBots = async () => {
+    try {
+      const response = await fetch("/api/bots", {
+        headers: {
+          "x-user-id": "demo-user",
+        },
+      })
+      const data = await response.json()
 
-    let success = false
-    if (bot.status === "running") {
-      success = tradingBotEngine.pauseBot(botId)
-    } else if (bot.status === "paused" || bot.status === "stopped") {
-      success = tradingBotEngine.startBot(botId)
-    }
-
-    if (success) {
-      setBots((prev) =>
-        prev.map((b) => (b.id === botId ? { ...b, status: b.status === "running" ? "paused" : "running" } : b)),
-      )
+      if (data.success) {
+        setBots(data.bots)
+      }
+    } catch (error) {
+      console.error("Failed to load bots:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const deleteBot = (botId: string) => {
-    const success = tradingBotEngine.deleteBot(botId)
-    if (success) {
-      setBots((prev) => prev.filter((b) => b.id !== botId))
+  const toggleBotStatus = async (botId: string, currentStatus: string) => {
+    setActionLoading(botId)
+
+    try {
+      let endpoint = ""
+      let action = ""
+
+      if (currentStatus === "running") {
+        endpoint = `/api/bots/${botId}/pause`
+        action = "pause"
+      } else {
+        endpoint = `/api/bots/${botId}/start`
+        action = "start"
+      }
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "x-user-id": "demo-user",
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: `Bot ${action}ed successfully`,
+        })
+        await loadBots() // Refresh bots
+      } else {
+        toast({
+          title: "Error",
+          description: `Failed to ${action} bot`,
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update bot status",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const deleteBot = async (botId: string) => {
+    if (!confirm("Are you sure you want to delete this bot? This action cannot be undone.")) {
+      return
+    }
+
+    setActionLoading(botId)
+
+    try {
+      const response = await fetch(`/api/bots/${botId}`, {
+        method: "DELETE",
+        headers: {
+          "x-user-id": "demo-user",
+        },
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        toast({
+          title: "Success",
+          description: "Bot deleted successfully",
+        })
+        await loadBots() // Refresh bots
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to delete bot",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete bot",
+        variant: "destructive",
+      })
+    } finally {
+      setActionLoading(null)
     }
   }
 
@@ -93,7 +195,8 @@ export function ActiveBots() {
     return "High"
   }
 
-  const formatTimeAgo = (date: Date) => {
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString)
     const now = new Date()
     const diffMs = now.getTime() - date.getTime()
     const diffMins = Math.floor(diffMs / 60000)
@@ -145,14 +248,6 @@ export function ActiveBots() {
         </div>
         <div className="flex items-center space-x-2">
           <CreateBotDialog />
-          <Button
-            variant="outline"
-            className="border-gray-600 text-white hover:bg-gray-800 bg-transparent"
-            onClick={() => tradingBotEngine.emergencyStopAll()}
-          >
-            <AlertTriangle className="w-4 h-4 mr-2" />
-            Emergency Stop
-          </Button>
         </div>
       </div>
 
@@ -162,7 +257,7 @@ export function ActiveBots() {
           const profitPercent = bot.config.investment > 0 ? (netProfit / bot.config.investment) * 100 : 0
 
           return (
-            <Card key={bot.id} className="bg-gray-900/50 border-gray-800 hover:border-[#30D5C8]/50 transition-colors">
+            <Card key={bot._id} className="bg-gray-900/50 border-gray-800 hover:border-[#30D5C8]/50 transition-colors">
               <CardHeader className="pb-4">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -174,7 +269,9 @@ export function ActiveBots() {
                     <div className="flex items-center space-x-4 text-sm text-gray-400">
                       <span>{bot.strategy.toUpperCase()}</span>
                       <span>•</span>
-                      <span>{bot.pair}</span>
+                      <span>{bot.symbol}</span>
+                      <span>•</span>
+                      <span>{bot.exchange}</span>
                     </div>
                   </div>
 
@@ -197,7 +294,11 @@ export function ActiveBots() {
                         <Settings className="w-4 h-4 mr-2" />
                         Configure
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-400 hover:bg-gray-800" onClick={() => deleteBot(bot.id)}>
+                      <DropdownMenuItem
+                        className="text-red-400 hover:bg-gray-800"
+                        onClick={() => deleteBot(bot._id)}
+                        disabled={actionLoading === bot._id}
+                      >
                         <Trash2 className="w-4 h-4 mr-2" />
                         Delete Bot
                       </DropdownMenuItem>
@@ -249,7 +350,7 @@ export function ActiveBots() {
                 {/* Last Activity */}
                 <div>
                   <p className="text-xs text-gray-400 mb-1">Last Update</p>
-                  <p className="text-sm text-gray-300">{formatTimeAgo(bot.lastUpdate)}</p>
+                  <p className="text-sm text-gray-300">{formatTimeAgo(bot.updatedAt)}</p>
                 </div>
 
                 {/* Controls */}
@@ -257,8 +358,8 @@ export function ActiveBots() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       checked={bot.status === "running"}
-                      onCheckedChange={() => toggleBotStatus(bot.id)}
-                      disabled={bot.status === "error"}
+                      onCheckedChange={() => toggleBotStatus(bot._id, bot.status)}
+                      disabled={bot.status === "error" || actionLoading === bot._id}
                     />
                     <span className="text-sm text-gray-300">
                       {bot.status === "running" ? "Running" : bot.status === "error" ? "Error" : "Stopped"}
@@ -273,10 +374,16 @@ export function ActiveBots() {
                       variant="ghost"
                       size="sm"
                       className="h-8 px-3 text-gray-400 hover:text-white"
-                      onClick={() => toggleBotStatus(bot.id)}
-                      disabled={bot.status === "error"}
+                      onClick={() => toggleBotStatus(bot._id, bot.status)}
+                      disabled={bot.status === "error" || actionLoading === bot._id}
                     >
-                      {bot.status === "running" ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                      {actionLoading === bot._id ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : bot.status === "running" ? (
+                        <Pause className="w-4 h-4" />
+                      ) : (
+                        <Play className="w-4 h-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
