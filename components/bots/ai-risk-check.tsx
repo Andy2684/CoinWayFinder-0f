@@ -6,37 +6,46 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
-import { AlertTriangle, CheckCircle, XCircle, Brain, TrendingUp, Shield } from "lucide-react"
+import { AlertTriangle, CheckCircle, XCircle, Brain, TrendingUp, Shield, Zap, Target } from "lucide-react"
+import { toast } from "sonner"
 
-interface RiskAnalysis {
+interface RiskAnalysisResult {
   riskScore: number
   riskLevel: "low" | "medium" | "high" | "extreme"
   warnings: string[]
   recommendations: string[]
-  canStart: boolean
-  requiresConfirmation: boolean
-  marketData?: {
-    price: number
-    change24h: number
-    volume: number
-    volatility: number
+  shouldBlock: boolean
+  analysis: {
+    strategyRisk: number
+    marketRisk: number
+    positionRisk: number
+    leverageRisk: number
   }
 }
 
-interface AIRiskCheckProps {
-  botConfig: any
-  onAnalysisComplete: (analysis: RiskAnalysis) => void
-  onProceed: () => void
-  onCancel: () => void
+interface BotConfig {
+  strategy: string
+  symbol: string
+  investment: number
+  leverage?: number
+  stopLoss: number
+  takeProfit: number
+  riskLevel: number
+  parameters: Record<string, any>
 }
 
-export function AIRiskCheck({ botConfig, onAnalysisComplete, onProceed, onCancel }: AIRiskCheckProps) {
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [analysis, setAnalysis] = useState<RiskAnalysis | null>(null)
-  const [showConfirmation, setShowConfirmation] = useState(false)
+interface AIRiskCheckProps {
+  userId: string
+  botConfig: BotConfig
+  onRiskAnalysisComplete: (result: RiskAnalysisResult) => void
+}
+
+export function AIRiskCheck({ userId, botConfig, onRiskAnalysisComplete }: AIRiskCheckProps) {
+  const [analyzing, setAnalyzing] = useState(false)
+  const [riskResult, setRiskResult] = useState<RiskAnalysisResult | null>(null)
 
   const performRiskAnalysis = async () => {
-    setIsAnalyzing(true)
+    setAnalyzing(true)
 
     try {
       const response = await fetch("/api/bots/risk-check", {
@@ -45,257 +54,220 @@ export function AIRiskCheck({ botConfig, onAnalysisComplete, onProceed, onCancel
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId: "user123", // Replace with actual user ID
+          userId,
           botConfig,
         }),
       })
 
-      const result = await response.json()
+      const data = await response.json()
 
-      if (result.success) {
-        setAnalysis(result.riskAnalysis)
-        onAnalysisComplete(result.riskAnalysis)
+      if (response.ok && data.success) {
+        setRiskResult(data.riskAnalysis)
+        onRiskAnalysisComplete(data.riskAnalysis)
 
-        if (result.riskAnalysis.requiresConfirmation) {
-          setShowConfirmation(true)
+        if (data.riskAnalysis.shouldBlock) {
+          toast.error("High risk configuration detected - bot creation blocked")
+        } else {
+          toast.success("Risk analysis completed")
         }
       } else {
-        throw new Error(result.error || "Analysis failed")
+        toast.error(data.error || "Risk analysis failed")
       }
     } catch (error) {
       console.error("Risk analysis failed:", error)
-      // Fallback analysis
-      const fallbackAnalysis: RiskAnalysis = {
-        riskScore: 50,
-        riskLevel: "medium",
-        warnings: ["⚠️ AI analysis unavailable - proceed with caution"],
-        recommendations: ["💡 Start with smaller position size", "💡 Monitor bot closely"],
-        canStart: true,
-        requiresConfirmation: true,
-      }
-      setAnalysis(fallbackAnalysis)
-      onAnalysisComplete(fallbackAnalysis)
-      setShowConfirmation(true)
+      toast.error("Failed to perform risk analysis")
     } finally {
-      setIsAnalyzing(false)
+      setAnalyzing(false)
     }
   }
 
   const getRiskColor = (level: string) => {
     switch (level) {
       case "low":
-        return "text-green-600 bg-green-50 border-green-200"
+        return "text-green-600 bg-green-100"
       case "medium":
-        return "text-yellow-600 bg-yellow-50 border-yellow-200"
+        return "text-yellow-600 bg-yellow-100"
       case "high":
-        return "text-orange-600 bg-orange-50 border-orange-200"
+        return "text-orange-600 bg-orange-100"
       case "extreme":
-        return "text-red-600 bg-red-50 border-red-200"
+        return "text-red-600 bg-red-100"
       default:
-        return "text-gray-600 bg-gray-50 border-gray-200"
+        return "text-gray-600 bg-gray-100"
     }
   }
 
   const getRiskIcon = (level: string) => {
     switch (level) {
       case "low":
-        return <CheckCircle className="h-5 w-5 text-green-500" />
+        return <CheckCircle className="h-5 w-5" />
       case "medium":
-        return <AlertTriangle className="h-5 w-5 text-yellow-500" />
+        return <AlertTriangle className="h-5 w-5" />
       case "high":
-        return <AlertTriangle className="h-5 w-5 text-orange-500" />
+        return <AlertTriangle className="h-5 w-5" />
       case "extreme":
-        return <XCircle className="h-5 w-5 text-red-500" />
+        return <XCircle className="h-5 w-5" />
       default:
-        return <AlertTriangle className="h-5 w-5 text-gray-500" />
+        return <AlertTriangle className="h-5 w-5" />
     }
   }
 
-  if (!analysis) {
-    return (
-      <Card className="w-full max-w-2xl mx-auto">
-        <CardHeader className="text-center">
-          <div className="flex justify-center mb-4">
-            <Brain className="h-12 w-12 text-blue-500" />
-          </div>
-          <CardTitle className="text-2xl">AI Risk Analysis</CardTitle>
-          <CardDescription>
-            Our AI will analyze your bot configuration and current market conditions to assess potential risks
-          </CardDescription>
+  return (
+    <div className="space-y-6">
+      {/* Risk Analysis Trigger */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Brain className="h-5 w-5" />
+            AI Risk Analysis
+          </CardTitle>
+          <CardDescription>Get AI-powered risk assessment for your bot configuration before deployment</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h4 className="font-semibold text-blue-900 mb-2">Analysis includes:</h4>
-            <ul className="space-y-1 text-sm text-blue-800">
-              <li>• Market volatility assessment</li>
-              <li>• Strategy suitability for current conditions</li>
-              <li>• Position sizing evaluation</li>
-              <li>• Risk/reward ratio analysis</li>
-              <li>• Personalized recommendations</li>
-            </ul>
-          </div>
-
-          <div className="flex space-x-4">
-            <Button onClick={performRiskAnalysis} disabled={isAnalyzing} className="flex-1">
-              {isAnalyzing ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Analyzing...
-                </>
-              ) : (
-                <>
-                  <Brain className="h-4 w-4 mr-2" />
-                  Start AI Analysis
-                </>
-              )}
-            </Button>
-            <Button variant="outline" onClick={onCancel}>
-              Skip Analysis
-            </Button>
-          </div>
+        <CardContent>
+          <Button onClick={performRiskAnalysis} disabled={analyzing} className="w-full">
+            {analyzing ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Analyzing Risk...
+              </>
+            ) : (
+              <>
+                <Brain className="h-4 w-4 mr-2" />
+                Analyze Risk
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
-    )
-  }
 
-  return (
-    <Card className="w-full max-w-4xl mx-auto">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Shield className="h-8 w-8 text-blue-500" />
-            <div>
-              <CardTitle className="text-xl">Risk Analysis Complete</CardTitle>
-              <CardDescription>AI-powered assessment of your trading bot configuration</CardDescription>
-            </div>
-          </div>
-          <Badge className={`${getRiskColor(analysis.riskLevel)} border`}>
-            {getRiskIcon(analysis.riskLevel)}
-            <span className="ml-2 capitalize">{analysis.riskLevel} Risk</span>
-          </Badge>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-6">
-        {/* Risk Score */}
-        <div className="space-y-2">
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium">Risk Score</span>
-            <span className="text-sm text-gray-600">{analysis.riskScore}/100</span>
-          </div>
-          <Progress value={analysis.riskScore} className="h-3" />
-        </div>
-
-        {/* Market Data */}
-        {analysis.marketData && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-gray-50 rounded-lg">
-            <div className="text-center">
-              <div className="text-sm text-gray-600">Current Price</div>
-              <div className="font-semibold">${analysis.marketData.price.toLocaleString()}</div>
-            </div>
-            <div className="text-center">
-              <div className="text-sm text-gray-600">24h Change</div>
-              <div
-                className={`font-semibold ${analysis.marketData.change24h >= 0 ? "text-green-600" : "text-red-600"}`}
-              >
-                {analysis.marketData.change24h >= 0 ? "+" : ""}
-                {analysis.marketData.change24h.toFixed(2)}%
-              </div>
-            </div>
-            <div className="text-center">
-              <div className="text-sm text-gray-600">Volume</div>
-              <div className="font-semibold">${(analysis.marketData.volume / 1000000).toFixed(1)}M</div>
-            </div>
-            <div className="text-center">
-              <div className="text-sm text-gray-600">Volatility</div>
-              <div className="font-semibold">{analysis.marketData.volatility.toFixed(1)}%</div>
-            </div>
-          </div>
-        )}
-
-        {/* Warnings */}
-        {analysis.warnings.length > 0 && (
-          <Alert className="border-orange-200 bg-orange-50">
-            <AlertTriangle className="h-4 w-4 text-orange-600" />
-            <AlertDescription>
-              <div className="space-y-1">
-                <div className="font-semibold text-orange-800">Warnings:</div>
-                {analysis.warnings.map((warning, index) => (
-                  <div key={index} className="text-sm text-orange-700">
-                    {warning}
+      {/* Risk Analysis Results */}
+      {riskResult && (
+        <div className="space-y-4">
+          {/* Overall Risk Score */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span>Risk Assessment</span>
+                <Badge className={getRiskColor(riskResult.riskLevel)}>
+                  {getRiskIcon(riskResult.riskLevel)}
+                  <span className="ml-1 capitalize">{riskResult.riskLevel} Risk</span>
+                </Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm font-medium">Overall Risk Score</span>
+                    <span className="text-2xl font-bold">{riskResult.riskScore}/100</span>
                   </div>
-                ))}
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
+                  <Progress value={riskResult.riskScore} className="h-3" />
+                </div>
 
-        {/* Recommendations */}
-        {analysis.recommendations.length > 0 && (
-          <Alert className="border-blue-200 bg-blue-50">
-            <TrendingUp className="h-4 w-4 text-blue-600" />
-            <AlertDescription>
-              <div className="space-y-1">
-                <div className="font-semibold text-blue-800">Recommendations:</div>
-                {analysis.recommendations.map((recommendation, index) => (
-                  <div key={index} className="text-sm text-blue-700">
-                    {recommendation}
+                {riskResult.shouldBlock && (
+                  <Alert className="border-red-200 bg-red-50">
+                    <XCircle className="h-4 w-4 text-red-600" />
+                    <AlertDescription className="text-red-700">
+                      <strong>Bot Creation Blocked:</strong> This configuration has been flagged as extremely high risk.
+                      Please review the warnings and adjust your settings.
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Detailed Risk Breakdown */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Risk Breakdown</CardTitle>
+              <CardDescription>Detailed analysis of different risk factors</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm font-medium">Strategy Risk</span>
+                    <span className="ml-auto text-sm">{riskResult.analysis.strategyRisk}/100</span>
                   </div>
-                ))}
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
+                  <Progress value={riskResult.analysis.strategyRisk} className="h-2" />
+                </div>
 
-        {/* Action Buttons */}
-        <div className="flex space-x-4 pt-4">
-          {analysis.canStart ? (
-            <>
-              <Button
-                onClick={showConfirmation ? onProceed : () => setShowConfirmation(true)}
-                className="flex-1"
-                variant={analysis.riskLevel === "extreme" ? "destructive" : "default"}
-              >
-                {showConfirmation ? "Confirm & Start Bot" : "Proceed"}
-              </Button>
-              <Button variant="outline" onClick={onCancel}>
-                Cancel
-              </Button>
-            </>
-          ) : (
-            <>
-              <Alert className="flex-1 border-red-200 bg-red-50">
-                <XCircle className="h-4 w-4 text-red-600" />
-                <AlertDescription className="text-red-800">
-                  <strong>Bot start blocked:</strong> Risk level too high. Please adjust your configuration.
-                </AlertDescription>
-              </Alert>
-              <Button variant="outline" onClick={onCancel}>
-                Back to Settings
-              </Button>
-            </>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-green-500" />
+                    <span className="text-sm font-medium">Market Risk</span>
+                    <span className="ml-auto text-sm">{riskResult.analysis.marketRisk}/100</span>
+                  </div>
+                  <Progress value={riskResult.analysis.marketRisk} className="h-2" />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Target className="h-4 w-4 text-purple-500" />
+                    <span className="text-sm font-medium">Position Risk</span>
+                    <span className="ml-auto text-sm">{riskResult.analysis.positionRisk}/100</span>
+                  </div>
+                  <Progress value={riskResult.analysis.positionRisk} className="h-2" />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-orange-500" />
+                    <span className="text-sm font-medium">Leverage Risk</span>
+                    <span className="ml-auto text-sm">{riskResult.analysis.leverageRisk}/100</span>
+                  </div>
+                  <Progress value={riskResult.analysis.leverageRisk} className="h-2" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Warnings */}
+          {riskResult.warnings.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-orange-600">
+                  <AlertTriangle className="h-5 w-5" />
+                  Warnings
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {riskResult.warnings.map((warning, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">{warning}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Recommendations */}
+          {riskResult.recommendations.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-blue-600">
+                  <CheckCircle className="h-5 w-5" />
+                  Recommendations
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-2">
+                  {riskResult.recommendations.map((recommendation, index) => (
+                    <li key={index} className="flex items-start gap-2">
+                      <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                      <span className="text-sm">{recommendation}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
           )}
         </div>
-
-        {/* Confirmation Dialog */}
-        {showConfirmation && analysis.requiresConfirmation && (
-          <Alert className="border-yellow-200 bg-yellow-50">
-            <AlertTriangle className="h-4 w-4 text-yellow-600" />
-            <AlertDescription>
-              <div className="space-y-2">
-                <div className="font-semibold text-yellow-800">Confirmation Required</div>
-                <div className="text-sm text-yellow-700">
-                  The AI has identified potential risks with your configuration. By proceeding, you acknowledge these
-                  risks and understand that trading involves potential losses.
-                </div>
-                <div className="text-xs text-yellow-600 mt-2">
-                  Remember: Never invest more than you can afford to lose.
-                </div>
-              </div>
-            </AlertDescription>
-          </Alert>
-        )}
-      </CardContent>
-    </Card>
+      )}
+    </div>
   )
 }

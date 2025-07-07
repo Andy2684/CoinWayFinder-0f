@@ -6,51 +6,73 @@ import { subscriptionManager } from "@/lib/subscription-manager"
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, symbol, timeframe = "1d" } = body
+    const { userId, symbol } = body
 
     if (!userId || !symbol) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+      return NextResponse.json({ error: "User ID and symbol required" }, { status: 400 })
     }
 
     // Check if user has access to AI features
-    const hasAccess = await subscriptionManager.checkSubscriptionAccess(userId, "ai_risk_analysis")
-    if (!hasAccess) {
-      return NextResponse.json({ error: "AI analysis requires premium subscription" }, { status: 403 })
+    const plan = await subscriptionManager.getUserPlan(userId)
+    if (!plan.features.aiRiskAnalysis) {
+      return NextResponse.json({ error: "AI analysis not available in your plan" }, { status: 403 })
     }
 
-    // Get AI market sentiment analysis
-    const sentimentAnalysis = await aiRiskAnalyzer.analyzeMarketSentiment(symbol, timeframe)
+    // Get market sentiment analysis
+    const sentiment = await aiRiskAnalyzer.getMarketSentiment(symbol)
 
     // Save analysis to database
     await database.saveAIAnalysis({
       userId,
       symbol,
       analysis: {
-        sentiment: sentimentAnalysis.sentiment,
-        confidence: sentimentAnalysis.confidence,
-        signals: sentimentAnalysis.signals,
-        recommendations: sentimentAnalysis.recommendations,
+        sentiment: sentiment.sentiment,
+        confidence: sentiment.confidence,
+        signals: sentiment.signals,
+        recommendations: [],
         riskFactors: [],
       },
       marketData: {
-        price: 0, // Would be populated with real market data
+        price: 0, // Would be fetched from exchange
         volume: 0,
         volatility: 0,
-        trend:
-          sentimentAnalysis.sentiment === "bullish"
-            ? "up"
-            : sentimentAnalysis.sentiment === "bearish"
-              ? "down"
-              : "sideways",
+        trend: sentiment.sentiment,
       },
     })
 
     return NextResponse.json({
       success: true,
-      analysis: sentimentAnalysis,
+      sentiment,
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error("Market sentiment analysis failed:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    return NextResponse.json({ error: "Market sentiment analysis failed" }, { status: 500 })
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get("userId")
+    const symbol = searchParams.get("symbol")
+
+    if (!userId || !symbol) {
+      return NextResponse.json({ error: "User ID and symbol required" }, { status: 400 })
+    }
+
+    // Get latest AI analysis for the symbol
+    const analysis = await database.getLatestAIAnalysis(userId, symbol)
+
+    if (!analysis) {
+      return NextResponse.json({ error: "No analysis found for this symbol" }, { status: 404 })
+    }
+
+    return NextResponse.json({
+      success: true,
+      analysis,
+    })
+  } catch (error) {
+    console.error("Failed to get market sentiment:", error)
+    return NextResponse.json({ error: "Failed to get market sentiment" }, { status: 500 })
   }
 }

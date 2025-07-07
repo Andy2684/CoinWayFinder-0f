@@ -1,12 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Slider } from "@/components/ui/slider"
-import { Switch } from "@/components/ui/switch"
 import {
   Dialog,
   DialogContent,
@@ -15,735 +9,788 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Slider } from "@/components/ui/slider"
+import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Plus, Bot, Settings, TrendingUp, Shield, Zap, CheckCircle, XCircle, Loader2 } from "lucide-react"
-import { toast } from "@/hooks/use-toast"
+import { Plus, Bot, Zap } from "lucide-react"
+import { toast } from "sonner"
+import { AIRiskCheck } from "./ai-risk-check"
 
-export function CreateBotDialog() {
+interface CreateBotDialogProps {
+  userId: string
+  onBotCreated: () => void
+}
+
+interface BotConfig {
+  name: string
+  exchange: string
+  strategy: string
+  symbol: string
+  apiKey: string
+  secretKey: string
+  passphrase?: string
+  investment: number
+  riskLevel: number
+  stopLoss: number
+  takeProfit: number
+  leverage: number
+  dcaInterval?: string
+  aiRecommendations: boolean
+  runtime: {
+    type: "time" | "profit"
+    value: number
+  }
+  parameters: Record<string, any>
+}
+
+const EXCHANGES = [
+  { id: "binance", name: "Binance", requiresPassphrase: false },
+  { id: "bybit", name: "Bybit", requiresPassphrase: false },
+  { id: "kucoin", name: "KuCoin", requiresPassphrase: true },
+  { id: "okx", name: "OKX", requiresPassphrase: true },
+  { id: "coinbase", name: "Coinbase Pro", requiresPassphrase: true },
+  { id: "bitget", name: "Bitget", requiresPassphrase: false },
+  { id: "gateio", name: "Gate.io", requiresPassphrase: false },
+]
+
+const STRATEGIES = [
+  {
+    id: "dca",
+    name: "DCA (Dollar Cost Averaging)",
+    description: "Automated periodic purchases with price deviation checks",
+    riskLevel: "Low",
+    minPlan: "free",
+  },
+  {
+    id: "grid",
+    name: "Grid Trading",
+    description: "Multiple buy/sell orders at different price levels",
+    riskLevel: "Medium",
+    minPlan: "basic",
+  },
+  {
+    id: "scalping",
+    name: "Scalping",
+    description: "High-frequency trading with technical indicators",
+    riskLevel: "High",
+    minPlan: "basic",
+  },
+  {
+    id: "long-short",
+    name: "Long/Short AI",
+    description: "Leveraged positions with AI market analysis",
+    riskLevel: "High",
+    minPlan: "premium",
+  },
+  {
+    id: "trend-following",
+    name: "Trend Following",
+    description: "Moving average crossover with ATR-based stops",
+    riskLevel: "Medium",
+    minPlan: "premium",
+  },
+  {
+    id: "arbitrage",
+    name: "Arbitrage",
+    description: "Cross-exchange price difference exploitation",
+    riskLevel: "Low",
+    minPlan: "enterprise",
+  },
+]
+
+const POPULAR_SYMBOLS = [
+  "BTCUSDT",
+  "ETHUSDT",
+  "BNBUSDT",
+  "ADAUSDT",
+  "SOLUSDT",
+  "XRPUSDT",
+  "DOTUSDT",
+  "DOGEUSDT",
+  "AVAXUSDT",
+  "MATICUSDT",
+]
+
+export function CreateBotDialog({ userId, onBotCreated }: CreateBotDialogProps) {
   const [open, setOpen] = useState(false)
-  const [selectedStrategy, setSelectedStrategy] = useState("")
-  const [isTestingConnection, setIsTestingConnection] = useState(false)
-  const [connectionStatus, setConnectionStatus] = useState<"idle" | "success" | "error">("idle")
-  const [isCreating, setIsCreating] = useState(false)
+  const [currentTab, setCurrentTab] = useState("strategy")
+  const [creating, setCreating] = useState(false)
+  const [testingConnection, setTestingConnection] = useState(false)
+  const [connectionTested, setConnectionTested] = useState(false)
+  const [riskAnalysisResult, setRiskAnalysisResult] = useState<any>(null)
 
-  const [botConfig, setBotConfig] = useState({
+  const [config, setConfig] = useState<BotConfig>({
     name: "",
     exchange: "",
     strategy: "",
-    symbol: "",
+    symbol: "BTCUSDT",
     apiKey: "",
     secretKey: "",
-    riskLevel: 50,
-    lotSize: 0.001,
-    takeProfit: 5,
-    stopLoss: 3,
-    dcaInterval: "1h",
+    passphrase: "",
     investment: 100,
-    // Strategy-specific parameters
-    priceDeviation: 5,
-    maxOrders: 10,
-    maxHoldTime: 30,
-    rsiPeriod: 14,
-    rsiOverbought: 70,
-    rsiOversold: 30,
-    macdFast: 12,
-    macdSlow: 26,
-    macdSignal: 9,
+    riskLevel: 5,
+    stopLoss: 5,
+    takeProfit: 10,
+    leverage: 1,
+    dcaInterval: "1h",
+    aiRecommendations: true,
+    runtime: {
+      type: "time",
+      value: 24,
+    },
+    parameters: {},
   })
 
-  const strategies = [
-    {
-      id: "dca",
-      name: "DCA (Dollar Cost Averaging)",
-      description: "Buy at regular intervals regardless of price",
-      difficulty: "Beginner",
-      risk: "Low",
-      icon: TrendingUp,
-      color: "bg-blue-500/10 text-blue-400",
-    },
-    {
-      id: "scalping",
-      name: "Scalping Bot",
-      description: "High-frequency small profit trades using technical indicators",
-      difficulty: "Advanced",
-      risk: "High",
-      icon: Zap,
-      color: "bg-red-500/10 text-red-400",
-    },
-  ]
-
-  const exchanges = [
-    { id: "binance", name: "Binance", supported: true },
-    { id: "bybit", name: "Bybit", supported: true },
-  ]
-
-  const tradingPairs = [
-    "BTCUSDT",
-    "ETHUSDT",
-    "BNBUSDT",
-    "SOLUSDT",
-    "ADAUSDT",
-    "DOTUSDT",
-    "MATICUSDT",
-    "LINKUSDT",
-    "UNIUSDT",
-    "AVAXUSDT",
-  ]
-
-  const dcaIntervals = [
-    { value: "5m", label: "5 minutes" },
-    { value: "15m", label: "15 minutes" },
-    { value: "30m", label: "30 minutes" },
-    { value: "1h", label: "1 hour" },
-    { value: "4h", label: "4 hours" },
-    { value: "1d", label: "Daily" },
-  ]
+  const selectedExchange = EXCHANGES.find((e) => e.id === config.exchange)
+  const selectedStrategy = STRATEGIES.find((s) => s.id === config.strategy)
 
   const testConnection = async () => {
-    if (!botConfig.exchange || !botConfig.apiKey || !botConfig.secretKey) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in exchange, API key, and secret key",
-        variant: "destructive",
-      })
+    if (!config.apiKey || !config.secretKey || !config.exchange) {
+      toast.error("Please fill in all API credentials")
       return
     }
 
-    setIsTestingConnection(true)
-    setConnectionStatus("idle")
+    setTestingConnection(true)
 
     try {
       const response = await fetch("/api/test-connection", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": "demo-user",
         },
         body: JSON.stringify({
-          exchange: botConfig.exchange,
-          apiKey: botConfig.apiKey,
-          secretKey: botConfig.secretKey,
+          exchange: config.exchange,
+          apiKey: config.apiKey,
+          secretKey: config.secretKey,
+          passphrase: config.passphrase,
         }),
       })
 
-      const data = await response.json()
+      const result = await response.json()
 
-      if (data.success) {
-        setConnectionStatus("success")
-        toast({
-          title: "Connection Successful",
-          description: "API credentials are valid and working",
-        })
+      if (result.success) {
+        setConnectionTested(true)
+        toast.success("Connection successful!")
       } else {
-        setConnectionStatus("error")
-        toast({
-          title: "Connection Failed",
-          description: data.error || "Invalid API credentials",
-          variant: "destructive",
-        })
+        toast.error(result.error || "Connection failed")
       }
     } catch (error) {
-      setConnectionStatus("error")
-      toast({
-        title: "Connection Error",
-        description: "Failed to test connection",
-        variant: "destructive",
-      })
+      console.error("Connection test failed:", error)
+      toast.error("Connection test failed")
     } finally {
-      setIsTestingConnection(false)
+      setTestingConnection(false)
     }
   }
 
-  const handleCreateBot = async () => {
-    if (!selectedStrategy || !botConfig.name || !botConfig.symbol || !botConfig.apiKey || !botConfig.secretKey) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      })
+  const createBot = async () => {
+    if (!connectionTested) {
+      toast.error("Please test your API connection first")
       return
     }
 
-    if (connectionStatus !== "success") {
-      toast({
-        title: "Test Connection First",
-        description: "Please test your API connection before creating the bot",
-        variant: "destructive",
-      })
+    if (riskAnalysisResult?.shouldBlock) {
+      toast.error("Cannot create bot - risk analysis blocked this configuration")
       return
     }
 
-    setIsCreating(true)
+    setCreating(true)
 
     try {
-      // Prepare strategy-specific parameters
-      let parameters: Record<string, any> = {}
-
-      switch (selectedStrategy) {
-        case "dca":
-          parameters = {
-            priceDeviation: botConfig.priceDeviation,
-            maxOrders: botConfig.maxOrders,
-          }
-          break
-        case "scalping":
-          parameters = {
-            maxHoldTime: botConfig.maxHoldTime,
-            rsiPeriod: botConfig.rsiPeriod,
-            rsiOverbought: botConfig.rsiOverbought,
-            rsiOversold: botConfig.rsiOversold,
-            macdFast: botConfig.macdFast,
-            macdSlow: botConfig.macdSlow,
-            macdSignal: botConfig.macdSignal,
-          }
-          break
-      }
-
       const response = await fetch("/api/bots", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-user-id": "demo-user",
         },
         body: JSON.stringify({
-          name: botConfig.name,
-          exchange: botConfig.exchange,
-          strategy: selectedStrategy,
-          symbol: botConfig.symbol,
-          apiKey: botConfig.apiKey,
-          secretKey: botConfig.secretKey,
-          riskLevel: botConfig.riskLevel,
-          lotSize: botConfig.lotSize,
-          takeProfit: botConfig.takeProfit,
-          stopLoss: botConfig.stopLoss,
-          dcaInterval: botConfig.dcaInterval,
-          investment: botConfig.investment,
-          parameters,
+          userId,
+          ...config,
         }),
       })
 
-      const data = await response.json()
+      const result = await response.json()
 
-      if (data.success) {
-        toast({
-          title: "Bot Created Successfully",
-          description: `${botConfig.name} has been created and is ready to start trading`,
-        })
-
+      if (result.success) {
+        toast.success("Bot created successfully!")
         setOpen(false)
+        onBotCreated()
         resetForm()
-
-        // Refresh the page to show the new bot
-        window.location.reload()
       } else {
-        toast({
-          title: "Error Creating Bot",
-          description: data.error || "Failed to create trading bot",
-          variant: "destructive",
-        })
+        toast.error(result.error || "Failed to create bot")
       }
     } catch (error) {
-      toast({
-        title: "Error Creating Bot",
-        description: "Failed to create trading bot. Please try again.",
-        variant: "destructive",
-      })
+      console.error("Bot creation failed:", error)
+      toast.error("Failed to create bot")
     } finally {
-      setIsCreating(false)
+      setCreating(false)
     }
   }
 
   const resetForm = () => {
-    setBotConfig({
+    setConfig({
       name: "",
       exchange: "",
       strategy: "",
-      symbol: "",
+      symbol: "BTCUSDT",
       apiKey: "",
       secretKey: "",
-      riskLevel: 50,
-      lotSize: 0.001,
-      takeProfit: 5,
-      stopLoss: 3,
-      dcaInterval: "1h",
+      passphrase: "",
       investment: 100,
-      priceDeviation: 5,
-      maxOrders: 10,
-      maxHoldTime: 30,
-      rsiPeriod: 14,
-      rsiOverbought: 70,
-      rsiOversold: 30,
-      macdFast: 12,
-      macdSlow: 26,
-      macdSignal: 9,
+      riskLevel: 5,
+      stopLoss: 5,
+      takeProfit: 10,
+      leverage: 1,
+      dcaInterval: "1h",
+      aiRecommendations: true,
+      runtime: {
+        type: "time",
+        value: 24,
+      },
+      parameters: {},
     })
-    setSelectedStrategy("")
-    setConnectionStatus("idle")
+    setCurrentTab("strategy")
+    setConnectionTested(false)
+    setRiskAnalysisResult(null)
+  }
+
+  const updateConfig = (updates: Partial<BotConfig>) => {
+    setConfig((prev) => ({ ...prev, ...updates }))
+  }
+
+  const updateParameters = (key: string, value: any) => {
+    setConfig((prev) => ({
+      ...prev,
+      parameters: { ...prev.parameters, [key]: value },
+    }))
+  }
+
+  const canProceedToNext = () => {
+    switch (currentTab) {
+      case "strategy":
+        return config.strategy && config.symbol
+      case "exchange":
+        return config.exchange && config.apiKey && config.secretKey && connectionTested
+      case "config":
+        return config.name && config.investment > 0
+      case "risk":
+        return riskAnalysisResult && !riskAnalysisResult.shouldBlock
+      default:
+        return false
+    }
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E] font-semibold">
-          <Plus className="w-4 h-4 mr-2" />
-          Create New Bot
+        <Button>
+          <Plus className="h-4 w-4 mr-2" />
+          Create Bot
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-gray-900 border-gray-800">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-white flex items-center">
-            <Bot className="w-5 h-5 mr-2 text-[#30D5C8]" />
+          <DialogTitle className="flex items-center gap-2">
+            <Bot className="h-5 w-5" />
             Create Trading Bot
           </DialogTitle>
-          <DialogDescription className="text-gray-400">
-            Configure your automated trading bot with real exchange integration
-          </DialogDescription>
+          <DialogDescription>Set up your automated trading bot with AI-powered risk analysis</DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="strategy" className="w-full">
-          <TabsList className="grid w-full grid-cols-4 bg-gray-800">
-            <TabsTrigger value="strategy" className="text-gray-300 data-[state=active]:text-white">
-              Strategy
-            </TabsTrigger>
-            <TabsTrigger value="exchange" className="text-gray-300 data-[state=active]:text-white">
+        <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
+          <TabsList className="grid w-full grid-cols-5">
+            <TabsTrigger value="strategy">Strategy</TabsTrigger>
+            <TabsTrigger value="exchange" disabled={!config.strategy}>
               Exchange
             </TabsTrigger>
-            <TabsTrigger value="config" className="text-gray-300 data-[state=active]:text-white">
-              Configuration
+            <TabsTrigger value="config" disabled={!connectionTested}>
+              Config
             </TabsTrigger>
-            <TabsTrigger value="risk" className="text-gray-300 data-[state=active]:text-white">
-              Risk Management
+            <TabsTrigger value="risk" disabled={!config.name}>
+              Risk Check
+            </TabsTrigger>
+            <TabsTrigger value="review" disabled={!riskAnalysisResult}>
+              Review
             </TabsTrigger>
           </TabsList>
 
           {/* Strategy Selection */}
           <TabsContent value="strategy" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {strategies.map((strategy) => (
-                <Card
-                  key={strategy.id}
-                  className={`cursor-pointer transition-colors ${
-                    selectedStrategy === strategy.id
-                      ? "border-[#30D5C8] bg-[#30D5C8]/5"
-                      : "border-gray-800 bg-gray-900/50 hover:border-gray-700"
-                  }`}
-                  onClick={() => {
-                    setSelectedStrategy(strategy.id)
-                    setBotConfig({ ...botConfig, strategy: strategy.id })
-                  }}
-                >
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${strategy.color}`}>
-                        <strategy.icon className="w-5 h-5" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-white text-sm">{strategy.name}</CardTitle>
-                        <p className="text-xs text-gray-400">{strategy.description}</p>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex space-x-2">
-                      <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
-                        {strategy.difficulty}
-                      </Badge>
-                      <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
-                        {strategy.risk} Risk
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Choose Trading Strategy</CardTitle>
+                <CardDescription>
+                  Select the trading strategy that best fits your goals and risk tolerance
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {STRATEGIES.map((strategy) => (
+                    <Card
+                      key={strategy.id}
+                      className={`cursor-pointer transition-all ${
+                        config.strategy === strategy.id ? "ring-2 ring-blue-500 bg-blue-50" : "hover:bg-gray-50"
+                      }`}
+                      onClick={() => updateConfig({ strategy: strategy.id })}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start mb-2">
+                          <h3 className="font-semibold">{strategy.name}</h3>
+                          <Badge
+                            variant={
+                              strategy.riskLevel === "Low"
+                                ? "secondary"
+                                : strategy.riskLevel === "Medium"
+                                  ? "default"
+                                  : "destructive"
+                            }
+                          >
+                            {strategy.riskLevel}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-gray-600 mb-2">{strategy.description}</p>
+                        <Badge variant="outline" className="text-xs">
+                          Requires {strategy.minPlan} plan
+                        </Badge>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="symbol">Trading Pair</Label>
+                  <Select value={config.symbol} onValueChange={(value) => updateConfig({ symbol: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select trading pair" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {POPULAR_SYMBOLS.map((symbol) => (
+                        <SelectItem key={symbol} value={symbol}>
+                          {symbol}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
-          {/* Exchange & API Configuration */}
-          <TabsContent value="exchange" className="space-y-6">
-            <Alert className="border-yellow-500/20 bg-yellow-500/10">
-              <Shield className="h-4 w-4 text-yellow-500" />
-              <AlertDescription className="text-yellow-200">
-                Your API keys are encrypted and stored securely. We recommend using API keys with trading permissions
-                only (no withdrawal permissions).
-              </AlertDescription>
-            </Alert>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="exchange" className="text-white">
-                    Exchange *
-                  </Label>
-                  <Select
-                    value={botConfig.exchange}
-                    onValueChange={(value) => setBotConfig({ ...botConfig, exchange: value })}
-                  >
-                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+          {/* Exchange Configuration */}
+          <TabsContent value="exchange" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Exchange Configuration</CardTitle>
+                <CardDescription>Connect your exchange account with API credentials</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="exchange">Exchange</Label>
+                  <Select value={config.exchange} onValueChange={(value) => updateConfig({ exchange: value })}>
+                    <SelectTrigger>
                       <SelectValue placeholder="Select exchange" />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-900 border-gray-700">
-                      {exchanges.map((exchange) => (
-                        <SelectItem key={exchange.id} value={exchange.id} disabled={!exchange.supported}>
-                          {exchange.name} {!exchange.supported && "(Coming Soon)"}
+                    <SelectContent>
+                      {EXCHANGES.map((exchange) => (
+                        <SelectItem key={exchange.id} value={exchange.id}>
+                          {exchange.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div>
-                  <Label htmlFor="apiKey" className="text-white">
-                    API Key *
-                  </Label>
-                  <Input
-                    id="apiKey"
-                    type="password"
-                    placeholder="Enter your API key"
-                    value={botConfig.apiKey}
-                    onChange={(e) => setBotConfig({ ...botConfig, apiKey: e.target.value })}
-                    className="bg-gray-800 border-gray-700 text-white"
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="apiKey">API Key</Label>
+                    <Input
+                      id="apiKey"
+                      type="password"
+                      value={config.apiKey}
+                      onChange={(e) => updateConfig({ apiKey: e.target.value })}
+                      placeholder="Enter API key"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="secretKey">Secret Key</Label>
+                    <Input
+                      id="secretKey"
+                      type="password"
+                      value={config.secretKey}
+                      onChange={(e) => updateConfig({ secretKey: e.target.value })}
+                      placeholder="Enter secret key"
+                    />
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="secretKey" className="text-white">
-                    Secret Key *
-                  </Label>
-                  <Input
-                    id="secretKey"
-                    type="password"
-                    placeholder="Enter your secret key"
-                    value={botConfig.secretKey}
-                    onChange={(e) => setBotConfig({ ...botConfig, secretKey: e.target.value })}
-                    className="bg-gray-800 border-gray-700 text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-white">Connection Status</Label>
-                  {connectionStatus === "success" && <CheckCircle className="w-5 h-5 text-green-400" />}
-                  {connectionStatus === "error" && <XCircle className="w-5 h-5 text-red-400" />}
-                </div>
+                {selectedExchange?.requiresPassphrase && (
+                  <div className="space-y-2">
+                    <Label htmlFor="passphrase">Passphrase</Label>
+                    <Input
+                      id="passphrase"
+                      type="password"
+                      value={config.passphrase}
+                      onChange={(e) => updateConfig({ passphrase: e.target.value })}
+                      placeholder="Enter passphrase"
+                    />
+                  </div>
+                )}
 
                 <Button
                   onClick={testConnection}
-                  disabled={isTestingConnection || !botConfig.exchange || !botConfig.apiKey || !botConfig.secretKey}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  disabled={testingConnection || !config.apiKey || !config.secretKey}
+                  className="w-full"
                 >
-                  {isTestingConnection ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Testing Connection...
-                    </>
-                  ) : (
-                    "Test Connection"
-                  )}
+                  {testingConnection ? "Testing..." : "Test Connection"}
                 </Button>
 
-                {connectionStatus === "success" && (
-                  <Alert className="border-green-500/20 bg-green-500/10">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <AlertDescription className="text-green-200">
-                      Connection successful! Your API credentials are valid.
-                    </AlertDescription>
-                  </Alert>
+                {connectionTested && (
+                  <div className="p-3 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-green-700 text-sm">✓ Connection successful</p>
+                  </div>
                 )}
-
-                {connectionStatus === "error" && (
-                  <Alert className="border-red-500/20 bg-red-500/10">
-                    <XCircle className="h-4 w-4 text-red-500" />
-                    <AlertDescription className="text-red-200">
-                      Connection failed. Please check your API credentials.
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* Basic Configuration */}
-          <TabsContent value="config" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="botName" className="text-white">
-                    Bot Name *
-                  </Label>
+          <TabsContent value="config" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Bot Configuration</CardTitle>
+                <CardDescription>Configure your bot's basic settings and parameters</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Bot Name</Label>
                   <Input
-                    id="botName"
-                    placeholder="My Trading Bot"
-                    value={botConfig.name}
-                    onChange={(e) => setBotConfig({ ...botConfig, name: e.target.value })}
-                    className="bg-gray-800 border-gray-700 text-white"
+                    id="name"
+                    value={config.name}
+                    onChange={(e) => updateConfig({ name: e.target.value })}
+                    placeholder="Enter bot name"
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="tradingPair" className="text-white">
-                    Trading Pair *
-                  </Label>
-                  <Select
-                    value={botConfig.symbol}
-                    onValueChange={(value) => setBotConfig({ ...botConfig, symbol: value })}
-                  >
-                    <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                      <SelectValue placeholder="Select trading pair" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-900 border-gray-700">
-                      {tradingPairs.map((pair) => (
-                        <SelectItem key={pair} value={pair}>
-                          {pair}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="lotSize" className="text-white">
-                    Lot Size (Amount per trade)
-                  </Label>
-                  <Input
-                    id="lotSize"
-                    type="number"
-                    step="0.001"
-                    value={botConfig.lotSize}
-                    onChange={(e) => setBotConfig({ ...botConfig, lotSize: Number(e.target.value) })}
-                    className="bg-gray-800 border-gray-700 text-white"
-                  />
-                </div>
-
-                <div>
-                  <Label htmlFor="investment" className="text-white">
-                    Total Investment ($)
-                  </Label>
-                  <Input
-                    id="investment"
-                    type="number"
-                    value={botConfig.investment}
-                    onChange={(e) => setBotConfig({ ...botConfig, investment: Number(e.target.value) })}
-                    className="bg-gray-800 border-gray-700 text-white"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-white">Risk Level: {botConfig.riskLevel}%</Label>
-                  <Slider
-                    value={[botConfig.riskLevel]}
-                    onValueChange={(value) => setBotConfig({ ...botConfig, riskLevel: value[0] })}
-                    max={100}
-                    step={1}
-                    className="mt-2"
-                  />
-                  <div className="flex justify-between text-xs text-gray-400 mt-1">
-                    <span>Conservative</span>
-                    <span>Aggressive</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="investment">Investment Amount ($)</Label>
+                    <Input
+                      id="investment"
+                      type="number"
+                      value={config.investment}
+                      onChange={(e) => updateConfig({ investment: Number(e.target.value) })}
+                      min="1"
+                    />
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="leverage">Leverage (1x-20x)</Label>
+                    <Input
+                      id="leverage"
+                      type="number"
+                      value={config.leverage}
+                      onChange={(e) => updateConfig({ leverage: Number(e.target.value) })}
+                      min="1"
+                      max="20"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="stopLoss">Stop Loss (%)</Label>
+                    <Input
+                      id="stopLoss"
+                      type="number"
+                      value={config.stopLoss}
+                      onChange={(e) => updateConfig({ stopLoss: Number(e.target.value) })}
+                      min="0.1"
+                      max="50"
+                      step="0.1"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="takeProfit">Take Profit (%)</Label>
+                    <Input
+                      id="takeProfit"
+                      type="number"
+                      value={config.takeProfit}
+                      onChange={(e) => updateConfig({ takeProfit: Number(e.target.value) })}
+                      min="0.1"
+                      max="100"
+                      step="0.1"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Risk Level: {config.riskLevel}/10</Label>
+                  <Slider
+                    value={[config.riskLevel]}
+                    onValueChange={(value) => updateConfig({ riskLevel: value[0] })}
+                    max={10}
+                    min={1}
+                    step={1}
+                    className="w-full"
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <Label>Runtime Configuration</Label>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="time-based"
+                        checked={config.runtime.type === "time"}
+                        onChange={() => updateConfig({ runtime: { ...config.runtime, type: "time" } })}
+                      />
+                      <Label htmlFor="time-based">Time-based</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="profit-based"
+                        checked={config.runtime.type === "profit"}
+                        onChange={() => updateConfig({ runtime: { ...config.runtime, type: "profit" } })}
+                      />
+                      <Label htmlFor="profit-based">Profit-based</Label>
+                    </div>
+                  </div>
+                  <Input
+                    type="number"
+                    value={config.runtime.value}
+                    onChange={(e) =>
+                      updateConfig({
+                        runtime: { ...config.runtime, value: Number(e.target.value) },
+                      })
+                    }
+                    placeholder={config.runtime.type === "time" ? "Hours" : "Profit target ($)"}
+                  />
+                </div>
+
+                <div className="flex items-center space-x-2">
+                  <Switch
+                    id="ai-recommendations"
+                    checked={config.aiRecommendations}
+                    onCheckedChange={(checked) => updateConfig({ aiRecommendations: checked })}
+                  />
+                  <Label htmlFor="ai-recommendations">Enable AI Recommendations</Label>
                 </div>
 
                 {/* Strategy-specific parameters */}
-                {selectedStrategy === "dca" && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-white">DCA Interval</Label>
-                      <Select
-                        value={botConfig.dcaInterval}
-                        onValueChange={(value) => setBotConfig({ ...botConfig, dcaInterval: value })}
-                      >
-                        <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-gray-900 border-gray-700">
-                          {dcaIntervals.map((interval) => (
-                            <SelectItem key={interval.value} value={interval.value}>
-                              {interval.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label className="text-white">Price Deviation Limit: {botConfig.priceDeviation}%</Label>
-                      <Slider
-                        value={[botConfig.priceDeviation]}
-                        onValueChange={(value) => setBotConfig({ ...botConfig, priceDeviation: value[0] })}
-                        min={1}
-                        max={20}
-                        step={0.5}
-                        className="mt-2"
+                {config.strategy === "dca" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="dcaInterval">DCA Interval</Label>
+                    <Select value={config.dcaInterval} onValueChange={(value) => updateConfig({ dcaInterval: value })}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="15m">15 minutes</SelectItem>
+                        <SelectItem value="1h">1 hour</SelectItem>
+                        <SelectItem value="4h">4 hours</SelectItem>
+                        <SelectItem value="1d">1 day</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {config.strategy === "grid" && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="gridLevels">Grid Levels</Label>
+                      <Input
+                        id="gridLevels"
+                        type="number"
+                        value={config.parameters.gridLevels || 10}
+                        onChange={(e) => updateParameters("gridLevels", Number(e.target.value))}
+                        min="3"
+                        max="50"
                       />
                     </div>
-                    <div>
-                      <Label className="text-white">Max Orders: {botConfig.maxOrders}</Label>
-                      <Slider
-                        value={[botConfig.maxOrders]}
-                        onValueChange={(value) => setBotConfig({ ...botConfig, maxOrders: value[0] })}
-                        min={5}
-                        max={50}
-                        step={1}
-                        className="mt-2"
+                    <div className="space-y-2">
+                      <Label htmlFor="gridSpacing">Grid Spacing (%)</Label>
+                      <Input
+                        id="gridSpacing"
+                        type="number"
+                        value={config.parameters.gridSpacing || 2}
+                        onChange={(e) => updateParameters("gridSpacing", Number(e.target.value))}
+                        min="0.1"
+                        max="10"
+                        step="0.1"
                       />
                     </div>
                   </div>
                 )}
 
-                {selectedStrategy === "scalping" && (
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-white">Max Hold Time: {botConfig.maxHoldTime} minutes</Label>
-                      <Slider
-                        value={[botConfig.maxHoldTime]}
-                        onValueChange={(value) => setBotConfig({ ...botConfig, maxHoldTime: value[0] })}
-                        min={5}
-                        max={120}
-                        step={5}
-                        className="mt-2"
+                {config.strategy === "scalping" && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="maxHoldTime">Max Hold Time (minutes)</Label>
+                      <Input
+                        id="maxHoldTime"
+                        type="number"
+                        value={config.parameters.maxHoldTime || 30}
+                        onChange={(e) => updateParameters("maxHoldTime", Number(e.target.value))}
+                        min="1"
+                        max="120"
                       />
                     </div>
-                    <div>
-                      <Label className="text-white">RSI Period: {botConfig.rsiPeriod}</Label>
-                      <Slider
-                        value={[botConfig.rsiPeriod]}
-                        onValueChange={(value) => setBotConfig({ ...botConfig, rsiPeriod: value[0] })}
-                        min={7}
-                        max={21}
-                        step={1}
-                        className="mt-2"
+                    <div className="space-y-2">
+                      <Label htmlFor="profitTarget">Profit Target (%)</Label>
+                      <Input
+                        id="profitTarget"
+                        type="number"
+                        value={config.parameters.profitTarget || 0.5}
+                        onChange={(e) => updateParameters("profitTarget", Number(e.target.value))}
+                        min="0.1"
+                        max="5"
+                        step="0.1"
                       />
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
-          {/* Risk Management */}
-          <TabsContent value="risk" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <Card className="bg-gray-800/50 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Shield className="w-4 h-4 mr-2 text-red-400" />
-                    Stop Loss & Take Profit
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label className="text-white">Stop Loss: {botConfig.stopLoss}%</Label>
-                    <Slider
-                      value={[botConfig.stopLoss]}
-                      onValueChange={(value) => setBotConfig({ ...botConfig, stopLoss: value[0] })}
-                      max={20}
-                      min={1}
-                      step={0.5}
-                      className="mt-2"
-                    />
-                  </div>
+          {/* Risk Analysis */}
+          <TabsContent value="risk" className="space-y-4">
+            <AIRiskCheck userId={userId} botConfig={config} onRiskAnalysisComplete={setRiskAnalysisResult} />
+          </TabsContent>
 
+          {/* Review & Create */}
+          <TabsContent value="review" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Review Configuration</CardTitle>
+                <CardDescription>Review your bot configuration before creation</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <Label className="text-white">Take Profit: {botConfig.takeProfit}%</Label>
-                    <Slider
-                      value={[botConfig.takeProfit]}
-                      onValueChange={(value) => setBotConfig({ ...botConfig, takeProfit: value[0] })}
-                      max={50}
-                      min={2}
-                      step={0.5}
-                      className="mt-2"
-                    />
+                    <h4 className="font-semibold mb-2">Basic Settings</h4>
+                    <ul className="space-y-1 text-sm">
+                      <li>
+                        <strong>Name:</strong> {config.name}
+                      </li>
+                      <li>
+                        <strong>Strategy:</strong> {selectedStrategy?.name}
+                      </li>
+                      <li>
+                        <strong>Exchange:</strong> {selectedExchange?.name}
+                      </li>
+                      <li>
+                        <strong>Symbol:</strong> {config.symbol}
+                      </li>
+                      <li>
+                        <strong>Investment:</strong> ${config.investment}
+                      </li>
+                    </ul>
                   </div>
-                </CardContent>
-              </Card>
+                  <div>
+                    <h4 className="font-semibold mb-2">Risk Management</h4>
+                    <ul className="space-y-1 text-sm">
+                      <li>
+                        <strong>Stop Loss:</strong> {config.stopLoss}%
+                      </li>
+                      <li>
+                        <strong>Take Profit:</strong> {config.takeProfit}%
+                      </li>
+                      <li>
+                        <strong>Leverage:</strong> {config.leverage}x
+                      </li>
+                      <li>
+                        <strong>Risk Level:</strong> {config.riskLevel}/10
+                      </li>
+                      <li>
+                        <strong>AI Recommendations:</strong> {config.aiRecommendations ? "Enabled" : "Disabled"}
+                      </li>
+                    </ul>
+                  </div>
+                </div>
 
-              <Card className="bg-gray-800/50 border-gray-700">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <Settings className="w-4 h-4 mr-2 text-[#30D5C8]" />
-                    Advanced Settings
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {selectedStrategy === "scalping" && (
+                {riskAnalysisResult && (
+                  <div className="p-4 bg-gray-50 rounded-lg">
+                    <h4 className="font-semibold mb-2">Risk Analysis Summary</h4>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge
+                        className={
+                          riskAnalysisResult.riskLevel === "low"
+                            ? "bg-green-100 text-green-700"
+                            : riskAnalysisResult.riskLevel === "medium"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : riskAnalysisResult.riskLevel === "high"
+                                ? "bg-orange-100 text-orange-700"
+                                : "bg-red-100 text-red-700"
+                        }
+                      >
+                        {riskAnalysisResult.riskLevel.toUpperCase()} RISK
+                      </Badge>
+                      <span className="text-sm">Score: {riskAnalysisResult.riskScore}/100</span>
+                    </div>
+                    {riskAnalysisResult.shouldBlock && (
+                      <p className="text-red-600 text-sm">⚠️ This configuration has been blocked due to high risk</p>
+                    )}
+                  </div>
+                )}
+
+                <Button
+                  onClick={createBot}
+                  disabled={creating || riskAnalysisResult?.shouldBlock}
+                  className="w-full"
+                  size="lg"
+                >
+                  {creating ? (
                     <>
-                      <div>
-                        <Label className="text-white">RSI Overbought: {botConfig.rsiOverbought}</Label>
-                        <Slider
-                          value={[botConfig.rsiOverbought]}
-                          onValueChange={(value) => setBotConfig({ ...botConfig, rsiOverbought: value[0] })}
-                          min={60}
-                          max={90}
-                          step={1}
-                          className="mt-2"
-                        />
-                      </div>
-                      <div>
-                        <Label className="text-white">RSI Oversold: {botConfig.rsiOversold}</Label>
-                        <Slider
-                          value={[botConfig.rsiOversold]}
-                          onValueChange={(value) => setBotConfig({ ...botConfig, rsiOversold: value[0] })}
-                          min={10}
-                          max={40}
-                          step={1}
-                          className="mt-2"
-                        />
-                      </div>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Creating Bot...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-4 w-4 mr-2" />
+                      Create Bot
                     </>
                   )}
-
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-white">Enable Notifications</Label>
-                      <Switch defaultChecked />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <Label className="text-white">Auto-restart on Error</Label>
-                      <Switch defaultChecked />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+                </Button>
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 
-        <div className="flex items-center justify-between pt-6 border-t border-gray-800">
+        <div className="flex justify-between mt-6">
           <Button
             variant="outline"
             onClick={() => {
-              setOpen(false)
-              resetForm()
+              const tabs = ["strategy", "exchange", "config", "risk", "review"]
+              const currentIndex = tabs.indexOf(currentTab)
+              if (currentIndex > 0) {
+                setCurrentTab(tabs[currentIndex - 1])
+              }
             }}
-            className="border-gray-600 text-white hover:bg-gray-800 bg-transparent"
+            disabled={currentTab === "strategy"}
           >
-            Cancel
+            Previous
           </Button>
+
           <Button
-            onClick={handleCreateBot}
-            disabled={
-              !selectedStrategy ||
-              !botConfig.name ||
-              !botConfig.symbol ||
-              !botConfig.apiKey ||
-              !botConfig.secretKey ||
-              connectionStatus !== "success" ||
-              isCreating
-            }
-            className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E] font-semibold"
+            onClick={() => {
+              const tabs = ["strategy", "exchange", "config", "risk", "review"]
+              const currentIndex = tabs.indexOf(currentTab)
+              if (currentIndex < tabs.length - 1 && canProceedToNext()) {
+                setCurrentTab(tabs[currentIndex + 1])
+              }
+            }}
+            disabled={currentTab === "review" || !canProceedToNext()}
           >
-            {isCreating ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Creating Bot...
-              </>
-            ) : (
-              "Create Bot"
-            )}
+            Next
           </Button>
         </div>
       </DialogContent>

@@ -1,4 +1,4 @@
-import { database, type UserSettings } from "./database"
+import { database } from "./database"
 import Stripe from "stripe"
 
 export interface SubscriptionPlan {
@@ -6,90 +6,120 @@ export interface SubscriptionPlan {
   name: string
   price: number
   interval: "month" | "year"
-  features: string[]
-  maxBots: number
-  maxStrategies: string[]
-  aiRiskAnalysis: boolean
-  prioritySupport: boolean
-  advancedAnalytics: boolean
+  features: {
+    maxBots: number
+    strategies: string[]
+    exchanges: string[]
+    aiRiskAnalysis: boolean
+    prioritySupport: boolean
+    advancedAnalytics: boolean
+    customStrategies: boolean
+    apiAccess: boolean
+  }
+  limits: {
+    maxInvestmentPerBot: number
+    maxDailyTrades: number
+    maxLeverage: number
+  }
 }
 
-export const subscriptionPlans: SubscriptionPlan[] = [
-  {
+export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
+  free: {
     id: "free",
     name: "Free Trial",
     price: 0,
     interval: "month",
-    features: ["3-day free trial", "1 active bot", "DCA strategy only", "Basic analytics", "Email support"],
-    maxBots: 1,
-    maxStrategies: ["dca"],
-    aiRiskAnalysis: false,
-    prioritySupport: false,
-    advancedAnalytics: false,
+    features: {
+      maxBots: 1,
+      strategies: ["dca"],
+      exchanges: ["binance"],
+      aiRiskAnalysis: true,
+      prioritySupport: false,
+      advancedAnalytics: false,
+      customStrategies: false,
+      apiAccess: false,
+    },
+    limits: {
+      maxInvestmentPerBot: 100,
+      maxDailyTrades: 10,
+      maxLeverage: 1,
+    },
   },
-  {
+  basic: {
     id: "basic",
     name: "Basic",
     price: 29,
     interval: "month",
-    features: [
-      "3 active bots",
-      "DCA + Scalping strategies",
-      "Basic AI risk analysis",
-      "Standard analytics",
-      "Email support",
-      "Telegram notifications",
-    ],
-    maxBots: 3,
-    maxStrategies: ["dca", "scalping"],
-    aiRiskAnalysis: true,
-    prioritySupport: false,
-    advancedAnalytics: false,
+    features: {
+      maxBots: 3,
+      strategies: ["dca", "grid", "scalping"],
+      exchanges: ["binance", "bybit"],
+      aiRiskAnalysis: true,
+      prioritySupport: false,
+      advancedAnalytics: true,
+      customStrategies: false,
+      apiAccess: false,
+    },
+    limits: {
+      maxInvestmentPerBot: 1000,
+      maxDailyTrades: 50,
+      maxLeverage: 3,
+    },
   },
-  {
+  premium: {
     id: "premium",
     name: "Premium",
     price: 79,
     interval: "month",
-    features: [
-      "10 active bots",
-      "All strategies available",
-      "Advanced AI risk analysis",
-      "Advanced analytics & reports",
-      "Priority support",
-      "All notification types",
-      "Custom strategy parameters",
-    ],
-    maxBots: 10,
-    maxStrategies: ["dca", "scalping", "grid", "long-short", "trend-following", "arbitrage"],
-    aiRiskAnalysis: true,
-    prioritySupport: true,
-    advancedAnalytics: true,
+    features: {
+      maxBots: 10,
+      strategies: ["dca", "grid", "scalping", "long-short", "trend-following"],
+      exchanges: ["binance", "bybit", "kucoin", "okx"],
+      aiRiskAnalysis: true,
+      prioritySupport: true,
+      advancedAnalytics: true,
+      customStrategies: true,
+      apiAccess: true,
+    },
+    limits: {
+      maxInvestmentPerBot: 10000,
+      maxDailyTrades: 200,
+      maxLeverage: 10,
+    },
   },
-  {
+  enterprise: {
     id: "enterprise",
     name: "Enterprise",
     price: 199,
     interval: "month",
-    features: [
-      "Unlimited bots",
-      "All strategies + custom",
-      "Premium AI analysis",
-      "White-label solution",
-      "Dedicated support",
-      "API access",
-      "Custom integrations",
-    ],
-    maxBots: -1, // Unlimited
-    maxStrategies: ["dca", "scalping", "grid", "long-short", "trend-following", "arbitrage"],
-    aiRiskAnalysis: true,
-    prioritySupport: true,
-    advancedAnalytics: true,
+    features: {
+      maxBots: -1, // Unlimited
+      strategies: ["dca", "grid", "scalping", "long-short", "trend-following", "arbitrage"],
+      exchanges: ["binance", "bybit", "kucoin", "okx", "coinbase", "bitget", "gateio"],
+      aiRiskAnalysis: true,
+      prioritySupport: true,
+      advancedAnalytics: true,
+      customStrategies: true,
+      apiAccess: true,
+    },
+    limits: {
+      maxInvestmentPerBot: -1, // Unlimited
+      maxDailyTrades: -1, // Unlimited
+      maxLeverage: 20,
+    },
   },
-]
+}
 
 export class SubscriptionManager {
+  private static instance: SubscriptionManager
   private stripe: Stripe
+
+  static getInstance(): SubscriptionManager {
+    if (!SubscriptionManager.instance) {
+      SubscriptionManager.instance = new SubscriptionManager()
+    }
+    return SubscriptionManager.instance
+  }
 
   constructor() {
     this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
@@ -97,8 +127,238 @@ export class SubscriptionManager {
     })
   }
 
-  async getUserSubscription(userId: string): Promise<UserSettings | null> {
-    return database.getUserSettings(userId)
+  async getUserPlan(userId: string): Promise<SubscriptionPlan> {
+    const settings = await database.getUserSettings(userId)
+
+    if (!settings) {
+      return SUBSCRIPTION_PLANS.free
+    }
+
+    const planId = settings.subscription.plan
+    return SUBSCRIPTION_PLANS[planId] || SUBSCRIPTION_PLANS.free
+  }
+
+  async canCreateBot(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+    const plan = await this.getUserPlan(userId)
+    const userBots = await database.getUserBots(userId)
+
+    if (plan.features.maxBots !== -1 && userBots.length >= plan.features.maxBots) {
+      return {
+        allowed: false,
+        reason: `You've reached the maximum number of bots (${plan.features.maxBots}) for your ${plan.name} plan`,
+      }
+    }
+
+    return { allowed: true }
+  }
+
+  async canUseStrategy(userId: string, strategy: string): Promise<{ allowed: boolean; reason?: string }> {
+    const plan = await this.getUserPlan(userId)
+
+    if (!plan.features.strategies.includes(strategy)) {
+      return {
+        allowed: false,
+        reason: `The ${strategy} strategy is not available in your ${plan.name} plan`,
+      }
+    }
+
+    return { allowed: true }
+  }
+
+  async canUseExchange(userId: string, exchange: string): Promise<{ allowed: boolean; reason?: string }> {
+    const plan = await this.getUserPlan(userId)
+
+    if (!plan.features.exchanges.includes(exchange)) {
+      return {
+        allowed: false,
+        reason: `The ${exchange} exchange is not available in your ${plan.name} plan`,
+      }
+    }
+
+    return { allowed: true }
+  }
+
+  async validateBotConfig(
+    userId: string,
+    config: {
+      investment: number
+      leverage?: number
+      strategy: string
+      exchange: string
+    },
+  ): Promise<{ valid: boolean; errors: string[] }> {
+    const plan = await this.getUserPlan(userId)
+    const errors: string[] = []
+
+    // Check investment limit
+    if (plan.limits.maxInvestmentPerBot !== -1 && config.investment > plan.limits.maxInvestmentPerBot) {
+      errors.push(`Investment amount exceeds limit of $${plan.limits.maxInvestmentPerBot} for your ${plan.name} plan`)
+    }
+
+    // Check leverage limit
+    if (config.leverage && plan.limits.maxLeverage !== -1 && config.leverage > plan.limits.maxLeverage) {
+      errors.push(`Leverage exceeds limit of ${plan.limits.maxLeverage}x for your ${plan.name} plan`)
+    }
+
+    // Check strategy availability
+    const strategyCheck = await this.canUseStrategy(userId, config.strategy)
+    if (!strategyCheck.allowed) {
+      errors.push(strategyCheck.reason!)
+    }
+
+    // Check exchange availability
+    const exchangeCheck = await this.canUseExchange(userId, config.exchange)
+    if (!exchangeCheck.allowed) {
+      errors.push(exchangeCheck.reason!)
+    }
+
+    return {
+      valid: errors.length === 0,
+      errors,
+    }
+  }
+
+  async isTrialExpired(userId: string): Promise<boolean> {
+    const settings = await database.getUserSettings(userId)
+
+    if (!settings || !settings.subscription.trialEndDate) {
+      return false
+    }
+
+    return new Date() > settings.subscription.trialEndDate
+  }
+
+  async getUsageStats(userId: string): Promise<{
+    botsUsed: number
+    botsLimit: number
+    dailyTrades: number
+    dailyTradesLimit: number
+    planName: string
+  }> {
+    const plan = await this.getUserPlan(userId)
+    const userBots = await database.getUserBots(userId)
+
+    // Get today's trades
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const todayTrades = await database.getUserTrades(userId, 1000)
+    const dailyTrades = todayTrades.filter((trade) => trade.timestamp >= today).length
+
+    return {
+      botsUsed: userBots.length,
+      botsLimit: plan.features.maxBots,
+      dailyTrades,
+      dailyTradesLimit: plan.limits.maxDailyTrades,
+      planName: plan.name,
+    }
+  }
+
+  async upgradePlan(
+    userId: string,
+    newPlanId: string,
+    paymentMethodId?: string,
+  ): Promise<{
+    success: boolean
+    error?: string
+    subscriptionId?: string
+  }> {
+    try {
+      const newPlan = SUBSCRIPTION_PLANS[newPlanId]
+      if (!newPlan) {
+        return { success: false, error: "Invalid plan selected" }
+      }
+
+      // In production, integrate with Stripe here
+      const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+      // Update user settings
+      const settings = await database.getUserSettings(userId)
+      if (settings) {
+        const endDate = new Date()
+        endDate.setMonth(endDate.getMonth() + (newPlan.interval === "year" ? 12 : 1))
+
+        settings.subscription = {
+          plan: newPlanId,
+          status: "active",
+          startDate: new Date(),
+          endDate,
+          trialUsed: settings.subscription.trialUsed,
+          trialEndDate: settings.subscription.trialEndDate,
+        }
+
+        await database.saveUserSettings(settings)
+      }
+
+      return {
+        success: true,
+        subscriptionId,
+      }
+    } catch (error) {
+      console.error("Plan upgrade failed:", error)
+      return {
+        success: false,
+        error: "Failed to upgrade plan. Please try again.",
+      }
+    }
+  }
+
+  async cancelSubscription(userId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const settings = await database.getUserSettings(userId)
+      if (settings) {
+        settings.subscription.status = "cancelled"
+        await database.saveUserSettings(settings)
+      }
+
+      return { success: true }
+    } catch (error) {
+      console.error("Subscription cancellation failed:", error)
+      return {
+        success: false,
+        error: "Failed to cancel subscription. Please contact support.",
+      }
+    }
+  }
+
+  async processReferral(
+    userId: string,
+    referralCode: string,
+  ): Promise<{
+    success: boolean
+    bonusDays?: number
+    error?: string
+  }> {
+    try {
+      // Find referrer by referral code
+      const referrerSettings = await database.getUserSettings(referralCode) // This would need a different query
+      if (!referrerSettings) {
+        return { success: false, error: "Invalid referral code" }
+      }
+
+      // Add bonus days to new user
+      const userSettings = await database.getUserSettings(userId)
+      if (userSettings) {
+        const bonusDays = 5
+        const newEndDate = new Date(userSettings.subscription.endDate)
+        newEndDate.setDate(newEndDate.getDate() + bonusDays)
+
+        userSettings.subscription.endDate = newEndDate
+        userSettings.referrals.referredBy = referrerSettings.userId
+        userSettings.referrals.bonusDays += bonusDays
+
+        await database.saveUserSettings(userSettings)
+
+        return { success: true, bonusDays }
+      }
+
+      return { success: false, error: "User not found" }
+    } catch (error) {
+      console.error("Referral processing failed:", error)
+      return {
+        success: false,
+        error: "Failed to process referral",
+      }
+    }
   }
 
   async createSubscription(
@@ -112,7 +372,7 @@ export class SubscriptionManager {
     error?: string
   }> {
     try {
-      const plan = subscriptionPlans.find((p) => p.id === planId)
+      const plan = SUBSCRIPTION_PLANS[planId]
       if (!plan || plan.id === "free") {
         return { success: false, error: "Invalid plan" }
       }
@@ -149,17 +409,17 @@ export class SubscriptionManager {
       })
 
       // Update user subscription in database
-      const userSettings = await this.getUserSubscription(userId)
-      if (userSettings) {
-        userSettings.subscription = {
-          plan: planId as any,
+      const settings = await database.getUserSettings(userId)
+      if (settings) {
+        settings.subscription = {
+          plan: planId,
           status: "active",
           startDate: new Date(),
           endDate: new Date(subscription.current_period_end * 1000),
-          trialUsed: userSettings.subscription.trialUsed,
-          trialEndDate: userSettings.subscription.trialEndDate,
+          trialUsed: settings.subscription.trialUsed,
+          trialEndDate: settings.subscription.trialEndDate,
         }
-        await database.saveUserSettings(userSettings)
+        await database.saveUserSettings(settings)
       }
 
       return {
@@ -172,144 +432,6 @@ export class SubscriptionManager {
         success: false,
         error: error.message,
       }
-    }
-  }
-
-  async cancelSubscription(userId: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const userSettings = await this.getUserSubscription(userId)
-      if (!userSettings) {
-        return { success: false, error: "User not found" }
-      }
-
-      // In production, you would cancel the Stripe subscription here
-      // For demo, we'll just update the database
-      userSettings.subscription.status = "cancelled"
-      await database.saveUserSettings(userSettings)
-
-      return { success: true }
-    } catch (error: any) {
-      console.error("Subscription cancellation failed:", error)
-      return { success: false, error: error.message }
-    }
-  }
-
-  async processReferral(
-    userId: string,
-    referralCode: string,
-  ): Promise<{ success: boolean; bonusDays?: number; error?: string }> {
-    try {
-      // Find referrer
-      const referrerSettings = await database.getUserSettings(referralCode)
-      if (!referrerSettings) {
-        return { success: false, error: "Invalid referral code" }
-      }
-
-      // Create new user with referral bonus
-      const newUserSettings = await database.createUserWithTrial(userId, referrerSettings.userId)
-
-      return {
-        success: true,
-        bonusDays: newUserSettings.referrals.bonusDays,
-      }
-    } catch (error: any) {
-      console.error("Referral processing failed:", error)
-      return { success: false, error: error.message }
-    }
-  }
-
-  async checkSubscriptionAccess(userId: string, feature: string): Promise<boolean> {
-    const userSettings = await this.getUserSubscription(userId)
-    if (!userSettings) return false
-
-    const plan = subscriptionPlans.find((p) => p.id === userSettings.subscription.plan)
-    if (!plan) return false
-
-    // Check if subscription is active
-    if (userSettings.subscription.status !== "active") return false
-
-    // Check if subscription has expired
-    if (new Date() > userSettings.subscription.endDate) {
-      // Update status to expired
-      userSettings.subscription.status = "expired"
-      await database.saveUserSettings(userSettings)
-      return false
-    }
-
-    // Check feature access
-    switch (feature) {
-      case "ai_risk_analysis":
-        return plan.aiRiskAnalysis
-      case "priority_support":
-        return plan.prioritySupport
-      case "advanced_analytics":
-        return plan.advancedAnalytics
-      default:
-        return true
-    }
-  }
-
-  async checkBotLimit(userId: string): Promise<{ canCreate: boolean; currentCount: number; maxAllowed: number }> {
-    const userSettings = await this.getUserSubscription(userId)
-    if (!userSettings) {
-      return { canCreate: false, currentCount: 0, maxAllowed: 0 }
-    }
-
-    const plan = subscriptionPlans.find((p) => p.id === userSettings.subscription.plan)
-    if (!plan) {
-      return { canCreate: false, currentCount: 0, maxAllowed: 0 }
-    }
-
-    const userBots = await database.getUserBots(userId)
-    const currentCount = userBots.length
-
-    const canCreate = plan.maxBots === -1 || currentCount < plan.maxBots
-
-    return {
-      canCreate,
-      currentCount,
-      maxAllowed: plan.maxBots,
-    }
-  }
-
-  async checkStrategyAccess(userId: string, strategy: string): Promise<boolean> {
-    const userSettings = await this.getUserSubscription(userId)
-    if (!userSettings) return false
-
-    const plan = subscriptionPlans.find((p) => p.id === userSettings.subscription.plan)
-    if (!plan) return false
-
-    return plan.maxStrategies.includes(strategy)
-  }
-
-  async createCryptoPayment(
-    userId: string,
-    planId: string,
-  ): Promise<{
-    success: boolean
-    paymentUrl?: string
-    paymentId?: string
-    error?: string
-  }> {
-    try {
-      const plan = subscriptionPlans.find((p) => p.id === planId)
-      if (!plan || plan.id === "free") {
-        return { success: false, error: "Invalid plan" }
-      }
-
-      // In production, integrate with Coinbase Commerce or similar
-      // For demo, we'll simulate the payment process
-      const paymentId = `crypto_${Date.now()}_${userId}`
-      const paymentUrl = `https://commerce.coinbase.com/checkout/${paymentId}`
-
-      return {
-        success: true,
-        paymentUrl,
-        paymentId,
-      }
-    } catch (error: any) {
-      console.error("Crypto payment creation failed:", error)
-      return { success: false, error: error.message }
     }
   }
 
@@ -340,12 +462,12 @@ export class SubscriptionManager {
 
     if (customer && !customer.deleted && customer.metadata?.userId) {
       const userId = customer.metadata.userId
-      const userSettings = await this.getUserSubscription(userId)
+      const settings = await database.getUserSettings(userId)
 
-      if (userSettings) {
-        userSettings.subscription.status = "active"
-        userSettings.subscription.endDate = new Date(invoice.period_end * 1000)
-        await database.saveUserSettings(userSettings)
+      if (settings) {
+        settings.subscription.status = "active"
+        settings.subscription.endDate = new Date(invoice.period_end * 1000)
+        await database.saveUserSettings(settings)
       }
     }
   }
@@ -361,60 +483,14 @@ export class SubscriptionManager {
 
     if (customer && !customer.deleted && customer.metadata?.userId) {
       const userId = customer.metadata.userId
-      const userSettings = await this.getUserSubscription(userId)
+      const settings = await database.getUserSettings(userId)
 
-      if (userSettings) {
-        userSettings.subscription.status = "cancelled"
-        await database.saveUserSettings(userSettings)
+      if (settings) {
+        settings.subscription.status = "cancelled"
+        await database.saveUserSettings(settings)
       }
-    }
-  }
-
-  async getUsageStats(userId: string): Promise<{
-    botsUsed: number
-    botsLimit: number
-    strategiesUsed: string[]
-    strategiesAvailable: string[]
-    subscriptionDaysLeft: number
-  }> {
-    const userSettings = await this.getUserSubscription(userId)
-    if (!userSettings) {
-      return {
-        botsUsed: 0,
-        botsLimit: 0,
-        strategiesUsed: [],
-        strategiesAvailable: [],
-        subscriptionDaysLeft: 0,
-      }
-    }
-
-    const plan = subscriptionPlans.find((p) => p.id === userSettings.subscription.plan)
-    if (!plan) {
-      return {
-        botsUsed: 0,
-        botsLimit: 0,
-        strategiesUsed: [],
-        strategiesAvailable: [],
-        subscriptionDaysLeft: 0,
-      }
-    }
-
-    const userBots = await database.getUserBots(userId)
-    const strategiesUsed = [...new Set(userBots.map((bot) => bot.strategy))]
-
-    const daysLeft = Math.max(
-      0,
-      Math.ceil((userSettings.subscription.endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
-    )
-
-    return {
-      botsUsed: userBots.length,
-      botsLimit: plan.maxBots,
-      strategiesUsed,
-      strategiesAvailable: plan.maxStrategies,
-      subscriptionDaysLeft: daysLeft,
     }
   }
 }
 
-export const subscriptionManager = new SubscriptionManager()
+export const subscriptionManager = SubscriptionManager.getInstance()

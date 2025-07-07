@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { aiRiskAnalyzer } from "@/lib/ai-risk-analyzer"
-import { createExchangeClient } from "@/lib/exchange-api-client"
-import { database } from "@/lib/database"
+import { aiRiskAnalyzer, type RiskAnalysisInput } from "@/lib/ai-risk-analyzer"
+import { subscriptionManager } from "@/lib/subscription-manager"
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,85 +11,58 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    // Create exchange client for market data
-    const exchangeClient = createExchangeClient(botConfig.exchange, {
-      apiKey: botConfig.credentials.apiKey,
-      secretKey: botConfig.credentials.secretKey,
-      passphrase: botConfig.credentials.passphrase,
-      sandbox: process.env.NODE_ENV !== "production",
-    })
+    // Check if user can perform risk analysis
+    const plan = await subscriptionManager.getUserPlan(userId)
+    if (!plan.features.aiRiskAnalysis) {
+      return NextResponse.json({ error: "AI risk analysis not available in your plan" }, { status: 403 })
+    }
 
-    // Get market data
-    const ticker = await exchangeClient.getTicker(botConfig.symbol)
-    const historicalData = await exchangeClient.getKlines(botConfig.symbol, "1h", 100)
+    // Validate bot configuration against subscription limits
+    const validation = await subscriptionManager.validateBotConfig(userId, botConfig)
+    if (!validation.valid) {
+      return NextResponse.json(
+        {
+          error: "Configuration not allowed",
+          details: validation.errors,
+        },
+        { status: 403 },
+      )
+    }
 
-    // Create temporary bot object for analysis
-    const tempBot = {
-      userId,
-      name: botConfig.name,
-      exchange: botConfig.exchange,
+    // Prepare risk analysis input
+    const riskInput: RiskAnalysisInput = {
       strategy: botConfig.strategy,
       symbol: botConfig.symbol,
-      status: "stopped" as const,
-      config: botConfig.config,
-      credentials: botConfig.credentials,
-      stats: {
-        totalTrades: 0,
-        winningTrades: 0,
-        totalProfit: 0,
-        totalLoss: 0,
-        winRate: 0,
-        maxDrawdown: 0,
-        createdAt: new Date(),
-      },
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      investment: botConfig.investment,
+      leverage: botConfig.leverage,
+      stopLoss: botConfig.stopLoss,
+      takeProfit: botConfig.takeProfit,
+      riskLevel: botConfig.riskLevel,
+      parameters: botConfig.parameters || {},
+    }
+
+    // Get market data if available (simplified for demo)
+    try {
+      // In production, fetch real market data
+      riskInput.marketData = {
+        price: 50000, // Mock data
+        volatility: Math.random() * 10,
+        volume: Math.random() * 1000000,
+        trend: ["uptrend", "downtrend", "sideways"][Math.floor(Math.random() * 3)],
+      }
+    } catch (error) {
+      console.log("Could not fetch market data, proceeding without it")
     }
 
     // Perform AI risk analysis
-    const riskAnalysis = await aiRiskAnalyzer.analyzeBotRisk(tempBot, ticker, historicalData)
-
-    // Save analysis to database if bot exists
-    if (botConfig.botId) {
-      await database.updateBot(botConfig.botId, userId, {
-        riskAnalysis: {
-          riskScore: riskAnalysis.riskScore,
-          riskLevel: riskAnalysis.riskLevel,
-          warnings: riskAnalysis.warnings,
-          recommendations: riskAnalysis.recommendations,
-          analyzedAt: new Date(),
-        },
-      })
-    }
+    const riskAnalysis = await aiRiskAnalyzer.analyzeRisk(riskInput)
 
     return NextResponse.json({
       success: true,
-      riskAnalysis: {
-        ...riskAnalysis,
-        marketData: {
-          price: ticker.price,
-          change24h: ticker.change24h,
-          volume: ticker.volume24h,
-          volatility: Math.abs(ticker.change24h),
-        },
-      },
+      riskAnalysis,
     })
-  } catch (error: any) {
-    console.error("Risk analysis failed:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Risk analysis failed",
-        riskAnalysis: {
-          riskScore: 50,
-          riskLevel: "medium",
-          warnings: ["⚠️ Risk analysis unavailable - proceed with caution"],
-          recommendations: ["💡 Start with smaller position size", "💡 Monitor bot closely"],
-          canStart: true,
-          requiresConfirmation: true,
-        },
-      },
-      { status: 500 },
-    )
+  } catch (error) {
+    console.error("Risk check failed:", error)
+    return NextResponse.json({ error: "Risk analysis failed" }, { status: 500 })
   }
 }

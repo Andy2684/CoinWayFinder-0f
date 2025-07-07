@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { subscriptionManager } from "@/lib/subscription-manager"
+import { subscriptionManager, SUBSCRIPTION_PLANS } from "@/lib/subscription-manager"
+import { database } from "@/lib/database"
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,60 +11,66 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "User ID required" }, { status: 400 })
     }
 
-    const subscription = await subscriptionManager.getUserSubscription(userId)
+    const currentPlan = await subscriptionManager.getUserPlan(userId)
     const usageStats = await subscriptionManager.getUsageStats(userId)
+    const isTrialExpired = await subscriptionManager.isTrialExpired(userId)
 
     return NextResponse.json({
-      success: true,
-      subscription,
-      usage: usageStats,
+      currentPlan,
+      usageStats,
+      isTrialExpired,
+      availablePlans: Object.values(SUBSCRIPTION_PLANS),
     })
-  } catch (error: any) {
-    console.error("Get subscription failed:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+  } catch (error) {
+    console.error("Failed to get subscription info:", error)
+    return NextResponse.json({ error: "Failed to get subscription information" }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, planId, paymentMethodId, paymentType = "card" } = body
-
-    if (!userId || !planId) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
-    }
-
-    let result
-
-    if (paymentType === "crypto") {
-      result = await subscriptionManager.createCryptoPayment(userId, planId)
-    } else {
-      if (!paymentMethodId) {
-        return NextResponse.json({ error: "Payment method required" }, { status: 400 })
-      }
-      result = await subscriptionManager.createSubscription(userId, planId, paymentMethodId)
-    }
-
-    return NextResponse.json(result)
-  } catch (error: any) {
-    console.error("Create subscription failed:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get("userId")
+    const { userId, action, planId, paymentMethodId, referralCode } = body
 
     if (!userId) {
       return NextResponse.json({ error: "User ID required" }, { status: 400 })
     }
 
-    const result = await subscriptionManager.cancelSubscription(userId)
-    return NextResponse.json(result)
-  } catch (error: any) {
-    console.error("Cancel subscription failed:", error)
-    return NextResponse.json({ error: error.message }, { status: 500 })
+    switch (action) {
+      case "upgrade":
+        if (!planId) {
+          return NextResponse.json({ error: "Plan ID required for upgrade" }, { status: 400 })
+        }
+
+        const upgradeResult = await subscriptionManager.upgradePlan(userId, planId, paymentMethodId)
+
+        return NextResponse.json(upgradeResult)
+
+      case "cancel":
+        const cancelResult = await subscriptionManager.cancelSubscription(userId)
+        return NextResponse.json(cancelResult)
+
+      case "referral":
+        if (!referralCode) {
+          return NextResponse.json({ error: "Referral code required" }, { status: 400 })
+        }
+
+        const referralResult = await subscriptionManager.processReferral(userId, referralCode)
+
+        return NextResponse.json(referralResult)
+
+      case "create_trial":
+        const trialUser = await database.createUserWithTrial(userId, referralCode)
+        return NextResponse.json({
+          success: true,
+          user: trialUser,
+        })
+
+      default:
+        return NextResponse.json({ error: "Invalid action" }, { status: 400 })
+    }
+  } catch (error) {
+    console.error("Subscription action failed:", error)
+    return NextResponse.json({ error: "Subscription action failed" }, { status: 500 })
   }
 }
