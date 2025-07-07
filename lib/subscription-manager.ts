@@ -101,14 +101,18 @@ export class SubscriptionManager {
     return database.getUserSettings(userId)
   }
 
-  async createSubscription(userId: string, planId: string, paymentMethodId: string): Promise<{
+  async createSubscription(
+    userId: string,
+    planId: string,
+    paymentMethodId: string,
+  ): Promise<{
     success: boolean
     subscriptionId?: string
     clientSecret?: string
     error?: string
   }> {
     try {
-      const plan = subscriptionPlans.find(p => p.id === planId)
+      const plan = subscriptionPlans.find((p) => p.id === planId)
       if (!plan || plan.id === "free") {
         return { success: false, error: "Invalid plan" }
       }
@@ -190,7 +194,10 @@ export class SubscriptionManager {
     }
   }
 
-  async processReferral(userId: string, referralCode: string): Promise<{ success: boolean; bonusDays?: number; error?: string }> {
+  async processReferral(
+    userId: string,
+    referralCode: string,
+  ): Promise<{ success: boolean; bonusDays?: number; error?: string }> {
     try {
       // Find referrer
       const referrerSettings = await database.getUserSettings(referralCode)
@@ -215,7 +222,7 @@ export class SubscriptionManager {
     const userSettings = await this.getUserSubscription(userId)
     if (!userSettings) return false
 
-    const plan = subscriptionPlans.find(p => p.id === userSettings.subscription.plan)
+    const plan = subscriptionPlans.find((p) => p.id === userSettings.subscription.plan)
     if (!plan) return false
 
     // Check if subscription is active
@@ -240,3 +247,174 @@ export class SubscriptionManager {
       default:
         return true
     }
+  }
+
+  async checkBotLimit(userId: string): Promise<{ canCreate: boolean; currentCount: number; maxAllowed: number }> {
+    const userSettings = await this.getUserSubscription(userId)
+    if (!userSettings) {
+      return { canCreate: false, currentCount: 0, maxAllowed: 0 }
+    }
+
+    const plan = subscriptionPlans.find((p) => p.id === userSettings.subscription.plan)
+    if (!plan) {
+      return { canCreate: false, currentCount: 0, maxAllowed: 0 }
+    }
+
+    const userBots = await database.getUserBots(userId)
+    const currentCount = userBots.length
+
+    const canCreate = plan.maxBots === -1 || currentCount < plan.maxBots
+
+    return {
+      canCreate,
+      currentCount,
+      maxAllowed: plan.maxBots,
+    }
+  }
+
+  async checkStrategyAccess(userId: string, strategy: string): Promise<boolean> {
+    const userSettings = await this.getUserSubscription(userId)
+    if (!userSettings) return false
+
+    const plan = subscriptionPlans.find((p) => p.id === userSettings.subscription.plan)
+    if (!plan) return false
+
+    return plan.maxStrategies.includes(strategy)
+  }
+
+  async createCryptoPayment(
+    userId: string,
+    planId: string,
+  ): Promise<{
+    success: boolean
+    paymentUrl?: string
+    paymentId?: string
+    error?: string
+  }> {
+    try {
+      const plan = subscriptionPlans.find((p) => p.id === planId)
+      if (!plan || plan.id === "free") {
+        return { success: false, error: "Invalid plan" }
+      }
+
+      // In production, integrate with Coinbase Commerce or similar
+      // For demo, we'll simulate the payment process
+      const paymentId = `crypto_${Date.now()}_${userId}`
+      const paymentUrl = `https://commerce.coinbase.com/checkout/${paymentId}`
+
+      return {
+        success: true,
+        paymentUrl,
+        paymentId,
+      }
+    } catch (error: any) {
+      console.error("Crypto payment creation failed:", error)
+      return { success: false, error: error.message }
+    }
+  }
+
+  async handleWebhook(event: any): Promise<void> {
+    try {
+      switch (event.type) {
+        case "invoice.payment_succeeded":
+          await this.handlePaymentSuccess(event.data.object)
+          break
+        case "invoice.payment_failed":
+          await this.handlePaymentFailed(event.data.object)
+          break
+        case "customer.subscription.deleted":
+          await this.handleSubscriptionCancelled(event.data.object)
+          break
+        default:
+          console.log(`Unhandled event type: ${event.type}`)
+      }
+    } catch (error) {
+      console.error("Webhook handling failed:", error)
+    }
+  }
+
+  private async handlePaymentSuccess(invoice: any): Promise<void> {
+    // Update user subscription status
+    const customerId = invoice.customer
+    const customer = await this.stripe.customers.retrieve(customerId)
+
+    if (customer && !customer.deleted && customer.metadata?.userId) {
+      const userId = customer.metadata.userId
+      const userSettings = await this.getUserSubscription(userId)
+
+      if (userSettings) {
+        userSettings.subscription.status = "active"
+        userSettings.subscription.endDate = new Date(invoice.period_end * 1000)
+        await database.saveUserSettings(userSettings)
+      }
+    }
+  }
+
+  private async handlePaymentFailed(invoice: any): Promise<void> {
+    // Handle failed payment - maybe send notification
+    console.log("Payment failed for invoice:", invoice.id)
+  }
+
+  private async handleSubscriptionCancelled(subscription: any): Promise<void> {
+    const customerId = subscription.customer
+    const customer = await this.stripe.customers.retrieve(customerId)
+
+    if (customer && !customer.deleted && customer.metadata?.userId) {
+      const userId = customer.metadata.userId
+      const userSettings = await this.getUserSubscription(userId)
+
+      if (userSettings) {
+        userSettings.subscription.status = "cancelled"
+        await database.saveUserSettings(userSettings)
+      }
+    }
+  }
+
+  async getUsageStats(userId: string): Promise<{
+    botsUsed: number
+    botsLimit: number
+    strategiesUsed: string[]
+    strategiesAvailable: string[]
+    subscriptionDaysLeft: number
+  }> {
+    const userSettings = await this.getUserSubscription(userId)
+    if (!userSettings) {
+      return {
+        botsUsed: 0,
+        botsLimit: 0,
+        strategiesUsed: [],
+        strategiesAvailable: [],
+        subscriptionDaysLeft: 0,
+      }
+    }
+
+    const plan = subscriptionPlans.find((p) => p.id === userSettings.subscription.plan)
+    if (!plan) {
+      return {
+        botsUsed: 0,
+        botsLimit: 0,
+        strategiesUsed: [],
+        strategiesAvailable: [],
+        subscriptionDaysLeft: 0,
+      }
+    }
+
+    const userBots = await database.getUserBots(userId)
+    const strategiesUsed = [...new Set(userBots.map((bot) => bot.strategy))]
+
+    const daysLeft = Math.max(
+      0,
+      Math.ceil((userSettings.subscription.endDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+    )
+
+    return {
+      botsUsed: userBots.length,
+      botsLimit: plan.maxBots,
+      strategiesUsed,
+      strategiesAvailable: plan.maxStrategies,
+      subscriptionDaysLeft: daysLeft,
+    }
+  }
+}
+
+export const subscriptionManager = new SubscriptionManager()
