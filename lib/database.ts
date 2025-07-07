@@ -48,6 +48,11 @@ export interface UserBot {
     recommendations: string[]
     analyzedAt: Date
   }
+  // New fields for background execution
+  lastExecutedAt?: Date
+  lastError?: string
+  lastErrorAt?: Date
+  executionCount: number
   createdAt: Date
   updatedAt: Date
 }
@@ -182,6 +187,7 @@ class DatabaseManager {
     await this.db.collection("bots").createIndex({ userId: 1 })
     await this.db.collection("bots").createIndex({ status: 1 })
     await this.db.collection("bots").createIndex({ strategy: 1 })
+    await this.db.collection("bots").createIndex({ lastExecutedAt: 1 })
 
     // Trade indexes
     await this.db.collection("trades").createIndex({ botId: 1 })
@@ -240,6 +246,7 @@ class DatabaseManager {
         passphrase: bot.credentials.passphrase ? this.encrypt(bot.credentials.passphrase) : undefined,
         encrypted: true,
       },
+      executionCount: 0,
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -288,6 +295,26 @@ class DatabaseManager {
     })
   }
 
+  async getRunningBots(): Promise<UserBot[]> {
+    await this.connect()
+    const collection = this.db!.collection<UserBot>("bots")
+
+    const bots = await collection.find({ status: "running" }).toArray()
+
+    // Decrypt credentials for each bot
+    return bots.map((bot) => {
+      if (bot.credentials.encrypted) {
+        bot.credentials.apiKey = this.decrypt(bot.credentials.apiKey)
+        bot.credentials.secretKey = this.decrypt(bot.credentials.secretKey)
+        if (bot.credentials.passphrase) {
+          bot.credentials.passphrase = this.decrypt(bot.credentials.passphrase)
+        }
+        bot.credentials.encrypted = false
+      }
+      return bot
+    })
+  }
+
   async updateBot(botId: string, userId: string, updates: Partial<UserBot>): Promise<boolean> {
     await this.connect()
     const collection = this.db!.collection<UserBot>("bots")
@@ -303,6 +330,11 @@ class DatabaseManager {
         passphrase: updates.credentials.passphrase ? this.encrypt(updates.credentials.passphrase) : undefined,
         encrypted: true,
       }
+    }
+
+    // Increment execution count if this is an execution update
+    if (updates.lastExecutedAt) {
+      updateDoc.$inc = { executionCount: 1 }
     }
 
     const result = await collection.updateOne({ _id: new ObjectId(botId), userId }, { $set: updateDoc })
