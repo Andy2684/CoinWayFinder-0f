@@ -1,8 +1,8 @@
-import { MongoClient, type Db } from "mongodb"
+import { MongoClient, type Db, ObjectId } from "mongodb"
 import crypto from "crypto"
 
 export interface UserBot {
-  _id?: string
+  _id?: ObjectId
   userId: string
   name: string
   exchange: string
@@ -16,11 +16,17 @@ export interface UserBot {
     stopLoss: number
     dcaInterval?: string
     investment: number
+    runtime?: {
+      type: "time" | "profit"
+      value: number // hours for time, $ for profit
+    }
+    aiRecommendations: boolean
     parameters: Record<string, any>
   }
   credentials: {
     apiKey: string
     secretKey: string
+    passphrase?: string
     encrypted: boolean
   }
   stats: {
@@ -29,15 +35,25 @@ export interface UserBot {
     totalProfit: number
     totalLoss: number
     winRate: number
+    maxDrawdown: number
     createdAt: Date
     lastTradeAt?: Date
+    startedAt?: Date
+    stoppedAt?: Date
+  }
+  riskAnalysis?: {
+    riskScore: number
+    riskLevel: "low" | "medium" | "high" | "extreme"
+    warnings: string[]
+    recommendations: string[]
+    analyzedAt: Date
   }
   createdAt: Date
   updatedAt: Date
 }
 
 export interface TradeRecord {
-  _id?: string
+  _id?: ObjectId
   botId: string
   userId: string
   orderId: string
@@ -51,29 +67,87 @@ export interface TradeRecord {
   status: "pending" | "filled" | "cancelled" | "failed"
   timestamp: Date
   exchange: string
+  strategy: string
+  metadata?: Record<string, any>
 }
 
 export interface UserSettings {
-  _id?: string
+  _id?: ObjectId
   userId: string
+  subscription: {
+    plan: "free" | "basic" | "premium" | "enterprise"
+    status: "active" | "cancelled" | "expired"
+    startDate: Date
+    endDate: Date
+    trialUsed: boolean
+    trialEndDate?: Date
+  }
   preferences: {
     notifications: {
       email: boolean
       telegram: boolean
       webhooks: boolean
+      discord: boolean
     }
     riskManagement: {
       maxDailyLoss: number
       maxPositionSize: number
       emergencyStop: boolean
+      aiRiskCheck: boolean
     }
     ui: {
       theme: "dark" | "light"
       currency: "USD" | "BTC" | "ETH"
+      language: string
     }
+  }
+  apiKeys: {
+    telegram?: string
+    discord?: string
+    webhook?: string
+  }
+  referrals: {
+    referralCode: string
+    referredBy?: string
+    referredUsers: string[]
+    bonusDays: number
   }
   createdAt: Date
   updatedAt: Date
+}
+
+export interface ArbitrageOpportunity {
+  _id?: ObjectId
+  symbol: string
+  buyExchange: string
+  sellExchange: string
+  buyPrice: number
+  sellPrice: number
+  profitPercent: number
+  volume: number
+  timestamp: Date
+  status: "active" | "executed" | "expired"
+}
+
+export interface AIAnalysis {
+  _id?: ObjectId
+  userId: string
+  botId?: string
+  symbol: string
+  analysis: {
+    sentiment: "bullish" | "bearish" | "neutral"
+    confidence: number
+    signals: string[]
+    recommendations: string[]
+    riskFactors: string[]
+  }
+  marketData: {
+    price: number
+    volume: number
+    volatility: number
+    trend: string
+  }
+  timestamp: Date
 }
 
 class DatabaseManager {
@@ -95,7 +169,39 @@ class DatabaseManager {
     await this.client.connect()
     this.db = this.client.db(dbName)
 
+    // Create indexes
+    await this.createIndexes()
+
     console.log("Connected to MongoDB")
+  }
+
+  private async createIndexes(): Promise<void> {
+    if (!this.db) return
+
+    // Bot indexes
+    await this.db.collection("bots").createIndex({ userId: 1 })
+    await this.db.collection("bots").createIndex({ status: 1 })
+    await this.db.collection("bots").createIndex({ strategy: 1 })
+
+    // Trade indexes
+    await this.db.collection("trades").createIndex({ botId: 1 })
+    await this.db.collection("trades").createIndex({ userId: 1 })
+    await this.db.collection("trades").createIndex({ timestamp: -1 })
+    await this.db.collection("trades").createIndex({ symbol: 1 })
+
+    // User settings indexes
+    await this.db.collection("user_settings").createIndex({ userId: 1 }, { unique: true })
+    await this.db.collection("user_settings").createIndex({ "referrals.referralCode": 1 }, { unique: true })
+
+    // Arbitrage indexes
+    await this.db.collection("arbitrage").createIndex({ symbol: 1 })
+    await this.db.collection("arbitrage").createIndex({ timestamp: -1 })
+    await this.db.collection("arbitrage").createIndex({ status: 1 })
+
+    // AI Analysis indexes
+    await this.db.collection("ai_analysis").createIndex({ userId: 1 })
+    await this.db.collection("ai_analysis").createIndex({ symbol: 1 })
+    await this.db.collection("ai_analysis").createIndex({ timestamp: -1 })
   }
 
   async disconnect(): Promise<void> {
@@ -131,6 +237,7 @@ class DatabaseManager {
         ...bot.credentials,
         apiKey: this.encrypt(bot.credentials.apiKey),
         secretKey: this.encrypt(bot.credentials.secretKey),
+        passphrase: bot.credentials.passphrase ? this.encrypt(bot.credentials.passphrase) : undefined,
         encrypted: true,
       },
       createdAt: new Date(),
@@ -145,13 +252,16 @@ class DatabaseManager {
     await this.connect()
     const collection = this.db!.collection<UserBot>("bots")
 
-    const bot = await collection.findOne({ _id: botId as any, userId })
+    const bot = await collection.findOne({ _id: new ObjectId(botId), userId })
     if (!bot) return null
 
     // Decrypt credentials
     if (bot.credentials.encrypted) {
       bot.credentials.apiKey = this.decrypt(bot.credentials.apiKey)
       bot.credentials.secretKey = this.decrypt(bot.credentials.secretKey)
+      if (bot.credentials.passphrase) {
+        bot.credentials.passphrase = this.decrypt(bot.credentials.passphrase)
+      }
       bot.credentials.encrypted = false
     }
 
@@ -169,6 +279,9 @@ class DatabaseManager {
       if (bot.credentials.encrypted) {
         bot.credentials.apiKey = this.decrypt(bot.credentials.apiKey)
         bot.credentials.secretKey = this.decrypt(bot.credentials.secretKey)
+        if (bot.credentials.passphrase) {
+          bot.credentials.passphrase = this.decrypt(bot.credentials.passphrase)
+        }
         bot.credentials.encrypted = false
       }
       return bot
@@ -187,11 +300,12 @@ class DatabaseManager {
         ...updates.credentials,
         apiKey: this.encrypt(updates.credentials.apiKey),
         secretKey: this.encrypt(updates.credentials.secretKey),
+        passphrase: updates.credentials.passphrase ? this.encrypt(updates.credentials.passphrase) : undefined,
         encrypted: true,
       }
     }
 
-    const result = await collection.updateOne({ _id: botId as any, userId }, { $set: updateDoc })
+    const result = await collection.updateOne({ _id: new ObjectId(botId), userId }, { $set: updateDoc })
 
     return result.modifiedCount > 0
   }
@@ -200,7 +314,7 @@ class DatabaseManager {
     await this.connect()
     const collection = this.db!.collection<UserBot>("bots")
 
-    const result = await collection.deleteOne({ _id: botId as any, userId })
+    const result = await collection.deleteOne({ _id: new ObjectId(botId), userId })
     return result.deletedCount > 0
   }
 
@@ -240,7 +354,7 @@ class DatabaseManager {
       updateDoc.profit = profit
     }
 
-    const result = await collection.updateOne({ _id: tradeId as any }, { $set: updateDoc })
+    const result = await collection.updateOne({ _id: new ObjectId(tradeId) }, { $set: updateDoc })
 
     return result.modifiedCount > 0
   }
@@ -266,6 +380,127 @@ class DatabaseManager {
     return result.upsertedId?.toString() || settings.userId
   }
 
+  async createUserWithTrial(userId: string, referredBy?: string): Promise<UserSettings> {
+    const referralCode = crypto.randomBytes(8).toString("hex").toUpperCase()
+    const trialEndDate = new Date()
+    trialEndDate.setDate(trialEndDate.getDate() + 3) // 3-day trial
+
+    let bonusDays = 0
+    if (referredBy) {
+      // Add bonus days for referral
+      bonusDays = 5
+      trialEndDate.setDate(trialEndDate.getDate() + bonusDays)
+
+      // Add bonus to referrer
+      await this.addReferralBonus(referredBy, userId)
+    }
+
+    const userSettings: Omit<UserSettings, "_id"> = {
+      userId,
+      subscription: {
+        plan: "free",
+        status: "active",
+        startDate: new Date(),
+        endDate: trialEndDate,
+        trialUsed: true,
+        trialEndDate,
+      },
+      preferences: {
+        notifications: {
+          email: true,
+          telegram: false,
+          webhooks: false,
+          discord: false,
+        },
+        riskManagement: {
+          maxDailyLoss: 100,
+          maxPositionSize: 1000,
+          emergencyStop: true,
+          aiRiskCheck: true,
+        },
+        ui: {
+          theme: "dark",
+          currency: "USD",
+          language: "en",
+        },
+      },
+      apiKeys: {},
+      referrals: {
+        referralCode,
+        referredBy,
+        referredUsers: [],
+        bonusDays,
+      },
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    await this.saveUserSettings(userSettings)
+    return userSettings as UserSettings
+  }
+
+  private async addReferralBonus(referrerId: string, newUserId: string): Promise<void> {
+    await this.connect()
+    const collection = this.db!.collection<UserSettings>("user_settings")
+
+    await collection.updateOne(
+      { userId: referrerId },
+      {
+        $push: { "referrals.referredUsers": newUserId },
+        $inc: { "referrals.bonusDays": 5 },
+        $set: { updatedAt: new Date() },
+      },
+    )
+  }
+
+  // Arbitrage Opportunities
+  async saveArbitrageOpportunity(opportunity: Omit<ArbitrageOpportunity, "_id">): Promise<string> {
+    await this.connect()
+    const collection = this.db!.collection<ArbitrageOpportunity>("arbitrage")
+
+    const result = await collection.insertOne({
+      ...opportunity,
+      timestamp: new Date(),
+    })
+
+    return result.insertedId.toString()
+  }
+
+  async getArbitrageOpportunities(minProfitPercent = 1, limit = 50): Promise<ArbitrageOpportunity[]> {
+    await this.connect()
+    const collection = this.db!.collection<ArbitrageOpportunity>("arbitrage")
+
+    return collection
+      .find({
+        status: "active",
+        profitPercent: { $gte: minProfitPercent },
+        timestamp: { $gte: new Date(Date.now() - 5 * 60 * 1000) }, // Last 5 minutes
+      })
+      .sort({ profitPercent: -1 })
+      .limit(limit)
+      .toArray()
+  }
+
+  // AI Analysis
+  async saveAIAnalysis(analysis: Omit<AIAnalysis, "_id">): Promise<string> {
+    await this.connect()
+    const collection = this.db!.collection<AIAnalysis>("ai_analysis")
+
+    const result = await collection.insertOne({
+      ...analysis,
+      timestamp: new Date(),
+    })
+
+    return result.insertedId.toString()
+  }
+
+  async getLatestAIAnalysis(userId: string, symbol: string): Promise<AIAnalysis | null> {
+    await this.connect()
+    const collection = this.db!.collection<AIAnalysis>("ai_analysis")
+
+    return collection.findOne({ userId, symbol }, { sort: { timestamp: -1 } })
+  }
+
   // Analytics
   async getBotPerformance(botId: string): Promise<{
     totalTrades: number
@@ -273,6 +508,7 @@ class DatabaseManager {
     winRate: number
     avgProfit: number
     maxDrawdown: number
+    profitByDay: Array<{ date: string; profit: number }>
   }> {
     await this.connect()
     const collection = this.db!.collection<TradeRecord>("trades")
@@ -292,6 +528,7 @@ class DatabaseManager {
         winRate: 0,
         avgProfit: 0,
         maxDrawdown: 0,
+        profitByDay: [],
       }
     }
 
@@ -316,12 +553,20 @@ class DatabaseManager {
       }
     })
 
+    // Calculate profit by day
+    const profitByDay = new Map<string, number>()
+    trades.forEach((trade) => {
+      const date = trade.timestamp.toISOString().split("T")[0]
+      profitByDay.set(date, (profitByDay.get(date) || 0) + (trade.profit || 0))
+    })
+
     return {
       totalTrades: trades.length,
       totalProfit,
       winRate,
       avgProfit,
       maxDrawdown,
+      profitByDay: Array.from(profitByDay.entries()).map(([date, profit]) => ({ date, profit })),
     }
   }
 
@@ -331,6 +576,8 @@ class DatabaseManager {
     totalProfit: number
     totalTrades: number
     avgWinRate: number
+    totalInvestment: number
+    dailyPnL: number
   }> {
     await this.connect()
 
@@ -349,6 +596,12 @@ class DatabaseManager {
     const totalProfit = trades.reduce((sum, trade) => sum + (trade.profit || 0), 0)
     const winningTrades = trades.filter((trade) => (trade.profit || 0) > 0)
     const avgWinRate = trades.length > 0 ? (winningTrades.length / trades.length) * 100 : 0
+    const totalInvestment = bots.reduce((sum, bot) => sum + bot.config.investment, 0)
+
+    // Calculate daily P&L (last 24 hours)
+    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
+    const dailyTrades = trades.filter((trade) => trade.timestamp >= yesterday)
+    const dailyPnL = dailyTrades.reduce((sum, trade) => sum + (trade.profit || 0), 0)
 
     return {
       totalBots: bots.length,
@@ -356,7 +609,85 @@ class DatabaseManager {
       totalProfit,
       totalTrades: trades.length,
       avgWinRate,
+      totalInvestment,
+      dailyPnL,
     }
+  }
+
+  async getTopPerformingBots(
+    userId: string,
+    limit = 10,
+  ): Promise<
+    Array<{
+      botId: string
+      name: string
+      strategy: string
+      profit: number
+      winRate: number
+      trades: number
+    }>
+  > {
+    await this.connect()
+
+    const pipeline = [
+      { $match: { userId } },
+      {
+        $lookup: {
+          from: "trades",
+          localField: "_id",
+          foreignField: "botId",
+          as: "trades",
+        },
+      },
+      {
+        $addFields: {
+          totalProfit: {
+            $sum: {
+              $map: {
+                input: "$trades",
+                as: "trade",
+                in: { $ifNull: ["$$trade.profit", 0] },
+              },
+            },
+          },
+          winningTrades: {
+            $size: {
+              $filter: {
+                input: "$trades",
+                as: "trade",
+                cond: { $gt: [{ $ifNull: ["$$trade.profit", 0] }, 0] },
+              },
+            },
+          },
+          totalTrades: { $size: "$trades" },
+        },
+      },
+      {
+        $addFields: {
+          winRate: {
+            $cond: {
+              if: { $gt: ["$totalTrades", 0] },
+              then: { $multiply: [{ $divide: ["$winningTrades", "$totalTrades"] }, 100] },
+              else: 0,
+            },
+          },
+        },
+      },
+      { $sort: { totalProfit: -1 } },
+      { $limit: limit },
+      {
+        $project: {
+          botId: { $toString: "$_id" },
+          name: 1,
+          strategy: 1,
+          profit: "$totalProfit",
+          winRate: 1,
+          trades: "$totalTrades",
+        },
+      },
+    ]
+
+    return this.db!.collection("bots").aggregate(pipeline).toArray()
   }
 }
 
