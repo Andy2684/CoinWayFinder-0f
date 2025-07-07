@@ -20,6 +20,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Plus, Bot, Settings, TrendingUp, Shield, Zap } from "lucide-react"
+import { tradingBotEngine } from "@/lib/trading-bot-engine"
+import { toast } from "@/hooks/use-toast"
 
 export function CreateBotDialog() {
   const [open, setOpen] = useState(false)
@@ -38,6 +40,14 @@ export function CreateBotDialog() {
     dcaSteps: 3,
     dcaDeviation: 2,
     description: "",
+    // Strategy-specific parameters
+    interval: "daily",
+    amount: 50,
+    priceDeviation: 5,
+    gridLevels: 10,
+    gridSpacing: 2,
+    profitTarget: 0.5,
+    maxHoldTime: 15,
   })
 
   const strategies = [
@@ -68,15 +78,6 @@ export function CreateBotDialog() {
       icon: Zap,
       color: "bg-red-500/10 text-red-400",
     },
-    {
-      id: "momentum",
-      name: "Momentum Trading",
-      description: "Follow strong price trends",
-      difficulty: "Intermediate",
-      risk: "Medium-High",
-      icon: TrendingUp,
-      color: "bg-green-500/10 text-green-400",
-    },
   ]
 
   const tradingPairs = [
@@ -93,9 +94,91 @@ export function CreateBotDialog() {
   ]
 
   const handleCreateBot = () => {
-    console.log("Creating bot with config:", botConfig)
-    setOpen(false)
-    // Here you would typically send the config to your API
+    if (!selectedStrategy || !botConfig.name || !botConfig.pair) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      // Prepare strategy-specific parameters
+      let parameters: Record<string, any> = {}
+
+      switch (selectedStrategy) {
+        case "dca":
+          parameters = {
+            interval: botConfig.interval,
+            amount: botConfig.amount,
+            priceDeviation: botConfig.priceDeviation,
+          }
+          break
+        case "grid":
+          parameters = {
+            gridLevels: botConfig.gridLevels,
+            gridSpacing: botConfig.gridSpacing,
+          }
+          break
+        case "scalping":
+          parameters = {
+            profitTarget: botConfig.profitTarget,
+            maxHoldTime: botConfig.maxHoldTime,
+          }
+          break
+      }
+
+      const bot = tradingBotEngine.createBot({
+        name: botConfig.name,
+        strategy: selectedStrategy,
+        pair: botConfig.pair,
+        investment: botConfig.investment,
+        riskLevel: botConfig.riskLevel,
+        stopLoss: botConfig.stopLoss,
+        takeProfit: botConfig.takeProfit,
+        maxTrades: botConfig.maxTrades,
+        parameters,
+      })
+
+      toast({
+        title: "Bot Created Successfully",
+        description: `${bot.name} has been created and is ready to start trading`,
+      })
+
+      setOpen(false)
+
+      // Reset form
+      setBotConfig({
+        name: "",
+        strategy: "",
+        pair: "",
+        investment: 1000,
+        riskLevel: 50,
+        stopLoss: 5,
+        takeProfit: 10,
+        maxTrades: 10,
+        enableTrailing: false,
+        enableDCA: false,
+        dcaSteps: 3,
+        dcaDeviation: 2,
+        description: "",
+        interval: "daily",
+        amount: 50,
+        priceDeviation: 5,
+        gridLevels: 10,
+        gridSpacing: 2,
+        profitTarget: 0.5,
+        maxHoldTime: 15,
+      })
+      setSelectedStrategy("")
+    } catch (error) {
+      toast({
+        title: "Error Creating Bot",
+        description: "Failed to create trading bot. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   return (
@@ -181,7 +264,7 @@ export function CreateBotDialog() {
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="botName" className="text-white">
-                    Bot Name
+                    Bot Name *
                   </Label>
                   <Input
                     id="botName"
@@ -194,7 +277,7 @@ export function CreateBotDialog() {
 
                 <div>
                   <Label htmlFor="tradingPair" className="text-white">
-                    Trading Pair
+                    Trading Pair *
                   </Label>
                   <Select value={botConfig.pair} onValueChange={(value) => setBotConfig({ ...botConfig, pair: value })}>
                     <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
@@ -212,7 +295,7 @@ export function CreateBotDialog() {
 
                 <div>
                   <Label htmlFor="investment" className="text-white">
-                    Initial Investment ($)
+                    Initial Investment ($) *
                   </Label>
                   <Input
                     id="investment"
@@ -253,18 +336,90 @@ export function CreateBotDialog() {
                   />
                 </div>
 
-                <div>
-                  <Label htmlFor="description" className="text-white">
-                    Description (Optional)
-                  </Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Describe your bot strategy..."
-                    value={botConfig.description}
-                    onChange={(e) => setBotConfig({ ...botConfig, description: e.target.value })}
-                    className="bg-gray-800 border-gray-700 text-white"
-                  />
-                </div>
+                {/* Strategy-specific parameters */}
+                {selectedStrategy === "dca" && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-white">Purchase Interval</Label>
+                      <Select
+                        value={botConfig.interval}
+                        onValueChange={(value) => setBotConfig({ ...botConfig, interval: value })}
+                      >
+                        <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-gray-900 border-gray-700">
+                          <SelectItem value="hourly">Hourly</SelectItem>
+                          <SelectItem value="daily">Daily</SelectItem>
+                          <SelectItem value="weekly">Weekly</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label className="text-white">Purchase Amount ($)</Label>
+                      <Input
+                        type="number"
+                        value={botConfig.amount}
+                        onChange={(e) => setBotConfig({ ...botConfig, amount: Number(e.target.value) })}
+                        className="bg-gray-800 border-gray-700 text-white"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {selectedStrategy === "grid" && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-white">Grid Levels: {botConfig.gridLevels}</Label>
+                      <Slider
+                        value={[botConfig.gridLevels]}
+                        onValueChange={(value) => setBotConfig({ ...botConfig, gridLevels: value[0] })}
+                        min={5}
+                        max={50}
+                        step={1}
+                        className="mt-2"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-white">Grid Spacing: {botConfig.gridSpacing}%</Label>
+                      <Slider
+                        value={[botConfig.gridSpacing]}
+                        onValueChange={(value) => setBotConfig({ ...botConfig, gridSpacing: value[0] })}
+                        min={0.5}
+                        max={10}
+                        step={0.1}
+                        className="mt-2"
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {selectedStrategy === "scalping" && (
+                  <div className="space-y-4">
+                    <div>
+                      <Label className="text-white">Profit Target: {botConfig.profitTarget}%</Label>
+                      <Slider
+                        value={[botConfig.profitTarget]}
+                        onValueChange={(value) => setBotConfig({ ...botConfig, profitTarget: value[0] })}
+                        min={0.1}
+                        max={2}
+                        step={0.1}
+                        className="mt-2"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-white">Max Hold Time: {botConfig.maxHoldTime} minutes</Label>
+                      <Slider
+                        value={[botConfig.maxHoldTime]}
+                        onValueChange={(value) => setBotConfig({ ...botConfig, maxHoldTime: value[0] })}
+                        min={1}
+                        max={60}
+                        step={1}
+                        className="mt-2"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </TabsContent>
@@ -321,7 +476,7 @@ export function CreateBotDialog() {
                 <CardHeader>
                   <CardTitle className="text-white flex items-center">
                     <TrendingUp className="w-4 h-4 mr-2 text-[#30D5C8]" />
-                    DCA Settings
+                    Additional Settings
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -376,43 +531,17 @@ export function CreateBotDialog() {
                 <CardTitle className="text-white">Advanced Configuration</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="cooldown" className="text-white">
-                      Cooldown Period (minutes)
-                    </Label>
-                    <Input
-                      id="cooldown"
-                      type="number"
-                      defaultValue="5"
-                      className="bg-gray-800 border-gray-700 text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="slippage" className="text-white">
-                      Max Slippage (%)
-                    </Label>
-                    <Input
-                      id="slippage"
-                      type="number"
-                      defaultValue="0.5"
-                      step="0.1"
-                      className="bg-gray-800 border-gray-700 text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="timeout" className="text-white">
-                      Order Timeout (seconds)
-                    </Label>
-                    <Input
-                      id="timeout"
-                      type="number"
-                      defaultValue="30"
-                      className="bg-gray-800 border-gray-700 text-white"
-                    />
-                  </div>
+                <div>
+                  <Label htmlFor="description" className="text-white">
+                    Bot Description (Optional)
+                  </Label>
+                  <Textarea
+                    id="description"
+                    placeholder="Describe your bot strategy and goals..."
+                    value={botConfig.description}
+                    onChange={(e) => setBotConfig({ ...botConfig, description: e.target.value })}
+                    className="bg-gray-800 border-gray-700 text-white"
+                  />
                 </div>
 
                 <div className="space-y-3">

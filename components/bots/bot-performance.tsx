@@ -1,211 +1,313 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  PieChart,
-  Pie,
-  Cell,
-} from "recharts"
-import { TrendingUp, Download } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { TrendingUp, Activity, DollarSign, Target, AlertCircle } from "lucide-react"
+import { tradingBotEngine, type TradingBot, type Trade } from "@/lib/trading-bot-engine"
 
 export function BotPerformance() {
-  // Mock performance data
-  const performanceData = [
-    { date: "Jan 1", profit: 0, cumulative: 0 },
-    { date: "Jan 5", profit: 234, cumulative: 234 },
-    { date: "Jan 10", profit: 156, cumulative: 390 },
-    { date: "Jan 15", profit: 445, cumulative: 835 },
-    { date: "Jan 20", profit: 289, cumulative: 1124 },
-    { date: "Jan 25", profit: 567, cumulative: 1691 },
-    { date: "Jan 30", profit: 334, cumulative: 2025 },
-    { date: "Feb 5", profit: 822, cumulative: 2847 },
-  ]
+  const [bots, setBots] = useState<TradingBot[]>([])
+  const [selectedBot, setSelectedBot] = useState<string>("")
+  const [trades, setTrades] = useState<Trade[]>([])
+  const [portfolioStats, setPortfolioStats] = useState({
+    totalBots: 0,
+    runningBots: 0,
+    totalProfit: 0,
+    totalTrades: 0,
+    avgWinRate: 0,
+  })
 
-  const strategyPerformance = [
-    { strategy: "DCA", profit: 1247, trades: 156, winRate: 78 },
-    { strategy: "Grid", profit: 892, trades: 234, winRate: 71 },
-    { strategy: "Momentum", profit: 567, trades: 89, winRate: 82 },
-    { strategy: "AI Adaptive", profit: 234, trades: 67, winRate: 76 },
-    { strategy: "Scalping", profit: -93, trades: 145, winRate: 65 },
-  ]
+  useEffect(() => {
+    const loadData = () => {
+      const allBots = tradingBotEngine.getAllBots()
+      setBots(allBots)
 
-  const pairDistribution = [
-    { name: "BTC/USDT", value: 35, color: "#F7931A" },
-    { name: "ETH/USDT", value: 25, color: "#627EEA" },
-    { name: "SOL/USDT", value: 15, color: "#9945FF" },
-    { name: "ADA/USDT", value: 12, color: "#0033AD" },
-    { name: "Others", value: 13, color: "#30D5C8" },
-  ]
+      const stats = tradingBotEngine.getPortfolioStats()
+      setPortfolioStats(stats)
 
-  const topPerformers = [
-    { name: "BTC DCA Master", profit: 1247.32, profitPercent: 12.4, pair: "BTC/USDT" },
-    { name: "ETH Grid Pro", profit: 892.15, profitPercent: 17.8, pair: "ETH/USDT" },
-    { name: "AI Multi-Pair", profit: 567.43, profitPercent: 22.7, pair: "Multiple" },
-    { name: "ADA Momentum", profit: 234.89, profitPercent: 9.4, pair: "ADA/USDT" },
-  ]
+      if (selectedBot) {
+        const botTrades = tradingBotEngine.getBotTrades(selectedBot)
+        setTrades(botTrades)
+      }
+    }
+
+    loadData()
+    const interval = setInterval(loadData, 5000)
+    return () => clearInterval(interval)
+  }, [selectedBot])
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+    }).format(amount)
+  }
+
+  const formatPercentage = (value: number) => {
+    return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`
+  }
+
+  const getPerformanceColor = (value: number) => {
+    return value >= 0 ? "text-green-400" : "text-red-400"
+  }
+
+  const selectedBotData = bots.find((bot) => bot.id === selectedBot)
 
   return (
-    <section>
+    <section className="mb-12">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-white mb-2">📊 Performance Analytics</h2>
-          <p className="text-gray-300">Detailed insights into your bot performance</p>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Select defaultValue="30d">
-            <SelectTrigger className="w-32 bg-gray-900/50 border-gray-700 text-white">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-gray-900 border-gray-700">
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-              <SelectItem value="90d">Last 90 days</SelectItem>
-              <SelectItem value="1y">Last year</SelectItem>
-            </SelectContent>
-          </Select>
-          <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-800 bg-transparent">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
+          <h2 className="text-2xl font-bold text-white mb-2">📊 Bot Performance</h2>
+          <p className="text-gray-300">Track your trading bot performance and analytics</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-        {/* Cumulative Profit Chart */}
+      {/* Portfolio Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
         <Card className="bg-gray-900/50 border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2 text-[#30D5C8]" />
-              Cumulative Profit
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={performanceData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="date" stroke="#9CA3AF" />
-                <YAxis stroke="#9CA3AF" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#1F2937",
-                    border: "1px solid #374151",
-                    borderRadius: "8px",
-                  }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="cumulative"
-                  stroke="#30D5C8"
-                  strokeWidth={3}
-                  dot={{ fill: "#30D5C8", strokeWidth: 2, r: 4 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Activity className="w-5 h-5 text-[#30D5C8]" />
+              <div>
+                <p className="text-xs text-gray-400">Total Bots</p>
+                <p className="text-xl font-bold text-white">{portfolioStats.totalBots}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Strategy Performance */}
         <Card className="bg-gray-900/50 border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-white">Strategy Performance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={strategyPerformance}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                <XAxis dataKey="strategy" stroke="#9CA3AF" />
-                <YAxis stroke="#9CA3AF" />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#1F2937",
-                    border: "1px solid #374151",
-                    borderRadius: "8px",
-                  }}
-                />
-                <Bar dataKey="profit" fill="#30D5C8" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <TrendingUp className="w-5 h-5 text-green-400" />
+              <div>
+                <p className="text-xs text-gray-400">Running Bots</p>
+                <p className="text-xl font-bold text-white">{portfolioStats.runningBots}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-900/50 border-gray-800">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <DollarSign className={`w-5 h-5 ${getPerformanceColor(portfolioStats.totalProfit)}`} />
+              <div>
+                <p className="text-xs text-gray-400">Total P&L</p>
+                <p className={`text-xl font-bold ${getPerformanceColor(portfolioStats.totalProfit)}`}>
+                  {formatCurrency(portfolioStats.totalProfit)}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-900/50 border-gray-800">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Activity className="w-5 h-5 text-blue-400" />
+              <div>
+                <p className="text-xs text-gray-400">Total Trades</p>
+                <p className="text-xl font-bold text-white">{portfolioStats.totalTrades}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-900/50 border-gray-800">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2">
+              <Target className="w-5 h-5 text-yellow-400" />
+              <div>
+                <p className="text-xs text-gray-400">Avg Win Rate</p>
+                <p className="text-xl font-bold text-white">{portfolioStats.avgWinRate.toFixed(1)}%</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Bot Selection and Details */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Top Performers */}
-        <Card className="bg-gray-900/50 border-gray-800 lg:col-span-2">
+        {/* Bot List */}
+        <Card className="bg-gray-900/50 border-gray-800">
           <CardHeader>
-            <CardTitle className="text-white">🏆 Top Performing Bots</CardTitle>
+            <CardTitle className="text-white">Your Bots</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {topPerformers.map((bot, index) => (
-                <div key={index} className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-8 h-8 bg-[#30D5C8]/10 rounded-full flex items-center justify-center">
-                      <span className="text-[#30D5C8] font-bold text-sm">#{index + 1}</span>
+          <CardContent className="space-y-3">
+            {bots.length === 0 ? (
+              <div className="text-center py-8">
+                <AlertCircle className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                <p className="text-gray-400">No bots created yet</p>
+              </div>
+            ) : (
+              bots.map((bot) => {
+                const netProfit = bot.stats.totalProfit - Math.abs(bot.stats.totalLoss)
+                const profitPercent = bot.config.investment > 0 ? (netProfit / bot.config.investment) * 100 : 0
+
+                return (
+                  <div
+                    key={bot.id}
+                    className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                      selectedBot === bot.id
+                        ? "bg-[#30D5C8]/10 border border-[#30D5C8]/30"
+                        : "bg-gray-800/50 hover:bg-gray-800"
+                    }`}
+                    onClick={() => setSelectedBot(bot.id)}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-white font-medium text-sm">{bot.name}</h4>
+                      <Badge
+                        className={`text-xs ${
+                          bot.status === "running"
+                            ? "bg-green-500/10 text-green-400"
+                            : bot.status === "paused"
+                              ? "bg-yellow-500/10 text-yellow-400"
+                              : bot.status === "error"
+                                ? "bg-red-500/10 text-red-400"
+                                : "bg-gray-500/10 text-gray-400"
+                        }`}
+                      >
+                        {bot.status}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-400">{bot.pair}</span>
+                      <span className={getPerformanceColor(profitPercent)}>{formatPercentage(profitPercent)}</span>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Bot Details */}
+        <div className="lg:col-span-2 space-y-6">
+          {selectedBotData ? (
+            <>
+              {/* Bot Stats */}
+              <Card className="bg-gray-900/50 border-gray-800">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-white">{selectedBotData.name}</CardTitle>
+                    <Badge
+                      className={`${
+                        selectedBotData.status === "running"
+                          ? "bg-green-500/10 text-green-400"
+                          : selectedBotData.status === "paused"
+                            ? "bg-yellow-500/10 text-yellow-400"
+                            : selectedBotData.status === "error"
+                              ? "bg-red-500/10 text-red-400"
+                              : "bg-gray-500/10 text-gray-400"
+                      }`}
+                    >
+                      {selectedBotData.status}
+                    </Badge>
+                  </div>
+                  <p className="text-gray-400 text-sm">
+                    {selectedBotData.strategy.toUpperCase()} • {selectedBotData.pair}
+                  </p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-400 mb-1">Investment</p>
+                      <p className="text-lg font-bold text-white">
+                        {formatCurrency(selectedBotData.config.investment)}
+                      </p>
                     </div>
                     <div>
-                      <p className="font-semibold text-white">{bot.name}</p>
-                      <p className="text-sm text-gray-400">{bot.pair}</p>
+                      <p className="text-xs text-gray-400 mb-1">Net P&L</p>
+                      <p
+                        className={`text-lg font-bold ${getPerformanceColor(
+                          selectedBotData.stats.totalProfit - Math.abs(selectedBotData.stats.totalLoss),
+                        )}`}
+                      >
+                        {formatCurrency(selectedBotData.stats.totalProfit - Math.abs(selectedBotData.stats.totalLoss))}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 mb-1">Win Rate</p>
+                      <p className="text-lg font-bold text-white">{selectedBotData.stats.winRate.toFixed(1)}%</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 mb-1">Total Trades</p>
+                      <p className="text-lg font-bold text-white">{selectedBotData.stats.totalTrades}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-bold text-green-400">${bot.profit.toFixed(2)}</p>
-                    <p className="text-sm text-green-400">+{bot.profitPercent}%</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                </CardContent>
+              </Card>
 
-        {/* Trading Pair Distribution */}
-        <Card className="bg-gray-900/50 border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-white">Trading Pairs</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie
-                  data={pairDistribution}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={40}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {pairDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="mt-4 space-y-2">
-              {pairDistribution.map((pair, index) => (
-                <div key={index} className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: pair.color }}></div>
-                    <span className="text-sm text-gray-300">{pair.name}</span>
-                  </div>
-                  <span className="text-sm text-white">{pair.value}%</span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              {/* Recent Trades */}
+              <Card className="bg-gray-900/50 border-gray-800">
+                <CardHeader>
+                  <CardTitle className="text-white">Recent Trades</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {trades.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Activity className="w-8 h-8 text-gray-600 mx-auto mb-2" />
+                      <p className="text-gray-400">No trades executed yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {trades
+                        .slice(-10)
+                        .reverse()
+                        .map((trade) => (
+                          <div
+                            key={trade.id}
+                            className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg"
+                          >
+                            <div className="flex items-center space-x-3">
+                              <div
+                                className={`w-2 h-2 rounded-full ${
+                                  trade.side === "buy" ? "bg-green-400" : "bg-red-400"
+                                }`}
+                              />
+                              <div>
+                                <p className="text-white text-sm font-medium">
+                                  {trade.side.toUpperCase()} {trade.amount.toFixed(6)} {trade.symbol.split("/")[0]}
+                                </p>
+                                <p className="text-gray-400 text-xs">{trade.timestamp.toLocaleString()}</p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-white text-sm">{formatCurrency(trade.price)}</p>
+                              <Badge
+                                className={`text-xs ${
+                                  trade.status === "filled"
+                                    ? "bg-green-500/10 text-green-400"
+                                    : trade.status === "pending"
+                                      ? "bg-yellow-500/10 text-yellow-400"
+                                      : trade.status === "cancelled"
+                                        ? "bg-gray-500/10 text-gray-400"
+                                        : "bg-red-500/10 text-red-400"
+                                }`}
+                              >
+                                {trade.status}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </>
+          ) : (
+            <Card className="bg-gray-900/50 border-gray-800">
+              <CardContent className="text-center py-12">
+                <Activity className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-white mb-2">Select a Bot</h3>
+                <p className="text-gray-400">Choose a bot from the list to view its performance details</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </section>
   )

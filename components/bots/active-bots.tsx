@@ -1,112 +1,69 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { Play, Pause, Settings, TrendingUp, TrendingDown, MoreHorizontal, Eye, Edit, Trash2 } from "lucide-react"
+import {
+  Play,
+  Pause,
+  Settings,
+  TrendingUp,
+  TrendingDown,
+  MoreHorizontal,
+  Eye,
+  Edit,
+  Trash2,
+  AlertTriangle,
+} from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-
-interface Bot {
-  id: string
-  name: string
-  strategy: string
-  pair: string
-  status: "running" | "paused" | "stopped"
-  profit: number
-  profitPercent: number
-  trades: number
-  winRate: number
-  investment: number
-  createdAt: string
-  lastTrade: string
-  riskLevel: "Low" | "Medium" | "High"
-}
+import { tradingBotEngine, type TradingBot } from "@/lib/trading-bot-engine"
+import { CreateBotDialog } from "./create-bot-dialog"
 
 export function ActiveBots() {
-  const [bots, setBots] = useState<Bot[]>([
-    {
-      id: "1",
-      name: "BTC DCA Master",
-      strategy: "DCA",
-      pair: "BTC/USDT",
-      status: "running",
-      profit: 1247.32,
-      profitPercent: 12.4,
-      trades: 156,
-      winRate: 78.2,
-      investment: 10000,
-      createdAt: "2024-01-01",
-      lastTrade: "2 hours ago",
-      riskLevel: "Low",
-    },
-    {
-      id: "2",
-      name: "ETH Grid Pro",
-      strategy: "Grid Trading",
-      pair: "ETH/USDT",
-      status: "running",
-      profit: 892.15,
-      profitPercent: 17.8,
-      trades: 234,
-      winRate: 71.4,
-      investment: 5000,
-      createdAt: "2024-01-05",
-      lastTrade: "15 minutes ago",
-      riskLevel: "Medium",
-    },
-    {
-      id: "3",
-      name: "SOL Scalper",
-      strategy: "Scalping",
-      pair: "SOL/USDT",
-      status: "paused",
-      profit: -45.67,
-      profitPercent: -1.5,
-      trades: 89,
-      winRate: 65.2,
-      investment: 3000,
-      createdAt: "2024-01-10",
-      lastTrade: "1 day ago",
-      riskLevel: "High",
-    },
-    {
-      id: "4",
-      name: "ADA Momentum",
-      strategy: "Momentum",
-      pair: "ADA/USDT",
-      status: "running",
-      profit: 234.89,
-      profitPercent: 9.4,
-      trades: 67,
-      winRate: 82.1,
-      investment: 2500,
-      createdAt: "2024-01-12",
-      lastTrade: "30 minutes ago",
-      riskLevel: "Medium",
-    },
-    {
-      id: "5",
-      name: "AI Multi-Pair",
-      strategy: "AI Adaptive",
-      pair: "Multiple",
-      status: "running",
-      profit: 567.43,
-      profitPercent: 22.7,
-      trades: 145,
-      winRate: 76.5,
-      investment: 2500,
-      createdAt: "2024-01-08",
-      lastTrade: "5 minutes ago",
-      riskLevel: "Medium",
-    },
-  ])
+  const [bots, setBots] = useState<TradingBot[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const toggleBotStatus = (botId: string) => {
-    setBots(
-      bots.map((bot) => (bot.id === botId ? { ...bot, status: bot.status === "running" ? "paused" : "running" } : bot)),
-    )
+  useEffect(() => {
+    // Load bots from the engine
+    const loadBots = () => {
+      const allBots = tradingBotEngine.getAllBots()
+      setBots(allBots)
+      setLoading(false)
+    }
+
+    loadBots()
+
+    // Set up polling to update bot stats
+    const interval = setInterval(loadBots, 5000) // Update every 5 seconds
+
+    return () => clearInterval(interval)
+  }, [])
+
+  const toggleBotStatus = async (botId: string) => {
+    const bot = bots.find((b) => b.id === botId)
+    if (!bot) return
+
+    let success = false
+    if (bot.status === "running") {
+      success = tradingBotEngine.pauseBot(botId)
+    } else if (bot.status === "paused" || bot.status === "stopped") {
+      success = tradingBotEngine.startBot(botId)
+    }
+
+    if (success) {
+      setBots((prev) =>
+        prev.map((b) => (b.id === botId ? { ...b, status: b.status === "running" ? "paused" : "running" } : b)),
+      )
+    }
+  }
+
+  const deleteBot = (botId: string) => {
+    const success = tradingBotEngine.deleteBot(botId)
+    if (success) {
+      setBots((prev) => prev.filter((b) => b.id !== botId))
+    }
   }
 
   const getStatusColor = (status: string) => {
@@ -116,23 +73,67 @@ export function ActiveBots() {
       case "paused":
         return "bg-yellow-500/10 text-yellow-400"
       case "stopped":
+        return "bg-gray-500/10 text-gray-400"
+      case "error":
         return "bg-red-500/10 text-red-400"
       default:
         return "bg-gray-500/10 text-gray-400"
     }
   }
 
-  const getRiskColor = (risk: string) => {
-    switch (risk) {
-      case "Low":
-        return "bg-green-500/10 text-green-400"
-      case "Medium":
-        return "bg-yellow-500/10 text-yellow-400"
-      case "High":
-        return "bg-red-500/10 text-red-400"
-      default:
-        return "bg-gray-500/10 text-gray-400"
-    }
+  const getRiskColor = (riskLevel: number) => {
+    if (riskLevel <= 30) return "bg-green-500/10 text-green-400"
+    if (riskLevel <= 70) return "bg-yellow-500/10 text-yellow-400"
+    return "bg-red-500/10 text-red-400"
+  }
+
+  const getRiskLabel = (riskLevel: number) => {
+    if (riskLevel <= 30) return "Low"
+    if (riskLevel <= 70) return "Medium"
+    return "High"
+  }
+
+  const formatTimeAgo = (date: Date) => {
+    const now = new Date()
+    const diffMs = now.getTime() - date.getTime()
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMins / 60)
+    const diffDays = Math.floor(diffHours / 24)
+
+    if (diffMins < 1) return "Just now"
+    if (diffMins < 60) return `${diffMins}m ago`
+    if (diffHours < 24) return `${diffHours}h ago`
+    return `${diffDays}d ago`
+  }
+
+  if (loading) {
+    return (
+      <section className="mb-12">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h2 className="text-2xl font-bold text-white mb-2">⚡ Active Bots</h2>
+            <p className="text-gray-300">Loading your trading bots...</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <Card key={i} className="bg-gray-900/50 border-gray-800 animate-pulse">
+              <CardHeader className="pb-4">
+                <div className="h-6 bg-gray-700 rounded mb-2"></div>
+                <div className="h-4 bg-gray-700 rounded w-2/3"></div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="h-4 bg-gray-700 rounded"></div>
+                  <div className="h-4 bg-gray-700 rounded w-3/4"></div>
+                  <div className="h-4 bg-gray-700 rounded w-1/2"></div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+    )
   }
 
   return (
@@ -143,128 +144,146 @@ export function ActiveBots() {
           <p className="text-gray-300">Monitor and manage your trading bots</p>
         </div>
         <div className="flex items-center space-x-2">
-          <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-800 bg-transparent">
-            <Settings className="w-4 h-4 mr-2" />
-            Bulk Actions
+          <CreateBotDialog />
+          <Button
+            variant="outline"
+            className="border-gray-600 text-white hover:bg-gray-800 bg-transparent"
+            onClick={() => tradingBotEngine.emergencyStopAll()}
+          >
+            <AlertTriangle className="w-4 h-4 mr-2" />
+            Emergency Stop
           </Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-        {bots.map((bot) => (
-          <Card key={bot.id} className="bg-gray-900/50 border-gray-800 hover:border-[#30D5C8]/50 transition-colors">
-            <CardHeader className="pb-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <CardTitle className="text-white text-lg">{bot.name}</CardTitle>
-                    <Badge className={getStatusColor(bot.status)}>{bot.status}</Badge>
+        {bots.map((bot) => {
+          const netProfit = bot.stats.totalProfit - Math.abs(bot.stats.totalLoss)
+          const profitPercent = bot.config.investment > 0 ? (netProfit / bot.config.investment) * 100 : 0
+
+          return (
+            <Card key={bot.id} className="bg-gray-900/50 border-gray-800 hover:border-[#30D5C8]/50 transition-colors">
+              <CardHeader className="pb-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <CardTitle className="text-white text-lg">{bot.name}</CardTitle>
+                      <Badge className={getStatusColor(bot.status)}>{bot.status}</Badge>
+                      {bot.status === "error" && <AlertTriangle className="w-4 h-4 text-red-400" />}
+                    </div>
+                    <div className="flex items-center space-x-4 text-sm text-gray-400">
+                      <span>{bot.strategy.toUpperCase()}</span>
+                      <span>•</span>
+                      <span>{bot.pair}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-4 text-sm text-gray-400">
-                    <span>{bot.strategy}</span>
-                    <span>•</span>
-                    <span>{bot.pair}</span>
-                  </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <MoreHorizontal className="w-4 h-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="bg-gray-900 border-gray-700">
+                      <DropdownMenuItem className="text-gray-300 hover:bg-gray-800">
+                        <Eye className="w-4 h-4 mr-2" />
+                        View Details
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-gray-300 hover:bg-gray-800">
+                        <Edit className="w-4 h-4 mr-2" />
+                        Edit Settings
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-gray-300 hover:bg-gray-800">
+                        <Settings className="w-4 h-4 mr-2" />
+                        Configure
+                      </DropdownMenuItem>
+                      <DropdownMenuItem className="text-red-400 hover:bg-gray-800" onClick={() => deleteBot(bot.id)}>
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Delete Bot
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
+              </CardHeader>
 
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="bg-gray-900 border-gray-700">
-                    <DropdownMenuItem className="text-gray-300 hover:bg-gray-800">
-                      <Eye className="w-4 h-4 mr-2" />
-                      View Details
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-gray-300 hover:bg-gray-800">
-                      <Edit className="w-4 h-4 mr-2" />
-                      Edit Settings
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-gray-300 hover:bg-gray-800">
-                      <Settings className="w-4 h-4 mr-2" />
-                      Configure
-                    </DropdownMenuItem>
-                    <DropdownMenuItem className="text-red-400 hover:bg-gray-800">
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Delete Bot
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
-            </CardHeader>
-
-            <CardContent className="space-y-4">
-              {/* Performance Metrics */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-gray-400 mb-1">Total Profit</p>
-                  <div className="flex items-center space-x-2">
-                    <p className={`text-lg font-bold ${bot.profit >= 0 ? "text-green-400" : "text-red-400"}`}>
-                      ${Math.abs(bot.profit).toFixed(2)}
+              <CardContent className="space-y-4">
+                {/* Performance Metrics */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Net Profit</p>
+                    <div className="flex items-center space-x-2">
+                      <p className={`text-lg font-bold ${netProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        ${Math.abs(netProfit).toFixed(2)}
+                      </p>
+                      {netProfit >= 0 ? (
+                        <TrendingUp className="w-4 h-4 text-green-400" />
+                      ) : (
+                        <TrendingDown className="w-4 h-4 text-red-400" />
+                      )}
+                    </div>
+                    <p className={`text-xs ${profitPercent >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      {profitPercent >= 0 ? "+" : ""}
+                      {profitPercent.toFixed(2)}%
                     </p>
-                    {bot.profit >= 0 ? (
-                      <TrendingUp className="w-4 h-4 text-green-400" />
-                    ) : (
-                      <TrendingDown className="w-4 h-4 text-red-400" />
-                    )}
                   </div>
-                  <p className={`text-xs ${bot.profitPercent >= 0 ? "text-green-400" : "text-red-400"}`}>
-                    {bot.profitPercent >= 0 ? "+" : ""}
-                    {bot.profitPercent}%
-                  </p>
+
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Win Rate</p>
+                    <p className="text-lg font-bold text-white">{bot.stats.winRate.toFixed(1)}%</p>
+                    <p className="text-xs text-gray-400">{bot.stats.totalTrades} trades</p>
+                  </div>
                 </div>
 
+                {/* Investment & Risk */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Investment</p>
+                    <p className="text-sm font-semibold text-white">${bot.config.investment.toLocaleString()}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Risk Level</p>
+                    <Badge className={getRiskColor(bot.config.riskLevel)}>{getRiskLabel(bot.config.riskLevel)}</Badge>
+                  </div>
+                </div>
+
+                {/* Last Activity */}
                 <div>
-                  <p className="text-xs text-gray-400 mb-1">Win Rate</p>
-                  <p className="text-lg font-bold text-white">{bot.winRate}%</p>
-                  <p className="text-xs text-gray-400">{bot.trades} trades</p>
-                </div>
-              </div>
-
-              {/* Investment & Risk */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-gray-400 mb-1">Investment</p>
-                  <p className="text-sm font-semibold text-white">${bot.investment.toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400 mb-1">Risk Level</p>
-                  <Badge className={getRiskColor(bot.riskLevel)}>{bot.riskLevel}</Badge>
-                </div>
-              </div>
-
-              {/* Last Activity */}
-              <div>
-                <p className="text-xs text-gray-400 mb-1">Last Trade</p>
-                <p className="text-sm text-gray-300">{bot.lastTrade}</p>
-              </div>
-
-              {/* Controls */}
-              <div className="flex items-center justify-between pt-4 border-t border-gray-800">
-                <div className="flex items-center space-x-2">
-                  <Switch checked={bot.status === "running"} onCheckedChange={() => toggleBotStatus(bot.id)} />
-                  <span className="text-sm text-gray-300">{bot.status === "running" ? "Running" : "Paused"}</span>
+                  <p className="text-xs text-gray-400 mb-1">Last Update</p>
+                  <p className="text-sm text-gray-300">{formatTimeAgo(bot.lastUpdate)}</p>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <Button variant="ghost" size="sm" className="h-8 px-3 text-gray-400 hover:text-white">
-                    <Settings className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-3 text-gray-400 hover:text-white"
-                    onClick={() => toggleBotStatus(bot.id)}
-                  >
-                    {bot.status === "running" ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                  </Button>
+                {/* Controls */}
+                <div className="flex items-center justify-between pt-4 border-t border-gray-800">
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={bot.status === "running"}
+                      onCheckedChange={() => toggleBotStatus(bot.id)}
+                      disabled={bot.status === "error"}
+                    />
+                    <span className="text-sm text-gray-300">
+                      {bot.status === "running" ? "Running" : bot.status === "error" ? "Error" : "Stopped"}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Button variant="ghost" size="sm" className="h-8 px-3 text-gray-400 hover:text-white">
+                      <Settings className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 px-3 text-gray-400 hover:text-white"
+                      onClick={() => toggleBotStatus(bot.id)}
+                      disabled={bot.status === "error"}
+                    >
+                      {bot.status === "running" ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          )
+        })}
       </div>
 
       {/* Empty State */}
@@ -276,9 +295,7 @@ export function ActiveBots() {
             </div>
             <h3 className="text-lg font-medium text-white mb-2">No Active Bots</h3>
             <p className="text-gray-400 mb-6">Create your first trading bot to get started</p>
-            <Button className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E] font-semibold">
-              Create Your First Bot
-            </Button>
+            <CreateBotDialog />
           </CardContent>
         </Card>
       )}
