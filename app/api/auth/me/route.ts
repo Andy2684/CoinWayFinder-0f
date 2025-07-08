@@ -1,26 +1,27 @@
 import { NextResponse } from "next/server"
-import { authManager } from "@/lib/auth"
+import { AuthService } from "@/lib/auth"
+import { database } from "@/lib/database"
 
 export async function GET() {
   try {
-    const user = await authManager.getCurrentUser()
+    const user = await AuthService.getCurrentUser()
 
     if (!user) {
-      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
+      return NextResponse.json({ success: false, message: "Not authenticated" }, { status: 401 })
     }
 
-    // Check subscription status
-    const subscriptionStatus = await authManager.checkSubscriptionStatus(user.id)
+    // Get user settings to include subscription info
+    const userSettings = await database.getUserSettings(user.id)
 
     return NextResponse.json({
       success: true,
       user: {
         ...user,
-        subscriptionStatus,
+        subscription: userSettings?.subscription || null,
       },
     })
   } catch (error) {
-    console.error("Get user API error:", error)
-    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
+    console.error("Get current user error:", error)
+    return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 })
   }
 }

@@ -3,21 +3,14 @@
 import type React from "react"
 
 import { useState } from "react"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, EyeOff, Mail, Lock, User, Sparkles } from "lucide-react"
-import { toast } from "sonner"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Loader2, Mail, Lock, User, CheckCircle } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 
 interface AuthDialogProps {
@@ -28,9 +21,9 @@ interface AuthDialogProps {
 export function AuthDialog({ children, defaultTab = "signin" }: AuthDialogProps) {
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState(defaultTab)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+
   const { signIn, signUp } = useAuth()
 
   const [signInForm, setSignInForm] = useState({
@@ -48,19 +41,22 @@ export function AuthDialog({ children, defaultTab = "signin" }: AuthDialogProps)
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setMessage(null)
 
     try {
       const result = await signIn(signInForm.email, signInForm.password)
 
       if (result.success) {
-        toast.success("Welcome back!")
-        setOpen(false)
-        setSignInForm({ email: "", password: "" })
+        setMessage({ type: "success", text: "Welcome back! Redirecting..." })
+        setTimeout(() => {
+          setOpen(false)
+          setMessage(null)
+        }, 1500)
       } else {
-        toast.error(result.error || "Sign in failed")
+        setMessage({ type: "error", text: result.message })
       }
     } catch (error) {
-      toast.error("An error occurred during sign in")
+      setMessage({ type: "error", text: "Something went wrong. Please try again." })
     } finally {
       setLoading(false)
     }
@@ -69,32 +65,35 @@ export function AuthDialog({ children, defaultTab = "signin" }: AuthDialogProps)
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setMessage(null)
 
-    // Validate form
+    // Client-side validation
     if (signUpForm.password !== signUpForm.confirmPassword) {
-      toast.error("Passwords do not match")
+      setMessage({ type: "error", text: "Passwords do not match" })
       setLoading(false)
       return
     }
 
     if (signUpForm.password.length < 6) {
-      toast.error("Password must be at least 6 characters")
+      setMessage({ type: "error", text: "Password must be at least 6 characters" })
       setLoading(false)
       return
     }
 
     try {
-      const result = await signUp(signUpForm.email, signUpForm.password, signUpForm.name)
+      const result = await signUp(signUpForm.email, signUpForm.password, signUpForm.name, signUpForm.confirmPassword)
 
       if (result.success) {
-        toast.success("Account created! 3-day free trial activated.")
-        setOpen(false)
-        setSignUpForm({ name: "", email: "", password: "", confirmPassword: "" })
+        setMessage({ type: "success", text: "Account created! Welcome to CoinWayFinder!" })
+        setTimeout(() => {
+          setOpen(false)
+          setMessage(null)
+        }, 2000)
       } else {
-        toast.error(result.error || "Sign up failed")
+        setMessage({ type: "error", text: result.message })
       }
     } catch (error) {
-      toast.error("An error occurred during sign up")
+      setMessage({ type: "error", text: "Something went wrong. Please try again." })
     } finally {
       setLoading(false)
     }
@@ -105,16 +104,14 @@ export function AuthDialog({ children, defaultTab = "signin" }: AuthDialogProps)
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-blue-500" />
-            Welcome to CoinWayFinder
-          </DialogTitle>
-          <DialogDescription>
-            Sign in to your account or create a new one to start trading with AI-powered bots
-          </DialogDescription>
+          <DialogTitle className="text-center">Welcome to CoinWayFinder</DialogTitle>
         </DialogHeader>
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "signin" | "signup")}>
+        <Tabs
+          value={activeTab}
+          onValueChange={(value) => setActiveTab(value as "signin" | "signup")}
+          className="w-full"
+        >
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="signin">Sign In</TabsTrigger>
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -122,8 +119,8 @@ export function AuthDialog({ children, defaultTab = "signin" }: AuthDialogProps)
 
           <TabsContent value="signin">
             <Card>
-              <CardHeader>
-                <CardTitle>Sign In</CardTitle>
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-xl">Sign in to your account</CardTitle>
                 <CardDescription>Enter your credentials to access your trading dashboard</CardDescription>
               </CardHeader>
               <CardContent>
@@ -131,14 +128,14 @@ export function AuthDialog({ children, defaultTab = "signin" }: AuthDialogProps)
                   <div className="space-y-2">
                     <Label htmlFor="signin-email">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="signin-email"
                         type="email"
                         placeholder="Enter your email"
+                        className="pl-10"
                         value={signInForm.email}
                         onChange={(e) => setSignInForm((prev) => ({ ...prev, email: e.target.value }))}
-                        className="pl-10"
                         required
                       />
                     </div>
@@ -147,32 +144,34 @@ export function AuthDialog({ children, defaultTab = "signin" }: AuthDialogProps)
                   <div className="space-y-2">
                     <Label htmlFor="signin-password">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="signin-password"
-                        type={showPassword ? "text" : "password"}
+                        type="password"
                         placeholder="Enter your password"
+                        className="pl-10"
                         value={signInForm.password}
                         onChange={(e) => setSignInForm((prev) => ({ ...prev, password: e.target.value }))}
-                        className="pl-10 pr-10"
                         required
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
                     </div>
                   </div>
 
+                  {message && (
+                    <Alert className={message.type === "error" ? "border-red-500" : "border-green-500"}>
+                      {message.type === "success" && <CheckCircle className="h-4 w-4 text-green-600" />}
+                      <AlertDescription className={message.type === "error" ? "text-red-600" : "text-green-600"}>
+                        {message.text}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Signing In...
-                      </div>
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Signing in...
+                      </>
                     ) : (
                       "Sign In"
                     )}
@@ -184,8 +183,8 @@ export function AuthDialog({ children, defaultTab = "signin" }: AuthDialogProps)
 
           <TabsContent value="signup">
             <Card>
-              <CardHeader>
-                <CardTitle>Create Account</CardTitle>
+              <CardHeader className="space-y-1">
+                <CardTitle className="text-xl">Create your account</CardTitle>
                 <CardDescription>Get started with a 3-day free trial - no credit card required</CardDescription>
               </CardHeader>
               <CardContent>
@@ -193,14 +192,14 @@ export function AuthDialog({ children, defaultTab = "signin" }: AuthDialogProps)
                   <div className="space-y-2">
                     <Label htmlFor="signup-name">Full Name</Label>
                     <div className="relative">
-                      <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="signup-name"
                         type="text"
                         placeholder="Enter your full name"
+                        className="pl-10"
                         value={signUpForm.name}
                         onChange={(e) => setSignUpForm((prev) => ({ ...prev, name: e.target.value }))}
-                        className="pl-10"
                         required
                       />
                     </div>
@@ -209,14 +208,14 @@ export function AuthDialog({ children, defaultTab = "signin" }: AuthDialogProps)
                   <div className="space-y-2">
                     <Label htmlFor="signup-email">Email</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="signup-email"
                         type="email"
                         placeholder="Enter your email"
+                        className="pl-10"
                         value={signUpForm.email}
                         onChange={(e) => setSignUpForm((prev) => ({ ...prev, email: e.target.value }))}
-                        className="pl-10"
                         required
                       />
                     </div>
@@ -225,73 +224,58 @@ export function AuthDialog({ children, defaultTab = "signin" }: AuthDialogProps)
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
                         id="signup-password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Create a password (min 6 characters)"
+                        type="password"
+                        placeholder="Create a password (min. 6 characters)"
+                        className="pl-10"
                         value={signUpForm.password}
                         onChange={(e) => setSignUpForm((prev) => ({ ...prev, password: e.target.value }))}
-                        className="pl-10 pr-10"
                         required
-                        minLength={6}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
                     </div>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="signup-confirm-password">Confirm Password</Label>
+                    <Label htmlFor="signup-confirm">Confirm Password</Label>
                     <div className="relative">
-                      <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
-                        id="signup-confirm-password"
-                        type={showConfirmPassword ? "text" : "password"}
+                        id="signup-confirm"
+                        type="password"
                         placeholder="Confirm your password"
+                        className="pl-10"
                         value={signUpForm.confirmPassword}
                         onChange={(e) => setSignUpForm((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                        className="pl-10 pr-10"
                         required
                       />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-3 text-gray-400 hover:text-gray-600"
-                      >
-                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
                     </div>
                   </div>
 
-                  <div className="bg-blue-50 p-3 rounded-lg">
-                    <div className="flex items-center gap-2 text-blue-700 text-sm">
-                      <Sparkles className="h-4 w-4" />
-                      <span className="font-medium">Free Trial Includes:</span>
-                    </div>
-                    <ul className="text-blue-600 text-sm mt-1 space-y-1">
-                      <li>• 1 AI-powered trading bot</li>
-                      <li>• DCA strategy access</li>
-                      <li>• Real-time market analysis</li>
-                      <li>• 3 days completely free</li>
-                    </ul>
-                  </div>
+                  {message && (
+                    <Alert className={message.type === "error" ? "border-red-500" : "border-green-500"}>
+                      {message.type === "success" && <CheckCircle className="h-4 w-4 text-green-600" />}
+                      <AlertDescription className={message.type === "error" ? "text-red-600" : "text-green-600"}>
+                        {message.text}
+                      </AlertDescription>
+                    </Alert>
+                  )}
 
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? (
-                      <div className="flex items-center gap-2">
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                        Creating Account...
-                      </div>
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating account...
+                      </>
                     ) : (
-                      "Start Free Trial"
+                      "Create Account"
                     )}
                   </Button>
+
+                  <div className="text-center text-sm text-muted-foreground">
+                    By signing up, you agree to our Terms of Service and Privacy Policy
+                  </div>
                 </form>
               </CardContent>
             </Card>

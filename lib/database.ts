@@ -121,6 +121,18 @@ export interface UserSettings {
   updatedAt: Date
 }
 
+export interface User {
+  _id?: ObjectId
+  email: string
+  password: string
+  name: string
+  createdAt: Date
+  updatedAt: Date
+  lastLoginAt?: Date
+  isVerified: boolean
+  verificationToken?: string
+}
+
 export interface ArbitrageOpportunity {
   _id?: ObjectId
   symbol: string
@@ -183,6 +195,10 @@ class DatabaseManager {
   private async createIndexes(): Promise<void> {
     if (!this.db) return
 
+    // User indexes
+    await this.db.collection("users").createIndex({ email: 1 }, { unique: true })
+    await this.db.collection("users").createIndex({ verificationToken: 1 })
+
     // Bot indexes
     await this.db.collection("bots").createIndex({ userId: 1 })
     await this.db.collection("bots").createIndex({ status: 1 })
@@ -230,6 +246,45 @@ class DatabaseManager {
     let decrypted = decipher.update(encryptedText, "hex", "utf8")
     decrypted += decipher.final("utf8")
     return decrypted
+  }
+
+  // User Management
+  async createUser(user: Omit<User, "_id" | "createdAt" | "updatedAt">): Promise<string> {
+    await this.connect()
+    const collection = this.db!.collection<User>("users")
+
+    const newUser: User = {
+      ...user,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+
+    const result = await collection.insertOne(newUser)
+    return result.insertedId.toString()
+  }
+
+  async getUserByEmail(email: string): Promise<User | null> {
+    await this.connect()
+    const collection = this.db!.collection<User>("users")
+    return collection.findOne({ email })
+  }
+
+  async getUserById(userId: string): Promise<User | null> {
+    await this.connect()
+    const collection = this.db!.collection<User>("users")
+    return collection.findOne({ _id: new ObjectId(userId) })
+  }
+
+  async updateUser(userId: string, updates: Partial<User>): Promise<boolean> {
+    await this.connect()
+    const collection = this.db!.collection<User>("users")
+
+    const result = await collection.updateOne(
+      { _id: new ObjectId(userId) },
+      { $set: { ...updates, updatedAt: new Date() } },
+    )
+
+    return result.modifiedCount > 0
   }
 
   // Bot Management
@@ -721,6 +776,62 @@ class DatabaseManager {
 
     return this.db!.collection("bots").aggregate(pipeline).toArray()
   }
+
+  // Subscription Management
+  async getExpiredSubscriptions(): Promise<UserSettings[]> {
+    await this.connect()
+    const collection = this.db!.collection<UserSettings>("user_settings")
+
+    const now = new Date()
+    return collection
+      .find({
+        "subscription.endDate": { $lt: now },
+        "subscription.status": "active",
+      })
+      .toArray()
+  }
+
+  async updateSubscriptionStatus(userId: string, status: "active" | "expired" | "cancelled"): Promise<boolean> {
+    await this.connect()
+    const collection = this.db!.collection<UserSettings>("user_settings")
+
+    const result = await collection.updateOne(
+      { userId },
+      {
+        $set: {
+          "subscription.status": status,
+          updatedAt: new Date(),
+        },
+      },
+    )
+
+    return result.modifiedCount > 0
+  }
+
+  async stopUserBots(userId: string, reason: string): Promise<number> {
+    await this.connect()
+    const collection = this.db!.collection<UserBot>("bots")
+
+    const result = await collection.updateMany(
+      { userId, status: "running" },
+      {
+        $set: {
+          status: "stopped",
+          lastError: reason,
+          lastErrorAt: new Date(),
+          updatedAt: new Date(),
+        },
+      },
+    )
+
+    return result.modifiedCount
+  }
 }
 
 export const database = new DatabaseManager()
+
+// Legacy export for backward compatibility
+export const connectToDatabase = async () => {
+  await database.connect()
+  return database
+}

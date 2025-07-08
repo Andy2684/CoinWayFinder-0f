@@ -3,223 +3,161 @@ import bcrypt from "bcryptjs"
 import { cookies } from "next/headers"
 import { database } from "./database"
 
-export interface User {
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production"
+const JWT_EXPIRES_IN = "7d"
+
+export interface AuthUser {
   id: string
   email: string
   name: string
-  avatar?: string
-  createdAt: Date
-  subscription: {
-    plan: string
-    status: string
-    endDate: Date
-  }
 }
 
-export class AuthManager {
-  private static instance: AuthManager
-  private jwtSecret: string
-
-  static getInstance(): AuthManager {
-    if (!AuthManager.instance) {
-      AuthManager.instance = new AuthManager()
-    }
-    return AuthManager.instance
-  }
-
-  constructor() {
-    this.jwtSecret = process.env.JWT_SECRET || "your-secret-key-change-in-production"
-  }
-
-  async hashPassword(password: string): Promise<string> {
+export class AuthService {
+  static async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 12)
   }
 
-  async verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+  static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
     return bcrypt.compare(password, hashedPassword)
   }
 
-  generateToken(userId: string): string {
-    return jwt.sign({ userId, iat: Date.now() }, this.jwtSecret, { expiresIn: "7d" })
+  static generateToken(user: AuthUser): string {
+    return jwt.sign(
+      {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN },
+    )
   }
 
-  verifyToken(token: string): { userId: string } | null {
+  static verifyToken(token: string): AuthUser | null {
     try {
-      const decoded = jwt.verify(token, this.jwtSecret) as { userId: string }
-      return decoded
+      const decoded = jwt.verify(token, JWT_SECRET) as any
+      return {
+        id: decoded.id,
+        email: decoded.email,
+        name: decoded.name,
+      }
     } catch (error) {
       return null
     }
   }
 
-  async getCurrentUser(): Promise<User | null> {
+  static async setAuthCookie(user: AuthUser): Promise<void> {
+    const token = this.generateToken(user)
+    const cookieStore = await cookies()
+
+    cookieStore.set("auth-token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+    })
+  }
+
+  static async clearAuthCookie(): Promise<void> {
+    const cookieStore = await cookies()
+    cookieStore.delete("auth-token")
+  }
+
+  static async getCurrentUser(): Promise<AuthUser | null> {
     try {
       const cookieStore = await cookies()
       const token = cookieStore.get("auth-token")?.value
 
-      if (!token) return null
-
-      const decoded = this.verifyToken(token)
-      if (!decoded) return null
-
-      const userSettings = await database.getUserSettings(decoded.userId)
-      if (!userSettings) return null
-
-      return {
-        id: decoded.userId,
-        email: userSettings.userId, // Using userId as email for now
-        name: userSettings.userId.split("@")[0] || "User",
-        createdAt: userSettings.createdAt,
-        subscription: userSettings.subscription,
+      if (!token) {
+        return null
       }
+
+      return this.verifyToken(token)
     } catch (error) {
-      console.error("Get current user error:", error)
       return null
     }
   }
 
-  async signUp(
+  static async signUp(
     email: string,
     password: string,
     name: string,
-  ): Promise<{
-    success: boolean
-    user?: User
-    error?: string
-  }> {
+  ): Promise<{ success: boolean; message: string; user?: AuthUser }> {
     try {
       // Check if user already exists
-      const existingUser = await database.getUserSettings(email)
+      const existingUser = await database.getUserByEmail(email)
       if (existingUser) {
-        return { success: false, error: "User already exists" }
+        return { success: false, message: "User already exists with this email" }
       }
 
       // Hash password
       const hashedPassword = await this.hashPassword(password)
 
-      // Create user with trial
-      const userSettings = await database.createUserWithTrial(email)
-
-      // Store password (in production, you'd have a separate users table)
-      // For now, we'll store it in user settings
-      userSettings.preferences = {
-        ...userSettings.preferences,
-        // @ts-ignore - Adding password to preferences temporarily
-        hashedPassword,
-      }
-      await database.saveUserSettings(userSettings)
-
-      const user: User = {
-        id: email,
+      // Create user
+      const userId = await database.createUser({
         email,
+        password: hashedPassword,
         name,
-        createdAt: userSettings.createdAt,
-        subscription: userSettings.subscription,
-      }
+        isVerified: true, // Auto-verify for now
+      })
 
-      return { success: true, user }
+      // Create user settings with trial
+      await database.createUserWithTrial(userId)
+
+      const user: AuthUser = { id: userId, email, name }
+      await this.setAuthCookie(user)
+
+      return { success: true, message: "Account created successfully", user }
     } catch (error) {
       console.error("Sign up error:", error)
-      return { success: false, error: "Failed to create account" }
+      return { success: false, message: "Failed to create account" }
     }
   }
 
-  async signIn(
+  static async signIn(
     email: string,
     password: string,
-  ): Promise<{
-    success: boolean
-    user?: User
-    token?: string
-    error?: string
-  }> {
+  ): Promise<{ success: boolean; message: string; user?: AuthUser }> {
     try {
-      const userSettings = await database.getUserSettings(email)
-      if (!userSettings) {
-        return { success: false, error: "Invalid credentials" }
+      // Find user
+      const user = await database.getUserByEmail(email)
+      if (!user) {
+        return { success: false, message: "Invalid email or password" }
       }
 
-      // @ts-ignore - Getting password from preferences temporarily
-      const hashedPassword = userSettings.preferences?.hashedPassword
-      if (!hashedPassword) {
-        return { success: false, error: "Invalid credentials" }
-      }
-
-      const isValidPassword = await this.verifyPassword(password, hashedPassword)
+      // Check password
+      const isValidPassword = await this.comparePassword(password, user.password)
       if (!isValidPassword) {
-        return { success: false, error: "Invalid credentials" }
+        return { success: false, message: "Invalid email or password" }
       }
 
-      const token = this.generateToken(email)
-      const user: User = {
-        id: email,
-        email,
-        name: email.split("@")[0] || "User",
-        createdAt: userSettings.createdAt,
-        subscription: userSettings.subscription,
+      // Update last login
+      await database.updateUser(user._id!.toString(), { lastLoginAt: new Date() })
+
+      const authUser: AuthUser = {
+        id: user._id!.toString(),
+        email: user.email,
+        name: user.name,
       }
 
-      return { success: true, user, token }
+      await this.setAuthCookie(authUser)
+
+      return { success: true, message: "Signed in successfully", user: authUser }
     } catch (error) {
       console.error("Sign in error:", error)
-      return { success: false, error: "Failed to sign in" }
+      return { success: false, message: "Failed to sign in" }
     }
   }
 
-  async checkSubscriptionStatus(userId: string): Promise<{
-    isActive: boolean
-    plan: string
-    daysLeft: number
-    shouldDisconnect: boolean
-  }> {
-    try {
-      const userSettings = await database.getUserSettings(userId)
-      if (!userSettings) {
-        return { isActive: false, plan: "none", daysLeft: 0, shouldDisconnect: true }
-      }
-
-      const now = new Date()
-      const endDate = new Date(userSettings.subscription.endDate)
-      const daysLeft = Math.ceil((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-
-      const isActive = userSettings.subscription.status === "active" && endDate > now
-      const shouldDisconnect = !isActive || daysLeft <= 0
-
-      return {
-        isActive,
-        plan: userSettings.subscription.plan,
-        daysLeft: Math.max(0, daysLeft),
-        shouldDisconnect,
-      }
-    } catch (error) {
-      console.error("Check subscription status error:", error)
-      return { isActive: false, plan: "none", daysLeft: 0, shouldDisconnect: true }
-    }
+  static async signOut(): Promise<void> {
+    await this.clearAuthCookie()
   }
 
-  async disconnectExpiredUsers(): Promise<void> {
-    try {
-      // Get all running bots
-      const runningBots = await database.getRunningBots()
-
-      for (const bot of runningBots) {
-        const subscriptionStatus = await this.checkSubscriptionStatus(bot.userId)
-
-        if (subscriptionStatus.shouldDisconnect) {
-          // Stop the bot
-          await database.updateBot(bot._id!.toString(), bot.userId, {
-            status: "stopped",
-            lastError: "Subscription expired",
-            lastErrorAt: new Date(),
-          })
-
-          console.log(`Stopped bot ${bot.name} for user ${bot.userId} - subscription expired`)
-        }
-      }
-    } catch (error) {
-      console.error("Disconnect expired users error:", error)
+  static async requireAuth(): Promise<AuthUser> {
+    const user = await this.getCurrentUser()
+    if (!user) {
+      throw new Error("Authentication required")
     }
+    return user
   }
 }
-
-export const authManager = AuthManager.getInstance()

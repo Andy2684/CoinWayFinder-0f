@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
+import { AuthService } from "@/lib/auth"
 
 export async function POST() {
   try {
-    const cookieStore = await cookies()
-    cookieStore.delete("auth-token")
-
-    return NextResponse.json({
-      success: true,
-      message: "Signed out successfully",
-    })
+    await AuthService.signOut()
+    return NextResponse.json({ success: true, message: "Signed out successfully" })
   } catch (error) {
-    console.error("Signout API error:", error)
-    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
+    console.error("Signout error:", error)
+    return NextResponse.json({ success: false, message: "Failed to sign out" }, { status: 500 })
   }
 }

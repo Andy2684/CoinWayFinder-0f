@@ -2,29 +2,27 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 
-interface User {
+interface AuthUser {
   id: string
   email: string
   name: string
-  avatar?: string
-  subscription: {
-    plan: string
-    status: string
+  subscription?: {
+    plan: "free" | "basic" | "premium" | "enterprise"
+    status: "active" | "cancelled" | "expired"
     endDate: string
-  }
-  subscriptionStatus?: {
-    isActive: boolean
-    plan: string
-    daysLeft: number
-    shouldDisconnect: boolean
-  }
+  } | null
 }
 
 interface AuthContextType {
-  user: User | null
+  user: AuthUser | null
   loading: boolean
-  signIn: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  signUp: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>
+  signIn: (email: string, password: string) => Promise<{ success: boolean; message: string }>
+  signUp: (
+    email: string,
+    password: string,
+    name: string,
+    confirmPassword: string,
+  ) => Promise<{ success: boolean; message: string }>
   signOut: () => Promise<void>
   refreshUser: () => Promise<void>
 }
@@ -32,29 +30,30 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
 
   const fetchUser = async () => {
     try {
       const response = await fetch("/api/auth/me")
-      if (response.ok) {
-        const data = await response.json()
-        if (data.success) {
-          setUser(data.user)
-        } else {
-          setUser(null)
-        }
+      const data = await response.json()
+
+      if (data.success) {
+        setUser(data.user)
       } else {
         setUser(null)
       }
     } catch (error) {
-      console.error("Fetch user error:", error)
+      console.error("Failed to fetch user:", error)
       setUser(null)
     } finally {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    fetchUser()
+  }, [])
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -67,36 +66,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const data = await response.json()
 
       if (data.success) {
-        setUser(data.user)
-        return { success: true }
-      } else {
-        return { success: false, error: data.error }
+        await fetchUser()
       }
+
+      return data
     } catch (error) {
-      console.error("Sign in error:", error)
-      return { success: false, error: "Network error" }
+      return { success: false, message: "Network error. Please try again." }
     }
   }
 
-  const signUp = async (email: string, password: string, name: string) => {
+  const signUp = async (email: string, password: string, name: string, confirmPassword: string) => {
     try {
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, name }),
+        body: JSON.stringify({ email, password, name, confirmPassword }),
       })
 
       const data = await response.json()
 
       if (data.success) {
-        setUser(data.user)
-        return { success: true }
-      } else {
-        return { success: false, error: data.error }
+        await fetchUser()
       }
+
+      return data
     } catch (error) {
-      console.error("Sign up error:", error)
-      return { success: false, error: "Network error" }
+      return { success: false, message: "Network error. Please try again." }
     }
   }
 
@@ -113,35 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchUser()
   }
 
-  useEffect(() => {
-    fetchUser()
-  }, [])
-
-  // Check subscription status periodically
-  useEffect(() => {
-    if (user) {
-      const interval = setInterval(
-        async () => {
-          await refreshUser()
-        },
-        5 * 60 * 1000,
-      ) // Check every 5 minutes
-
-      return () => clearInterval(interval)
-    }
-  }, [user])
-
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        signIn,
-        signUp,
-        signOut,
-        refreshUser,
-      }}
-    >
+    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   )
