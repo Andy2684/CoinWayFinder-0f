@@ -1,33 +1,6 @@
 version: '3.8'
 
 services:
-  # Main Next.js application
-  app:
-    build: .
-    ports:
-      - "3000:3000"
-    environment:
-      - MONGODB_URI=${MONGODB_URI}
-      - REDIS_URL=${REDIS_URL}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    depends_on:
-      - redis
-      - mongodb
-
-  # Bot scheduler service
-  bot-scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile.scheduler
-    environment:
-      - MONGODB_URI=${MONGODB_URI}
-      - REDIS_URL=${REDIS_URL}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-    depends_on:
-      - redis
-      - mongodb
-    restart: unless-stopped
-
   # Redis for job queue
   redis:
     image: redis:7-alpine
@@ -35,17 +8,53 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    command: redis-server --appendonly yes
 
   # MongoDB
   mongodb:
-    image: mongo:6
+    image: mongo:7
     ports:
       - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
     volumes:
       - mongodb_data:/data/db
+
+  # Next.js Web Application
+  web:
+    build: .
+    ports:
+      - "3000:3000"
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=admin
-      - MONGO_INITDB_ROOT_PASSWORD=password
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/coinwayfinder?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - NEXTAUTH_SECRET=your-secret-key
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY}
+    depends_on:
+      - redis
+      - mongodb
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+  # Bot Scheduler (Background Worker)
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile.scheduler
+    environment:
+      - MONGODB_URI=mongodb://admin:password@mongodb:27017/coinwayfinder?authSource=admin
+      - REDIS_URL=redis://redis:6379
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    depends_on:
+      - redis
+      - mongodb
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - /app/node_modules
 
 volumes:
   redis_data:
