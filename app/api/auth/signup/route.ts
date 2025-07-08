@@ -1,43 +1,44 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { AuthManager } from "@/lib/auth"
+import { authManager } from "@/lib/auth"
+import { cookies } from "next/headers"
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password, name } = await request.json()
 
-    // Validation
+    // Validate input
     if (!email || !password || !name) {
-      return NextResponse.json({ error: "Email, password, and name are required" }, { status: 400 })
+      return NextResponse.json({ success: false, error: "All fields are required" }, { status: 400 })
     }
 
     if (password.length < 6) {
-      return NextResponse.json({ error: "Password must be at least 6 characters" }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Password must be at least 6 characters" }, { status: 400 })
     }
 
-    // Create user
-    const { user, token } = await AuthManager.createUser({
-      email,
-      password,
-      name,
-    })
+    const result = await authManager.signUp(email, password, name)
 
-    // Set cookie
-    const response = NextResponse.json({
-      success: true,
-      user,
-      message: "Account created successfully",
-    })
+    if (!result.success) {
+      return NextResponse.json(result, { status: 400 })
+    }
 
-    response.cookies.set("auth-token", token, {
+    // Generate token and set cookie
+    const token = authManager.generateToken(email)
+    const cookieStore = await cookies()
+
+    cookieStore.set("auth-token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 7 * 24 * 60 * 60, // 7 days
     })
 
-    return response
-  } catch (error: any) {
-    console.error("Signup error:", error)
-    return NextResponse.json({ error: error.message || "Failed to create account" }, { status: 400 })
+    return NextResponse.json({
+      success: true,
+      user: result.user,
+      message: "Account created successfully! 3-day free trial activated.",
+    })
+  } catch (error) {
+    console.error("Signup API error:", error)
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

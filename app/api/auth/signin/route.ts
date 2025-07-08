@@ -1,35 +1,38 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { AuthManager } from "@/lib/auth"
+import { authManager } from "@/lib/auth"
+import { cookies } from "next/headers"
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
-    // Validation
+    // Validate input
     if (!email || !password) {
-      return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Email and password are required" }, { status: 400 })
     }
 
-    // Authenticate user
-    const { user, token } = await AuthManager.authenticateUser(email, password)
+    const result = await authManager.signIn(email, password)
 
-    // Set cookie
-    const response = NextResponse.json({
-      success: true,
-      user,
-      message: "Signed in successfully",
-    })
+    if (!result.success) {
+      return NextResponse.json(result, { status: 401 })
+    }
 
-    response.cookies.set("auth-token", token, {
+    // Set auth cookie
+    const cookieStore = await cookies()
+    cookieStore.set("auth-token", result.token!, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: 7 * 24 * 60 * 60, // 7 days
     })
 
-    return response
-  } catch (error: any) {
-    console.error("Signin error:", error)
-    return NextResponse.json({ error: error.message || "Failed to sign in" }, { status: 401 })
+    return NextResponse.json({
+      success: true,
+      user: result.user,
+      message: "Signed in successfully!",
+    })
+  } catch (error) {
+    console.error("Signin API error:", error)
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

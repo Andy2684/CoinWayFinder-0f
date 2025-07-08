@@ -1,17 +1,16 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
+import { authManager } from "@/lib/auth"
 
 export async function POST() {
   try {
-    const cookieStore = await cookies()
-    cookieStore.delete("auth-token")
+    await authManager.disconnectExpiredUsers()
 
     return NextResponse.json({
       success: true,
-      message: "Signed out successfully",
+      message: "Subscription check completed",
     })
   } catch (error) {
-    console.error("Signout API error:", error)
+    console.error("Check subscriptions API error:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

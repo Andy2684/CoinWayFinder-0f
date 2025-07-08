@@ -4,9 +4,8 @@ import type React from "react"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Navigation } from "@/components/navigation"
-import { Footer } from "@/components/footer"
 import { useEffect } from "react"
-import { Toaster } from "@/components/ui/sonner"
+import { Toaster } from "sonner"
 import { AuthProvider } from "@/hooks/use-auth"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -62,28 +61,11 @@ export default function ClientLayout({
 
   return (
     <AuthProvider>
-      <html lang="en" suppressHydrationWarning>
-        <head>
-          <title>CoinWayfinder - Smart AI-Powered Crypto Trading Assistant</title>
-          <meta
-            name="description"
-            content="Get real-time crypto signals, automated DCA bots, and AI-driven market analysis delivered directly to your Telegram. Start trading smarter with CoinWayfinder."
-          />
-          <meta
-            name="keywords"
-            content="crypto trading, AI signals, DCA bots, telegram bot, crypto analysis, trading assistant"
-          />
-          <meta name="generator" content="v0.dev" />
-        </head>
-        <body className={inter.className} suppressHydrationWarning>
-          <div className="min-h-screen flex flex-col">
-            <Navigation />
-            <main className="flex-1">{children}</main>
-            <Footer />
-            <Toaster />
-          </div>
-        </body>
-      </html>
+      <div className="min-h-screen bg-gray-50">
+        <Navigation />
+        <main>{children}</main>
+        <Toaster position="top-right" />
+      </div>
     </AuthProvider>
   )
 }

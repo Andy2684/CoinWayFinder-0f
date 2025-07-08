@@ -1,26 +1,22 @@
 import { NextResponse } from "next/server"
 import { authManager } from "@/lib/auth"
+import { database } from "@/lib/database"
 
 export async function GET() {
   try {
     const user = await authManager.getCurrentUser()
-
     if (!user) {
       return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
     }
 
-    // Check subscription status
-    const subscriptionStatus = await authManager.checkSubscriptionStatus(user.id)
+    const stats = await database.getPortfolioStats(user.id)
 
     return NextResponse.json({
       success: true,
-      user: {
-        ...user,
-        subscriptionStatus,
-      },
+      ...stats,
     })
   } catch (error) {
-    console.error("Get user API error:", error)
+    console.error("Get usage stats error:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }
