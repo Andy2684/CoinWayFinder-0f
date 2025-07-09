@@ -1,62 +1,59 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { AdminAuth, getSystemStats } from "@/lib/admin"
+import { verifyAdminToken } from "@/lib/admin"
+
+// Mock user data for admin panel
+const mockUsers = [
+  {
+    id: "1",
+    email: "user1@example.com",
+    username: "trader_pro",
+    subscription: "premium",
+    activeBots: 5,
+    totalTrades: 234,
+    joinedAt: "2024-01-15",
+    lastActive: "2024-01-20",
+  },
+  {
+    id: "2",
+    email: "user2@example.com",
+    username: "crypto_whale",
+    subscription: "basic",
+    activeBots: 2,
+    totalTrades: 89,
+    joinedAt: "2024-01-10",
+    lastActive: "2024-01-19",
+  },
+  {
+    id: "3",
+    email: "user3@example.com",
+    username: "dca_master",
+    subscription: "pro",
+    activeBots: 8,
+    totalTrades: 567,
+    joinedAt: "2024-01-05",
+    lastActive: "2024-01-20",
+  },
+]
 
 export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get("admin-token")?.value
 
     if (!token) {
-      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+      return NextResponse.json({ error: "No admin token found" }, { status: 401 })
     }
 
-    const admin = AdminAuth.verifyToken(token)
+    const admin = verifyAdminToken(token)
 
-    if (!admin || !AdminAuth.hasPermission(admin, "user_management")) {
-      return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
+    if (!admin) {
+      return NextResponse.json({ error: "Invalid admin token" }, { status: 401 })
     }
-
-    // Get system statistics
-    const stats = await getSystemStats()
-
-    // Mock user data - replace with real database queries
-    const users = [
-      {
-        id: "1",
-        email: "user1@example.com",
-        subscription: "premium",
-        botsCount: 5,
-        tradesCount: 123,
-        joinedAt: "2024-01-15",
-        lastActive: "2024-01-20",
-      },
-      {
-        id: "2",
-        email: "user2@example.com",
-        subscription: "basic",
-        botsCount: 2,
-        tradesCount: 45,
-        joinedAt: "2024-01-18",
-        lastActive: "2024-01-19",
-      },
-      {
-        id: "admin-1",
-        email: "project.command.center@gmail.com",
-        subscription: "admin",
-        botsCount: 999,
-        tradesCount: 9999,
-        joinedAt: "2024-01-01",
-        lastActive: new Date().toISOString().split("T")[0],
-      },
-    ]
 
     return NextResponse.json({
-      stats,
-      users,
-      adminInfo: {
-        email: admin.email,
-        permissions: admin.permissions,
-        hasUnlimitedAccess: true,
-      },
+      users: mockUsers,
+      totalUsers: mockUsers.length,
+      activeUsers: mockUsers.filter((u) => u.lastActive === "2024-01-20").length,
+      premiumUsers: mockUsers.filter((u) => u.subscription === "premium" || u.subscription === "pro").length,
     })
   } catch (error) {
     console.error("Admin users error:", error)

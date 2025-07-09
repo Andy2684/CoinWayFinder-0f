@@ -49,8 +49,9 @@ export function Footer() {
               <span className="text-xl font-bold text-white">CoinWayfinder</span>
             </Link>
             <p className="text-gray-400 mb-6 max-w-sm">
-              Smart AI-powered crypto trading assistant that delivers real-time signals, automated DCA bots, and market
-              analysis directly to your Telegram.
+              CoinWayfinder is an AI-powered platform for crypto market analysis, whale tracking, and smart trading
+              tools. Whether you're a beginner or an experienced trader, CoinWayfinder helps you navigate the market
+              with real-time data, trading signals, and AI-generated insights.
             </p>
             <div className="flex space-x-4">
               {socialLinks.map((social) => (
@@ -58,6 +59,8 @@ export function Footer() {
                   key={social.name}
                   href={social.href}
                   className="text-gray-400 hover:text-[#30D5C8] transition-colors"
+                  target={social.name === "Telegram" || social.name === "Email" ? "_blank" : undefined}
+                  rel={social.name === "Telegram" || social.name === "Email" ? "noopener noreferrer" : undefined}
                 >
                   <social.icon className="w-5 h-5" />
                 </Link>

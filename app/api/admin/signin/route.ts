@@ -1,30 +1,28 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { AdminAuth } from "@/lib/admin"
+import { validateAdminCredentials, generateAdminToken } from "@/lib/admin"
 
 export async function POST(request: NextRequest) {
   try {
     const { username, password } = await request.json()
 
     if (!username || !password) {
-      return NextResponse.json({ error: "Username and password required" }, { status: 400 })
+      return NextResponse.json({ error: "Username and password are required" }, { status: 400 })
     }
 
-    const admin = await AdminAuth.authenticate(username, password)
+    const admin = await validateAdminCredentials(username, password)
 
     if (!admin) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
-    const token = AdminAuth.generateToken(admin)
+    const token = generateAdminToken(admin)
 
     const response = NextResponse.json({
       success: true,
       admin: {
-        id: admin.id,
         username: admin.username,
         email: admin.email,
         role: admin.role,
-        permissions: admin.permissions,
       },
     })
 
