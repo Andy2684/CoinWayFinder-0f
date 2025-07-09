@@ -1,443 +1,142 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { AuthService } from "./auth"
-import { AdminService } from "./admin"
+import { adminManager } from "./admin"
+import { database } from "./database"
 import { subscriptionManager } from "./subscription-manager"
 
-interface APIResponse<T = any> {
-  success: boolean
-  data?: T
-  message?: string
-  error?: string
-}
-
-interface AuthenticatedRequest extends NextRequest {
+export interface AuthenticatedRequest extends NextRequest {
   user?: {
     userId: string
     email: string
     username: string
-    isAdmin?: boolean
   }
 }
 
-interface RateLimitStore {
-  [key: string]: {
-    count: number
-    resetTime: number
-  }
+export interface APIResponse<T = any> {
+  success: boolean
+  data?: T
+  error?: string
+  message?: string
 }
 
-export interface APIContext {
-  user: {
-    userId: string
-    email: string
-    username: string
-  }
-  isAdmin?: boolean
-}
-
-class APIMiddleware {
-  private rateLimitStore: RateLimitStore = {}
-
-  // Rate limiting
-  private checkRateLimit(identifier: string, limit = 100, windowMs = 60000): boolean {
-    const now = Date.now()
-    const key = identifier
-
-    if (!this.rateLimitStore[key]) {
-      this.rateLimitStore[key] = { count: 1, resetTime: now + windowMs }
-      return true
-    }
-
-    const store = this.rateLimitStore[key]
-
-    if (now > store.resetTime) {
-      store.count = 1
-      store.resetTime = now + windowMs
-      return true
-    }
-
-    if (store.count >= limit) {
-      return false
-    }
-
-    store.count++
-    return true
-  }
-
-  // CORS headers
-  private setCORSHeaders(response: NextResponse): NextResponse {
-    response.headers.set("Access-Control-Allow-Origin", "*")
-    response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
-    return response
-  }
-
-  // Success response
-  createSuccessResponse<T>(data: T, message?: string): NextResponse<APIResponse<T>> {
-    const response = NextResponse.json({
-      success: true,
+export function createResponse<T>(
+  success: boolean,
+  data?: T,
+  error?: string,
+  status = 200,
+): NextResponse<APIResponse<T>> {
+  return NextResponse.json(
+    {
+      success,
       data,
-      message,
-    })
-    return this.setCORSHeaders(response)
-  }
+      error,
+      message: error || (success ? "Success" : "Error"),
+    },
+    { status },
+  )
+}
 
-  // Error response
-  createErrorResponse(message: string, status = 400): NextResponse<APIResponse> {
-    const response = NextResponse.json(
-      {
-        success: false,
-        error: message,
-      },
-      { status },
-    )
-    return this.setCORSHeaders(response)
-  }
-
-  // Authentication middleware
-  async withAuth(
-    request: NextRequest,
-    handler: (request: NextRequest, user: any) => Promise<NextResponse>,
-  ): Promise<NextResponse> {
+export function withAuth(handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
+  return async (req: NextRequest): Promise<NextResponse> => {
     try {
-      // Handle OPTIONS request
-      if (request.method === "OPTIONS") {
-        return this.setCORSHeaders(new NextResponse(null, { status: 200 }))
-      }
-
-      // Check rate limit
-      const clientIP = request.ip || request.headers.get("x-forwarded-for") || "unknown"
-      if (!this.checkRateLimit(clientIP)) {
-        return this.createErrorResponse("Rate limit exceeded", 429)
-      }
-
-      // Get auth token from header or cookie
-      let token = request.headers.get("authorization")?.replace("Bearer ", "")
-
-      if (!token) {
-        // Try to get from cookie
-        const cookieHeader = request.headers.get("cookie")
-        if (cookieHeader) {
-          const cookies = cookieHeader.split(";").reduce(
-            (acc, cookie) => {
-              const [key, value] = cookie.trim().split("=")
-              acc[key] = value
-              return acc
-            },
-            {} as Record<string, string>,
-          )
-          token = cookies["auth-token"]
-        }
-      }
-
-      if (!token) {
-        return this.createErrorResponse("Authentication required", 401)
-      }
-
-      // Verify token
-      const user = AuthService.verifyToken(token)
+      const user = await AuthService.getCurrentUser()
       if (!user) {
-        return this.createErrorResponse("Invalid or expired token", 401)
+        return createResponse(false, null, "Authentication required", 401)
       }
 
-      return handler(request, user)
+      const authenticatedReq = req as AuthenticatedRequest
+      authenticatedReq.user = {
+        userId: user.userId,
+        email: user.email,
+        username: user.username,
+      }
+
+      return await handler(authenticatedReq)
     } catch (error) {
       console.error("Auth middleware error:", error)
-      return this.createErrorResponse("Internal server error", 500)
+      return createResponse(false, null, "Authentication failed", 401)
     }
   }
+}
 
-  // Admin authentication middleware
-  async withAdminAuth(
-    request: NextRequest,
-    handler: (request: NextRequest, admin: any) => Promise<NextResponse>,
-  ): Promise<NextResponse> {
+export function withAdminAuth(handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
+  return async (req: NextRequest): Promise<NextResponse> => {
     try {
-      // Handle OPTIONS request
-      if (request.method === "OPTIONS") {
-        return this.setCORSHeaders(new NextResponse(null, { status: 200 }))
-      }
-
-      // Check rate limit
-      const clientIP = request.ip || request.headers.get("x-forwarded-for") || "unknown"
-      if (!this.checkRateLimit(clientIP)) {
-        return this.createErrorResponse("Rate limit exceeded", 429)
-      }
-
-      // Get admin token from header or cookie
-      let token = request.headers.get("authorization")?.replace("Bearer ", "")
-
-      if (!token) {
-        // Try to get from cookie
-        const cookieHeader = request.headers.get("cookie")
-        if (cookieHeader) {
-          const cookies = cookieHeader.split(";").reduce(
-            (acc, cookie) => {
-              const [key, value] = cookie.trim().split("=")
-              acc[key] = value
-              return acc
-            },
-            {} as Record<string, string>,
-          )
-          token = cookies["admin-token"]
-        }
-      }
-
-      if (!token) {
-        return this.createErrorResponse("Admin authentication required", 401)
-      }
-
-      // Verify admin token
-      const admin = AdminService.verifyAdminToken(token)
+      const admin = await adminManager.getCurrentAdmin()
       if (!admin) {
-        return this.createErrorResponse("Invalid or expired admin token", 401)
+        return createResponse(false, null, "Admin authentication required", 401)
       }
 
-      return handler(request, admin)
+      const authenticatedReq = req as AuthenticatedRequest
+      authenticatedReq.user = {
+        userId: admin.adminId,
+        email: admin.email,
+        username: admin.username,
+      }
+
+      return await handler(authenticatedReq)
     } catch (error) {
       console.error("Admin auth middleware error:", error)
-      return this.createErrorResponse("Internal server error", 500)
+      return createResponse(false, null, "Admin authentication failed", 401)
     }
   }
+}
 
-  // API key authentication middleware
-  async withAPIKeyAuth(
-    request: NextRequest,
-    handler: (request: NextRequest, apiKey: any) => Promise<NextResponse>,
-  ): Promise<NextResponse> {
+export function withAPIAuth(handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
+  return async (req: NextRequest): Promise<NextResponse> => {
     try {
-      // Handle OPTIONS request
-      if (request.method === "OPTIONS") {
-        return this.setCORSHeaders(new NextResponse(null, { status: 200 }))
-      }
+      // Check for API key in headers
+      const apiKey = req.headers.get("x-api-key") || req.headers.get("authorization")?.replace("Bearer ", "")
 
-      // Check rate limit
-      const clientIP = request.ip || request.headers.get("x-forwarded-for") || "unknown"
-      if (!this.checkRateLimit(clientIP, 1000)) {
-        // Higher limit for API keys
-        return this.createErrorResponse("Rate limit exceeded", 429)
-      }
-
-      // Get API key from header
-      const apiKey = request.headers.get("x-api-key")
-      if (!apiKey) {
-        return this.createErrorResponse("API key required", 401)
-      }
-
-      // Validate API key (simplified - in real app, check against database)
-      if (!apiKey.startsWith("cwf_")) {
-        return this.createErrorResponse("Invalid API key format", 401)
-      }
-
-      const apiKeyData = {
-        key: apiKey,
-        userId: "extracted-from-key", // In real app, extract from database
-        permissions: ["read", "write"],
-      }
-
-      return handler(request, apiKeyData)
-    } catch (error) {
-      console.error("API key auth middleware error:", error)
-      return this.createErrorResponse("Internal server error", 500)
-    }
-  }
-
-  // Graceful expiration middleware
-  async withGracefulExpiration(
-    request: NextRequest,
-    handler: (request: NextRequest) => Promise<NextResponse>,
-  ): Promise<NextResponse> {
-    try {
-      const response = await handler(request)
-
-      // Add cache headers for graceful expiration
-      response.headers.set("Cache-Control", "public, max-age=300, stale-while-revalidate=60")
-      response.headers.set("X-Powered-By", "CoinWayFinder")
-
-      return this.setCORSHeaders(response)
-    } catch (error) {
-      console.error("Graceful expiration middleware error:", error)
-      return this.createErrorResponse("Internal server error", 500)
-    }
-  }
-
-  // Request validation middleware
-  async withValidation(
-    request: NextRequest,
-    schema: any,
-    handler: (request: NextRequest, data: any) => Promise<NextResponse>,
-  ): Promise<NextResponse> {
-    try {
-      const body = await request.json()
-
-      // Simple validation (in real app, use Zod or similar)
-      if (!body || typeof body !== "object") {
-        return this.createErrorResponse("Invalid request body", 400)
-      }
-
-      return handler(request, body)
-    } catch (error) {
-      if (error instanceof SyntaxError) {
-        return this.createErrorResponse("Invalid JSON", 400)
-      }
-      console.error("Validation middleware error:", error)
-      return this.createErrorResponse("Internal server error", 500)
-    }
-  }
-
-  // Cleanup expired rate limit entries
-  private cleanupRateLimit(): void {
-    const now = Date.now()
-    Object.keys(this.rateLimitStore).forEach((key) => {
-      if (now > this.rateLimitStore[key].resetTime) {
-        delete this.rateLimitStore[key]
-      }
-    })
-  }
-}
-
-const apiMiddleware = new APIMiddleware()
-
-// Export middleware functions
-export async function withAPIAuth(
-  request: NextRequest,
-  handler: (request: NextRequest, user: any) => Promise<NextResponse>,
-): Promise<NextResponse> {
-  return apiMiddleware.withAuth(request, handler)
-}
-
-export async function withAdminAuth(
-  request: NextRequest,
-  handler: (request: NextRequest, admin: any) => Promise<NextResponse>,
-): Promise<NextResponse> {
-  return apiMiddleware.withAdminAuth(request, handler)
-}
-
-export async function withAPIKeyAuth(
-  request: NextRequest,
-  handler: (request: NextRequest, apiKey: any) => Promise<NextResponse>,
-): Promise<NextResponse> {
-  return apiMiddleware.withAPIKeyAuth(request, handler)
-}
-
-export async function withGracefulExpiration(
-  request: NextRequest,
-  handler: (request: NextRequest) => Promise<NextResponse>,
-): Promise<NextResponse> {
-  return apiMiddleware.withGracefulExpiration(request, handler)
-}
-
-export async function withValidation(
-  request: NextRequest,
-  schema: any,
-  handler: (request: NextRequest, data: any) => Promise<NextResponse>,
-): Promise<NextResponse> {
-  return apiMiddleware.withValidation(request, schema, handler)
-}
-
-// Export response helpers
-export const createSuccessResponse = apiMiddleware.createSuccessResponse.bind(apiMiddleware)
-export const createErrorResponse = apiMiddleware.createErrorResponse.bind(apiMiddleware)
-
-// Cleanup rate limit entries every 5 minutes
-setInterval(
-  () => {
-    apiMiddleware["cleanupRateLimit"]()
-  },
-  5 * 60 * 1000,
-)
-
-export function withSubscriptionCheck(
-  handler: (req: NextRequest, context: APIContext) => Promise<NextResponse>,
-  requiredFeature?: string,
-) {
-  return withAPIAuth(async (req: NextRequest, context: APIContext): Promise<NextResponse> => {
-    try {
-      // Admin bypass
-      if (context.isAdmin) {
-        return handler(req, context)
-      }
-
-      // Check subscription access
-      if (requiredFeature) {
-        const hasAccess = await subscriptionManager.checkAccess(context.user.userId, requiredFeature)
-        if (!hasAccess) {
-          return NextResponse.json(
-            {
-              error: "Subscription required",
-              message: `This feature requires a subscription. Please upgrade your plan.`,
-              feature: requiredFeature,
-            },
-            { status: 403 },
-          )
+      if (apiKey) {
+        // Validate API key
+        const keyData = await database.getAPIKey(apiKey)
+        if (keyData && keyData.isActive) {
+          const authenticatedReq = req as AuthenticatedRequest
+          authenticatedReq.user = {
+            userId: keyData.userId,
+            email: keyData.email || "",
+            username: keyData.name || "API User",
+          }
+          return await handler(authenticatedReq)
         }
       }
 
-      return handler(req, context)
+      // Fall back to session auth
+      const user = await AuthService.getCurrentUser()
+      if (!user) {
+        return createResponse(false, null, "Authentication required", 401)
+      }
+
+      const authenticatedReq = req as AuthenticatedRequest
+      authenticatedReq.user = {
+        userId: user.userId,
+        email: user.email,
+        username: user.username,
+      }
+
+      return await handler(authenticatedReq)
     } catch (error) {
-      console.error("Subscription check middleware error:", error)
-      return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+      console.error("API auth middleware error:", error)
+      return createResponse(false, null, "Authentication failed", 401)
     }
-  })
+  }
 }
 
-export function withRateLimit(
-  handler: (req: NextRequest, context: APIContext) => Promise<NextResponse>,
-  limit = 100,
-  windowMs: number = 60 * 1000, // 1 minute
-) {
-  const requests = new Map<string, { count: number; resetTime: number }>()
-
-  return withAPIAuth(async (req: NextRequest, context: APIContext): Promise<NextResponse> => {
+export function withGracefulExpiration(handler: (req: NextRequest) => Promise<NextResponse>) {
+  return async (req: NextRequest): Promise<NextResponse> => {
     try {
-      const key = context.user.userId
-      const now = Date.now()
-
-      // Clean up expired entries
-      for (const [userId, data] of requests.entries()) {
-        if (now > data.resetTime) {
-          requests.delete(userId)
-        }
+      return await handler(req)
+    } catch (error: any) {
+      if (error.message === "Authentication required" || error.message?.includes("token")) {
+        return createResponse(false, null, "Session expired. Please sign in again.", 401)
       }
-
-      // Get or create rate limit data
-      let rateLimitData = requests.get(key)
-      if (!rateLimitData || now > rateLimitData.resetTime) {
-        rateLimitData = { count: 0, resetTime: now + windowMs }
-        requests.set(key, rateLimitData)
-      }
-
-      // Check rate limit
-      if (rateLimitData.count >= limit) {
-        return NextResponse.json(
-          {
-            error: "Rate limit exceeded",
-            message: `Too many requests. Limit: ${limit} per ${windowMs / 1000} seconds`,
-            retryAfter: Math.ceil((rateLimitData.resetTime - now) / 1000),
-          },
-          { status: 429 },
-        )
-      }
-
-      // Increment counter
-      rateLimitData.count++
-
-      const response = await handler(req, context)
-
-      // Add rate limit headers
-      response.headers.set("X-RateLimit-Limit", limit.toString())
-      response.headers.set("X-RateLimit-Remaining", (limit - rateLimitData.count).toString())
-      response.headers.set("X-RateLimit-Reset", rateLimitData.resetTime.toString())
-
-      return response
-    } catch (error) {
-      console.error("Rate limit middleware error:", error)
-      return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+      throw error
     }
-  })
+  }
 }
 
-export function corsMiddleware(handler: (req: NextRequest) => Promise<NextResponse>) {
+export function withCORS(handler: (req: NextRequest) => Promise<NextResponse>) {
   return async (req: NextRequest): Promise<NextResponse> => {
     // Handle preflight requests
     if (req.method === "OPTIONS") {
@@ -446,18 +145,108 @@ export function corsMiddleware(handler: (req: NextRequest) => Promise<NextRespon
         headers: {
           "Access-Control-Allow-Origin": "*",
           "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization, X-API-Key",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization, x-api-key",
         },
       })
     }
 
     const response = await handler(req)
 
-    // Add CORS headers to all responses
+    // Add CORS headers to response
     response.headers.set("Access-Control-Allow-Origin", "*")
     response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
+    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key")
 
     return response
   }
+}
+
+export function withRateLimit(handler: (req: NextRequest) => Promise<NextResponse>, limit = 100, windowMs = 60000) {
+  const requests = new Map<string, { count: number; resetTime: number }>()
+
+  return async (req: NextRequest): Promise<NextResponse> => {
+    const ip = req.ip || req.headers.get("x-forwarded-for") || "unknown"
+    const now = Date.now()
+    const windowStart = now - windowMs
+
+    // Clean up old entries
+    for (const [key, value] of requests.entries()) {
+      if (value.resetTime < windowStart) {
+        requests.delete(key)
+      }
+    }
+
+    // Check current request count
+    const current = requests.get(ip) || { count: 0, resetTime: now + windowMs }
+
+    if (current.count >= limit && current.resetTime > now) {
+      return createResponse(false, null, "Rate limit exceeded", 429)
+    }
+
+    // Update request count
+    current.count++
+    requests.set(ip, current)
+
+    return await handler(req)
+  }
+}
+
+export function withErrorHandling(handler: (req: NextRequest) => Promise<NextResponse>) {
+  return async (req: NextRequest): Promise<NextResponse> => {
+    try {
+      return await handler(req)
+    } catch (error: any) {
+      console.error("API Error:", error)
+
+      if (error.message === "Authentication required") {
+        return createResponse(false, null, "Authentication required", 401)
+      }
+
+      if (error.message === "Access denied") {
+        return createResponse(false, null, "Access denied", 403)
+      }
+
+      return createResponse(false, null, "Internal server error", 500)
+    }
+  }
+}
+
+// Utility function to combine multiple middleware
+export function withMiddleware(
+  handler: (req: NextRequest) => Promise<NextResponse>,
+  ...middlewares: Array<
+    (handler: (req: NextRequest) => Promise<NextResponse>) => (req: NextRequest) => Promise<NextResponse>
+  >
+) {
+  return middlewares.reduce((acc, middleware) => middleware(acc), handler)
+}
+
+export function withSubscriptionCheck(handler: (req: NextRequest) => Promise<NextResponse>, requiredFeature?: string) {
+  return withAPIAuth(async (req: NextRequest): Promise<NextResponse> => {
+    try {
+      const user = req.user
+      if (!user) {
+        return createResponse(false, null, "Authentication required", 401)
+      }
+
+      // Admin bypass
+      const admin = await adminManager.getCurrentAdmin()
+      if (admin) {
+        return handler(req)
+      }
+
+      // Check subscription access
+      if (requiredFeature) {
+        const hasAccess = await subscriptionManager.checkAccess(user.userId, requiredFeature)
+        if (!hasAccess) {
+          return createResponse(false, null, "Subscription required", 403)
+        }
+      }
+
+      return handler(req)
+    } catch (error) {
+      console.error("Subscription check middleware error:", error)
+      return createResponse(false, null, "Internal server error", 500)
+    }
+  })
 }

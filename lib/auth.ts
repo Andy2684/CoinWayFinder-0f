@@ -23,6 +23,12 @@ export interface UserSession {
   expiresAt: number
 }
 
+export interface AuthResult {
+  success: boolean
+  message: string
+  user?: User
+}
+
 export class AuthService {
   private static userSessions = new Map<string, UserSession>()
 
@@ -61,11 +67,7 @@ export class AuthService {
     }
   }
 
-  static async signUp(
-    email: string,
-    username: string,
-    password: string,
-  ): Promise<{ success: boolean; message: string; user?: User }> {
+  static async signUp(email: string, username: string, password: string): Promise<AuthResult> {
     try {
       // Check if user already exists
       const existingUser = await database.getUserByEmail(email)
@@ -107,7 +109,7 @@ export class AuthService {
     }
   }
 
-  static async signIn(email: string, password: string): Promise<{ success: boolean; message: string; user?: User }> {
+  static async signIn(email: string, password: string): Promise<AuthResult> {
     try {
       const dbUser = await database.getUserByEmail(email)
       if (!dbUser) {
@@ -209,12 +211,8 @@ export class AuthService {
   }
 }
 
-class AuthManager {
-  async signUp(
-    email: string,
-    username: string,
-    password: string,
-  ): Promise<{ success: boolean; message: string; user?: User }> {
+export class AuthManager {
+  async signUp(email: string, username: string, password: string): Promise<AuthResult> {
     const result = await AuthService.signUp(email, username, password)
     if (result.success && result.user) {
       await AuthService.setUserCookie(result.user)
@@ -222,7 +220,7 @@ class AuthManager {
     return result
   }
 
-  async signIn(email: string, password: string): Promise<{ success: boolean; message: string; user?: User }> {
+  async signIn(email: string, password: string): Promise<AuthResult> {
     const result = await AuthService.signIn(email, password)
     if (result.success && result.user) {
       await AuthService.setUserCookie(result.user)
@@ -241,8 +239,41 @@ class AuthManager {
   async requireAuth(): Promise<UserSession> {
     return AuthService.requireAuth()
   }
+
+  async updateProfile(userId: string, updates: { username?: string; email?: string }): Promise<AuthResult> {
+    try {
+      await database.updateUser(userId, updates)
+      return { success: true, message: "Profile updated successfully" }
+    } catch (error) {
+      console.error("Update profile error:", error)
+      return { success: false, message: "Failed to update profile" }
+    }
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<AuthResult> {
+    try {
+      const user = await database.getUserById(userId)
+      if (!user) {
+        return { success: false, message: "User not found" }
+      }
+
+      const isValidPassword = await AuthService.comparePassword(currentPassword, user.password)
+      if (!isValidPassword) {
+        return { success: false, message: "Current password is incorrect" }
+      }
+
+      const hashedPassword = await AuthService.hashPassword(newPassword)
+      await database.updateUser(userId, { password: hashedPassword })
+
+      return { success: true, message: "Password changed successfully" }
+    } catch (error) {
+      console.error("Change password error:", error)
+      return { success: false, message: "Failed to change password" }
+    }
+  }
 }
 
+// Create and export the instance
 export const authManager = new AuthManager()
 
 // Export functions for backward compatibility
@@ -252,3 +283,6 @@ export const generateToken = AuthService.generateToken
 export const verifyToken = AuthService.verifyToken
 export const getCurrentUser = AuthService.getCurrentUser
 export const requireAuth = AuthService.requireAuth
+export const signUp = AuthService.signUp
+export const signIn = AuthService.signIn
+export const signOut = AuthService.clearUserCookie

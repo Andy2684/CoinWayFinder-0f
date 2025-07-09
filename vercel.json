@@ -3,5 +3,16 @@
     "env": {
       "NPM_CONFIG_FORCE": "true"
     }
-  }
+  },
+  "functions": {
+    "app/api/bots/scheduler/route.ts": {
+      "maxDuration": 300
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/bots/scheduler",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

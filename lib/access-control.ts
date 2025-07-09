@@ -1,220 +1,216 @@
-import { subscriptionManager } from "./subscription-manager"
+import { database } from "./database"
 
-export interface AccessControlContext {
+export interface AccessLevel {
+  name: string
+  features: string[]
+  limits: {
+    bots: number
+    apiCalls: number
+    portfolios: number
+    alerts: number
+  }
+}
+
+export interface UserAccess {
   userId: string
-  isAdmin?: boolean
-  subscription?: {
-    plan: string
-    status: string
+  subscription: string
+  features: string[]
+  limits: {
+    bots: number
+    apiCalls: number
+    portfolios: number
+    alerts: number
+  }
+  usage: {
+    bots: number
+    apiCalls: number
+    portfolios: number
+    alerts: number
   }
 }
 
 export class AccessControl {
-  static async checkFeatureAccess(
-    context: AccessControlContext,
-    feature: string,
-  ): Promise<{ allowed: boolean; reason?: string }> {
-    // Admin bypass
-    if (context.isAdmin) {
-      return { allowed: true }
-    }
+  private static accessLevels: Record<string, AccessLevel> = {
+    free: {
+      name: "Free",
+      features: ["basic_dashboard", "market_data", "news"],
+      limits: {
+        bots: 1,
+        apiCalls: 100,
+        portfolios: 1,
+        alerts: 5,
+      },
+    },
+    starter: {
+      name: "Starter",
+      features: ["basic_dashboard", "market_data", "news", "basic_bots", "portfolio_tracking"],
+      limits: {
+        bots: 3,
+        apiCalls: 1000,
+        portfolios: 3,
+        alerts: 20,
+      },
+    },
+    pro: {
+      name: "Pro",
+      features: [
+        "basic_dashboard",
+        "market_data",
+        "news",
+        "basic_bots",
+        "advanced_bots",
+        "portfolio_tracking",
+        "whale_alerts",
+        "ai_signals",
+        "api_access",
+      ],
+      limits: {
+        bots: 10,
+        apiCalls: 10000,
+        portfolios: 10,
+        alerts: 100,
+      },
+    },
+    enterprise: {
+      name: "Enterprise",
+      features: [
+        "basic_dashboard",
+        "market_data",
+        "news",
+        "basic_bots",
+        "advanced_bots",
+        "portfolio_tracking",
+        "whale_alerts",
+        "ai_signals",
+        "api_access",
+        "priority_support",
+        "custom_strategies",
+        "backtesting",
+      ],
+      limits: {
+        bots: -1, // Unlimited
+        apiCalls: -1, // Unlimited
+        portfolios: -1, // Unlimited
+        alerts: -1, // Unlimited
+      },
+    },
+  }
 
-    try {
-      const hasAccess = await subscriptionManager.checkAccess(context.userId, feature)
+  static async getUserAccess(userId: string): Promise<UserAccess> {
+    const userSettings = await database.getUserSettings(userId)
+    const subscription = userSettings?.subscription || "free"
+    const accessLevel = this.accessLevels[subscription] || this.accessLevels.free
 
-      if (!hasAccess) {
-        return {
-          allowed: false,
-          reason: `Feature '${feature}' requires a higher subscription plan`,
-        }
-      }
+    // Get current usage
+    const usage = await this.getCurrentUsage(userId)
 
-      return { allowed: true }
-    } catch (error) {
-      console.error("Access control error:", error)
-      return {
-        allowed: false,
-        reason: "Unable to verify access permissions",
-      }
+    return {
+      userId,
+      subscription,
+      features: accessLevel.features,
+      limits: accessLevel.limits,
+      usage,
     }
   }
 
-  static async checkBotLimit(
-    context: AccessControlContext,
-  ): Promise<{ allowed: boolean; reason?: string; remaining?: number }> {
-    if (context.isAdmin) {
-      return { allowed: true, remaining: -1 }
-    }
-
-    try {
-      const limits = await subscriptionManager.getRemainingLimits(context.userId)
-
-      if (limits.bots.remaining === 0) {
-        return {
-          allowed: false,
-          reason: "Bot limit reached. Upgrade your plan to create more bots.",
-          remaining: 0,
-        }
-      }
-
-      return {
-        allowed: true,
-        remaining: limits.bots.remaining,
-      }
-    } catch (error) {
-      console.error("Bot limit check error:", error)
-      return {
-        allowed: false,
-        reason: "Unable to verify bot limits",
-      }
-    }
+  static async hasFeatureAccess(userId: string, feature: string): Promise<boolean> {
+    const access = await this.getUserAccess(userId)
+    return access.features.includes(feature)
   }
 
-  static async checkAPICallLimit(
-    context: AccessControlContext,
-  ): Promise<{ allowed: boolean; reason?: string; remaining?: number }> {
-    if (context.isAdmin) {
-      return { allowed: true, remaining: -1 }
-    }
+  static async canCreateBot(userId: string): Promise<boolean> {
+    const access = await this.getUserAccess(userId)
 
-    try {
-      const limits = await subscriptionManager.getRemainingLimits(context.userId)
+    if (access.limits.bots === -1) return true // Unlimited
 
-      if (limits.apiCalls.remaining === 0) {
-        return {
-          allowed: false,
-          reason: "API call limit reached. Upgrade your plan for more API calls.",
-          remaining: 0,
-        }
-      }
-
-      return {
-        allowed: true,
-        remaining: limits.apiCalls.remaining,
-      }
-    } catch (error) {
-      console.error("API call limit check error:", error)
-      return {
-        allowed: false,
-        reason: "Unable to verify API call limits",
-      }
-    }
+    return access.usage.bots < access.limits.bots
   }
 
-  static async checkResourceAccess(
-    context: AccessControlContext,
-    resourceType: "bot" | "trade" | "portfolio",
-    resourceId: string,
-  ): Promise<{ allowed: boolean; reason?: string }> {
-    if (context.isAdmin) {
-      return { allowed: true }
-    }
+  static async canMakeAPICall(userId: string): Promise<boolean> {
+    const access = await this.getUserAccess(userId)
 
-    try {
-      // Check if user owns the resource
-      // This would typically involve database queries
-      // For now, we'll implement basic ownership check
+    if (access.limits.apiCalls === -1) return true // Unlimited
 
-      switch (resourceType) {
-        case "bot":
-          // Check if user owns the bot
-          // const bot = await database.getBotById(resourceId)
-          // return { allowed: bot?.userId === context.userId }
-          return { allowed: true } // Mock implementation
-
-        case "trade":
-          // Check if user owns the trade
-          return { allowed: true } // Mock implementation
-
-        case "portfolio":
-          // Check if user owns the portfolio
-          return { allowed: true } // Mock implementation
-
-        default:
-          return {
-            allowed: false,
-            reason: "Unknown resource type",
-          }
-      }
-    } catch (error) {
-      console.error("Resource access check error:", error)
-      return {
-        allowed: false,
-        reason: "Unable to verify resource access",
-      }
-    }
+    return access.usage.apiCalls < access.limits.apiCalls
   }
 
-  static async getAccessSummary(context: AccessControlContext): Promise<{
-    features: Record<string, boolean>
-    limits: {
-      bots: { used: number; limit: number; remaining: number }
-      apiCalls: { used: number; limit: number; remaining: number }
-    }
-    subscription: {
-      plan: string
-      status: string
-      canUpgrade: boolean
-    }
+  static async canCreatePortfolio(userId: string): Promise<boolean> {
+    const access = await this.getUserAccess(userId)
+
+    if (access.limits.portfolios === -1) return true // Unlimited
+
+    return access.usage.portfolios < access.limits.portfolios
+  }
+
+  static async canCreateAlert(userId: string): Promise<boolean> {
+    const access = await this.getUserAccess(userId)
+
+    if (access.limits.alerts === -1) return true // Unlimited
+
+    return access.usage.alerts < access.limits.alerts
+  }
+
+  static async incrementUsage(userId: string, type: "bots" | "apiCalls" | "portfolios" | "alerts"): Promise<void> {
+    const userSettings = await database.getUserSettings(userId)
+    if (!userSettings) return
+
+    const currentUsage = userSettings.usage || { bots: 0, apiCalls: 0, portfolios: 0, alerts: 0 }
+    currentUsage[type] = (currentUsage[type] || 0) + 1
+
+    await database.updateUserSettings(userId, { usage: currentUsage })
+  }
+
+  static async resetMonthlyUsage(userId: string): Promise<void> {
+    await database.updateUserSettings(userId, {
+      usage: { bots: 0, apiCalls: 0, portfolios: 0, alerts: 0 },
+    })
+  }
+
+  private static async getCurrentUsage(userId: string): Promise<UserAccess["usage"]> {
+    const userSettings = await database.getUserSettings(userId)
+
+    return (
+      userSettings?.usage || {
+        bots: 0,
+        apiCalls: 0,
+        portfolios: 0,
+        alerts: 0,
+      }
+    )
+  }
+
+  static getAccessLevels(): Record<string, AccessLevel> {
+    return this.accessLevels
+  }
+
+  static async getAccessSummary(userId: string): Promise<{
+    subscription: string
+    features: string[]
+    limits: UserAccess["limits"]
+    usage: UserAccess["usage"]
+    percentUsed: Record<string, number>
   }> {
-    try {
-      if (context.isAdmin) {
-        return {
-          features: {
-            unlimited_bots: true,
-            advanced_strategies: true,
-            api_access: true,
-            priority_support: true,
-            custom_strategies: true,
-          },
-          limits: {
-            bots: { used: 0, limit: -1, remaining: -1 },
-            apiCalls: { used: 0, limit: -1, remaining: -1 },
-          },
-          subscription: {
-            plan: "admin",
-            status: "active",
-            canUpgrade: false,
-          },
-        }
-      }
+    const access = await this.getUserAccess(userId)
 
-      const [subscriptionStatus, limits] = await Promise.all([
-        subscriptionManager.getSubscriptionStatus(context.userId),
-        subscriptionManager.getRemainingLimits(context.userId),
-      ])
+    const percentUsed: Record<string, number> = {}
 
-      const features = {
-        unlimited_bots: await subscriptionManager.checkAccess(context.userId, "unlimited_bots"),
-        advanced_strategies: await subscriptionManager.checkAccess(context.userId, "advanced_strategies"),
-        api_access: await subscriptionManager.checkAccess(context.userId, "api_access"),
-        priority_support: await subscriptionManager.checkAccess(context.userId, "priority_support"),
-        custom_strategies: await subscriptionManager.checkAccess(context.userId, "custom_strategies"),
-      }
+    Object.keys(access.limits).forEach((key) => {
+      const limit = access.limits[key as keyof typeof access.limits]
+      const used = access.usage[key as keyof typeof access.usage]
 
-      return {
-        features,
-        limits,
-        subscription: {
-          plan: subscriptionStatus.plan,
-          status: subscriptionStatus.status,
-          canUpgrade: subscriptionStatus.canUpgrade,
-        },
+      if (limit === -1) {
+        percentUsed[key] = 0 // Unlimited
+      } else {
+        percentUsed[key] = limit > 0 ? (used / limit) * 100 : 0
       }
-    } catch (error) {
-      console.error("Get access summary error:", error)
-      return {
-        features: {},
-        limits: {
-          bots: { used: 0, limit: 1, remaining: 1 },
-          apiCalls: { used: 0, limit: 100, remaining: 100 },
-        },
-        subscription: {
-          plan: "free",
-          status: "inactive",
-          canUpgrade: true,
-        },
-      }
+    })
+
+    return {
+      subscription: access.subscription,
+      features: access.features,
+      limits: access.limits,
+      usage: access.usage,
+      percentUsed,
     }
   }
 }

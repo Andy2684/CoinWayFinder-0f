@@ -9,18 +9,20 @@ export function formatCurrency(amount: number, currency = "USD"): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount)
+}
+
+export function formatNumber(num: number, decimals = 2): string {
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(num)
 }
 
 export function formatPercentage(value: number, decimals = 2): string {
   return `${(value * 100).toFixed(decimals)}%`
-}
-
-export function formatNumber(value: number, decimals = 2): string {
-  return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value)
 }
 
 export function formatDate(date: Date | string): string {
@@ -63,17 +65,28 @@ export function formatTimeAgo(date: Date | string): string {
   }
 
   const diffInDays = Math.floor(diffInHours / 24)
-  if (diffInDays < 30) {
+  if (diffInDays < 7) {
     return `${diffInDays}d ago`
   }
 
-  const diffInMonths = Math.floor(diffInDays / 30)
-  if (diffInMonths < 12) {
-    return `${diffInMonths}mo ago`
-  }
+  return formatDate(d)
+}
 
-  const diffInYears = Math.floor(diffInMonths / 12)
-  return `${diffInYears}y ago`
+export function truncateString(str: string, length: number): string {
+  if (str.length <= length) return str
+  return str.substring(0, length) + "..."
+}
+
+export function capitalizeFirst(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1)
+}
+
+export function slugify(str: string): string {
+  return str
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, "")
+    .replace(/[\s_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
 }
 
 export function generateId(length = 8): string {
@@ -85,23 +98,6 @@ export function generateId(length = 8): string {
   return result
 }
 
-export function slugify(text: string): string {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_-]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-}
-
-export function truncate(text: string, length: number): string {
-  if (text.length <= length) return text
-  return text.slice(0, length) + "..."
-}
-
-export function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase()
-}
-
 export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return emailRegex.test(email)
@@ -111,6 +107,10 @@ export function isValidPassword(password: string): boolean {
   // At least 8 characters, 1 uppercase, 1 lowercase, 1 number
   const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/
   return passwordRegex.test(password)
+}
+
+export function sanitizeInput(input: string): string {
+  return input.replace(/[<>]/g, "")
 }
 
 export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
@@ -140,68 +140,108 @@ export function randomBetween(min: number, max: number): number {
   return Math.random() * (max - min) + min
 }
 
-export function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max)
+export function roundToDecimals(num: number, decimals: number): number {
+  return Math.round(num * Math.pow(10, decimals)) / Math.pow(10, decimals)
 }
 
-export function roundTo(value: number, decimals: number): number {
-  return Math.round(value * Math.pow(10, decimals)) / Math.pow(10, decimals)
+export function calculatePercentageChange(oldValue: number, newValue: number): number {
+  if (oldValue === 0) return 0
+  return ((newValue - oldValue) / oldValue) * 100
 }
 
-export function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message
+export function formatLargeNumber(num: number): string {
+  if (num >= 1e9) {
+    return (num / 1e9).toFixed(1) + "B"
   }
-  if (typeof error === "string") {
-    return error
+  if (num >= 1e6) {
+    return (num / 1e6).toFixed(1) + "M"
   }
-  return "An unknown error occurred"
+  if (num >= 1e3) {
+    return (num / 1e3).toFixed(1) + "K"
+  }
+  return num.toString()
 }
 
-export function safeParseJSON<T>(json: string, fallback: T): T {
+export function getColorForPercentage(percentage: number): string {
+  if (percentage > 0) return "text-green-600"
+  if (percentage < 0) return "text-red-600"
+  return "text-gray-600"
+}
+
+export function getBgColorForPercentage(percentage: number): string {
+  if (percentage > 0) return "bg-green-100"
+  if (percentage < 0) return "bg-red-100"
+  return "bg-gray-100"
+}
+
+export function parseJSON<T>(str: string, fallback: T): T {
   try {
-    return JSON.parse(json)
+    return JSON.parse(str)
   } catch {
     return fallback
   }
 }
 
-export function omit<T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
-  const result = { ...obj }
-  keys.forEach((key) => delete result[key])
-  return result
+export function safeStringify(obj: any): string {
+  try {
+    return JSON.stringify(obj)
+  } catch {
+    return "{}"
+  }
 }
 
-export function pick<T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
-  const result = {} as Pick<T, K>
-  keys.forEach((key) => {
-    if (key in obj) {
-      result[key] = obj[key]
+export function createQueryString(params: Record<string, string | number | boolean>): string {
+  const searchParams = new URLSearchParams()
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      searchParams.set(key, String(value))
     }
   })
-  return result
+
+  return searchParams.toString()
 }
 
-export function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
-  return array.reduce(
-    (groups, item) => {
-      const group = String(item[key])
-      groups[group] = groups[group] || []
-      groups[group].push(item)
-      return groups
-    },
-    {} as Record<string, T[]>,
-  )
+export function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((word) => word.charAt(0))
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
 }
 
-export function unique<T>(array: T[]): T[] {
-  return [...new Set(array)]
-}
-
-export function chunk<T>(array: T[], size: number): T[][] {
-  const chunks: T[][] = []
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size))
+export function copyToClipboard(text: string): Promise<void> {
+  if (navigator.clipboard) {
+    return navigator.clipboard.writeText(text)
   }
-  return chunks
+
+  // Fallback for older browsers
+  const textArea = document.createElement("textarea")
+  textArea.value = text
+  document.body.appendChild(textArea)
+  textArea.select()
+  document.execCommand("copy")
+  document.body.removeChild(textArea)
+  return Promise.resolve()
+}
+
+export function downloadAsJSON(data: any, filename: string): void {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  a.download = filename
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+export function isClient(): boolean {
+  return typeof window !== "undefined"
+}
+
+export function isServer(): boolean {
+  return typeof window === "undefined"
 }

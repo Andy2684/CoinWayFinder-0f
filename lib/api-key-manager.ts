@@ -3,109 +3,158 @@ import crypto from "crypto"
 
 export interface APIKey {
   id: string
+  userId: string
   name: string
   key: string
   permissions: string[]
-  createdAt: Date
-  lastUsedAt?: Date
   isActive: boolean
+  lastUsedAt?: Date
+  createdAt: Date
+  expiresAt?: Date
+  usageCount: number
+  rateLimit: number
+}
+
+export interface CreateAPIKeyRequest {
+  name: string
+  permissions: string[]
+  expiresAt?: Date
+  rateLimit?: number
 }
 
 export class APIKeyManager {
-  static generateAPIKey(): string {
+  private static generateAPIKey(): string {
     return `cwf_${crypto.randomBytes(32).toString("hex")}`
   }
 
-  static async createAPIKey(
-    userId: string,
-    name: string,
-    permissions: string[] = ["read"],
-  ): Promise<{ success: boolean; apiKey?: string; message: string }> {
-    try {
-      const apiKey = this.generateAPIKey()
+  static async createAPIKey(userId: string, request: CreateAPIKeyRequest): Promise<APIKey> {
+    const key = this.generateAPIKey()
 
-      await database.createAPIKey(userId, {
-        name,
-        key: apiKey,
-        permissions,
-      })
+    const apiKeyData = {
+      userId,
+      name: request.name,
+      key,
+      permissions: request.permissions,
+      isActive: true,
+      createdAt: new Date(),
+      expiresAt: request.expiresAt,
+      usageCount: 0,
+      rateLimit: request.rateLimit || 1000,
+    }
 
-      return {
-        success: true,
-        apiKey,
-        message: "API key created successfully",
-      }
-    } catch (error) {
-      console.error("Create API key error:", error)
-      return {
-        success: false,
-        message: "Failed to create API key",
-      }
+    const createdKey = await database.createAPIKey(apiKeyData)
+
+    return {
+      id: createdKey._id!.toString(),
+      userId: createdKey.userId,
+      name: createdKey.name,
+      key: createdKey.key,
+      permissions: createdKey.permissions,
+      isActive: createdKey.isActive,
+      createdAt: createdKey.createdAt,
+      expiresAt: createdKey.expiresAt,
+      usageCount: createdKey.usageCount,
+      rateLimit: createdKey.rateLimit,
     }
   }
 
   static async getUserAPIKeys(userId: string): Promise<APIKey[]> {
-    try {
-      return (await database.getUserAPIKeys(userId)) || []
-    } catch (error) {
-      console.error("Get API keys error:", error)
-      return []
+    const keys = await database.getUserAPIKeys(userId)
+
+    return keys.map((key) => ({
+      id: key._id!.toString(),
+      userId: key.userId,
+      name: key.name,
+      key: key.key,
+      permissions: key.permissions,
+      isActive: key.isActive,
+      lastUsedAt: key.lastUsedAt,
+      createdAt: key.createdAt,
+      expiresAt: key.expiresAt,
+      usageCount: key.usageCount,
+      rateLimit: key.rateLimit,
+    }))
+  }
+
+  static async validateAPIKey(key: string): Promise<APIKey | null> {
+    const apiKey = await database.getAPIKey(key)
+
+    if (!apiKey || !apiKey.isActive) {
+      return null
+    }
+
+    // Check if key is expired
+    if (apiKey.expiresAt && apiKey.expiresAt < new Date()) {
+      await this.revokeAPIKey(apiKey._id!.toString())
+      return null
+    }
+
+    // Update last used timestamp and usage count
+    await database.updateAPIKey(apiKey._id!.toString(), {
+      lastUsedAt: new Date(),
+      usageCount: apiKey.usageCount + 1,
+    })
+
+    return {
+      id: apiKey._id!.toString(),
+      userId: apiKey.userId,
+      name: apiKey.name,
+      key: apiKey.key,
+      permissions: apiKey.permissions,
+      isActive: apiKey.isActive,
+      lastUsedAt: new Date(),
+      createdAt: apiKey.createdAt,
+      expiresAt: apiKey.expiresAt,
+      usageCount: apiKey.usageCount + 1,
+      rateLimit: apiKey.rateLimit,
     }
   }
 
-  static async validateAPIKey(apiKey: string): Promise<{
-    valid: boolean
-    userId?: string
-    permissions?: string[]
-  }> {
+  static async revokeAPIKey(keyId: string): Promise<boolean> {
     try {
-      // This would typically query a dedicated API keys table
-      // For now, we'll implement a basic validation
-      if (!apiKey.startsWith("cwf_")) {
-        return { valid: false }
-      }
-
-      // In a real implementation, you'd query the database
-      // For now, return a mock validation
-      return {
-        valid: true,
-        userId: "mock-user-id",
-        permissions: ["read", "write"],
-      }
+      await database.updateAPIKey(keyId, { isActive: false })
+      return true
     } catch (error) {
-      console.error("Validate API key error:", error)
-      return { valid: false }
+      console.error("Error revoking API key:", error)
+      return false
     }
   }
 
-  static async revokeAPIKey(userId: string, keyId: string): Promise<{ success: boolean; message: string }> {
+  static async deleteAPIKey(keyId: string): Promise<boolean> {
     try {
-      await database.deleteAPIKey(userId, keyId)
-      return {
-        success: true,
-        message: "API key revoked successfully",
-      }
+      await database.deleteAPIKey(keyId)
+      return true
     } catch (error) {
-      console.error("Revoke API key error:", error)
-      return {
-        success: false,
-        message: "Failed to revoke API key",
-      }
+      console.error("Error deleting API key:", error)
+      return false
     }
   }
 
-  static async updateAPIKeyUsage(apiKey: string): Promise<void> {
-    try {
-      // Update last used timestamp
-      // This would be implemented with proper database queries
-      console.log(`API key ${apiKey} used at ${new Date().toISOString()}`)
-    } catch (error) {
-      console.error("Update API key usage error:", error)
-    }
+  static async hasPermission(key: APIKey, permission: string): Promise<boolean> {
+    return key.permissions.includes(permission) || key.permissions.includes("*")
   }
 
-  static hasPermission(permissions: string[], requiredPermission: string): boolean {
-    return permissions.includes(requiredPermission) || permissions.includes("admin")
+  static async checkRateLimit(key: APIKey): Promise<boolean> {
+    // Simple rate limiting - check usage in last hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
+    const recentUsage = await database.getAPIKeyUsage(key.id, oneHourAgo)
+
+    return recentUsage < key.rateLimit
+  }
+
+  static getAvailablePermissions(): string[] {
+    return [
+      "bots:read",
+      "bots:write",
+      "bots:delete",
+      "trades:read",
+      "portfolio:read",
+      "market:read",
+      "news:read",
+      "whales:read",
+      "signals:read",
+      "*", // All permissions
+    ]
   }
 }
 

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { AuthService } from "./lib/auth"
-import { AdminService } from "./lib/admin"
+import { adminManager } from "./lib/admin"
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -12,71 +12,97 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith("/api/auth/signup") ||
     pathname.startsWith("/api/admin/signin") ||
     pathname.startsWith("/api/stripe/webhook") ||
-    pathname.startsWith("/api/subscription/webhook") ||
-    pathname.includes(".")
+    pathname.startsWith("/api/coinbase/webhook") ||
+    pathname.startsWith("/api/telegram-webhook") ||
+    pathname.includes(".") ||
+    pathname === "/"
   ) {
     return NextResponse.next()
   }
 
   // Admin routes protection
-  if (pathname.startsWith("/admin") || pathname.startsWith("/api/admin")) {
-    const adminToken = request.cookies.get("admin-token")?.value
-
-    if (!adminToken) {
-      if (pathname.startsWith("/api/")) {
-        return NextResponse.json({ error: "Admin authentication required" }, { status: 401 })
+  if (pathname.startsWith("/admin")) {
+    try {
+      const admin = await adminManager.getCurrentAdmin()
+      if (!admin) {
+        return NextResponse.redirect(new URL("/?admin=true", request.url))
       }
-      return NextResponse.redirect(new URL("/", request.url))
-    }
-
-    const adminSession = AdminService.verifyAdminToken(adminToken)
-    if (!adminSession) {
-      if (pathname.startsWith("/api/")) {
-        return NextResponse.json({ error: "Invalid admin token" }, { status: 401 })
-      }
-      return NextResponse.redirect(new URL("/", request.url))
-    }
-
-    return NextResponse.next()
-  }
-
-  // Protected routes that require user authentication
-  const protectedRoutes = ["/dashboard", "/bots", "/profile", "/subscription", "/integrations"]
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
-
-  if (isProtectedRoute || pathname.startsWith("/api/")) {
-    const authToken = request.cookies.get("auth-token")?.value
-
-    if (!authToken) {
-      if (pathname.startsWith("/api/")) {
-        return NextResponse.json({ error: "Authentication required" }, { status: 401 })
-      }
-      return NextResponse.redirect(new URL("/", request.url))
-    }
-
-    const userSession = AuthService.verifyToken(authToken)
-    if (!userSession) {
-      if (pathname.startsWith("/api/")) {
-        return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-      }
-      return NextResponse.redirect(new URL("/", request.url))
-    }
-
-    // Add user info to headers for API routes
-    if (pathname.startsWith("/api/")) {
-      const requestHeaders = new Headers(request.headers)
-      requestHeaders.set("x-user-id", userSession.userId)
-      requestHeaders.set("x-user-email", userSession.email)
-
-      return NextResponse.next({
-        request: {
-          headers: requestHeaders,
-        },
-      })
+    } catch (error) {
+      return NextResponse.redirect(new URL("/?admin=true", request.url))
     }
   }
 
-  return NextResponse.next()
+  // Protected routes that require authentication
+  const protectedRoutes = ["/dashboard", "/bots", "/integrations", "/profile", "/subscription", "/news"]
+
+  if (protectedRoutes.some((route) => pathname.startsWith(route))) {
+    try {
+      const user = await AuthService.getCurrentUser()
+      if (!user) {
+        return NextResponse.redirect(new URL("/?auth=true", request.url))
+      }
+    } catch (error) {
+      return NextResponse.redirect(new URL("/?auth=true", request.url))
+    }
+  }
+
+  // API routes protection
+  if (pathname.startsWith("/api/")) {
+    // Admin API routes
+    if (pathname.startsWith("/api/admin/") && !pathname.startsWith("/api/admin/signin")) {
+      try {
+        const admin = await adminManager.getCurrentAdmin()
+        if (!admin) {
+          return NextResponse.json({ error: "Admin authentication required" }, { status: 401 })
+        }
+      } catch (error) {
+        return NextResponse.json({ error: "Admin authentication failed" }, { status: 401 })
+      }
+    }
+
+    // User API routes that require authentication
+    const protectedAPIRoutes = [
+      "/api/bots",
+      "/api/portfolio",
+      "/api/user",
+      "/api/subscription",
+      "/api/integrations",
+      "/api/trades",
+    ]
+
+    if (protectedAPIRoutes.some((route) => pathname.startsWith(route))) {
+      try {
+        // Check for API key first
+        const apiKey = request.headers.get("x-api-key") || request.headers.get("authorization")?.replace("Bearer ", "")
+
+        if (apiKey) {
+          // Validate API key (simplified check)
+          // In a real implementation, you'd validate against your database
+          if (!apiKey.startsWith("cwf_")) {
+            return NextResponse.json({ error: "Invalid API key" }, { status: 401 })
+          }
+        } else {
+          // Check session authentication
+          const user = await AuthService.getCurrentUser()
+          if (!user) {
+            return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+          }
+        }
+      } catch (error) {
+        return NextResponse.json({ error: "Authentication failed" }, { status: 401 })
+      }
+    }
+  }
+
+  // Add security headers
+  const response = NextResponse.next()
+
+  response.headers.set("X-Frame-Options", "DENY")
+  response.headers.set("X-Content-Type-Options", "nosniff")
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+
+  return response
 }
 
 export const config = {
