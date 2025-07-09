@@ -21,6 +21,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
     }
 
+    console.log(`Processing webhook event: ${event.type}`)
+
     // Handle the event
     switch (event.type) {
       case "checkout.session.completed":
@@ -70,9 +72,32 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       return
     }
 
-    console.log(`Checkout completed for user ${userId}, plan ${planId}`)
+    console.log(`✅ Checkout completed for user ${userId}, plan ${planId}`)
 
-    // The subscription will be handled by the subscription.created event
+    // Update user settings immediately to unlock access
+    const userSettings = await database.getUserSettings(userId)
+    if (userSettings) {
+      userSettings.subscription = {
+        ...userSettings.subscription,
+        plan: planId as any,
+        status: "active",
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      }
+
+      userSettings.paymentStatus = {
+        lastPayment: new Date(),
+        stripeSessionId: session.id,
+        amount: session.amount_total || 0,
+        currency: session.currency || "usd",
+      }
+
+      await database.saveUserSettings(userSettings)
+      console.log(`🔓 Access unlocked for user ${userId}`)
+    }
+
+    // Send confirmation email (implement this based on your email service)
+    await sendConfirmationEmail(userId, planId, session)
   } catch (error) {
     console.error("Failed to handle checkout completion:", error)
   }
@@ -105,8 +130,10 @@ async function handleSubscriptionUpdate(subscription: Stripe.Subscription) {
       trialEndDate: settings.subscription.trialEndDate,
     }
 
+    settings.stripeSubscriptionId = subscription.id
+
     await database.saveUserSettings(settings)
-    console.log(`Updated subscription for user ${userId} to plan ${planId}`)
+    console.log(`🔄 Updated subscription for user ${userId} to plan ${planId}`)
   } catch (error) {
     console.error("Failed to handle subscription update:", error)
   }
@@ -125,7 +152,11 @@ async function handleSubscriptionCancellation(subscription: Stripe.Subscription)
     if (settings) {
       settings.subscription.status = "cancelled"
       await database.saveUserSettings(settings)
-      console.log(`Cancelled subscription for user ${userId}`)
+
+      // Stop all running bots for cancelled users
+      await database.stopUserBots(userId, "Subscription cancelled")
+
+      console.log(`❌ Cancelled subscription for user ${userId}`)
     }
   } catch (error) {
     console.error("Failed to handle subscription cancellation:", error)
@@ -134,10 +165,26 @@ async function handleSubscriptionCancellation(subscription: Stripe.Subscription)
 
 async function handlePaymentSuccess(invoice: Stripe.Invoice) {
   try {
-    const customerId = invoice.customer as string
     const subscriptionId = invoice.subscription as string
 
-    console.log(`Payment succeeded for customer ${customerId}, subscription ${subscriptionId}`)
+    if (subscriptionId) {
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+      const userId = subscription.metadata.userId
+
+      if (userId) {
+        const settings = await database.getUserSettings(userId)
+        if (settings) {
+          settings.paymentStatus = {
+            lastPayment: new Date(),
+            amount: invoice.amount_paid,
+            currency: invoice.currency,
+            stripeInvoiceId: invoice.id,
+          }
+          await database.saveUserSettings(settings)
+          console.log(`💰 Payment succeeded for user ${userId}: $${invoice.amount_paid / 100}`)
+        }
+      }
+    }
   } catch (error) {
     console.error("Failed to handle payment success:", error)
   }
@@ -145,16 +192,37 @@ async function handlePaymentSuccess(invoice: Stripe.Invoice) {
 
 async function handlePaymentFailure(invoice: Stripe.Invoice) {
   try {
-    const customerId = invoice.customer as string
     const subscriptionId = invoice.subscription as string
 
-    console.log(`Payment failed for customer ${customerId}, subscription ${subscriptionId}`)
+    if (subscriptionId) {
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+      const userId = subscription.metadata.userId
 
-    // You could add logic here to:
-    // - Send payment failure notifications
-    // - Pause bots if payment fails
-    // - Update subscription status
+      if (userId) {
+        // Stop bots on payment failure
+        await database.stopUserBots(userId, "Payment failed")
+        console.log(`💳 Payment failed for user ${userId} - bots stopped`)
+      }
+    }
   } catch (error) {
     console.error("Failed to handle payment failure:", error)
+  }
+}
+
+async function sendConfirmationEmail(userId: string, planId: string, session: Stripe.Checkout.Session) {
+  try {
+    // Get user details
+    const user = await database.getUserById(userId)
+    if (!user?.email) return
+
+    console.log(`📧 Sending confirmation email to ${user.email} for ${planId} plan`)
+
+    // Here you would integrate with your email service (SendGrid, Resend, etc.)
+    // For now, we'll just log it
+    console.log(`Email would be sent to: ${user.email}`)
+    console.log(`Plan: ${planId}`)
+    console.log(`Amount: $${(session.amount_total || 0) / 100}`)
+  } catch (error) {
+    console.error("Failed to send confirmation email:", error)
   }
 }

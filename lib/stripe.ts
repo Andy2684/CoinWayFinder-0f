@@ -1,7 +1,7 @@
 import Stripe from "stripe"
 
 if (!process.env.STRIPE_SECRET_KEY) {
-  throw new Error("STRIPE_SECRET_KEY is not set in environment variables")
+  throw new Error("STRIPE_SECRET_KEY is not set")
 }
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
@@ -9,101 +9,89 @@ export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   typescript: true,
 })
 
-export const STRIPE_PRICE_IDS = {
-  basic_monthly: "price_basic_monthly",
-  premium_monthly: "price_premium_monthly",
-  enterprise_monthly: "price_enterprise_monthly",
-  basic_yearly: "price_basic_yearly",
-  premium_yearly: "price_premium_yearly",
-  enterprise_yearly: "price_enterprise_yearly",
-}
-
-export const SUBSCRIPTION_PLANS = {
-  free: {
-    id: "free",
-    name: "Free Trial",
-    price: 0,
-    interval: "month" as const,
-    features: {
-      maxBots: 2,
-      strategies: ["Basic DCA", "Simple Grid"],
-      exchanges: ["Binance"],
-      aiRiskAnalysis: false,
-      prioritySupport: false,
-      advancedAnalytics: false,
-      customStrategies: false,
-      apiAccess: false,
-    },
-    limits: {
-      maxInvestmentPerBot: 100,
-      maxDailyTrades: 10,
-      maxLeverage: 1,
-    },
-  },
+export const STRIPE_PLANS = {
   basic: {
-    id: "basic",
-    name: "Basic",
-    price: 29,
-    interval: "month" as const,
-    stripePrice: STRIPE_PRICE_IDS.basic_monthly,
-    features: {
-      maxBots: 5,
-      strategies: ["DCA", "Grid Trading", "Scalping"],
-      exchanges: ["Binance", "Coinbase", "Kraken"],
-      aiRiskAnalysis: true,
-      prioritySupport: false,
-      advancedAnalytics: true,
-      customStrategies: false,
-      apiAccess: false,
-    },
-    limits: {
-      maxInvestmentPerBot: 1000,
-      maxDailyTrades: 100,
-      maxLeverage: 3,
-    },
+    name: "Basic Plan",
+    price: 2900, // $29.00 in cents
+    interval: "month",
+    features: ["3 Trading Bots", "100 Trades/Month", "AI Analysis", "News Alerts", "Email Support"],
   },
   premium: {
-    id: "premium",
-    name: "Premium",
-    price: 99,
-    interval: "month" as const,
-    stripePrice: STRIPE_PRICE_IDS.premium_monthly,
-    features: {
-      maxBots: 15,
-      strategies: ["All Strategies", "AI Smart Bot"],
-      exchanges: ["All Supported Exchanges"],
-      aiRiskAnalysis: true,
-      prioritySupport: true,
-      advancedAnalytics: true,
-      customStrategies: true,
-      apiAccess: true,
-    },
-    limits: {
-      maxInvestmentPerBot: 10000,
-      maxDailyTrades: 1000,
-      maxLeverage: 10,
-    },
+    name: "Premium Plan",
+    price: 4900, // $49.00 in cents
+    interval: "month",
+    features: [
+      "10 Trading Bots",
+      "1,000 Trades/Month",
+      "AI Analysis",
+      "Whale Tracking",
+      "News Alerts",
+      "Premium Strategies",
+      "API Access",
+      "Priority Support",
+    ],
   },
   enterprise: {
-    id: "enterprise",
-    name: "Enterprise",
-    price: 299,
-    interval: "month" as const,
-    stripePrice: STRIPE_PRICE_IDS.enterprise_monthly,
-    features: {
-      maxBots: -1, // unlimited
-      strategies: ["All Strategies", "Custom Development"],
-      exchanges: ["All + Custom Integrations"],
-      aiRiskAnalysis: true,
-      prioritySupport: true,
-      advancedAnalytics: true,
-      customStrategies: true,
-      apiAccess: true,
-    },
-    limits: {
-      maxInvestmentPerBot: -1, // unlimited
-      maxDailyTrades: -1, // unlimited
-      maxLeverage: 20,
-    },
+    name: "Enterprise Plan",
+    price: 9900, // $99.00 in cents
+    interval: "month",
+    features: [
+      "Unlimited Trading Bots",
+      "Unlimited Trades",
+      "AI Analysis",
+      "Whale Tracking",
+      "News Alerts",
+      "Premium Strategies",
+      "API Access",
+      "Priority Support",
+      "Custom Integrations",
+    ],
   },
+}
+
+export async function createStripeCustomer(email: string, name: string) {
+  return await stripe.customers.create({
+    email,
+    name,
+  })
+}
+
+export async function createCheckoutSession({
+  customerId,
+  priceId,
+  userId,
+  planId,
+  successUrl,
+  cancelUrl,
+}: {
+  customerId: string
+  priceId: string
+  userId: string
+  planId: string
+  successUrl: string
+  cancelUrl: string
+}) {
+  return await stripe.checkout.sessions.create({
+    customer: customerId,
+    payment_method_types: ["card"],
+    line_items: [
+      {
+        price: priceId,
+        quantity: 1,
+      },
+    ],
+    mode: "subscription",
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    metadata: {
+      userId,
+      planId,
+    },
+    subscription_data: {
+      metadata: {
+        userId,
+        planId,
+      },
+    },
+  })
 }
