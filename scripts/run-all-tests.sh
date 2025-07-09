@@ -127,7 +127,7 @@ run_test "System Test" "curl -f -s $BASE_URL/api/test > /dev/null"
 # Run Full System Test Suite
 print_status $BLUE "\n🚀 Running Full System Test Suite..."
 if command_exists tsx; then
-    run_test "Full System Test" "tsx scripts/execute-full-system-test.ts $BASE_URL"
+    run_test "Full System Test" "tsx scripts/run-full-system-test.ts $BASE_URL"
 else
     print_status $YELLOW "⚠️ tsx not found, skipping full system test"
 fi

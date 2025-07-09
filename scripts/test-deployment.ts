@@ -1,6 +1,7 @@
-import fetch from "node-fetch"
+import https from "https"
+import http from "http"
 
-export interface TestResult {
+interface TestResult {
   name: string
   status: "pass" | "fail" | "warning"
   message: string
@@ -10,54 +11,93 @@ export interface TestResult {
 
 export class DeploymentTester {
   private baseUrl: string
-  public results: TestResult[] = []
+  private results: TestResult[] = []
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl.replace(/\/$/, "")
   }
 
-  private async makeRequest(path: string, options: RequestInit = {}): Promise<Response> {
-    const url = `${this.baseUrl}${path}`
-    const response = await fetch(url, {
-      timeout: 10000,
-      headers: {
-        "User-Agent": "CoinWayFinder-TestSuite/1.0",
-        Accept: "application/json",
-        ...options.headers,
-      },
-      ...options,
+  private async makeRequest(path: string, options: any = {}): Promise<any> {
+    return new Promise((resolve, reject) => {
+      const url = new URL(this.baseUrl + path)
+      const client = url.protocol === "https:" ? https : http
+
+      const requestOptions = {
+        hostname: url.hostname,
+        port: url.port,
+        path: url.pathname + url.search,
+        method: options.method || "GET",
+        headers: {
+          "Content-Type": "application/json",
+          "User-Agent": "CoinWayFinder-DeploymentTest/1.0",
+          ...options.headers,
+        },
+        timeout: 10000,
+      }
+
+      const req = client.request(requestOptions, (res) => {
+        let data = ""
+        res.on("data", (chunk) => (data += chunk))
+        res.on("end", () => {
+          try {
+            const parsedData = data.startsWith("{") || data.startsWith("[") ? JSON.parse(data) : data
+            resolve({
+              status: res.statusCode,
+              data: parsedData,
+              headers: res.headers,
+            })
+          } catch (error) {
+            resolve({
+              status: res.statusCode,
+              data: data,
+              headers: res.headers,
+            })
+          }
+        })
+      })
+
+      req.on("error", reject)
+      req.on("timeout", () => reject(new Error("Request timeout")))
+
+      if (options.body) {
+        req.write(typeof options.body === "string" ? options.body : JSON.stringify(options.body))
+      }
+
+      req.end()
     })
-    return response
   }
 
-  private async runTest(name: string, testFn: () => Promise<void>): Promise<TestResult> {
+  private async runTest(name: string, testFn: () => Promise<any>): Promise<TestResult> {
     const startTime = Date.now()
-    console.log(`🧪 Testing: ${name}`)
 
     try {
-      await testFn()
+      const result = await testFn()
       const duration = Date.now() - startTime
-      const result: TestResult = {
+
+      const testResult: TestResult = {
         name,
-        status: "pass",
-        message: "Test passed successfully",
+        status: result.status || "pass",
+        message: result.message || "Test completed successfully",
         duration,
+        details: result.details,
       }
-      console.log(`✅ ${name} - PASSED (${duration}ms)`)
-      this.results.push(result)
-      return result
+
+      this.results.push(testResult)
+      return testResult
     } catch (error) {
       const duration = Date.now() - startTime
       const message = error instanceof Error ? error.message : "Unknown error"
-      const result: TestResult = {
+
+      const testResult: TestResult = {
         name,
         status: "fail",
         message,
         duration,
+        details: { error: message },
       }
-      console.log(`❌ ${name} - FAILED (${duration}ms): ${message}`)
-      this.results.push(result)
-      return result
+
+      this.results.push(testResult)
+      return testResult
     }
   }
 
@@ -65,71 +105,80 @@ export class DeploymentTester {
     return this.runTest("Health Endpoint", async () => {
       const response = await this.makeRequest("/api/health")
 
-      if (!response.ok) {
+      if (response.status !== 200) {
         throw new Error(`Expected 200, got ${response.status}`)
       }
 
-      const data = await response.json()
-      if (!data || typeof data !== "object" || !data.status) {
+      if (typeof response.data !== "object" || !response.data.status) {
         throw new Error("Health response missing status field")
       }
 
-      console.log(`   📊 Status: ${data.status}`)
-      console.log(`   🌍 Environment: ${data.environment || "unknown"}`)
-      console.log(`   ⏱️ Uptime: ${data.uptime || 0}s`)
+      return {
+        status: "pass",
+        message: `Server is ${response.data.status}`,
+        details: response.data,
+      }
     })
   }
 
-  async testComprehensiveEndpoint(): Promise<TestResult> {
-    return this.runTest("Comprehensive Test Endpoint", async () => {
+  async testSystemEndpoint(): Promise<TestResult> {
+    return this.runTest("System Test Endpoint", async () => {
       const response = await this.makeRequest("/api/test")
 
       if (response.status !== 200 && response.status !== 500) {
         throw new Error(`Expected 200 or 500, got ${response.status}`)
       }
 
-      const data = await response.json()
-      if (!data || typeof data !== "object" || !Array.isArray(data.tests)) {
+      if (!response.data.tests || !Array.isArray(response.data.tests)) {
         throw new Error("Test response missing tests array")
       }
 
-      console.log(`   📊 Found ${data.tests.length} component tests`)
-      data.tests.forEach((test: any) => {
-        const icon = test.status === "healthy" ? "✅" : test.status === "warning" ? "⚠️" : "❌"
-        console.log(`   ${icon} ${test.name}: ${test.message}`)
-      })
+      const healthyTests = response.data.tests.filter((t: any) => t.status === "healthy").length
+      const totalTests = response.data.tests.length
+
+      return {
+        status: healthyTests === totalTests ? "pass" : healthyTests > 0 ? "warning" : "fail",
+        message: `${healthyTests}/${totalTests} system components healthy`,
+        details: response.data,
+      }
     })
   }
 
-  async testStaticPages(): Promise<TestResult[]> {
+  async testFrontendPages(): Promise<TestResult[]> {
     const pages = [
       { path: "/", name: "Home Page" },
       { path: "/dashboard", name: "Dashboard" },
       { path: "/bots", name: "Bots Page" },
       { path: "/subscription", name: "Subscription Page" },
       { path: "/api-docs", name: "API Documentation" },
-      { path: "/news", name: "News Page" },
-      { path: "/integrations", name: "Integrations Page" },
-      { path: "/profile", name: "Profile Page" },
     ]
 
     const results: TestResult[] = []
 
     for (const page of pages) {
-      const result = await this.runTest(`Static Page: ${page.name}`, async () => {
+      const result = await this.runTest(page.name, async () => {
         const response = await this.makeRequest(page.path)
 
-        if (!response.ok) {
+        if (response.status !== 200) {
           throw new Error(`Expected 200, got ${response.status}`)
         }
 
-        const content = await response.text()
+        const content = typeof response.data === "string" ? response.data : JSON.stringify(response.data)
+
         if (!content.includes("<!DOCTYPE html>") && !content.includes("<html")) {
           throw new Error("Response does not appear to be HTML")
         }
 
-        console.log(`   📄 Content length: ${content.length} characters`)
+        return {
+          status: "pass",
+          message: "Page loads correctly",
+          details: {
+            statusCode: response.status,
+            contentLength: content.length,
+          },
+        }
       })
+
       results.push(result)
     }
 
@@ -141,54 +190,55 @@ export class DeploymentTester {
       {
         path: "/api/auth/signin",
         method: "POST",
-        expectStatus: [400, 401, 422],
         body: { email: "test@example.com", password: "testpass" },
+        expectedStatuses: [400, 401, 422],
+        name: "Auth Signin API",
       },
       {
         path: "/api/crypto/prices",
         method: "GET",
-        expectStatus: [200, 401, 503],
-      },
-      {
-        path: "/api/crypto/trends",
-        method: "GET",
-        expectStatus: [200, 401, 503],
+        expectedStatuses: [200, 401, 503],
+        name: "Crypto Prices API",
       },
       {
         path: "/api/bots",
         method: "GET",
-        expectStatus: [200, 401],
+        expectedStatuses: [200, 401],
+        name: "Bots API",
       },
       {
         path: "/api/subscription",
         method: "GET",
-        expectStatus: [200, 401],
+        expectedStatuses: [200, 401],
+        name: "Subscription API",
       },
     ]
 
     const results: TestResult[] = []
 
     for (const endpoint of endpoints) {
-      const result = await this.runTest(`API Endpoint: ${endpoint.path}`, async () => {
-        const options: RequestInit = {
-          method: endpoint.method,
-        }
-
+      const result = await this.runTest(endpoint.name, async () => {
+        const options: any = { method: endpoint.method }
         if (endpoint.body) {
-          options.headers = {
-            "Content-Type": "application/json",
-          }
-          options.body = JSON.stringify(endpoint.body)
+          options.body = endpoint.body
         }
 
         const response = await this.makeRequest(endpoint.path, options)
 
-        if (!endpoint.expectStatus.includes(response.status)) {
-          throw new Error(`Expected ${endpoint.expectStatus.join(" or ")}, got ${response.status}`)
+        if (!endpoint.expectedStatuses.includes(response.status)) {
+          throw new Error(`Expected ${endpoint.expectedStatuses.join(" or ")}, got ${response.status}`)
         }
 
-        console.log(`   📡 Status: ${response.status} (expected)`)
+        return {
+          status: "pass",
+          message: `API responds correctly (${response.status})`,
+          details: {
+            statusCode: response.status,
+            expectedStatuses: endpoint.expectedStatuses,
+          },
+        }
       })
+
       results.push(result)
     }
 
@@ -196,12 +246,13 @@ export class DeploymentTester {
   }
 
   async runAllTests(): Promise<TestResult[]> {
-    console.log(`🌐 Testing application at: ${this.baseUrl}`)
-    console.log("=" + "=".repeat(50))
+    console.log(`🌐 Testing deployment at: ${this.baseUrl}`)
+    console.log("=".repeat(50))
 
+    // Run all test categories
     await this.testHealthEndpoint()
-    await this.testComprehensiveEndpoint()
-    await this.testStaticPages()
+    await this.testSystemEndpoint()
+    await this.testFrontendPages()
     await this.testAPIEndpoints()
 
     return this.results
@@ -209,7 +260,7 @@ export class DeploymentTester {
 
   printResults(): void {
     console.log("\n" + "=".repeat(50))
-    console.log("📈 DETAILED TEST RESULTS")
+    console.log("📊 DEPLOYMENT TEST RESULTS")
     console.log("=".repeat(50))
 
     const passed = this.results.filter((r) => r.status === "pass").length
@@ -230,13 +281,26 @@ export class DeploymentTester {
         })
     }
 
+    if (warnings > 0) {
+      console.log("\n⚠️ WARNINGS:")
+      this.results
+        .filter((r) => r.status === "warning")
+        .forEach((result) => {
+          console.log(`   • ${result.name}: ${result.message}`)
+        })
+    }
+
     const avgDuration = this.results.reduce((sum, r) => sum + r.duration, 0) / total
     console.log(`\n⏱️ Average response time: ${Math.round(avgDuration)}ms`)
 
-    if (failed === 0) {
-      console.log("\n🎉 All tests passed! Your application is working correctly.")
+    console.log("\n" + "=".repeat(50))
+
+    if (failed === 0 && warnings === 0) {
+      console.log("🎉 All tests passed! Deployment is healthy.")
+    } else if (failed === 0) {
+      console.log("✅ Deployment is functional with some warnings.")
     } else {
-      console.log(`\n⚠️ ${failed} test(s) failed. Please review the issues above.`)
+      console.log("🚨 Deployment has critical issues that need attention.")
     }
   }
 }

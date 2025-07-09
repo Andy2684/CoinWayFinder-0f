@@ -1,3 +1,8 @@
+#!/usr/bin/env tsx
+
+import { spawn } from "child_process"
+import { fileURLToPath } from "url"
+import { dirname, join } from "path"
 import { DeploymentTester } from "./test-deployment"
 
 interface TestExecutionConfig {
@@ -285,34 +290,45 @@ class TestExecutor {
 }
 
 // Main execution
-async function main() {
-  const executor = new TestExecutor({
-    verbose: true,
-    timeout: 30000,
-    retries: 3,
+async function executeRunTests() {
+  console.log("🔧 CoinWayFinder Test Suite Executor")
+  console.log("=" + "=".repeat(50))
+
+  const baseUrl = process.argv[2] || process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+
+  console.log(`🌐 Target URL: ${baseUrl}`)
+  console.log("🚀 Executing comprehensive test suite...\n")
+
+  // Execute the bash script
+  const __filename = fileURLToPath(import.meta.url)
+  const __dirname = dirname(__filename)
+  const scriptPath = join(__dirname, "run-all-tests.sh")
+
+  const child = spawn("bash", [scriptPath, baseUrl], {
+    stdio: "inherit",
+    env: {
+      ...process.env,
+      NEXT_PUBLIC_BASE_URL: baseUrl,
+    },
   })
 
-  await executor.execute()
-}
+  child.on("close", (code) => {
+    if (code === 0) {
+      console.log("\n🎉 All tests completed successfully!")
+    } else {
+      console.log(`\n❌ Tests failed with exit code ${code}`)
+      process.exit(code)
+    }
+  })
 
-// Handle unhandled promise rejections
-process.on("unhandledRejection", (reason, promise) => {
-  console.error("❌ Unhandled Rejection at:", promise, "reason:", reason)
-  process.exit(1)
-})
-
-// Handle uncaught exceptions
-process.on("uncaughtException", (error) => {
-  console.error("❌ Uncaught Exception:", error)
-  process.exit(1)
-})
-
-// Run if called directly
-if (require.main === module) {
-  main().catch((error) => {
-    console.error("❌ Main execution failed:", error)
+  child.on("error", (error) => {
+    console.error("❌ Failed to execute test script:", error)
     process.exit(1)
   })
+}
+
+if (require.main === module) {
+  executeRunTests().catch(console.error)
 }
 
 export { TestExecutor }

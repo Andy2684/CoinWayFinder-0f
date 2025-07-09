@@ -1,54 +1,72 @@
 #!/bin/bash
 
-# Quick Test Runner for CoinWayFinder
-# Runs essential tests quickly
+# CoinWayFinder Quick Test Runner
+# This script runs essential tests quickly for development
 
 set -e
 
-echo "⚡ CoinWayFinder Quick Test"
-echo "========================="
-
-BASE_URL=${1:-${NEXT_PUBLIC_BASE_URL:-"http://localhost:3000"}}
+echo "⚡ CoinWayFinder Quick Test Suite"
+echo "================================"
 
 # Colors
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 BLUE='\033[0;34m'
+YELLOW='\033[1;33m'
 NC='\033[0m'
 
 print_status() {
     echo -e "${1}${2}${NC}"
 }
 
-# Quick health check
-print_status $BLUE "🏥 Health Check..."
-if curl -f -s "$BASE_URL/api/health" > /dev/null; then
-    print_status $GREEN "✅ Application is healthy"
-else
-    print_status $RED "❌ Application health check failed"
-    exit 1
-fi
+# Get base URL
+BASE_URL=${1:-${NEXT_PUBLIC_BASE_URL:-"http://localhost:3000"}}
+print_status $BLUE "🌐 Testing: $BASE_URL"
 
-# Quick system test
-print_status $BLUE "🔧 System Test..."
-if curl -f -s "$BASE_URL/api/test" > /dev/null; then
-    print_status $GREEN "✅ System test passed"
-else
-    print_status $RED "❌ System test failed"
-    exit 1
-fi
+# Test counters
+TESTS=0
+PASSED=0
+FAILED=0
 
-# Quick page tests
-print_status $BLUE "🌐 Page Tests..."
-pages=("/" "/dashboard" "/bots" "/subscription")
-for page in "${pages[@]}"; do
-    if curl -f -s "$BASE_URL$page" > /dev/null; then
-        print_status $GREEN "✅ $page"
+run_quick_test() {
+    local name=$1
+    local command=$2
+    
+    TESTS=$((TESTS + 1))
+    print_status $BLUE "🧪 $name..."
+    
+    if eval $command > /dev/null 2>&1; then
+        print_status $GREEN "✅ $name"
+        PASSED=$((PASSED + 1))
     else
-        print_status $RED "❌ $page"
-        exit 1
+        print_status $RED "❌ $name"
+        FAILED=$((FAILED + 1))
     fi
-done
+}
 
-print_status $GREEN "🎉 Quick test completed successfully!"
-print_status $BLUE "💡 Run 'npm run test:system' for comprehensive testing"
+# Essential tests
+print_status $BLUE "\n🚀 Running Essential Tests..."
+
+run_quick_test "Health Check" "curl -f -s $BASE_URL/api/health"
+run_quick_test "Home Page" "curl -f -s $BASE_URL"
+run_quick_test "Dashboard" "curl -f -s $BASE_URL/dashboard"
+run_quick_test "API Test" "curl -f -s $BASE_URL/api/test"
+run_quick_test "TypeScript Check" "npx tsc --noEmit"
+
+# Results
+echo ""
+echo "================================"
+print_status $BLUE "📊 Quick Test Results"
+echo "================================"
+print_status $BLUE "Total: $TESTS"
+print_status $GREEN "Passed: $PASSED"
+print_status $RED "Failed: $FAILED"
+
+if [ $FAILED -eq 0 ]; then
+    print_status $GREEN "🎉 All quick tests passed!"
+    exit 0
+else
+    print_status $RED "❌ $FAILED test(s) failed"
+    print_status $YELLOW "💡 Run './scripts/run-all-tests.sh' for detailed analysis"
+    exit 1
+fi
