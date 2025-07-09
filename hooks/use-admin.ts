@@ -1,55 +1,118 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
+import { toast } from "sonner"
 
-interface AdminUser {
+export interface AdminUser {
   id: string
   username: string
   email: string
-  role: "admin"
+  role: string
   permissions: string[]
+}
+
+export interface AdminStats {
+  totalUsers: number
+  activeBots: number
+  totalTrades: number
+  systemHealth: string
 }
 
 export function useAdmin() {
   const [admin, setAdmin] = useState<AdminUser | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState<AdminStats | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
-    checkAdminStatus()
+  const checkAdminSession = useCallback(async () => {
+    try {
+      const response = await fetch("/api/admin/me", {
+        credentials: "include",
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.success) {
+          setAdmin(data.admin)
+          setStats(data.stats)
+        }
+      }
+    } catch (error) {
+      console.error("Admin session check failed:", error)
+    } finally {
+      setIsLoading(false)
+    }
   }, [])
 
-  const checkAdminStatus = async () => {
+  useEffect(() => {
+    checkAdminSession()
+  }, [checkAdminSession])
+
+  const signIn = async (username: string, password: string): Promise<boolean> => {
     try {
-      const response = await fetch("/api/admin/me")
+      const response = await fetch("/api/admin/signin", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ username, password }),
+      })
+
       const data = await response.json()
 
       if (data.success) {
         setAdmin(data.admin)
+        toast.success("🔓 Admin access granted", {
+          description: "You now have unlimited system access",
+        })
+
+        // Refresh stats
+        await checkAdminSession()
+        return true
       } else {
-        setAdmin(null)
+        toast.error("Admin authentication failed", {
+          description: data.error || "Invalid credentials",
+        })
+        return false
       }
     } catch (error) {
-      setAdmin(null)
-    } finally {
-      setLoading(false)
+      console.error("Admin sign in error:", error)
+      toast.error("Admin sign in failed", {
+        description: "Network error occurred",
+      })
+      return false
     }
   }
 
-  const signOut = async () => {
+  const signOut = async (): Promise<void> => {
     try {
-      await fetch("/api/admin/signout", { method: "POST" })
+      await fetch("/api/admin/signout", {
+        method: "POST",
+        credentials: "include",
+      })
+
       setAdmin(null)
-      window.location.reload()
+      setStats(null)
+
+      toast.success("Admin session ended", {
+        description: "You have been signed out of admin mode",
+      })
     } catch (error) {
-      console.error("Admin signout error:", error)
+      console.error("Admin sign out error:", error)
     }
+  }
+
+  const refreshStats = async (): Promise<void> => {
+    await checkAdminSession()
   }
 
   return {
     admin,
-    loading,
+    stats,
+    isLoading,
     isAdmin: !!admin,
+    signIn,
     signOut,
-    checkAdminStatus,
+    refreshStats,
   }
 }

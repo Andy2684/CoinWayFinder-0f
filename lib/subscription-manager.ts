@@ -1,141 +1,62 @@
 import { database } from "./database"
-import { AdminService } from "./admin"
-import Stripe from "stripe"
+import { adminManager, type AdminSession } from "./admin"
 
-export interface SubscriptionPlan {
-  id: string
-  name: string
-  price: number
-  interval: "month" | "year"
-  features: {
-    maxBots: number
-    strategies: string[]
-    exchanges: string[]
-    aiRiskAnalysis: boolean
-    prioritySupport: boolean
-    advancedAnalytics: boolean
-    customStrategies: boolean
-    apiAccess: boolean
-  }
-  limits: {
-    maxInvestmentPerBot: number
-    maxDailyTrades: number
-    maxLeverage: number
-  }
+export interface SubscriptionLimits {
+  maxBots: number
+  maxTrades: number
+  aiAnalysis: boolean
+  whaleTracking: boolean
+  newsAlerts: boolean
+  premiumStrategies: boolean
+  apiAccess: boolean
+  prioritySupport: boolean
 }
 
-export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
+export const SUBSCRIPTION_LIMITS: Record<string, SubscriptionLimits> = {
   free: {
-    id: "free",
-    name: "Free Trial",
-    price: 0,
-    interval: "month",
-    features: {
-      maxBots: 1,
-      strategies: ["dca"],
-      exchanges: ["binance"],
-      aiRiskAnalysis: true,
-      prioritySupport: false,
-      advancedAnalytics: false,
-      customStrategies: false,
-      apiAccess: false,
-    },
-    limits: {
-      maxInvestmentPerBot: 100,
-      maxDailyTrades: 10,
-      maxLeverage: 1,
-    },
+    maxBots: 1,
+    maxTrades: 10,
+    aiAnalysis: false,
+    whaleTracking: false,
+    newsAlerts: false,
+    premiumStrategies: false,
+    apiAccess: false,
+    prioritySupport: false,
   },
   basic: {
-    id: "basic",
-    name: "Basic",
-    price: 29,
-    interval: "month",
-    features: {
-      maxBots: 3,
-      strategies: ["dca", "grid", "scalping"],
-      exchanges: ["binance", "bybit"],
-      aiRiskAnalysis: true,
-      prioritySupport: false,
-      advancedAnalytics: true,
-      customStrategies: false,
-      apiAccess: false,
-    },
-    limits: {
-      maxInvestmentPerBot: 1000,
-      maxDailyTrades: 50,
-      maxLeverage: 3,
-    },
+    maxBots: 3,
+    maxTrades: 100,
+    aiAnalysis: true,
+    whaleTracking: false,
+    newsAlerts: true,
+    premiumStrategies: false,
+    apiAccess: false,
+    prioritySupport: false,
   },
   premium: {
-    id: "premium",
-    name: "Premium",
-    price: 79,
-    interval: "month",
-    features: {
-      maxBots: 10,
-      strategies: ["dca", "grid", "scalping", "long-short", "trend-following"],
-      exchanges: ["binance", "bybit", "kucoin", "okx"],
-      aiRiskAnalysis: true,
-      prioritySupport: true,
-      advancedAnalytics: true,
-      customStrategies: true,
-      apiAccess: true,
-    },
-    limits: {
-      maxInvestmentPerBot: 10000,
-      maxDailyTrades: 200,
-      maxLeverage: 10,
-    },
+    maxBots: 10,
+    maxTrades: 1000,
+    aiAnalysis: true,
+    whaleTracking: true,
+    newsAlerts: true,
+    premiumStrategies: true,
+    apiAccess: true,
+    prioritySupport: true,
   },
   enterprise: {
-    id: "enterprise",
-    name: "Enterprise",
-    price: 199,
-    interval: "month",
-    features: {
-      maxBots: -1, // Unlimited
-      strategies: ["dca", "grid", "scalping", "long-short", "trend-following", "arbitrage"],
-      exchanges: ["binance", "bybit", "kucoin", "okx", "coinbase", "bitget", "gateio"],
-      aiRiskAnalysis: true,
-      prioritySupport: true,
-      advancedAnalytics: true,
-      customStrategies: true,
-      apiAccess: true,
-    },
-    limits: {
-      maxInvestmentPerBot: -1, // Unlimited
-      maxDailyTrades: -1, // Unlimited
-      maxLeverage: 20,
-    },
-  },
-  // Admin plan with unlimited everything
-  admin: {
-    id: "admin",
-    name: "Admin Access",
-    price: 0,
-    interval: "month",
-    features: {
-      maxBots: -1, // Unlimited
-      strategies: ["dca", "grid", "scalping", "long-short", "trend-following", "arbitrage", "custom"],
-      exchanges: ["binance", "bybit", "kucoin", "okx", "coinbase", "bitget", "gateio", "all"],
-      aiRiskAnalysis: true,
-      prioritySupport: true,
-      advancedAnalytics: true,
-      customStrategies: true,
-      apiAccess: true,
-    },
-    limits: {
-      maxInvestmentPerBot: -1, // Unlimited
-      maxDailyTrades: -1, // Unlimited
-      maxLeverage: 100, // Max leverage
-    },
+    maxBots: -1, // unlimited
+    maxTrades: -1, // unlimited
+    aiAnalysis: true,
+    whaleTracking: true,
+    newsAlerts: true,
+    premiumStrategies: true,
+    apiAccess: true,
+    prioritySupport: true,
   },
 }
 
-export class SubscriptionManager {
+class SubscriptionManager {
   private static instance: SubscriptionManager
-  private stripe: Stripe
 
   static getInstance(): SubscriptionManager {
     if (!SubscriptionManager.instance) {
@@ -144,410 +65,121 @@ export class SubscriptionManager {
     return SubscriptionManager.instance
   }
 
-  constructor() {
-    this.stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "", {
-      apiVersion: "2023-10-16",
-    })
-  }
-
-  async getUserPlan(userId: string): Promise<SubscriptionPlan> {
-    // Check if current user is admin
-    const isAdmin = await AdminService.hasAdminPrivileges()
-    if (isAdmin) {
-      return SUBSCRIPTION_PLANS.admin
-    }
-
-    const settings = await database.getUserSettings(userId)
-
-    if (!settings) {
-      return SUBSCRIPTION_PLANS.free
-    }
-
-    const planId = settings.subscription.plan
-    return SUBSCRIPTION_PLANS[planId] || SUBSCRIPTION_PLANS.free
-  }
-
-  async canCreateBot(userId: string): Promise<{ allowed: boolean; reason?: string }> {
-    // Admin bypass
-    const isAdmin = await AdminService.hasAdminPrivileges()
-    if (isAdmin) {
-      return { allowed: true }
-    }
-
-    const plan = await this.getUserPlan(userId)
-    const userBots = await database.getUserBots(userId)
-
-    if (plan.features.maxBots !== -1 && userBots.length >= plan.features.maxBots) {
+  async getUserLimits(userId: string, adminSession?: AdminSession | null): Promise<SubscriptionLimits> {
+    // Admin bypass - unlimited access
+    if (adminSession?.isAdmin && adminManager.bypassSubscriptionCheck(adminSession)) {
       return {
-        allowed: false,
-        reason: `You've reached the maximum number of bots (${plan.features.maxBots}) for your ${plan.name} plan`,
+        maxBots: -1,
+        maxTrades: -1,
+        aiAnalysis: true,
+        whaleTracking: true,
+        newsAlerts: true,
+        premiumStrategies: true,
+        apiAccess: true,
+        prioritySupport: true,
       }
     }
 
-    return { allowed: true }
-  }
-
-  async canUseStrategy(userId: string, strategy: string): Promise<{ allowed: boolean; reason?: string }> {
-    // Admin bypass
-    const isAdmin = await AdminService.hasAdminPrivileges()
-    if (isAdmin) {
-      return { allowed: true }
-    }
-
-    const plan = await this.getUserPlan(userId)
-
-    if (!plan.features.strategies.includes(strategy)) {
-      return {
-        allowed: false,
-        reason: `The ${strategy} strategy is not available in your ${plan.name} plan`,
-      }
-    }
-
-    return { allowed: true }
-  }
-
-  async canUseExchange(userId: string, exchange: string): Promise<{ allowed: boolean; reason?: string }> {
-    // Admin bypass
-    const isAdmin = await AdminService.hasAdminPrivileges()
-    if (isAdmin) {
-      return { allowed: true }
-    }
-
-    const plan = await this.getUserPlan(userId)
-
-    if (!plan.features.exchanges.includes(exchange) && !plan.features.exchanges.includes("all")) {
-      return {
-        allowed: false,
-        reason: `The ${exchange} exchange is not available in your ${plan.name} plan`,
-      }
-    }
-
-    return { allowed: true }
-  }
-
-  async validateBotConfig(
-    userId: string,
-    config: {
-      investment: number
-      leverage?: number
-      strategy: string
-      exchange: string
-    },
-  ): Promise<{ valid: boolean; errors: string[] }> {
-    // Admin bypass
-    const isAdmin = await AdminService.hasAdminPrivileges()
-    if (isAdmin) {
-      return { valid: true, errors: [] }
-    }
-
-    const plan = await this.getUserPlan(userId)
-    const errors: string[] = []
-
-    // Check investment limit
-    if (plan.limits.maxInvestmentPerBot !== -1 && config.investment > plan.limits.maxInvestmentPerBot) {
-      errors.push(`Investment amount exceeds limit of $${plan.limits.maxInvestmentPerBot} for your ${plan.name} plan`)
-    }
-
-    // Check leverage limit
-    if (config.leverage && plan.limits.maxLeverage !== -1 && config.leverage > plan.limits.maxLeverage) {
-      errors.push(`Leverage exceeds limit of ${plan.limits.maxLeverage}x for your ${plan.name} plan`)
-    }
-
-    // Check strategy availability
-    const strategyCheck = await this.canUseStrategy(userId, config.strategy)
-    if (!strategyCheck.allowed) {
-      errors.push(strategyCheck.reason!)
-    }
-
-    // Check exchange availability
-    const exchangeCheck = await this.canUseExchange(userId, config.exchange)
-    if (!exchangeCheck.allowed) {
-      errors.push(exchangeCheck.reason!)
-    }
-
-    return {
-      valid: errors.length === 0,
-      errors,
-    }
-  }
-
-  async isTrialExpired(userId: string): Promise<boolean> {
-    // Admin never expires
-    const isAdmin = await AdminService.hasAdminPrivileges()
-    if (isAdmin) {
-      return false
-    }
-
-    const settings = await database.getUserSettings(userId)
-
-    if (!settings || !settings.subscription.trialEndDate) {
-      return false
-    }
-
-    return new Date() > settings.subscription.trialEndDate
-  }
-
-  async getUsageStats(userId: string): Promise<{
-    botsUsed: number
-    botsLimit: number
-    dailyTrades: number
-    dailyTradesLimit: number
-    planName: string
-  }> {
-    const plan = await this.getUserPlan(userId)
-    const userBots = await database.getUserBots(userId)
-
-    // Get today's trades
-    const today = new Date()
-    today.setHours(0, 0, 0, 0)
-    const todayTrades = await database.getUserTrades(userId, 1000)
-    const dailyTrades = todayTrades.filter((trade) => trade.timestamp >= today).length
-
-    return {
-      botsUsed: userBots.length,
-      botsLimit: plan.features.maxBots,
-      dailyTrades,
-      dailyTradesLimit: plan.limits.maxDailyTrades,
-      planName: plan.name,
-    }
-  }
-
-  async upgradePlan(
-    userId: string,
-    newPlanId: string,
-    paymentMethodId?: string,
-  ): Promise<{
-    success: boolean
-    error?: string
-    subscriptionId?: string
-  }> {
     try {
-      const newPlan = SUBSCRIPTION_PLANS[newPlanId]
-      if (!newPlan) {
-        return { success: false, error: "Invalid plan selected" }
-      }
-
-      // In production, integrate with Stripe here
-      const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
-      // Update user settings
-      const settings = await database.getUserSettings(userId)
-      if (settings) {
-        const endDate = new Date()
-        endDate.setMonth(endDate.getMonth() + (newPlan.interval === "year" ? 12 : 1))
-
-        settings.subscription = {
-          plan: newPlanId,
-          status: "active",
-          startDate: new Date(),
-          endDate,
-          trialUsed: settings.subscription.trialUsed,
-          trialEndDate: settings.subscription.trialEndDate,
-        }
-
-        await database.saveUserSettings(settings)
-      }
-
-      return {
-        success: true,
-        subscriptionId,
-      }
-    } catch (error) {
-      console.error("Plan upgrade failed:", error)
-      return {
-        success: false,
-        error: "Failed to upgrade plan. Please try again.",
-      }
-    }
-  }
-
-  async cancelSubscription(userId: string): Promise<{ success: boolean; error?: string }> {
-    try {
-      const settings = await database.getUserSettings(userId)
-      if (settings) {
-        settings.subscription.status = "cancelled"
-        await database.saveUserSettings(settings)
-      }
-
-      return { success: true }
-    } catch (error) {
-      console.error("Subscription cancellation failed:", error)
-      return {
-        success: false,
-        error: "Failed to cancel subscription. Please contact support.",
-      }
-    }
-  }
-
-  async processReferral(
-    userId: string,
-    referralCode: string,
-  ): Promise<{
-    success: boolean
-    bonusDays?: number
-    error?: string
-  }> {
-    try {
-      // Find referrer by referral code
-      const referrerSettings = await database.getUserSettings(referralCode) // This would need a different query
-      if (!referrerSettings) {
-        return { success: false, error: "Invalid referral code" }
-      }
-
-      // Add bonus days to new user
       const userSettings = await database.getUserSettings(userId)
-      if (userSettings) {
-        const bonusDays = 5
-        const newEndDate = new Date(userSettings.subscription.endDate)
-        newEndDate.setDate(newEndDate.getDate() + bonusDays)
 
-        userSettings.subscription.endDate = newEndDate
-        userSettings.referrals.referredBy = referrerSettings.userId
-        userSettings.referrals.bonusDays += bonusDays
-
-        await database.saveUserSettings(userSettings)
-
-        return { success: true, bonusDays }
+      if (!userSettings) {
+        return SUBSCRIPTION_LIMITS.free
       }
 
-      return { success: false, error: "User not found" }
+      const plan = userSettings.subscription.plan
+      const status = userSettings.subscription.status
+
+      // If subscription is expired or cancelled, downgrade to free
+      if (status !== "active") {
+        return SUBSCRIPTION_LIMITS.free
+      }
+
+      return SUBSCRIPTION_LIMITS[plan] || SUBSCRIPTION_LIMITS.free
     } catch (error) {
-      console.error("Referral processing failed:", error)
-      return {
-        success: false,
-        error: "Failed to process referral",
-      }
+      console.error("Error getting user limits:", error)
+      return SUBSCRIPTION_LIMITS.free
     }
   }
 
-  async createSubscription(
+  async canCreateBot(userId: string, adminSession?: AdminSession | null): Promise<boolean> {
+    // Admin bypass
+    if (adminSession?.isAdmin && adminManager.bypassSubscriptionCheck(adminSession)) {
+      return true
+    }
+
+    const limits = await this.getUserLimits(userId, adminSession)
+    if (limits.maxBots === -1) return true // unlimited
+
+    const userBots = await database.getUserBots(userId)
+    return userBots.length < limits.maxBots
+  }
+
+  async canExecuteTrade(userId: string, adminSession?: AdminSession | null): Promise<boolean> {
+    // Admin bypass
+    if (adminSession?.isAdmin && adminManager.bypassSubscriptionCheck(adminSession)) {
+      return true
+    }
+
+    const limits = await this.getUserLimits(userId, adminSession)
+    if (limits.maxTrades === -1) return true // unlimited
+
+    const userTrades = await database.getUserTrades(userId, limits.maxTrades + 1)
+    return userTrades.length < limits.maxTrades
+  }
+
+  async hasFeatureAccess(
     userId: string,
-    planId: string,
-    paymentMethodId: string,
-  ): Promise<{
-    success: boolean
-    subscriptionId?: string
-    clientSecret?: string
-    error?: string
-  }> {
-    try {
-      const plan = SUBSCRIPTION_PLANS[planId]
-      if (!plan || plan.id === "free") {
-        return { success: false, error: "Invalid plan" }
-      }
-
-      // Create Stripe customer
-      const customer = await this.stripe.customers.create({
-        metadata: { userId },
-      })
-
-      // Attach payment method
-      await this.stripe.paymentMethods.attach(paymentMethodId, {
-        customer: customer.id,
-      })
-
-      // Create subscription
-      const subscription = await this.stripe.subscriptions.create({
-        customer: customer.id,
-        items: [
-          {
-            price_data: {
-              currency: "usd",
-              product_data: {
-                name: plan.name,
-              },
-              unit_amount: plan.price * 100, // Convert to cents
-              recurring: {
-                interval: plan.interval,
-              },
-            },
-          },
-        ],
-        default_payment_method: paymentMethodId,
-        expand: ["latest_invoice.payment_intent"],
-      })
-
-      // Update user subscription in database
-      const settings = await database.getUserSettings(userId)
-      if (settings) {
-        settings.subscription = {
-          plan: planId,
-          status: "active",
-          startDate: new Date(),
-          endDate: new Date(subscription.current_period_end * 1000),
-          trialUsed: settings.subscription.trialUsed,
-          trialEndDate: settings.subscription.trialEndDate,
-        }
-        await database.saveUserSettings(settings)
-      }
-
-      return {
-        success: true,
-        subscriptionId: subscription.id,
-      }
-    } catch (error: any) {
-      console.error("Subscription creation failed:", error)
-      return {
-        success: false,
-        error: error.message,
-      }
+    feature: keyof SubscriptionLimits,
+    adminSession?: AdminSession | null,
+  ): Promise<boolean> {
+    // Admin bypass
+    if (adminSession?.isAdmin && adminManager.bypassSubscriptionCheck(adminSession)) {
+      return true
     }
+
+    const limits = await this.getUserLimits(userId, adminSession)
+    return limits[feature] === true
   }
 
-  async handleWebhook(event: any): Promise<void> {
+  async checkSubscriptionExpiry(): Promise<void> {
     try {
-      switch (event.type) {
-        case "invoice.payment_succeeded":
-          await this.handlePaymentSuccess(event.data.object)
-          break
-        case "invoice.payment_failed":
-          await this.handlePaymentFailed(event.data.object)
-          break
-        case "customer.subscription.deleted":
-          await this.handleSubscriptionCancelled(event.data.object)
-          break
-        default:
-          console.log(`Unhandled event type: ${event.type}`)
+      const expiredSubscriptions = await database.getExpiredSubscriptions()
+
+      for (const userSettings of expiredSubscriptions) {
+        // Update subscription status
+        await database.updateSubscriptionStatus(userSettings.userId, "expired")
+
+        // Stop all running bots for expired users
+        const stoppedBots = await database.stopUserBots(userSettings.userId, "Subscription expired")
+
+        console.log(`Stopped ${stoppedBots} bots for expired user: ${userSettings.userId}`)
       }
     } catch (error) {
-      console.error("Webhook handling failed:", error)
+      console.error("Error checking subscription expiry:", error)
     }
   }
 
-  private async handlePaymentSuccess(invoice: any): Promise<void> {
-    // Update user subscription status
-    const customerId = invoice.customer
-    const customer = await this.stripe.customers.retrieve(customerId)
+  async upgradeSubscription(userId: string, newPlan: string, durationMonths = 1): Promise<boolean> {
+    try {
+      const userSettings = await database.getUserSettings(userId)
+      if (!userSettings) return false
 
-    if (customer && !customer.deleted && customer.metadata?.userId) {
-      const userId = customer.metadata.userId
-      const settings = await database.getUserSettings(userId)
+      const endDate = new Date()
+      endDate.setMonth(endDate.getMonth() + durationMonths)
 
-      if (settings) {
-        settings.subscription.status = "active"
-        settings.subscription.endDate = new Date(invoice.period_end * 1000)
-        await database.saveUserSettings(settings)
+      userSettings.subscription = {
+        ...userSettings.subscription,
+        plan: newPlan as any,
+        status: "active",
+        endDate,
       }
-    }
-  }
 
-  private async handlePaymentFailed(invoice: any): Promise<void> {
-    // Handle failed payment - maybe send notification
-    console.log("Payment failed for invoice:", invoice.id)
-  }
-
-  private async handleSubscriptionCancelled(subscription: any): Promise<void> {
-    const customerId = subscription.customer
-    const customer = await this.stripe.customers.retrieve(customerId)
-
-    if (customer && !customer.deleted && customer.metadata?.userId) {
-      const userId = customer.metadata.userId
-      const settings = await database.getUserSettings(userId)
-
-      if (settings) {
-        settings.subscription.status = "cancelled"
-        await database.saveUserSettings(settings)
-      }
+      await database.saveUserSettings(userSettings)
+      return true
+    } catch (error) {
+      console.error("Error upgrading subscription:", error)
+      return false
     }
   }
 }
