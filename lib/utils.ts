@@ -5,36 +5,19 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatCurrency(amount: number, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-  }).format(amount)
-}
-
-export function formatNumber(num: number, decimals = 2): string {
-  return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(num)
-}
-
-export function formatPercentage(value: number, decimals = 2): string {
-  return `${(value * 100).toFixed(decimals)}%`
-}
-
-export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOptions): string {
-  const dateObj = typeof date === "string" ? new Date(date) : date
-  return new Intl.DateTimeFormat("en-US", {
+// Date utilities
+export function formatDate(date: Date | string): string {
+  const d = new Date(date)
+  return d.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
-    ...options,
-  }).format(dateObj)
+  })
 }
 
 export function formatDateTime(date: Date | string): string {
-  return formatDate(date, {
+  const d = new Date(date)
+  return d.toLocaleString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -44,33 +27,91 @@ export function formatDateTime(date: Date | string): string {
 }
 
 export function formatRelativeTime(date: Date | string): string {
-  const dateObj = typeof date === "string" ? new Date(date) : date
+  const d = new Date(date)
   const now = new Date()
-  const diffInSeconds = Math.floor((now.getTime() - dateObj.getTime()) / 1000)
+  const diffInSeconds = Math.floor((now.getTime() - d.getTime()) / 1000)
 
   if (diffInSeconds < 60) {
     return "just now"
-  } else if (diffInSeconds < 3600) {
-    const minutes = Math.floor(diffInSeconds / 60)
-    return `${minutes} minute${minutes > 1 ? "s" : ""} ago`
-  } else if (diffInSeconds < 86400) {
-    const hours = Math.floor(diffInSeconds / 3600)
-    return `${hours} hour${hours > 1 ? "s" : ""} ago`
-  } else if (diffInSeconds < 2592000) {
-    const days = Math.floor(diffInSeconds / 86400)
-    return `${days} day${days > 1 ? "s" : ""} ago`
-  } else {
-    return formatDate(dateObj)
   }
+
+  const diffInMinutes = Math.floor(diffInSeconds / 60)
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes}m ago`
+  }
+
+  const diffInHours = Math.floor(diffInMinutes / 60)
+  if (diffInHours < 24) {
+    return `${diffInHours}h ago`
+  }
+
+  const diffInDays = Math.floor(diffInHours / 24)
+  if (diffInDays < 7) {
+    return `${diffInDays}d ago`
+  }
+
+  return formatDate(d)
 }
 
-export function truncateString(str: string, maxLength: number): string {
-  if (str.length <= maxLength) return str
-  return str.substring(0, maxLength - 3) + "..."
+// Currency utilities
+export function formatCurrency(amount: number, currency = "USD"): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)
 }
 
-export function capitalizeFirst(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1)
+export function formatCrypto(amount: number, symbol = "BTC", decimals = 8): string {
+  return `${amount.toFixed(decimals)} ${symbol}`
+}
+
+export function formatPercentage(value: number, decimals = 2): string {
+  return `${value.toFixed(decimals)}%`
+}
+
+// Number utilities
+export function formatNumber(num: number, decimals = 2): string {
+  if (num >= 1e9) {
+    return `${(num / 1e9).toFixed(decimals)}B`
+  }
+  if (num >= 1e6) {
+    return `${(num / 1e6).toFixed(decimals)}M`
+  }
+  if (num >= 1e3) {
+    return `${(num / 1e3).toFixed(decimals)}K`
+  }
+  return num.toFixed(decimals)
+}
+
+export function parseNumber(str: string): number {
+  const num = Number.parseFloat(str.replace(/[^0-9.-]/g, ""))
+  return isNaN(num) ? 0 : num
+}
+
+// Validation utilities
+export function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(email)
+}
+
+export function isValidPassword(password: string): boolean {
+  // At least 8 characters, 1 uppercase, 1 lowercase, 1 number
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/
+  return passwordRegex.test(password)
+}
+
+export function isValidUsername(username: string): boolean {
+  // 3-20 characters, alphanumeric and underscores only
+  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
+  return usernameRegex.test(username)
+}
+
+// String utilities
+export function truncateString(str: string, length: number): string {
+  if (str.length <= length) return str
+  return str.substring(0, length) + "..."
 }
 
 export function slugify(str: string): string {
@@ -81,90 +122,15 @@ export function slugify(str: string): string {
     .replace(/^-+|-+$/g, "")
 }
 
-export function generateId(length = 8): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-  let result = ""
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return result
+export function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
 
-export function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email)
+export function camelToKebab(str: string): string {
+  return str.replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, "$1-$2").toLowerCase()
 }
 
-export function isValidUrl(url: string): boolean {
-  try {
-    new URL(url)
-    return true
-  } catch {
-    return false
-  }
-}
-
-export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout
-  return (...args: Parameters<T>) => {
-    clearTimeout(timeout)
-    timeout = setTimeout(() => func(...args), wait)
-  }
-}
-
-export function throttle<T extends (...args: any[]) => any>(func: T, limit: number): (...args: Parameters<T>) => void {
-  let inThrottle: boolean
-  return (...args: Parameters<T>) => {
-    if (!inThrottle) {
-      func(...args)
-      inThrottle = true
-      setTimeout(() => (inThrottle = false), limit)
-    }
-  }
-}
-
-export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-export function randomBetween(min: number, max: number): number {
-  return Math.random() * (max - min) + min
-}
-
-export function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max)
-}
-
-export function roundTo(value: number, decimals: number): number {
-  return Number(Math.round(Number(value + "e" + decimals)) + "e-" + decimals)
-}
-
-export function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  return String(error)
-}
-
-export function isClient(): boolean {
-  return typeof window !== "undefined"
-}
-
-export function isServer(): boolean {
-  return typeof window === "undefined"
-}
-
-export function getBaseUrl(): string {
-  if (isClient()) return window.location.origin
-  return process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"
-}
-
-export function parseJSON<T>(str: string, fallback: T): T {
-  try {
-    return JSON.parse(str)
-  } catch {
-    return fallback
-  }
-}
-
+// Object utilities
 export function omit<T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
   const result = { ...obj }
   keys.forEach((key) => delete result[key])
@@ -181,6 +147,25 @@ export function pick<T extends Record<string, any>, K extends keyof T>(obj: T, k
   return result
 }
 
+export function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
+  const result = { ...target }
+
+  for (const key in source) {
+    if (source[key] && typeof source[key] === "object" && !Array.isArray(source[key])) {
+      result[key] = deepMerge(result[key] || {}, source[key] as any)
+    } else {
+      result[key] = source[key] as any
+    }
+  }
+
+  return result
+}
+
+// Array utilities
+export function unique<T>(array: T[]): T[] {
+  return [...new Set(array)]
+}
+
 export function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
   return array.reduce(
     (groups, item) => {
@@ -193,10 +178,6 @@ export function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
   )
 }
 
-export function unique<T>(array: T[]): T[] {
-  return [...new Set(array)]
-}
-
 export function chunk<T>(array: T[], size: number): T[][] {
   const chunks: T[][] = []
   for (let i = 0; i < array.length; i += size) {
@@ -205,17 +186,154 @@ export function chunk<T>(array: T[], size: number): T[][] {
   return chunks
 }
 
-export function flatten<T>(array: T[][]): T[] {
-  return array.reduce((acc, val) => acc.concat(val), [])
+export function shuffle<T>(array: T[]): T[] {
+  const shuffled = [...array]
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]]
+  }
+  return shuffled
 }
 
-export function sortBy<T>(array: T[], key: keyof T, direction: "asc" | "desc" = "asc"): T[] {
-  return [...array].sort((a, b) => {
-    const aVal = a[key]
-    const bVal = b[key]
-
-    if (aVal < bVal) return direction === "asc" ? -1 : 1
-    if (aVal > bVal) return direction === "asc" ? 1 : -1
-    return 0
+// URL utilities
+export function buildUrl(base: string, params: Record<string, any>): string {
+  const url = new URL(base)
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      url.searchParams.set(key, String(value))
+    }
   })
+  return url.toString()
+}
+
+export function parseQueryString(query: string): Record<string, string> {
+  const params = new URLSearchParams(query)
+  const result: Record<string, string> = {}
+  params.forEach((value, key) => {
+    result[key] = value
+  })
+  return result
+}
+
+// Crypto utilities
+export function generateId(length = 16): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+  let result = ""
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return result
+}
+
+// Error utilities
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message
+  }
+  if (typeof error === "string") {
+    return error
+  }
+  return "An unknown error occurred"
+}
+
+export function isError(value: unknown): value is Error {
+  return value instanceof Error
+}
+
+// Type utilities
+export function isString(value: unknown): value is string {
+  return typeof value === "string"
+}
+
+export function isNumber(value: unknown): value is number {
+  return typeof value === "number" && !isNaN(value)
+}
+
+export function isBoolean(value: unknown): value is boolean {
+  return typeof value === "boolean"
+}
+
+export function isObject(value: unknown): value is Record<string, any> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+export function isArray(value: unknown): value is any[] {
+  return Array.isArray(value)
+}
+
+// Async utilities
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+export function timeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Operation timed out")), ms)),
+  ])
+}
+
+export function retry<T>(fn: () => Promise<T>, attempts = 3, delay = 1000): Promise<T> {
+  return fn().catch(async (error) => {
+    if (attempts <= 1) {
+      throw error
+    }
+    await sleep(delay)
+    return retry(fn, attempts - 1, delay * 2)
+  })
+}
+
+// Local storage utilities
+export function getFromStorage(key: string): string | null {
+  if (typeof window === "undefined") return null
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
+  }
+}
+
+export function setToStorage(key: string, value: string): void {
+  if (typeof window === "undefined") return
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function removeFromStorage(key: string): void {
+  if (typeof window === "undefined") return
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+// Theme utilities
+export function getSystemTheme(): "light" | "dark" {
+  if (typeof window === "undefined") return "light"
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+}
+
+// Debounce utility
+export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout)
+    timeout = setTimeout(() => func(...args), wait)
+  }
+}
+
+// Throttle utility
+export function throttle<T extends (...args: any[]) => any>(func: T, limit: number): (...args: Parameters<T>) => void {
+  let inThrottle: boolean
+  return (...args: Parameters<T>) => {
+    if (!inThrottle) {
+      func(...args)
+      inThrottle = true
+      setTimeout(() => (inThrottle = false), limit)
+    }
+  }
 }

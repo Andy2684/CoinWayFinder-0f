@@ -4,125 +4,80 @@ import { authService } from "./lib/auth"
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Skip middleware for static files and API routes that don't need auth
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api/auth/signin") ||
-    pathname.startsWith("/api/auth/signup") ||
-    pathname.startsWith("/api/admin/signin") ||
-    pathname.startsWith("/api/crypto/prices") ||
-    pathname.startsWith("/api/crypto/news") ||
-    pathname.startsWith("/api/v1") ||
-    pathname.includes(".")
-  ) {
+  // Public routes that don't require authentication
+  const publicRoutes = [
+    "/",
+    "/api/auth/signin",
+    "/api/auth/signup",
+    "/api/crypto/prices",
+    "/api/crypto/news",
+    "/api/crypto/trends",
+    "/api/news",
+    "/api-docs",
+  ]
+
+  // Admin routes
+  const adminRoutes = ["/admin", "/api/admin"]
+
+  // API routes that require authentication
+  const protectedApiRoutes = ["/api/bots", "/api/trades", "/api/portfolio", "/api/user", "/api/subscription"]
+
+  // Check if route is public
+  if (publicRoutes.some((route) => pathname.startsWith(route))) {
     return NextResponse.next()
   }
 
-  // Protected routes that require authentication
-  const protectedRoutes = ["/dashboard", "/bots", "/profile", "/subscription", "/integrations", "/news"]
-  const adminRoutes = ["/admin"]
-
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
-  const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route))
-
-  // Check admin authentication
-  if (isAdminRoute) {
+  // Handle admin routes
+  if (adminRoutes.some((route) => pathname.startsWith(route))) {
     const adminToken = request.cookies.get("admin-token")?.value
 
     if (!adminToken) {
-      return NextResponse.redirect(new URL("/?admin=login", request.url))
+      if (pathname.startsWith("/api/admin")) {
+        return NextResponse.json({ error: "Admin authentication required" }, { status: 401 })
+      }
+      return NextResponse.redirect(new URL("/", request.url))
     }
 
     const admin = await authService.verifyAdminToken(adminToken)
     if (!admin) {
-      return NextResponse.redirect(new URL("/?admin=login", request.url))
-    }
-
-    // Add admin info to headers for API routes
-    const response = NextResponse.next()
-    response.headers.set("x-admin-id", admin.id)
-    response.headers.set("x-admin-username", admin.username)
-    response.headers.set("x-admin-role", admin.role)
-    return response
-  }
-
-  // Check user authentication for protected routes
-  if (isProtectedRoute) {
-    const authToken = request.cookies.get("auth-token")?.value
-
-    if (!authToken) {
-      return NextResponse.redirect(new URL("/?login=required", request.url))
-    }
-
-    const user = await authService.verifyAuthToken(authToken)
-    if (!user) {
-      return NextResponse.redirect(new URL("/?login=expired", request.url))
-    }
-
-    // Add user info to headers for API routes
-    const response = NextResponse.next()
-    response.headers.set("x-user-id", user.id)
-    response.headers.set("x-user-email", user.email)
-    response.headers.set("x-user-username", user.username)
-    return response
-  }
-
-  // Handle API routes that need authentication
-  if (pathname.startsWith("/api/")) {
-    // Admin API routes
-    if (pathname.startsWith("/api/admin/")) {
-      const adminToken =
-        request.cookies.get("admin-token")?.value || request.headers.get("authorization")?.replace("Bearer ", "")
-
-      if (!adminToken) {
-        return NextResponse.json({ error: "Admin authentication required" }, { status: 401 })
-      }
-
-      const admin = await authService.verifyAdminToken(adminToken)
-      if (!admin) {
+      if (pathname.startsWith("/api/admin")) {
         return NextResponse.json({ error: "Invalid admin token" }, { status: 401 })
       }
-
-      // Add admin info to headers
-      const response = NextResponse.next()
-      response.headers.set("x-admin-id", admin.id)
-      response.headers.set("x-admin-username", admin.username)
-      response.headers.set("x-admin-role", admin.role)
-      return response
+      return NextResponse.redirect(new URL("/", request.url))
     }
 
-    // User API routes that need authentication
-    const userApiRoutes = [
-      "/api/bots",
-      "/api/user",
-      "/api/subscription",
-      "/api/portfolio",
-      "/api/trades",
-      "/api/integrations",
-    ]
+    return NextResponse.next()
+  }
 
-    const needsUserAuth = userApiRoutes.some((route) => pathname.startsWith(route))
+  // Handle protected routes
+  const authToken = request.cookies.get("auth-token")?.value
 
-    if (needsUserAuth) {
-      const authToken =
-        request.cookies.get("auth-token")?.value || request.headers.get("authorization")?.replace("Bearer ", "")
-
-      if (!authToken) {
-        return NextResponse.json({ error: "Authentication required" }, { status: 401 })
-      }
-
-      const user = await authService.verifyAuthToken(authToken)
-      if (!user) {
-        return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 })
-      }
-
-      // Add user info to headers
-      const response = NextResponse.next()
-      response.headers.set("x-user-id", user.id)
-      response.headers.set("x-user-email", user.email)
-      response.headers.set("x-user-username", user.username)
-      return response
+  if (!authToken) {
+    if (protectedApiRoutes.some((route) => pathname.startsWith(route))) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
+    return NextResponse.redirect(new URL("/", request.url))
+  }
+
+  const user = await authService.verifyAuthToken(authToken)
+  if (!user) {
+    if (protectedApiRoutes.some((route) => pathname.startsWith(route))) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
+    }
+    return NextResponse.redirect(new URL("/", request.url))
+  }
+
+  // Add user info to headers for API routes
+  if (pathname.startsWith("/api/")) {
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set("x-user-id", user.id)
+    requestHeaders.set("x-user-email", user.email)
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
   }
 
   return NextResponse.next()
@@ -135,7 +90,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - public folder
      */
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/((?!_next/static|_next/image|favicon.ico|public/).*)",
   ],
 }

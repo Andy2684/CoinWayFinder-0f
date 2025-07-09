@@ -29,7 +29,7 @@ export interface AdminUser {
   role: "admin"
 }
 
-class AuthService {
+export class AuthService {
   async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 12)
   }
@@ -309,49 +309,68 @@ class AuthService {
   }
 }
 
-export const authService = new AuthService()
+export class AuthManager {
+  private authService = new AuthService()
 
-// Create AuthManager class for compatibility
-class AuthManager {
   async register(email: string, username: string, password: string): Promise<AuthResult> {
-    return authService.register(email, username, password)
+    return this.authService.register(email, username, password)
   }
 
   async login(email: string, password: string): Promise<AuthResult> {
-    return authService.login(email, password)
+    return this.authService.login(email, password)
   }
 
   async logout(): Promise<void> {
-    return authService.logout()
+    return this.authService.logout()
   }
 
   async getCurrentUser(): Promise<User | null> {
-    return authService.getCurrentUser()
+    return this.authService.getCurrentUser()
   }
 
   async adminLogin(
     username: string,
     password: string,
   ): Promise<{ success: boolean; user?: AdminUser; token?: string; message?: string }> {
-    return authService.adminLogin(username, password)
+    return this.authService.adminLogin(username, password)
   }
 
   async adminLogout(): Promise<void> {
-    return authService.adminLogout()
+    return this.authService.adminLogout()
   }
 
   async getCurrentAdmin(): Promise<AdminUser | null> {
-    return authService.getCurrentAdmin()
+    return this.authService.getCurrentAdmin()
   }
 
   async verifyAuthToken(token: string): Promise<User | null> {
-    return authService.verifyAuthToken(token)
+    return this.authService.verifyAuthToken(token)
   }
 
   async verifyAdminToken(token: string): Promise<AdminUser | null> {
-    return authService.verifyAdminToken(token)
+    return this.authService.verifyAdminToken(token)
   }
 }
 
-// Export the required authManager instance for backward compatibility
+// Create instances for export
+export const authService = new AuthService()
 export const authManager = new AuthManager()
+
+// Legacy exports for backward compatibility
+export const hashPassword = (password: string) => authService.hashPassword(password)
+export const comparePassword = (password: string, hashedPassword: string) =>
+  authService.verifyPassword(password, hashedPassword)
+export const generateToken = (payload: any) => authService.generateToken(payload)
+export const verifyToken = (token: string) => authService.verifyToken(token)
+export const getCurrentUser = () => authService.getCurrentUser()
+export const requireAuth = async () => {
+  const user = await authService.getCurrentUser()
+  if (!user) {
+    throw new Error("Authentication required")
+  }
+  return user
+}
+export const signUp = (email: string, username: string, password: string) =>
+  authService.register(email, username, password)
+export const signIn = (email: string, password: string) => authService.login(email, password)
+export const signOut = () => authService.logout()
