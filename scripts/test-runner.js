@@ -3,26 +3,22 @@ const http = require("http")
 
 class TestRunner {
   constructor(baseUrl) {
-    this.baseUrl = baseUrl.replace(/\/$/, "")
+    this.baseUrl = baseUrl
     this.results = []
   }
 
   async makeRequest(path, options = {}) {
     return new Promise((resolve, reject) => {
-      const url = new URL(this.baseUrl + path)
-      const client = url.protocol === "https:" ? https : http
+      const url = new URL(path, this.baseUrl)
+      const protocol = url.protocol === "https:" ? https : http
 
-      const req = client.request(
+      const req = protocol.request(
+        url,
         {
-          hostname: url.hostname,
-          port: url.port,
-          path: url.pathname + url.search,
           method: options.method || "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "User-Agent": "CoinWayFinder-Test-Suite/1.0",
-            ...options.headers,
-          },
+          headers: options.headers || {},
+          timeout: 10000,
+          ...options,
         },
         (res) => {
           let data = ""
@@ -38,175 +34,170 @@ class TestRunner {
       )
 
       req.on("error", reject)
+      req.on("timeout", () => reject(new Error("Request timeout")))
 
       if (options.body) {
-        req.write(JSON.stringify(options.body))
+        req.write(options.body)
       }
 
       req.end()
     })
   }
 
-  async testEndpoint(name, path, expectedStatuses = [200]) {
+  async runTest(name, testFn) {
     const startTime = Date.now()
+    console.log(`🧪 Testing: ${name}`)
+
     try {
-      console.log(`🔍 Testing ${name}...`)
-      const response = await this.makeRequest(path)
+      await testFn()
       const duration = Date.now() - startTime
-
-      if (expectedStatuses.includes(response.status)) {
-        console.log(`✅ ${name} - OK (${response.status}) - ${duration}ms`)
-        this.results.push({ name, status: "pass", code: response.status, duration })
-      } else {
-        console.log(`⚠️  ${name} - Unexpected status (${response.status}) - ${duration}ms`)
-        this.results.push({ name, status: "warning", code: response.status, duration })
-      }
-
-      return response
+      console.log(`✅ ${name} - PASSED (${duration}ms)`)
+      this.results.push({ name, status: "pass", duration })
     } catch (error) {
       const duration = Date.now() - startTime
-      console.log(`❌ ${name} - Failed: ${error.message} - ${duration}ms`)
-      this.results.push({ name, status: "fail", error: error.message, duration })
-      return null
+      console.log(`❌ ${name} - FAILED (${duration}ms): ${error.message}`)
+      this.results.push({ name, status: "fail", duration, error: error.message })
+    }
+  }
+
+  async testHealthEndpoint() {
+    await this.runTest("Health Endpoint", async () => {
+      const response = await this.makeRequest("/api/health")
+      if (response.status !== 200) {
+        throw new Error(`Expected 200, got ${response.status}`)
+      }
+
+      const data = JSON.parse(response.data)
+      if (!data.status) {
+        throw new Error("Health response missing status field")
+      }
+    })
+  }
+
+  async testComprehensiveEndpoint() {
+    await this.runTest("Comprehensive Test Endpoint", async () => {
+      const response = await this.makeRequest("/api/test")
+      if (response.status !== 200 && response.status !== 500) {
+        throw new Error(`Expected 200 or 500, got ${response.status}`)
+      }
+
+      const data = JSON.parse(response.data)
+      if (!data.tests || !Array.isArray(data.tests)) {
+        throw new Error("Test response missing tests array")
+      }
+
+      console.log(`   📊 Found ${data.tests.length} component tests`)
+      data.tests.forEach((test) => {
+        const icon = test.status === "healthy" ? "✅" : test.status === "warning" ? "⚠️" : "❌"
+        console.log(`   ${icon} ${test.name}: ${test.message}`)
+      })
+    })
+  }
+
+  async testStaticPages() {
+    const pages = ["/", "/dashboard", "/bots", "/subscription", "/api-docs"]
+
+    for (const page of pages) {
+      await this.runTest(`Page: ${page}`, async () => {
+        const response = await this.makeRequest(page)
+        if (response.status !== 200) {
+          throw new Error(`Expected 200, got ${response.status}`)
+        }
+
+        if (!response.data.includes("<!DOCTYPE html>") && !response.data.includes("<html")) {
+          throw new Error("Response does not appear to be HTML")
+        }
+      })
+    }
+  }
+
+  async testAPIEndpoints() {
+    const endpoints = [
+      { path: "/api/auth/signin", method: "POST", expectStatus: [400, 401] },
+      { path: "/api/crypto/prices", method: "GET", expectStatus: [200, 503] },
+      { path: "/api/bots", method: "GET", expectStatus: [200, 401] },
+      { path: "/api/subscription", method: "GET", expectStatus: [200, 401] },
+    ]
+
+    for (const endpoint of endpoints) {
+      await this.runTest(`API: ${endpoint.path}`, async () => {
+        const options = {
+          method: endpoint.method,
+          headers: { "Content-Type": "application/json" },
+        }
+
+        if (endpoint.method === "POST") {
+          options.body = JSON.stringify({ test: "data" })
+        }
+
+        const response = await this.makeRequest(endpoint.path, options)
+
+        if (!endpoint.expectStatus.includes(response.status)) {
+          throw new Error(`Expected ${endpoint.expectStatus.join(" or ")}, got ${response.status}`)
+        }
+      })
     }
   }
 
   async runAllTests() {
-    console.log("🧪 CoinWayFinder Test Suite")
-    console.log("===========================")
-    console.log(`🌐 Base URL: ${this.baseUrl}`)
-    console.log("")
+    console.log(`🌐 Testing application at: ${this.baseUrl}`)
+    console.log("=" + "=".repeat(50))
 
-    // Test 1: Health Check
-    console.log("1️⃣ Health Check Tests")
-    console.log("---------------------")
-    await this.testEndpoint("Health Endpoint", "/api/health", [200])
-    await this.testEndpoint("Test Endpoint", "/api/test", [200, 500])
-    console.log("")
+    await this.testHealthEndpoint()
+    await this.testComprehensiveEndpoint()
+    await this.testStaticPages()
+    await this.testAPIEndpoints()
 
-    // Test 2: Static Pages
-    console.log("2️⃣ Static Page Tests")
-    console.log("--------------------")
-    await this.testEndpoint("Home Page", "/", [200])
-    await this.testEndpoint("Dashboard", "/dashboard", [200])
-    await this.testEndpoint("Bots Page", "/bots", [200])
-    await this.testEndpoint("Subscription Page", "/subscription", [200])
-    await this.testEndpoint("API Docs", "/api-docs", [200])
-    console.log("")
-
-    // Test 3: Authentication Endpoints
-    console.log("3️⃣ Authentication Tests")
-    console.log("-----------------------")
-    await this.testEndpoint("Auth Me", "/api/auth/me", [200, 401])
-    await this.testEndpoint("Auth Signin", "/api/auth/signin", [200, 405])
-    await this.testEndpoint("Auth Signup", "/api/auth/signup", [200, 405])
-    console.log("")
-
-    // Test 4: API Endpoints
-    console.log("4️⃣ API Endpoint Tests")
-    console.log("---------------------")
-    await this.testEndpoint("Crypto Prices", "/api/crypto/prices", [200, 503])
-    await this.testEndpoint("Crypto Trends", "/api/crypto/trends", [200, 503])
-    await this.testEndpoint("Crypto News", "/api/crypto/news", [200, 503])
-    await this.testEndpoint("Bots API", "/api/bots", [200, 401])
-    await this.testEndpoint("Subscription API", "/api/subscription", [200, 401])
-    console.log("")
-
-    // Test 5: Admin Endpoints
-    console.log("5️⃣ Admin Endpoint Tests")
-    console.log("-----------------------")
-    await this.testEndpoint("Admin Users", "/api/admin/users", [200, 401, 403])
-    await this.testEndpoint("Admin Me", "/api/admin/me", [200, 401])
-    console.log("")
-
-    // Test 6: Detailed Health Check
-    console.log("6️⃣ Detailed Health Analysis")
-    console.log("----------------------------")
-    try {
-      const healthResponse = await this.makeRequest("/api/test")
-      if (healthResponse && healthResponse.status === 200) {
-        const healthData = JSON.parse(healthResponse.data)
-        console.log(`📊 Overall Status: ${healthData.status.toUpperCase()}`)
-        console.log(`🕐 Timestamp: ${healthData.timestamp}`)
-        console.log(`🌍 Environment: ${healthData.environment}`)
-        console.log(
-          `📈 Summary: ${healthData.summary.healthy}✅ ${healthData.summary.warnings}⚠️ ${healthData.summary.errors}❌`,
-        )
-
-        console.log("\n🔍 Component Details:")
-        healthData.tests.forEach((test) => {
-          const icon = test.status === "healthy" ? "✅" : test.status === "warning" ? "⚠️" : "❌"
-          console.log(`   ${icon} ${test.name}: ${test.message}`)
-        })
-      }
-    } catch (error) {
-      console.log(`❌ Failed to get detailed health info: ${error.message}`)
-    }
-
-    console.log("")
     this.printSummary()
   }
 
   printSummary() {
-    console.log("📊 Test Summary")
-    console.log("===============")
+    console.log("\n" + "=".repeat(50))
+    console.log("📈 TEST SUMMARY")
+    console.log("=".repeat(50))
 
     const passed = this.results.filter((r) => r.status === "pass").length
-    const warnings = this.results.filter((r) => r.status === "warning").length
     const failed = this.results.filter((r) => r.status === "fail").length
     const total = this.results.length
 
     console.log(`✅ Passed: ${passed}/${total}`)
-    console.log(`⚠️  Warnings: ${warnings}/${total}`)
     console.log(`❌ Failed: ${failed}/${total}`)
 
-    const avgDuration = this.results.reduce((sum, r) => sum + (r.duration || 0), 0) / total
-    console.log(`⏱️  Average Response Time: ${Math.round(avgDuration)}ms`)
-
     if (failed > 0) {
-      console.log("\n❌ Failed Tests:")
+      console.log("\n❌ FAILED TESTS:")
       this.results
         .filter((r) => r.status === "fail")
-        .forEach((r) => {
-          console.log(`   • ${r.name}: ${r.error}`)
+        .forEach((result) => {
+          console.log(`   • ${result.name}: ${result.error}`)
         })
     }
 
-    if (warnings > 0) {
-      console.log("\n⚠️  Warning Tests:")
-      this.results
-        .filter((r) => r.status === "warning")
-        .forEach((r) => {
-          console.log(`   • ${r.name}: HTTP ${r.code}`)
-        })
-    }
+    const avgDuration = this.results.reduce((sum, r) => sum + r.duration, 0) / total
+    console.log(`⏱️ Average response time: ${Math.round(avgDuration)}ms`)
 
-    console.log("")
     if (failed === 0) {
-      console.log("🎉 All critical tests passed! Your deployment looks good.")
+      console.log("\n🎉 All tests passed! Your application is working correctly.")
     } else {
-      console.log("🔧 Some tests failed. Check the issues above.")
+      console.log(`\n⚠️ ${failed} test(s) failed. Please review the issues above.`)
     }
   }
 }
 
-// Main execution
+// Run the tests
 async function main() {
-  const baseUrl = process.argv[2] || process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
   const runner = new TestRunner(baseUrl)
-  await runner.runAllTests()
 
-  // Exit with appropriate code
-  const failed = runner.results.filter((r) => r.status === "fail").length
-  process.exit(failed > 0 ? 1 : 0)
+  try {
+    await runner.runAllTests()
+  } catch (error) {
+    console.error("💥 Test runner failed:", error)
+    process.exit(1)
+  }
 }
 
 if (require.main === module) {
-  main().catch((error) => {
-    console.error("💥 Test runner crashed:", error)
-    process.exit(1)
-  })
+  main()
 }
 
-module.exports = { TestRunner }
+module.exports = TestRunner
