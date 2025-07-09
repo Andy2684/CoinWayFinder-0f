@@ -1,11 +1,11 @@
 import { database } from "./database"
 import crypto from "crypto"
 
-export interface ApiKey {
+export interface APIKey {
   _id?: string
   userId: string
   keyId: string
-  keySecret: string
+  secretHash: string
   name: string
   permissions: string[]
   rateLimit: {
@@ -19,100 +19,211 @@ export interface ApiKey {
     requestsToday: number
     requestsThisHour: number
     requestsThisMinute: number
-    resetDaily: Date
-    resetHourly: Date
-    resetMinute: Date
+    lastResetMinute: Date
+    lastResetHour: Date
+    lastResetDay: Date
   }
-  status: "active" | "suspended" | "revoked"
+  isActive: boolean
   createdAt: Date
   expiresAt?: Date
 }
 
-export interface ApiUsage {
-  userId: string
+export interface APIUsageLog {
+  _id?: string
   keyId: string
+  userId: string
   endpoint: string
   method: string
   timestamp: Date
+  responseStatus: number
   responseTime: number
-  statusCode: number
   userAgent?: string
   ipAddress?: string
 }
 
-class ApiKeyManager {
-  private generateKeyPair(): { keyId: string; keySecret: string } {
-    const keyId = `cwf_${crypto.randomBytes(16).toString("hex")}`
-    const keySecret = crypto.randomBytes(32).toString("hex")
-    return { keyId, keySecret }
+class APIKeyManager {
+  private static instance: APIKeyManager
+
+  static getInstance(): APIKeyManager {
+    if (!APIKeyManager.instance) {
+      APIKeyManager.instance = new APIKeyManager()
+    }
+    return APIKeyManager.instance
   }
 
-  async createApiKey(
+  generateKeyPair(): { keyId: string; secret: string } {
+    const keyId = `cwf_${crypto.randomBytes(16).toString("hex")}`
+    const secret = crypto.randomBytes(32).toString("hex")
+    return { keyId, secret }
+  }
+
+  hashSecret(secret: string): string {
+    return crypto.createHash("sha256").update(secret).digest("hex")
+  }
+
+  async createAPIKey(
     userId: string,
     name: string,
-    permissions: string[] = [],
-    expiresInDays?: number,
-  ): Promise<ApiKey> {
-    await database.connect()
-    const collection = database.db!.collection<ApiKey>("api_keys")
+    permissions: string[] = ["signals:read"],
+    planLimits: { requestsPerMinute: number; requestsPerHour: number; requestsPerDay: number },
+  ): Promise<{ keyId: string; secret: string }> {
+    const { keyId, secret } = this.generateKeyPair()
+    const secretHash = this.hashSecret(secret)
 
-    const { keyId, keySecret } = this.generateKeyPair()
-
-    // Get user's plan to determine rate limits
-    const userSettings = await database.getUserSettings(userId)
-    const plan = userSettings?.subscription.plan || "free"
-
-    const rateLimits = this.getRateLimitsForPlan(plan)
-    const defaultPermissions = this.getDefaultPermissionsForPlan(plan)
-
-    const expiresAt = expiresInDays ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000) : undefined
-
-    const apiKey: ApiKey = {
+    const apiKey: Omit<APIKey, "_id"> = {
       userId,
       keyId,
-      keySecret: this.hashSecret(keySecret),
+      secretHash,
       name,
-      permissions: permissions.length > 0 ? permissions : defaultPermissions,
-      rateLimit: rateLimits,
+      permissions,
+      rateLimit: planLimits,
       usage: {
         totalRequests: 0,
         requestsToday: 0,
         requestsThisHour: 0,
         requestsThisMinute: 0,
-        resetDaily: new Date(),
-        resetHourly: new Date(),
-        resetMinute: new Date(),
+        lastResetMinute: new Date(),
+        lastResetHour: new Date(),
+        lastResetDay: new Date(),
       },
-      status: "active",
+      isActive: true,
       createdAt: new Date(),
-      expiresAt,
     }
 
-    await collection.insertOne(apiKey)
-
-    // Return the key with the unhashed secret (only time it's visible)
-    return { ...apiKey, keySecret }
+    await database.saveAPIKey(apiKey)
+    return { keyId, secret }
   }
 
-  private hashSecret(secret: string): string {
-    return crypto.createHash("sha256").update(secret).digest("hex")
+  async validateAPIKey(keyId: string, secret: string): Promise<APIKey | null> {
+    const apiKey = await database.getAPIKey(keyId)
+    if (!apiKey || !apiKey.isActive) {
+      return null
+    }
+
+    const secretHash = this.hashSecret(secret)
+    if (secretHash !== apiKey.secretHash) {
+      return null
+    }
+
+    return apiKey
   }
 
-  private getRateLimitsForPlan(plan: string) {
+  async checkRateLimit(keyId: string): Promise<{ allowed: boolean; resetTime?: Date; remaining?: number }> {
+    const apiKey = await database.getAPIKey(keyId)
+    if (!apiKey) {
+      return { allowed: false }
+    }
+
+    const now = new Date()
+
+    // Reset counters if needed
+    if (now.getMinutes() !== apiKey.usage.lastResetMinute.getMinutes()) {
+      apiKey.usage.requestsThisMinute = 0
+      apiKey.usage.lastResetMinute = now
+    }
+
+    if (now.getHours() !== apiKey.usage.lastResetHour.getHours()) {
+      apiKey.usage.requestsThisHour = 0
+      apiKey.usage.lastResetHour = now
+    }
+
+    if (now.getDate() !== apiKey.usage.lastResetDay.getDate()) {
+      apiKey.usage.requestsToday = 0
+      apiKey.usage.lastResetDay = now
+    }
+
+    // Check limits
+    if (apiKey.usage.requestsThisMinute >= apiKey.rateLimit.requestsPerMinute) {
+      const resetTime = new Date(now.getTime() + (60 - now.getSeconds()) * 1000)
+      return {
+        allowed: false,
+        resetTime,
+        remaining: 0,
+      }
+    }
+
+    if (apiKey.usage.requestsThisHour >= apiKey.rateLimit.requestsPerHour) {
+      const resetTime = new Date(now.getTime() + (3600 - (now.getMinutes() * 60 + now.getSeconds())) * 1000)
+      return {
+        allowed: false,
+        resetTime,
+        remaining: 0,
+      }
+    }
+
+    if (apiKey.usage.requestsToday >= apiKey.rateLimit.requestsPerDay) {
+      const resetTime = new Date(now)
+      resetTime.setDate(resetTime.getDate() + 1)
+      resetTime.setHours(0, 0, 0, 0)
+      return {
+        allowed: false,
+        resetTime,
+        remaining: 0,
+      }
+    }
+
+    return {
+      allowed: true,
+      remaining: apiKey.rateLimit.requestsPerMinute - apiKey.usage.requestsThisMinute,
+    }
+  }
+
+  async recordUsage(
+    keyId: string,
+    endpoint: string,
+    method: string,
+    responseStatus: number,
+    responseTime: number,
+    userAgent?: string,
+    ipAddress?: string,
+  ): Promise<void> {
+    // Update API key usage
+    await database.incrementAPIKeyUsage(keyId)
+
+    // Log the request
+    const usageLog: Omit<APIUsageLog, "_id"> = {
+      keyId,
+      userId: "", // Will be filled by database
+      endpoint,
+      method,
+      timestamp: new Date(),
+      responseStatus,
+      responseTime,
+      userAgent,
+      ipAddress,
+    }
+
+    await database.saveAPIUsageLog(usageLog)
+  }
+
+  async getUserAPIKeys(userId: string): Promise<APIKey[]> {
+    return database.getUserAPIKeys(userId)
+  }
+
+  async revokeAPIKey(keyId: string, userId: string): Promise<boolean> {
+    return database.revokeAPIKey(keyId, userId)
+  }
+
+  async getAPIKeyUsage(keyId: string, userId: string, days = 30): Promise<APIUsageLog[]> {
+    return database.getAPIKeyUsage(keyId, userId, days)
+  }
+
+  getPlanLimits(plan: string): { requestsPerMinute: number; requestsPerHour: number; requestsPerDay: number } {
     const limits = {
-      free: { requestsPerMinute: 10, requestsPerHour: 100, requestsPerDay: 1000 },
-      starter: { requestsPerMinute: 30, requestsPerHour: 500, requestsPerDay: 5000 },
-      pro: { requestsPerMinute: 100, requestsPerHour: 2000, requestsPerDay: 20000 },
-      enterprise: { requestsPerMinute: 500, requestsPerHour: 10000, requestsPerDay: 100000 },
+      free: { requestsPerMinute: 10, requestsPerHour: 100, requestsPerDay: 500 },
+      basic: { requestsPerMinute: 50, requestsPerHour: 1000, requestsPerDay: 5000 },
+      premium: { requestsPerMinute: 200, requestsPerHour: 5000, requestsPerDay: 25000 },
+      enterprise: { requestsPerMinute: 500, requestsPerHour: 15000, requestsPerDay: 100000 },
     }
+
     return limits[plan as keyof typeof limits] || limits.free
   }
 
-  private getDefaultPermissionsForPlan(plan: string): string[] {
+  getPermissionsByPlan(plan: string): string[] {
     const permissions = {
       free: ["signals:read"],
-      starter: ["signals:read", "whales:read", "trends:read"],
-      pro: ["signals:read", "whales:read", "trends:read", "bots:read", "bots:create"],
+      basic: ["signals:read", "whales:read", "trends:read"],
+      premium: ["signals:read", "whales:read", "trends:read", "bots:read", "bots:create"],
       enterprise: [
         "signals:read",
         "whales:read",
@@ -121,171 +232,11 @@ class ApiKeyManager {
         "bots:create",
         "bots:manage",
         "analytics:read",
-        "webhooks:create",
       ],
     }
+
     return permissions[plan as keyof typeof permissions] || permissions.free
-  }
-
-  async validateApiKey(keyId: string, keySecret: string): Promise<ApiKey | null> {
-    await database.connect()
-    const collection = database.db!.collection<ApiKey>("api_keys")
-
-    const apiKey = await collection.findOne({
-      keyId,
-      status: "active",
-    })
-
-    if (!apiKey) return null
-
-    // Check if key is expired
-    if (apiKey.expiresAt && new Date() > apiKey.expiresAt) {
-      await this.revokeApiKey(keyId)
-      return null
-    }
-
-    // Verify secret
-    const hashedSecret = this.hashSecret(keySecret)
-    if (apiKey.keySecret !== hashedSecret) return null
-
-    return apiKey
-  }
-
-  async checkRateLimit(keyId: string): Promise<{ allowed: boolean; resetTime?: Date; remaining?: number }> {
-    await database.connect()
-    const collection = database.db!.collection<ApiKey>("api_keys")
-
-    const apiKey = await collection.findOne({ keyId })
-    if (!apiKey) return { allowed: false }
-
-    const now = new Date()
-
-    // Reset counters if needed
-    let needsUpdate = false
-    const updates: any = {}
-
-    // Reset minute counter
-    if (now.getTime() - apiKey.usage.resetMinute.getTime() >= 60000) {
-      updates["usage.requestsThisMinute"] = 0
-      updates["usage.resetMinute"] = now
-      needsUpdate = true
-    }
-
-    // Reset hour counter
-    if (now.getTime() - apiKey.usage.resetHourly.getTime() >= 3600000) {
-      updates["usage.requestsThisHour"] = 0
-      updates["usage.resetHourly"] = now
-      needsUpdate = true
-    }
-
-    // Reset daily counter
-    if (now.toDateString() !== apiKey.usage.resetDaily.toDateString()) {
-      updates["usage.requestsToday"] = 0
-      updates["usage.resetDaily"] = now
-      needsUpdate = true
-    }
-
-    if (needsUpdate) {
-      await collection.updateOne({ keyId }, { $set: updates })
-      // Refresh the apiKey object
-      const updatedKey = await collection.findOne({ keyId })
-      if (updatedKey) Object.assign(apiKey, updatedKey)
-    }
-
-    // Check limits
-    if (apiKey.usage.requestsThisMinute >= apiKey.rateLimit.requestsPerMinute) {
-      return {
-        allowed: false,
-        resetTime: new Date(apiKey.usage.resetMinute.getTime() + 60000),
-        remaining: 0,
-      }
-    }
-
-    if (apiKey.usage.requestsThisHour >= apiKey.rateLimit.requestsPerHour) {
-      return {
-        allowed: false,
-        resetTime: new Date(apiKey.usage.resetHourly.getTime() + 3600000),
-        remaining: 0,
-      }
-    }
-
-    if (apiKey.usage.requestsToday >= apiKey.rateLimit.requestsPerDay) {
-      return {
-        allowed: false,
-        resetTime: new Date(apiKey.usage.resetDaily.getTime() + 86400000),
-        remaining: 0,
-      }
-    }
-
-    return {
-      allowed: true,
-      remaining: Math.min(
-        apiKey.rateLimit.requestsPerMinute - apiKey.usage.requestsThisMinute,
-        apiKey.rateLimit.requestsPerHour - apiKey.usage.requestsThisHour,
-        apiKey.rateLimit.requestsPerDay - apiKey.usage.requestsToday,
-      ),
-    }
-  }
-
-  async incrementUsage(keyId: string, endpoint: string, method: string, responseTime: number, statusCode: number) {
-    await database.connect()
-    const collection = database.db!.collection<ApiKey>("api_keys")
-
-    await collection.updateOne(
-      { keyId },
-      {
-        $inc: {
-          "usage.totalRequests": 1,
-          "usage.requestsToday": 1,
-          "usage.requestsThisHour": 1,
-          "usage.requestsThisMinute": 1,
-        },
-        $set: {
-          "usage.lastUsed": new Date(),
-        },
-      },
-    )
-
-    // Log usage for analytics
-    const usageCollection = database.db!.collection<ApiUsage>("api_usage")
-    await usageCollection.insertOne({
-      userId: "", // Will be filled by the API middleware
-      keyId,
-      endpoint,
-      method,
-      timestamp: new Date(),
-      responseTime,
-      statusCode,
-    })
-  }
-
-  async getUserApiKeys(userId: string): Promise<Omit<ApiKey, "keySecret">[]> {
-    await database.connect()
-    const collection = database.db!.collection<ApiKey>("api_keys")
-
-    const keys = await collection.find({ userId }).toArray()
-    return keys.map(({ keySecret, ...key }) => key)
-  }
-
-  async revokeApiKey(keyId: string): Promise<boolean> {
-    await database.connect()
-    const collection = database.db!.collection<ApiKey>("api_keys")
-
-    const result = await collection.updateOne({ keyId }, { $set: { status: "revoked" } })
-    return result.modifiedCount > 0
-  }
-
-  async updateApiKeyPermissions(keyId: string, permissions: string[]): Promise<boolean> {
-    await database.connect()
-    const collection = database.db!.collection<ApiKey>("api_keys")
-
-    const result = await collection.updateOne({ keyId }, { $set: { permissions } })
-    return result.modifiedCount > 0
-  }
-
-  hasPermission(apiKey: ApiKey, permission: string): boolean {
-    return apiKey.permissions.includes(permission) || apiKey.permissions.includes("*")
   }
 }
 
-export const apiKeyManager = new ApiKeyManager()
+export const apiKeyManager = APIKeyManager.getInstance()

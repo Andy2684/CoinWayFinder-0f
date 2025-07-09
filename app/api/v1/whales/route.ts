@@ -1,64 +1,37 @@
 import { NextResponse } from "next/server"
-import { withApiAuth, type AuthenticatedRequest } from "@/lib/api-middleware"
+import { withAPIAuth, type AuthenticatedRequest } from "@/lib/api-middleware"
 
 async function handler(req: AuthenticatedRequest) {
   try {
-    // Mock whale transaction data
-    const whaleTransactions = [
-      {
-        id: "whale_001",
-        hash: "0x1234567890abcdef1234567890abcdef12345678",
-        from: "0xabcd...5678",
-        to: "0x1234...abcd",
-        amount: "1,250.5",
-        token: "BTC",
-        usdValue: 53750000,
-        exchange: "Binance",
-        type: "withdrawal",
-        timestamp: new Date().toISOString(),
-        impact: "high",
-        confidence: 95,
+    const { searchParams } = new URL(req.url)
+    const minAmount = Number.parseFloat(searchParams.get("minAmount") || "1000000")
+    const limit = Math.min(Number.parseInt(searchParams.get("limit") || "20"), 100)
+
+    // Mock whale transaction data - replace with real blockchain analysis
+    const whaleTransactions = Array.from({ length: limit }, (_, i) => ({
+      id: `whale_${Date.now()}_${i}`,
+      hash: `0x${Math.random().toString(16).substring(2, 66)}`,
+      from: `0x${Math.random().toString(16).substring(2, 42)}`,
+      to: `0x${Math.random().toString(16).substring(2, 42)}`,
+      amount: minAmount + Math.random() * 10000000,
+      token: ["BTC", "ETH", "USDT", "BNB"][Math.floor(Math.random() * 4)],
+      exchange: ["Binance", "Coinbase", "Kraken", "Unknown"][Math.floor(Math.random() * 4)],
+      type: Math.random() > 0.5 ? "deposit" : "withdrawal",
+      timestamp: new Date(Date.now() - i * 300000).toISOString(), // 5 min intervals
+      impact: {
+        priceChange: (Math.random() - 0.5) * 5, // -2.5% to +2.5%
+        volumeSpike: Math.random() * 200 + 50, // 50-250%
       },
-      {
-        id: "whale_002",
-        hash: "0xfedcba0987654321fedcba0987654321fedcba09",
-        from: "0x9876...4321",
-        to: "0xfedc...ba09",
-        amount: "15,000",
-        token: "ETH",
-        usdValue: 39750000,
-        exchange: "Coinbase",
-        type: "deposit",
-        timestamp: new Date(Date.now() - 300000).toISOString(),
-        impact: "medium",
-        confidence: 88,
-      },
-    ]
-
-    const url = new URL(req.url)
-    const token = url.searchParams.get("token")
-    const minValue = Number.parseInt(url.searchParams.get("min_value") || "0")
-    const limit = Number.parseInt(url.searchParams.get("limit") || "20")
-
-    let filteredTransactions = whaleTransactions
-
-    if (token) {
-      filteredTransactions = filteredTransactions.filter((t) => t.token.toLowerCase() === token.toLowerCase())
-    }
-
-    if (minValue > 0) {
-      filteredTransactions = filteredTransactions.filter((t) => t.usdValue >= minValue)
-    }
-
-    filteredTransactions = filteredTransactions.slice(0, limit)
+    }))
 
     return NextResponse.json({
       success: true,
-      data: filteredTransactions,
+      data: whaleTransactions,
       meta: {
-        total: filteredTransactions.length,
+        minAmount,
+        count: whaleTransactions.length,
         timestamp: new Date().toISOString(),
-        filters: { token, minValue, limit },
+        subscriptionStatus: req.user?.subscriptionStatus,
       },
     })
   } catch (error) {
@@ -67,4 +40,4 @@ async function handler(req: AuthenticatedRequest) {
   }
 }
 
-export const GET = withApiAuth(handler, "whales:read")
+export const GET = withAPIAuth(handler, "whales:read")

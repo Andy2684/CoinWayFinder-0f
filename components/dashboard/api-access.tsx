@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Progress } from "@/components/ui/progress"
 import {
   Dialog,
   DialogContent,
@@ -16,12 +16,23 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Copy, Eye, EyeOff, Key, Trash2, Plus, Code, BookOpen } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import {
+  Key,
+  Plus,
+  Copy,
+  Trash2,
+  Eye,
+  EyeOff,
+  AlertTriangle,
+  CheckCircle,
+  Clock,
+  TrendingUp,
+  Loader2,
+} from "lucide-react"
+import { toast } from "@/hooks/use-toast"
 
-interface ApiKey {
+interface APIKey {
   keyId: string
   name: string
   permissions: string[]
@@ -34,62 +45,101 @@ interface ApiKey {
     totalRequests: number
     lastUsed?: string
     requestsToday: number
+    requestsThisHour: number
+    requestsThisMinute: number
   }
-  status: string
+  isActive: boolean
   createdAt: string
   expiresAt?: string
 }
 
-export function ApiAccess() {
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
+interface NewAPIKey {
+  keyId: string
+  secret: string
+  name: string
+  permissions: string[]
+  rateLimit: {
+    requestsPerMinute: number
+    requestsPerHour: number
+    requestsPerDay: number
+  }
+}
+
+export function APIAccess() {
+  const [apiKeys, setApiKeys] = useState<APIKey[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
-  const [newKeyData, setNewKeyData] = useState<any>(null)
+  const [newKeyName, setNewKeyName] = useState("")
+  const [newAPIKey, setNewAPIKey] = useState<NewAPIKey | null>(null)
   const [showSecret, setShowSecret] = useState(false)
-  const { toast } = useToast()
+  const [subscriptionStatus, setSubscriptionStatus] = useState<"active" | "expired" | "cancelled">("active")
 
   useEffect(() => {
-    fetchApiKeys()
+    loadAPIKeys()
   }, [])
 
-  const fetchApiKeys = async () => {
+  const loadAPIKeys = async () => {
     try {
-      const response = await fetch("/api/user/api-keys")
+      const response = await fetch("/api/user/api-keys", {
+        headers: {
+          "x-user-id": "demo-user",
+        },
+      })
       const data = await response.json()
 
       if (data.success) {
-        setApiKeys(data.data)
+        setApiKeys(data.apiKeys)
       }
     } catch (error) {
-      console.error("Failed to fetch API keys:", error)
+      console.error("Failed to load API keys:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  const createApiKey = async (name: string) => {
-    try {
-      setCreating(true)
+  const createAPIKey = async () => {
+    if (!newKeyName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a name for your API key",
+        variant: "destructive",
+      })
+      return
+    }
 
+    setCreating(true)
+
+    try {
       const response = await fetch("/api/user/api-keys", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "x-user-id": "demo-user",
         },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({
+          name: newKeyName,
+        }),
       })
 
       const data = await response.json()
 
       if (data.success) {
-        setNewKeyData(data.data)
-        await fetchApiKeys()
+        setNewAPIKey(data.apiKey)
+        setNewKeyName("")
+        await loadAPIKeys()
         toast({
-          title: "API Key Created",
-          description: "Your new API key has been created successfully.",
+          title: "Success",
+          description: "API key created successfully",
         })
       } else {
-        throw new Error(data.error)
+        if (response.status === 402) {
+          setSubscriptionStatus(data.subscriptionStatus)
+        }
+        toast({
+          title: "Error",
+          description: data.error || "Failed to create API key",
+          variant: "destructive",
+        })
       }
     } catch (error) {
       toast({
@@ -102,22 +152,33 @@ export function ApiAccess() {
     }
   }
 
-  const revokeApiKey = async (keyId: string) => {
+  const revokeAPIKey = async (keyId: string) => {
+    if (!confirm("Are you sure you want to revoke this API key? This action cannot be undone.")) {
+      return
+    }
+
     try {
       const response = await fetch(`/api/user/api-keys/${keyId}`, {
         method: "DELETE",
+        headers: {
+          "x-user-id": "demo-user",
+        },
       })
 
       const data = await response.json()
 
       if (data.success) {
-        await fetchApiKeys()
+        await loadAPIKeys()
         toast({
-          title: "API Key Revoked",
-          description: "The API key has been revoked successfully.",
+          title: "Success",
+          description: "API key revoked successfully",
         })
       } else {
-        throw new Error(data.error)
+        toast({
+          title: "Error",
+          description: data.error || "Failed to revoke API key",
+          variant: "destructive",
+        })
       }
     } catch (error) {
       toast({
@@ -132,7 +193,7 @@ export function ApiAccess() {
     navigator.clipboard.writeText(text)
     toast({
       title: "Copied",
-      description: "Copied to clipboard",
+      description: "API key copied to clipboard",
     })
   }
 
@@ -146,361 +207,308 @@ export function ApiAccess() {
     })
   }
 
+  const getUsagePercentage = (used: number, limit: number) => {
+    return Math.min((used / limit) * 100, 100)
+  }
+
+  const getUsageColor = (percentage: number) => {
+    if (percentage >= 90) return "text-red-400"
+    if (percentage >= 70) return "text-yellow-400"
+    return "text-green-400"
+  }
+
+  if (loading) {
+    return (
+      <Card className="bg-gray-900/50 border-gray-800">
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-[#30D5C8]" />
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">API Access</h2>
-          <p className="text-muted-foreground">Manage your CoinWayFinder API keys and access</p>
-        </div>
-
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Create API Key
+      {/* Subscription Warning */}
+      {subscriptionStatus !== "active" && (
+        <Alert className="border-yellow-200 bg-yellow-50">
+          <AlertTriangle className="h-4 w-4 text-yellow-600" />
+          <AlertDescription className="text-yellow-800">
+            Your subscription has expired. Existing API keys will continue to work for read operations, but you cannot
+            create new keys or perform write operations until you renew.
+            <Button variant="link" className="p-0 ml-2 text-yellow-800 underline">
+              Renew Now
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create New API Key</DialogTitle>
-              <DialogDescription>Generate a new API key to access CoinWayFinder programmatically.</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="keyName">API Key Name</Label>
-                <Input
-                  id="keyName"
-                  placeholder="My Trading Bot"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      const name = (e.target as HTMLInputElement).value
-                      if (name.trim()) {
-                        createApiKey(name.trim())
-                      }
-                    }
-                  }}
-                />
-              </div>
-              <Button
-                onClick={() => {
-                  const input = document.getElementById("keyName") as HTMLInputElement
-                  const name = input?.value?.trim()
-                  if (name) {
-                    createApiKey(name)
-                  }
-                }}
-                disabled={creating}
-                className="w-full"
-              >
-                {creating ? "Creating..." : "Create API Key"}
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* New Key Display */}
-      {newKeyData && (
-        <Alert className="border-green-200 bg-green-50 dark:bg-green-950/20">
-          <Key className="h-4 w-4" />
-          <AlertDescription>
-            <div className="space-y-3">
-              <p className="font-semibold text-green-800 dark:text-green-300">🎉 API Key Created Successfully!</p>
-              <div className="space-y-2">
-                <div>
-                  <Label className="text-xs font-medium">Key ID:</Label>
-                  <div className="flex items-center gap-2">
-                    <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-sm">{newKeyData.keyId}</code>
-                    <Button size="sm" variant="ghost" onClick={() => copyToClipboard(newKeyData.keyId)}>
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-                <div>
-                  <Label className="text-xs font-medium">Secret Key:</Label>
-                  <div className="flex items-center gap-2">
-                    <code className="bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded text-sm">
-                      {showSecret ? newKeyData.keySecret : "••••••••••••••••"}
-                    </code>
-                    <Button size="sm" variant="ghost" onClick={() => setShowSecret(!showSecret)}>
-                      {showSecret ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => copyToClipboard(newKeyData.keySecret)}>
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-              <p className="text-xs text-green-700 dark:text-green-400">
-                ⚠️ Save this secret key now - it won't be shown again!
-              </p>
-              <Button size="sm" variant="outline" onClick={() => setNewKeyData(null)}>
-                I've saved it
-              </Button>
-            </div>
           </AlertDescription>
         </Alert>
       )}
 
-      <Tabs defaultValue="keys" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="keys">API Keys</TabsTrigger>
-          <TabsTrigger value="docs">Documentation</TabsTrigger>
-          <TabsTrigger value="examples">Examples</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="keys" className="space-y-4">
-          {loading ? (
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center">Loading API keys...</div>
-              </CardContent>
-            </Card>
-          ) : apiKeys.length === 0 ? (
-            <Card>
-              <CardContent className="p-6">
-                <div className="text-center space-y-2">
-                  <Key className="h-12 w-12 mx-auto text-muted-foreground" />
-                  <h3 className="text-lg font-semibold">No API Keys</h3>
-                  <p className="text-muted-foreground">Create your first API key to get started</p>
+      {/* Header */}
+      <Card className="bg-gray-900/50 border-gray-800">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                API Access
+              </CardTitle>
+              <CardDescription className="text-gray-400">
+                Manage your API keys and access programmatic trading features
+              </CardDescription>
+            </div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button
+                  className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-black"
+                  disabled={subscriptionStatus !== "active"}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create API Key
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-gray-900 border-gray-700">
+                <DialogHeader>
+                  <DialogTitle className="text-white">Create New API Key</DialogTitle>
+                  <DialogDescription className="text-gray-400">
+                    Generate a new API key for programmatic access to CoinWayFinder
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="keyName" className="text-white">
+                      Key Name
+                    </Label>
+                    <Input
+                      id="keyName"
+                      placeholder="e.g., Trading Bot, Mobile App"
+                      value={newKeyName}
+                      onChange={(e) => setNewKeyName(e.target.value)}
+                      className="bg-gray-800 border-gray-600 text-white"
+                    />
+                  </div>
+                  <Button
+                    onClick={createAPIKey}
+                    disabled={creating}
+                    className="w-full bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-black"
+                  >
+                    {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Create API Key
+                  </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+      </Card>
+
+      {/* New API Key Display */}
+      {newAPIKey && (
+        <Card className="bg-green-900/20 border-green-800">
+          <CardHeader>
+            <CardTitle className="text-green-400 flex items-center gap-2">
+              <CheckCircle className="h-5 w-5" />
+              API Key Created Successfully
+            </CardTitle>
+            <CardDescription className="text-green-300">
+              Save these credentials now - the secret will not be shown again
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label className="text-green-400">Key ID</Label>
+              <div className="flex items-center space-x-2 mt-1">
+                <code className="flex-1 bg-gray-800 p-2 rounded text-green-300 font-mono text-sm">
+                  {newAPIKey.keyId}
+                </code>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copyToClipboard(newAPIKey.keyId)}
+                  className="text-green-400 hover:text-green-300"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div>
+              <Label className="text-green-400">Secret Key</Label>
+              <div className="flex items-center space-x-2 mt-1">
+                <code className="flex-1 bg-gray-800 p-2 rounded text-green-300 font-mono text-sm">
+                  {showSecret ? newAPIKey.secret : "•".repeat(32)}
+                </code>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowSecret(!showSecret)}
+                  className="text-green-400 hover:text-green-300"
+                >
+                  {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copyToClipboard(newAPIKey.secret)}
+                  className="text-green-400 hover:text-green-300"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <Alert className="border-green-200 bg-green-50">
+              <AlertTriangle className="h-4 w-4 text-green-600" />
+              <AlertDescription className="text-green-800">
+                Use format:{" "}
+                <code>
+                  Authorization: Bearer {newAPIKey.keyId}:{newAPIKey.secret}
+                </code>
+              </AlertDescription>
+            </Alert>
+            <Button
+              variant="ghost"
+              onClick={() => setNewAPIKey(null)}
+              className="w-full text-green-400 hover:text-green-300"
+            >
+              I've saved my credentials
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* API Keys Table */}
+      <Card className="bg-gray-900/50 border-gray-800">
+        <CardHeader>
+          <CardTitle className="text-white">Your API Keys</CardTitle>
+          <CardDescription className="text-gray-400">Manage and monitor your active API keys</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {apiKeys.length === 0 ? (
+            <div className="text-center py-12">
+              <Key className="h-12 w-12 text-gray-600 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">No API Keys</h3>
+              <p className="text-gray-400 mb-6">Create your first API key to get started</p>
+            </div>
           ) : (
-            <div className="grid gap-4">
-              {apiKeys.map((key) => (
-                <Card key={key.keyId}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="text-lg">{key.name}</CardTitle>
-                        <CardDescription>
-                          Created {formatDate(key.createdAt)}
-                          {key.usage.lastUsed && ` • Last used ${formatDate(key.usage.lastUsed)}`}
-                        </CardDescription>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Badge variant={key.status === "active" ? "default" : "destructive"}>{key.status}</Badge>
-                        <Button size="sm" variant="ghost" onClick={() => revokeApiKey(key.keyId)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <Label className="text-xs font-medium">Key ID:</Label>
-                      <div className="flex items-center gap-2">
-                        <code className="bg-muted px-2 py-1 rounded text-sm">{key.keyId}</code>
-                        <Button size="sm" variant="ghost" onClick={() => copyToClipboard(key.keyId)}>
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div>
-                        <Label className="text-xs font-medium">Usage Today</Label>
-                        <div className="text-2xl font-bold">{key.usage.requestsToday}</div>
-                        <div className="text-xs text-muted-foreground">
-                          of {key.rateLimit.requestsPerDay} daily limit
+            <Table>
+              <TableHeader>
+                <TableRow className="border-gray-700">
+                  <TableHead className="text-gray-300">Name</TableHead>
+                  <TableHead className="text-gray-300">Key ID</TableHead>
+                  <TableHead className="text-gray-300">Usage Today</TableHead>
+                  <TableHead className="text-gray-300">Permissions</TableHead>
+                  <TableHead className="text-gray-300">Last Used</TableHead>
+                  <TableHead className="text-gray-300">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {apiKeys.map((key) => (
+                  <TableRow key={key.keyId} className="border-gray-700">
+                    <TableCell className="text-white font-medium">{key.name}</TableCell>
+                    <TableCell>
+                      <code className="bg-gray-800 px-2 py-1 rounded text-sm text-gray-300">
+                        {key.keyId.substring(0, 20)}...
+                      </code>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <div className="flex items-center justify-between text-sm">
+                          <span
+                            className={getUsageColor(
+                              getUsagePercentage(key.usage.requestsToday, key.rateLimit.requestsPerDay),
+                            )}
+                          >
+                            {key.usage.requestsToday.toLocaleString()}
+                          </span>
+                          <span className="text-gray-400">/ {key.rateLimit.requestsPerDay.toLocaleString()}</span>
                         </div>
+                        <Progress
+                          value={getUsagePercentage(key.usage.requestsToday, key.rateLimit.requestsPerDay)}
+                          className="h-1"
+                        />
                       </div>
-                      <div>
-                        <Label className="text-xs font-medium">Total Requests</Label>
-                        <div className="text-2xl font-bold">{key.usage.totalRequests}</div>
-                        <div className="text-xs text-muted-foreground">all time</div>
-                      </div>
-                      <div>
-                        <Label className="text-xs font-medium">Rate Limits</Label>
-                        <div className="text-sm">
-                          <div>{key.rateLimit.requestsPerMinute}/min</div>
-                          <div>{key.rateLimit.requestsPerHour}/hour</div>
-                          <div>{key.rateLimit.requestsPerDay}/day</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label className="text-xs font-medium">Permissions</Label>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {key.permissions.map((permission) => (
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-wrap gap-1">
+                        {key.permissions.slice(0, 2).map((permission) => (
                           <Badge key={permission} variant="secondary" className="text-xs">
                             {permission}
                           </Badge>
                         ))}
+                        {key.permissions.length > 2 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{key.permissions.length - 2}
+                          </Badge>
+                        )}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+                    </TableCell>
+                    <TableCell className="text-gray-400">
+                      {key.usage.lastUsed ? (
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {formatDate(key.usage.lastUsed)}
+                        </div>
+                      ) : (
+                        "Never"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(key.keyId)}
+                          className="text-gray-400 hover:text-white"
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => revokeAPIKey(key.keyId)}
+                          className="text-red-400 hover:text-red-300"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
-        </TabsContent>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="docs" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5" />
-                API Documentation
-              </CardTitle>
-              <CardDescription>Learn how to integrate with the CoinWayFinder API</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h4 className="font-semibold mb-2">Base URL</h4>
-                <code className="bg-muted px-3 py-2 rounded block">https://coinwayfinder.com/api/v1</code>
-              </div>
-
-              <div>
-                <h4 className="font-semibold mb-2">Authentication</h4>
-                <p className="text-sm text-muted-foreground mb-2">Include your API key in the Authorization header:</p>
-                <code className="bg-muted px-3 py-2 rounded block text-sm">
-                  Authorization: Bearer your_key_id:your_secret_key
-                </code>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-3">
-                <h4 className="font-semibold">Available Endpoints</h4>
-
-                <div className="space-y-2">
-                  <div className="border rounded p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline">GET</Badge>
-                      <code className="text-sm">/api/v1/signals</code>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Get AI trading signals</p>
-                    <p className="text-xs">Required permission: signals:read</p>
-                  </div>
-
-                  <div className="border rounded p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline">GET</Badge>
-                      <code className="text-sm">/api/v1/whales</code>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Get whale transaction data</p>
-                    <p className="text-xs">Required permission: whales:read</p>
-                  </div>
-
-                  <div className="border rounded p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline">GET</Badge>
-                      <code className="text-sm">/api/v1/trends</code>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Get market trends and analysis</p>
-                    <p className="text-xs">Required permission: trends:read</p>
-                  </div>
-
-                  <div className="border rounded p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge variant="outline">GET</Badge>
-                      <Badge variant="outline">POST</Badge>
-                      <code className="text-sm">/api/v1/bots</code>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Manage your trading bots</p>
-                    <p className="text-xs">Required permission: bots:read, bots:create</p>
-                  </div>
+      {/* Usage Statistics */}
+      {apiKeys.length > 0 && (
+        <Card className="bg-gray-900/50 border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center gap-2">
+              <TrendingUp className="h-5 w-5" />
+              Usage Overview
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-[#30D5C8]">
+                  {apiKeys.reduce((sum, key) => sum + key.usage.totalRequests, 0).toLocaleString()}
                 </div>
+                <div className="text-sm text-gray-400">Total Requests</div>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="examples" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Code className="h-5 w-5" />
-                Code Examples
-              </CardTitle>
-              <CardDescription>Ready-to-use code snippets for common tasks</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div>
-                <h4 className="font-semibold mb-2">JavaScript/Node.js</h4>
-                <Textarea
-                  readOnly
-                  className="font-mono text-sm"
-                  rows={10}
-                  value={`// Get trading signals
-const response = await fetch('https://coinwayfinder.com/api/v1/signals', {
-  headers: {
-    'Authorization': 'Bearer your_key_id:your_secret_key',
-    'Content-Type': 'application/json'
-  }
-});
-
-const data = await response.json();
-console.log(data.data); // Array of signals
-
-// Create a new trading bot
-const botResponse = await fetch('https://coinwayfinder.com/api/v1/bots', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer your_key_id:your_secret_key',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    name: 'My BTC Bot',
-    exchange: 'binance',
-    strategy: 'dca',
-    symbol: 'BTCUSDT',
-    config: {
-      investment: 100,
-      riskLevel: 5
-    }
-  })
-});`}
-                />
+              <div className="text-center">
+                <div className="text-2xl font-bold text-[#30D5C8]">
+                  {apiKeys.reduce((sum, key) => sum + key.usage.requestsToday, 0).toLocaleString()}
+                </div>
+                <div className="text-sm text-gray-400">Requests Today</div>
               </div>
-
-              <div>
-                <h4 className="font-semibold mb-2">Python</h4>
-                <Textarea
-                  readOnly
-                  className="font-mono text-sm"
-                  rows={8}
-                  value={
-                    `import requests
-
-# Get whale transactions
-headers = {
-    'Authorization': 'Bearer your_key_id:your_secret_key',
-    'Content-Type': 'application/json'
-}
-
-response = requests.get('https://coinwayfinder.com/api/v1/whales', headers=headers)
-whales = response.json()
-
-for whale in whales['data']:
-    print(f"Whale moved {whale['amount']} {whale['token']} worth ${whale['usdValue']:,}")`
-                  }
-                />
-                \
+              <div className="text-center">
+                <div className="text-2xl font-bold text-[#30D5C8]">{apiKeys.filter((key) => key.isActive).length}</div>
+                <div className="text-sm text-gray-400">Active Keys</div>
               </div>
-
-              <div>
-                <h4 className="font-semibold mb-2">cURL</h4>
-                <Textarea
-                  readOnly
-                  className="font-mono text-sm"
-                  rows={6}
-                  value={`# Get market trends
-curl -X GET "https://coinwayfinder.com/api/v1/trends?symbol=BTC" \\
-  -H "Authorization: Bearer your_key_id:your_secret_key" \\
-  -H "Content-Type: application/json"
-
-# Response includes trend analysis, sentiment scores, and technical indicators`}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

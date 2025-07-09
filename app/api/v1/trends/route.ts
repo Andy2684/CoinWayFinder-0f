@@ -1,68 +1,53 @@
 import { NextResponse } from "next/server"
-import { withApiAuth, type AuthenticatedRequest } from "@/lib/api-middleware"
+import { withAPIAuth, type AuthenticatedRequest } from "@/lib/api-middleware"
 
 async function handler(req: AuthenticatedRequest) {
   try {
-    // Mock market trends data
-    const trends = [
-      {
-        id: "trend_001",
-        symbol: "BTC",
-        name: "Bitcoin",
-        price: 43250.5,
-        change24h: 2.45,
-        changePercent24h: 5.67,
-        volume24h: 28500000000,
-        marketCap: 847500000000,
-        trend: "bullish",
-        sentiment: "positive",
-        socialScore: 85,
-        technicalScore: 78,
-        fundamentalScore: 82,
-        timestamp: new Date().toISOString(),
+    const { searchParams } = new URL(req.url)
+    const timeframe = searchParams.get("timeframe") || "24h"
+    const category = searchParams.get("category") || "all"
+
+    // Mock market trends data - replace with real market analysis
+    const trends = {
+      market: {
+        sentiment: Math.random() > 0.5 ? "bullish" : "bearish",
+        fearGreedIndex: Math.floor(Math.random() * 100),
+        dominance: {
+          btc: 45 + Math.random() * 10,
+          eth: 15 + Math.random() * 5,
+          others: 40 + Math.random() * 10,
+        },
       },
-      {
-        id: "trend_002",
-        symbol: "ETH",
-        name: "Ethereum",
-        price: 2650.8,
-        change24h: -45.2,
-        changePercent24h: -1.68,
-        volume24h: 15200000000,
-        marketCap: 318600000000,
-        trend: "bearish",
-        sentiment: "neutral",
-        socialScore: 72,
-        technicalScore: 65,
-        fundamentalScore: 88,
-        timestamp: new Date().toISOString(),
-      },
-    ]
-
-    const url = new URL(req.url)
-    const symbol = url.searchParams.get("symbol")
-    const trend = url.searchParams.get("trend")
-    const limit = Number.parseInt(url.searchParams.get("limit") || "50")
-
-    let filteredTrends = trends
-
-    if (symbol) {
-      filteredTrends = filteredTrends.filter((t) => t.symbol.toLowerCase() === symbol.toLowerCase())
+      topMovers: Array.from({ length: 10 }, (_, i) => ({
+        symbol: ["BTC", "ETH", "BNB", "ADA", "SOL", "DOT", "LINK", "UNI", "MATIC", "AVAX"][i],
+        price: Math.random() * 1000 + 10,
+        change24h: (Math.random() - 0.5) * 20, // -10% to +10%
+        volume24h: Math.random() * 1000000000,
+        marketCap: Math.random() * 100000000000,
+      })),
+      sectors: [
+        { name: "DeFi", change: (Math.random() - 0.5) * 15, volume: Math.random() * 500000000 },
+        { name: "NFT", change: (Math.random() - 0.5) * 20, volume: Math.random() * 200000000 },
+        { name: "Gaming", change: (Math.random() - 0.5) * 25, volume: Math.random() * 150000000 },
+        { name: "Layer 1", change: (Math.random() - 0.5) * 12, volume: Math.random() * 800000000 },
+      ],
+      news: Array.from({ length: 5 }, (_, i) => ({
+        title: `Market News ${i + 1}`,
+        summary: "Important market development affecting crypto prices...",
+        sentiment: Math.random() > 0.5 ? "positive" : "negative",
+        impact: Math.floor(Math.random() * 10) + 1,
+        timestamp: new Date(Date.now() - i * 3600000).toISOString(),
+      })),
     }
-
-    if (trend) {
-      filteredTrends = filteredTrends.filter((t) => t.trend === trend)
-    }
-
-    filteredTrends = filteredTrends.slice(0, limit)
 
     return NextResponse.json({
       success: true,
-      data: filteredTrends,
+      data: trends,
       meta: {
-        total: filteredTrends.length,
+        timeframe,
+        category,
         timestamp: new Date().toISOString(),
-        filters: { symbol, trend, limit },
+        subscriptionStatus: req.user?.subscriptionStatus,
       },
     })
   } catch (error) {
@@ -71,4 +56,4 @@ async function handler(req: AuthenticatedRequest) {
   }
 }
 
-export const GET = withApiAuth(handler, "trends:read")
+export const GET = withAPIAuth(handler, "trends:read")

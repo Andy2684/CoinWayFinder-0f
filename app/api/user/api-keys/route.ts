@@ -1,59 +1,82 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { apiKeyManager } from "@/lib/api-key-manager"
+import { database } from "@/lib/database"
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user session (implement based on your auth system)
-    const userId = request.headers.get("x-user-id") // Simplified - use your auth system
+    const userId = request.headers.get("x-user-id") || "demo-user"
+    const apiKeys = await apiKeyManager.getUserAPIKeys(userId)
 
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const apiKeys = await apiKeyManager.getUserApiKeys(userId)
+    // Remove sensitive information
+    const sanitizedKeys = apiKeys.map((key) => ({
+      keyId: key.keyId,
+      name: key.name,
+      permissions: key.permissions,
+      rateLimit: key.rateLimit,
+      usage: key.usage,
+      isActive: key.isActive,
+      createdAt: key.createdAt,
+      expiresAt: key.expiresAt,
+    }))
 
     return NextResponse.json({
       success: true,
-      data: apiKeys,
+      apiKeys: sanitizedKeys,
     })
   } catch (error) {
-    console.error("Get API keys error:", error)
-    return NextResponse.json({ error: "Failed to fetch API keys" }, { status: 500 })
+    console.error("Failed to get API keys:", error)
+    return NextResponse.json({ success: false, error: "Failed to get API keys" }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = request.headers.get("x-user-id") // Simplified - use your auth system
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
+    const userId = request.headers.get("x-user-id") || "demo-user"
     const body = await request.json()
-    const { name, permissions, expiresInDays } = body
+    const { name, permissions } = body
 
     if (!name) {
-      return NextResponse.json({ error: "API key name is required" }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Name is required" }, { status: 400 })
     }
 
-    const apiKey = await apiKeyManager.createApiKey(userId, name, permissions, expiresInDays)
+    // Get user's subscription plan to determine limits
+    const userSettings = await database.getUserSettings(userId)
+    const plan = userSettings?.subscription.plan || "free"
+    const subscriptionStatus = userSettings?.subscription.status || "expired"
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        keyId: apiKey.keyId,
-        keySecret: apiKey.keySecret, // Only shown once!
-        name: apiKey.name,
-        permissions: apiKey.permissions,
-        rateLimit: apiKey.rateLimit,
-        createdAt: apiKey.createdAt,
-        expiresAt: apiKey.expiresAt,
+    // Check if user can create API keys (subscription must be active)
+    if (subscriptionStatus !== "active") {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Active subscription required to create API keys",
+          subscriptionStatus,
+          renewUrl: "/subscription",
+        },
+        { status: 402 },
+      )
+    }
+
+    const planLimits = apiKeyManager.getPlanLimits(plan)
+    const defaultPermissions = permissions || apiKeyManager.getPermissionsByPlan(plan)
+
+    const { keyId, secret } = await apiKeyManager.createAPIKey(userId, name, defaultPermissions, planLimits)
+
+    return NextResponse.json(
+      {
+        success: true,
+        apiKey: {
+          keyId,
+          secret, // Only shown once!
+          name,
+          permissions: defaultPermissions,
+          rateLimit: planLimits,
+        },
       },
-      message: "API key created successfully. Save the secret key - it won't be shown again!",
-    })
+      { status: 201 },
+    )
   } catch (error) {
-    console.error("Create API key error:", error)
-    return NextResponse.json({ error: "Failed to create API key" }, { status: 500 })
+    console.error("Failed to create API key:", error)
+    return NextResponse.json({ success: false, error: "Failed to create API key" }, { status: 500 })
   }
 }
