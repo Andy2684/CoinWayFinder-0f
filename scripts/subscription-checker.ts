@@ -8,11 +8,8 @@
  *
  * Usage:
  * - Run manually: npx tsx scripts/subscription-checker.ts
- * - Run as cron job: */ 5 * * * * /path/to/node /path/to/project/scripts/subscription-checker.ts
-\
- * - Run
-with PM2
-: pm2 start scripts/subscription-checker.ts --cron "0 * * * *"
+ * - Run as cron job: 0 * * * * /path/to/node /path/to/project/scripts/subscription-checker.ts
+ * - Run with PM2: pm2 start scripts/subscription-checker.ts --cron "0 * * * *"
  */
 
 interface UserSubscription {
@@ -33,11 +30,11 @@ interface DatabaseConnection {
 
 // Mock database implementation for the script
 const database: DatabaseConnection = {
-  async connect() {
+  async connect(): Promise<void> {
     console.log("📡 Connected to database")
   },
 
-  async disconnect() {
+  async disconnect(): Promise<void> {
     console.log("📡 Disconnected from database")
   },
 
@@ -58,7 +55,7 @@ const database: DatabaseConnection = {
   },
 }
 
-async function checkExpiredSubscriptions() {
+async function checkExpiredSubscriptions(): Promise<void> {
   console.log("🔍 Starting subscription check...", new Date().toISOString())
 
   try {
@@ -125,7 +122,7 @@ async function checkExpiredSubscriptions() {
 }
 
 // Main execution
-async function main() {
+async function main(): Promise<void> {
   try {
     await checkExpiredSubscriptions()
     console.log("✨ Subscription check finished successfully")
