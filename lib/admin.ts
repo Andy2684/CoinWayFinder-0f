@@ -1,318 +1,162 @@
 import jwt from "jsonwebtoken"
-import bcrypt from "bcryptjs"
-import { cookies } from "next/headers"
+import { connectToDatabase } from "./database"
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production"
-const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || "admin-secret-key-change-in-production"
-
-// Admin system with backdoor access for project.command.center@gmail.com
-interface AdminUser {
-  id: string
-  username: string
-  email: string
-  password: string
-  isAdmin: boolean
-  createdAt: string
-  lastLogin?: string
-}
-
-export interface AdminSession {
-  userId: string
-  username: string
-  email: string
-  isAdmin: boolean
-  token: string
-  expiresAt: number
-}
-
-interface SystemStats {
-  totalUsers: number
-  activeUsers: number
-  totalBots: number
-  activeBots: number
-  totalTrades: number
-  totalVolume: number
-  subscriptionBreakdown: Record<string, number>
-  revenueStats: {
-    monthly: number
-    total: number
-  }
-}
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 
 // Hardcoded admin credentials
 const ADMIN_CREDENTIALS = {
   username: "admin",
-  email: "project.command.center@gmail.com",
   password: "CoinWayFinder2024!",
 }
 
-export class AdminService {
-  private static adminSessions = new Map<string, AdminSession>()
+export interface AdminUser {
+  id: string
+  username: string
+  role: "admin"
+  createdAt: Date
+}
 
-  static async hashPassword(password: string): Promise<string> {
-    return bcrypt.hash(password, 12)
-  }
-
-  static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compare(password, hashedPassword)
-  }
-
-  static generateAdminToken(admin: AdminUser): string {
-    return jwt.sign(
-      {
-        id: admin.id,
-        username: admin.username,
-        email: admin.email,
-        isAdmin: true,
-      },
-      ADMIN_JWT_SECRET,
-      { expiresIn: "24h" },
-    )
-  }
-
-  static verifyAdminToken(token: string): AdminSession | null {
-    try {
-      const decoded = jwt.verify(token, ADMIN_JWT_SECRET) as any
-      return {
-        userId: decoded.id,
-        username: decoded.username,
-        email: decoded.email,
-        isAdmin: decoded.isAdmin,
-        token,
-        expiresAt: decoded.exp * 1000,
-      }
-    } catch (error) {
-      return null
-    }
-  }
-
-  static async validateAdminCredentials(
-    username: string,
-    password: string,
-  ): Promise<{ success: boolean; admin?: AdminUser }> {
-    // Check hardcoded admin credentials
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-      const admin: AdminUser = {
-        id: "admin-001",
-        username: ADMIN_CREDENTIALS.username,
-        email: ADMIN_CREDENTIALS.email,
-        password: await this.hashPassword(ADMIN_CREDENTIALS.password),
-        isAdmin: true,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-      }
-      return { success: true, admin }
-    }
-
-    return { success: false }
-  }
-
-  static async setAdminCookie(admin: AdminUser): Promise<void> {
-    const token = this.generateAdminToken(admin)
-    const cookieStore = await cookies()
-
-    // Store session
-    const session: AdminSession = {
-      userId: admin.id,
-      username: admin.username,
-      email: admin.email,
-      isAdmin: true,
-      token,
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
-    }
-
-    this.adminSessions.set(token, session)
-
-    cookieStore.set("admin-token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 24 * 60 * 60, // 24 hours
-    })
-  }
-
-  static async clearAdminCookie(): Promise<void> {
-    const cookieStore = await cookies()
-    const token = cookieStore.get("admin-token")?.value
-
-    if (token) {
-      this.adminSessions.delete(token)
-    }
-
-    cookieStore.delete("admin-token")
-  }
-
-  static async getCurrentAdmin(): Promise<AdminSession | null> {
-    try {
-      const cookieStore = await cookies()
-      const token = cookieStore.get("admin-token")?.value
-
-      if (!token) {
-        return null
-      }
-
-      // Check session store first
-      const session = this.adminSessions.get(token)
-      if (session && session.expiresAt > Date.now()) {
-        return session
-      }
-
-      // Verify token
-      const adminSession = this.verifyAdminToken(token)
-      if (!adminSession) {
-        return null
-      }
-
-      return adminSession
-    } catch (error) {
-      return null
-    }
-  }
-
-  static async requireAdmin(): Promise<AdminSession> {
-    const admin = await this.getCurrentAdmin()
-    if (!admin) {
-      throw new Error("Admin authentication required")
-    }
-    return admin
-  }
-
-  static async getAdminStats(): Promise<SystemStats> {
-    // Mock stats - in real implementation, query your database
-    return {
-      totalUsers: 1247,
-      activeUsers: 892,
-      totalBots: 3456,
-      activeBots: 1234,
-      totalTrades: 45678,
-      totalVolume: 2345678.9,
-      subscriptionBreakdown: {
-        free: 800,
-        basic: 300,
-        premium: 120,
-        enterprise: 27,
-      },
-      revenueStats: {
-        monthly: 45000,
-        total: 234567,
-      },
-    }
-  }
+export interface AdminStats {
+  totalUsers: number
+  activeUsers: number
+  totalBots: number
+  activeBots: number
+  totalRevenue: number
+  monthlyRevenue: number
 }
 
 class AdminManager {
-  bypassSubscriptionCheck(adminSession: AdminSession | null): boolean {
-    return adminSession?.isAdmin === true && adminSession.expiresAt > Date.now()
+  private sessions: Map<string, { userId: string; expiresAt: Date }> = new Map()
+
+  async validateCredentials(username: string, password: string): Promise<boolean> {
+    return username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password
   }
 
-  async getSystemHealth(): Promise<{
-    status: "healthy" | "warning" | "critical"
-    services: Record<string, boolean>
-    uptime: number
-  }> {
-    return {
-      status: "healthy",
-      services: {
-        database: true,
-        redis: true,
-        telegram: true,
-        exchanges: true,
-        payments: true,
-      },
-      uptime: process.uptime(),
+  async generateToken(username: string): Promise<string> {
+    const payload = {
+      username,
+      role: "admin",
+      type: "admin",
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60, // 24 hours
+    }
+
+    return jwt.sign(payload, JWT_SECRET)
+  }
+
+  async verifyToken(token: string): Promise<AdminUser | null> {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as any
+
+      if (decoded.type !== "admin" || decoded.username !== ADMIN_CREDENTIALS.username) {
+        return null
+      }
+
+      return {
+        id: "admin",
+        username: decoded.username,
+        role: "admin",
+        createdAt: new Date(),
+      }
+    } catch (error) {
+      return null
     }
   }
 
-  async getRecentActivity(): Promise<
-    Array<{
-      id: string
-      type: "user_signup" | "bot_created" | "trade_executed" | "subscription_upgraded"
-      userId: string
-      timestamp: string
-      details: Record<string, any>
-    }>
-  > {
-    // Mock recent activity
-    return [
-      {
-        id: "1",
-        type: "user_signup",
-        userId: "user-123",
-        timestamp: new Date().toISOString(),
-        details: { email: "user@example.com" },
-      },
-      {
-        id: "2",
-        type: "bot_created",
-        userId: "user-456",
-        timestamp: new Date().toISOString(),
-        details: { strategy: "DCA", exchange: "binance" },
-      },
-    ]
-  }
+  async getStats(): Promise<AdminStats> {
+    try {
+      const { db } = await connectToDatabase()
 
-  async getAllUsers(): Promise<any[]> {
-    // Mock users data
-    return [
-      {
-        id: "user-1",
-        email: "user1@example.com",
-        username: "user1",
-        subscription: "free",
-        createdAt: new Date().toISOString(),
-        lastLoginAt: new Date().toISOString(),
-      },
-      {
-        id: "user-2",
-        email: "user2@example.com",
-        username: "user2",
-        subscription: "pro",
-        createdAt: new Date().toISOString(),
-        lastLoginAt: new Date().toISOString(),
-      },
-    ]
-  }
+      const [totalUsers, activeUsers, totalBots, activeBots] = await Promise.all([
+        db.collection("users").countDocuments(),
+        db
+          .collection("users")
+          .countDocuments({ lastActive: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }),
+        db.collection("bots").countDocuments(),
+        db.collection("bots").countDocuments({ status: "active" }),
+      ])
 
-  async updateUserSubscription(userId: string, plan: string): Promise<{ success: boolean; message: string }> {
-    // Mock update
-    return { success: true, message: `User ${userId} subscription updated to ${plan}` }
-  }
+      // Calculate revenue (mock data for now)
+      const totalRevenue = totalUsers * 29.99 // Assuming average subscription
+      const monthlyRevenue = activeUsers * 29.99
 
-  async deleteUser(userId: string): Promise<{ success: boolean; message: string }> {
-    // Mock delete
-    return { success: true, message: `User ${userId} deleted successfully` }
-  }
-
-  async signIn(username: string, password: string): Promise<{ success: boolean; message: string; admin?: AdminUser }> {
-    const result = await AdminService.validateAdminCredentials(username, password)
-    if (result.success && result.admin) {
-      await AdminService.setAdminCookie(result.admin)
-      return { success: true, message: "Admin signed in successfully", admin: result.admin }
+      return {
+        totalUsers,
+        activeUsers,
+        totalBots,
+        activeBots,
+        totalRevenue,
+        monthlyRevenue,
+      }
+    } catch (error) {
+      console.error("Error getting admin stats:", error)
+      return {
+        totalUsers: 0,
+        activeUsers: 0,
+        totalBots: 0,
+        activeBots: 0,
+        totalRevenue: 0,
+        monthlyRevenue: 0,
+      }
     }
-    return { success: false, message: "Invalid admin credentials" }
   }
 
-  async signOut(): Promise<void> {
-    await AdminService.clearAdminCookie()
+  createSession(userId: string): string {
+    const sessionId = Math.random().toString(36).substring(2, 15)
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+
+    this.sessions.set(sessionId, { userId, expiresAt })
+    return sessionId
   }
 
-  async getCurrentAdmin(): Promise<AdminSession | null> {
-    return AdminService.getCurrentAdmin()
+  validateSession(sessionId: string): string | null {
+    const session = this.sessions.get(sessionId)
+    if (!session || session.expiresAt < new Date()) {
+      this.sessions.delete(sessionId)
+      return null
+    }
+    return session.userId
   }
 
-  async requireAdmin(): Promise<AdminSession> {
-    return AdminService.requireAdmin()
+  destroySession(sessionId: string): void {
+    this.sessions.delete(sessionId)
   }
 
-  async getStats(): Promise<SystemStats> {
-    return AdminService.getAdminStats()
+  // Cleanup expired sessions
+  cleanupSessions(): void {
+    const now = new Date()
+    for (const [sessionId, session] of this.sessions.entries()) {
+      if (session.expiresAt < now) {
+        this.sessions.delete(sessionId)
+      }
+    }
   }
 }
 
+// Create singleton instance
 export const adminManager = new AdminManager()
 
-// Export functions for backward compatibility
-export const verifyAdminToken = AdminService.verifyAdminToken
-export const getAdminStats = AdminService.getAdminStats
-export const validateAdminCredentials = AdminService.validateAdminCredentials
-export const generateAdminToken = AdminService.generateAdminToken
+// Export individual functions for backward compatibility
+export async function validateAdminCredentials(username: string, password: string): Promise<boolean> {
+  return adminManager.validateCredentials(username, password)
+}
+
+export async function generateAdminToken(username: string): Promise<string> {
+  return adminManager.generateToken(username)
+}
+
+export async function verifyAdminToken(token: string): Promise<AdminUser | null> {
+  return adminManager.verifyToken(token)
+}
+
+export async function getAdminStats(): Promise<AdminStats> {
+  return adminManager.getStats()
+}
+
+// Cleanup expired sessions every hour
+setInterval(
+  () => {
+    adminManager.cleanupSessions()
+  },
+  60 * 60 * 1000,
+)

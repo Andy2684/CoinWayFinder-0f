@@ -1,331 +1,189 @@
 import jwt from "jsonwebtoken"
 import bcrypt from "bcryptjs"
-import { cookies } from "next/headers"
-import { database } from "./database"
+import { connectToDatabase } from "./database"
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production"
-const JWT_EXPIRES_IN = "7d"
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 
 export interface User {
-  _id?: string
-  id?: string
+  id: string
   email: string
   username: string
-  password: string
+  hashedPassword: string
+  subscription: {
+    plan: "free" | "starter" | "pro" | "enterprise"
+    status: "active" | "inactive" | "trial" | "cancelled"
+    expiresAt?: Date
+    trialEndsAt?: Date
+  }
   createdAt: Date
-  lastLoginAt?: Date
-  emailVerified?: boolean
-  resetPasswordToken?: string
-  resetPasswordExpires?: Date
+  lastActive: Date
 }
 
-export interface UserSession {
+export interface AuthToken {
   userId: string
   email: string
   username: string
-  token: string
-  expiresAt: number
+  subscription: User["subscription"]
 }
 
 export class AuthService {
-  private static userSessions = new Map<string, UserSession>()
+  private sessions: Map<string, { userId: string; expiresAt: Date }> = new Map()
 
-  static async hashPassword(password: string): Promise<string> {
+  async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 12)
   }
 
-  static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
+  async verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
     return bcrypt.compare(password, hashedPassword)
   }
 
-  static generateToken(user: User): string {
-    return jwt.sign(
-      {
-        userId: user._id || user.id,
-        email: user.email,
-        username: user.username,
-      },
-      JWT_SECRET,
-      { expiresIn: JWT_EXPIRES_IN },
-    )
-  }
+  async createUser(email: string, username: string, password: string): Promise<User> {
+    const { db } = await connectToDatabase()
 
-  static verifyToken(token: string): UserSession | null {
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any
-      return {
-        userId: decoded.userId,
-        email: decoded.email,
-        username: decoded.username,
-        token,
-        expiresAt: decoded.exp * 1000,
-      }
-    } catch (error) {
-      return null
+    // Check if user already exists
+    const existingUser = await db.collection("users").findOne({
+      $or: [{ email }, { username }],
+    })
+
+    if (existingUser) {
+      throw new Error("User already exists")
+    }
+
+    const hashedPassword = await this.hashPassword(password)
+    const now = new Date()
+
+    const user: Omit<User, "id"> = {
+      email,
+      username,
+      hashedPassword,
+      subscription: {
+        plan: "free",
+        status: "trial",
+        trialEndsAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000), // 7 days trial
+      },
+      createdAt: now,
+      lastActive: now,
+    }
+
+    const result = await db.collection("users").insertOne(user)
+
+    return {
+      ...user,
+      id: result.insertedId.toString(),
     }
   }
 
-  static async setAuthCookie(user: User): Promise<void> {
-    const token = this.generateToken(user)
-    const cookieStore = await cookies()
+  async authenticateUser(email: string, password: string): Promise<User | null> {
+    const { db } = await connectToDatabase()
 
-    // Store session
-    const session: UserSession = {
-      userId: user._id || user.id || "",
+    const user = await db.collection("users").findOne({ email })
+    if (!user) return null
+
+    const isValidPassword = await this.verifyPassword(password, user.hashedPassword)
+    if (!isValidPassword) return null
+
+    // Update last active
+    await db.collection("users").updateOne({ _id: user._id }, { $set: { lastActive: new Date() } })
+
+    return {
+      ...user,
+      id: user._id.toString(),
+    }
+  }
+
+  async getUserById(userId: string): Promise<User | null> {
+    const { db } = await connectToDatabase()
+
+    const user = await db.collection("users").findOne({ _id: userId })
+    if (!user) return null
+
+    return {
+      ...user,
+      id: user._id.toString(),
+    }
+  }
+
+  async updateUser(userId: string, updates: Partial<User>): Promise<User | null> {
+    const { db } = await connectToDatabase()
+
+    const result = await db
+      .collection("users")
+      .findOneAndUpdate({ _id: userId }, { $set: updates }, { returnDocument: "after" })
+
+    if (!result) return null
+
+    return {
+      ...result,
+      id: result._id.toString(),
+    }
+  }
+
+  generateToken(user: User): string {
+    const payload: AuthToken = {
+      userId: user.id,
       email: user.email,
       username: user.username,
-      token,
-      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
+      subscription: user.subscription,
     }
 
-    this.userSessions.set(token, session)
-
-    cookieStore.set("auth-token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-    })
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" })
   }
 
-  static async clearAuthCookie(): Promise<void> {
-    const cookieStore = await cookies()
-    const token = cookieStore.get("auth-token")?.value
-
-    if (token) {
-      this.userSessions.delete(token)
-    }
-
-    cookieStore.delete("auth-token")
-  }
-
-  static async getCurrentUser(): Promise<UserSession | null> {
+  verifyToken(token: string): AuthToken | null {
     try {
-      const cookieStore = await cookies()
-      const token = cookieStore.get("auth-token")?.value
-
-      if (!token) {
-        return null
-      }
-
-      // Check session store first
-      const session = this.userSessions.get(token)
-      if (session && session.expiresAt > Date.now()) {
-        return session
-      }
-
-      // Verify token
-      const userSession = this.verifyToken(token)
-      if (!userSession) {
-        return null
-      }
-
-      return userSession
+      return jwt.verify(token, JWT_SECRET) as AuthToken
     } catch (error) {
       return null
     }
   }
 
-  static async requireAuth(): Promise<UserSession> {
-    const user = await this.getCurrentUser()
-    if (!user) {
-      throw new Error("Authentication required")
+  createSession(userId: string): string {
+    const sessionId = Math.random().toString(36).substring(2, 15)
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+
+    this.sessions.set(sessionId, { userId, expiresAt })
+    return sessionId
+  }
+
+  validateSession(sessionId: string): string | null {
+    const session = this.sessions.get(sessionId)
+    if (!session || session.expiresAt < new Date()) {
+      this.sessions.delete(sessionId)
+      return null
     }
-    return user
+    return session.userId
   }
 
-  static async signUp(
-    email: string,
-    username: string,
-    password: string,
-  ): Promise<{ success: boolean; message: string; user?: User }> {
-    try {
-      // Check if user already exists
-      const existingUser = await database.getUserByEmail(email)
-      if (existingUser) {
-        return { success: false, message: "User already exists with this email" }
-      }
-
-      // Hash password
-      const hashedPassword = await this.hashPassword(password)
-
-      // Create user
-      const newUser: User = {
-        email,
-        username,
-        password: hashedPassword,
-        createdAt: new Date(),
-        emailVerified: false,
-      }
-
-      const createdUser = await database.createUser(newUser)
-      if (!createdUser) {
-        return { success: false, message: "Failed to create user" }
-      }
-
-      // Set auth cookie
-      await this.setAuthCookie(createdUser)
-
-      return { success: true, message: "User created successfully", user: createdUser }
-    } catch (error) {
-      console.error("Sign up error:", error)
-      return { success: false, message: "Failed to create user" }
-    }
+  destroySession(sessionId: string): void {
+    this.sessions.delete(sessionId)
   }
 
-  static async signIn(email: string, password: string): Promise<{ success: boolean; message: string; user?: User }> {
-    try {
-      // Find user
-      const user = await database.getUserByEmail(email)
-      if (!user) {
-        return { success: false, message: "Invalid email or password" }
+  // Cleanup expired sessions
+  cleanupSessions(): void {
+    const now = new Date()
+    for (const [sessionId, session] of this.sessions.entries()) {
+      if (session.expiresAt < now) {
+        this.sessions.delete(sessionId)
       }
-
-      // Check password
-      const isValidPassword = await this.comparePassword(password, user.password)
-      if (!isValidPassword) {
-        return { success: false, message: "Invalid email or password" }
-      }
-
-      // Update last login
-      await database.updateUser(user._id!.toString(), { lastLoginAt: new Date() })
-
-      // Set auth cookie
-      await this.setAuthCookie(user)
-
-      return { success: true, message: "Signed in successfully", user }
-    } catch (error) {
-      console.error("Sign in error:", error)
-      return { success: false, message: "Failed to sign in" }
-    }
-  }
-
-  static async signOut(): Promise<void> {
-    await this.clearAuthCookie()
-  }
-
-  static async updatePassword(
-    userId: string,
-    currentPassword: string,
-    newPassword: string,
-  ): Promise<{ success: boolean; message: string }> {
-    try {
-      const user = await database.getUserById(userId)
-      if (!user) {
-        return { success: false, message: "User not found" }
-      }
-
-      const isValidPassword = await this.comparePassword(currentPassword, user.password)
-      if (!isValidPassword) {
-        return { success: false, message: "Current password is incorrect" }
-      }
-
-      const hashedNewPassword = await this.hashPassword(newPassword)
-      await database.updateUser(userId, { password: hashedNewPassword })
-
-      return { success: true, message: "Password updated successfully" }
-    } catch (error) {
-      console.error("Update password error:", error)
-      return { success: false, message: "Failed to update password" }
-    }
-  }
-
-  static async requestPasswordReset(email: string): Promise<{ success: boolean; message: string }> {
-    try {
-      const user = await database.getUserByEmail(email)
-      if (!user) {
-        // Don't reveal if user exists
-        return { success: true, message: "If the email exists, a reset link has been sent" }
-      }
-
-      // Generate reset token
-      const resetToken = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: "1h" })
-      const resetExpires = new Date(Date.now() + 60 * 60 * 1000) // 1 hour
-
-      await database.updateUser(user._id!.toString(), {
-        resetPasswordToken: resetToken,
-        resetPasswordExpires: resetExpires,
-      })
-
-      // In a real app, send email here
-      console.log(`Password reset token for ${email}: ${resetToken}`)
-
-      return { success: true, message: "If the email exists, a reset link has been sent" }
-    } catch (error) {
-      console.error("Password reset request error:", error)
-      return { success: false, message: "Failed to process password reset request" }
-    }
-  }
-
-  static async resetPassword(token: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any
-      const user = await database.getUserById(decoded.userId)
-
-      if (!user || user.resetPasswordToken !== token || !user.resetPasswordExpires) {
-        return { success: false, message: "Invalid or expired reset token" }
-      }
-
-      if (user.resetPasswordExpires < new Date()) {
-        return { success: false, message: "Reset token has expired" }
-      }
-
-      const hashedPassword = await this.hashPassword(newPassword)
-      await database.updateUser(user._id!.toString(), {
-        password: hashedPassword,
-        resetPasswordToken: undefined,
-        resetPasswordExpires: undefined,
-      })
-
-      return { success: true, message: "Password reset successfully" }
-    } catch (error) {
-      console.error("Password reset error:", error)
-      return { success: false, message: "Failed to reset password" }
     }
   }
 }
 
-class AuthManager {
-  async signUp(email: string, username: string, password: string) {
-    return AuthService.signUp(email, username, password)
-  }
-
-  async signIn(email: string, password: string) {
-    return AuthService.signIn(email, password)
-  }
-
-  async signOut() {
-    return AuthService.signOut()
-  }
-
-  async getCurrentUser() {
-    return AuthService.getCurrentUser()
-  }
-
-  async requireAuth() {
-    return AuthService.requireAuth()
-  }
-
-  async updatePassword(userId: string, currentPassword: string, newPassword: string) {
-    return AuthService.updatePassword(userId, currentPassword, newPassword)
-  }
-
-  async requestPasswordReset(email: string) {
-    return AuthService.requestPasswordReset(email)
-  }
-
-  async resetPassword(token: string, newPassword: string) {
-    return AuthService.resetPassword(token, newPassword)
-  }
-
-  verifyToken(token: string) {
-    return AuthService.verifyToken(token)
-  }
-
-  generateToken(user: User) {
-    return AuthService.generateToken(user)
+// Legacy AuthManager class for backward compatibility
+export class AuthManager extends AuthService {
+  constructor() {
+    super()
   }
 }
 
-export const authManager = new AuthManager()
-export { AuthManager }
+// Create singleton instances
+export const authManager = new AuthService()
+export const AuthService_Instance = new AuthService()
+
+// Cleanup expired sessions every hour
+setInterval(
+  () => {
+    authManager.cleanupSessions()
+  },
+  60 * 60 * 1000,
+)
