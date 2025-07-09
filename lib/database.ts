@@ -140,6 +140,11 @@ export interface User {
   lastLoginAt?: Date
   isVerified: boolean
   verificationToken?: string
+  id: string
+  username: string
+  subscriptionStatus: "active" | "expired" | "cancelled"
+  subscriptionPlan: "free" | "pro" | "enterprise"
+  subscriptionExpiry?: Date
 }
 
 export interface ArbitrageOpportunity {
@@ -174,6 +179,17 @@ export interface AIAnalysis {
     trend: string
   }
   timestamp: Date
+}
+
+export interface Bot {
+  id: string
+  userId: string
+  name: string
+  strategy: string
+  status: "running" | "stopped" | "paused"
+  autoStop: boolean
+  createdAt: Date
+  updatedAt: Date
 }
 
 class DatabaseManager {
@@ -252,6 +268,11 @@ class DatabaseManager {
       ...user,
       createdAt: new Date(),
       updatedAt: new Date(),
+      id: Date.now().toString(),
+      username: user.email.split("@")[0],
+      subscriptionStatus: "active",
+      subscriptionPlan: "free",
+      subscriptionExpiry: undefined,
     }
 
     const result = await collection.insertOne(newUser)
@@ -802,6 +823,121 @@ class DatabaseManager {
     )
 
     return result.modifiedCount
+  }
+}
+
+// Mock database implementation for development
+const mockUsers: User[] = [
+  {
+    id: "1",
+    email: "user@example.com",
+    username: "testuser",
+    subscriptionStatus: "active",
+    subscriptionPlan: "pro",
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+]
+
+const mockBots: Bot[] = [
+  {
+    id: "1",
+    userId: "1",
+    name: "DCA Bot",
+    strategy: "dca",
+    status: "running",
+    autoStop: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  },
+]
+
+export class Database {
+  static async connect() {
+    console.log("📊 Connected to mock database")
+    return true
+  }
+
+  static async disconnect() {
+    console.log("📊 Disconnected from mock database")
+    return true
+  }
+
+  static async getUser(id: string): Promise<User | null> {
+    return mockUsers.find((user) => user.id === id) || null
+  }
+
+  static async getUserByEmail(email: string): Promise<User | null> {
+    return mockUsers.find((user) => user.email === email) || null
+  }
+
+  static async createUser(userData: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
+    const user: User = {
+      ...userData,
+      id: Date.now().toString(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    mockUsers.push(user)
+    return user
+  }
+
+  static async updateUser(id: string, updates: Partial<User>): Promise<User | null> {
+    const userIndex = mockUsers.findIndex((user) => user.id === id)
+    if (userIndex === -1) return null
+
+    mockUsers[userIndex] = {
+      ...mockUsers[userIndex],
+      ...updates,
+      updatedAt: new Date(),
+    }
+    return mockUsers[userIndex]
+  }
+
+  static async getUserBots(userId: string): Promise<Bot[]> {
+    return mockBots.filter((bot) => bot.userId === userId)
+  }
+
+  static async createBot(botData: Omit<Bot, "id" | "createdAt" | "updatedAt">): Promise<Bot> {
+    const bot: Bot = {
+      ...botData,
+      id: Date.now().toString(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    mockBots.push(bot)
+    return bot
+  }
+
+  static async updateBot(id: string, updates: Partial<Bot>): Promise<Bot | null> {
+    const botIndex = mockBots.findIndex((bot) => bot.id === id)
+    if (botIndex === -1) return null
+
+    mockBots[botIndex] = {
+      ...mockBots[botIndex],
+      ...updates,
+      updatedAt: new Date(),
+    }
+    return mockBots[botIndex]
+  }
+
+  static async deleteBot(id: string): Promise<boolean> {
+    const botIndex = mockBots.findIndex((bot) => bot.id === id)
+    if (botIndex === -1) return false
+
+    mockBots.splice(botIndex, 1)
+    return true
+  }
+
+  static async getExpiredUsers(): Promise<User[]> {
+    return mockUsers.filter(
+      (user) =>
+        user.subscriptionStatus === "expired" || (user.subscriptionExpiry && user.subscriptionExpiry < new Date()),
+    )
+  }
+
+  static async getRunningBots(): Promise<Bot[]> {
+    return mockBots.filter((bot) => bot.status === "running")
   }
 }
 

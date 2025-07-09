@@ -1,55 +1,43 @@
-import { withAuth } from "next-auth/middleware"
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
-export default withAuth(
-  function middleware(req: NextRequest) {
-    const token = req.nextauth.token
-    const isAuth = !!token
-    const isAuthPage = req.nextUrl.pathname.startsWith("/auth")
-    const isApiAuthRoute = req.nextUrl.pathname.startsWith("/api/auth")
-    const isPublicPage = ["/", "/pricing", "/features", "/about"].includes(req.nextUrl.pathname)
+export function middleware(request: NextRequest) {
+  // Get the pathname of the request (e.g. /, /dashboard, /api/bots)
+  const { pathname } = request.nextUrl
 
-    // Allow API auth routes
-    if (isApiAuthRoute) {
-      return NextResponse.next()
-    }
-
-    // Allow public pages
-    if (isPublicPage) {
-      return NextResponse.next()
-    }
-
-    // Redirect to home if accessing auth pages while authenticated
-    if (isAuthPage && isAuth) {
-      return NextResponse.redirect(new URL("/dashboard", req.url))
-    }
-
-    // Redirect to auth if accessing protected pages while not authenticated
-    if (!isAuthPage && !isAuth) {
-      return NextResponse.redirect(new URL("/auth/signin", req.url))
-    }
-
+  // Skip middleware for static files and API routes that don't need auth
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/admin") ||
+    pathname.startsWith("/api/stripe") ||
+    pathname.startsWith("/api/coinbase") ||
+    pathname.includes(".") ||
+    pathname === "/" ||
+    pathname === "/subscription" ||
+    pathname === "/subscription/success" ||
+    pathname === "/subscription/cancel"
+  ) {
     return NextResponse.next()
-  },
-  {
-    callbacks: {
-      authorized: ({ token, req }) => {
-        // Allow access to public routes and API routes
-        const isPublicRoute = ["/", "/pricing", "/features", "/about"].includes(req.nextUrl.pathname)
-        const isApiRoute = req.nextUrl.pathname.startsWith("/api")
-        const isAuthRoute = req.nextUrl.pathname.startsWith("/auth")
+  }
 
-        if (isPublicRoute || isApiRoute || isAuthRoute) {
-          return true
-        }
+  // Check for authentication token
+  const token = request.cookies.get("auth-token")?.value
 
-        // Require authentication for all other routes
-        return !!token
-      },
-    },
-  },
-)
+  if (
+    !token &&
+    (pathname.startsWith("/dashboard") || pathname.startsWith("/bots") || pathname.startsWith("/profile"))
+  ) {
+    // Redirect to home page if not authenticated
+    return NextResponse.redirect(new URL("/", request.url))
+  }
+
+  // For API routes that need authentication
+  if (pathname.startsWith("/api/") && !token) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+  }
+
+  return NextResponse.next()
+}
 
 export const config = {
   matcher: [
@@ -58,8 +46,7 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public folder
      */
-    "/((?!_next/static|_next/image|favicon.ico|public/).*)",
+    "/((?!_next/static|_next/image|favicon.ico).*)",
   ],
 }
