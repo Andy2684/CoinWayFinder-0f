@@ -9,67 +9,88 @@ const stripe = new Stripe(
   },
 )
 
-// Pricing configuration
+// Pricing configuration with trial support
 export const STRIPE_PLANS = {
   basic: {
     monthly: {
       priceId: "price_basic_monthly",
-      amount: 999, // $9.99
+      amount: 2900, // $29.00
       currency: "usd",
       interval: "month",
       name: "Basic Monthly",
-      features: ["Up to 3 bots", "Basic strategies", "Email support"],
+      features: ["Up to 3 bots", "100 trades/month", "AI Analysis", "Email support"],
+      trialDays: 3,
     },
     yearly: {
       priceId: "price_basic_yearly",
-      amount: 9999, // $99.99
+      amount: 29000, // $290.00 (save $58)
       currency: "usd",
       interval: "year",
       name: "Basic Yearly",
-      features: ["Up to 3 bots", "Basic strategies", "Email support", "2 months free"],
+      features: ["Up to 3 bots", "100 trades/month", "AI Analysis", "Email support", "2 months free"],
+      trialDays: 3,
     },
   },
   premium: {
     monthly: {
       priceId: "price_premium_monthly",
-      amount: 2999, // $29.99
+      amount: 9900, // $99.00
       currency: "usd",
       interval: "month",
       name: "Premium Monthly",
-      features: ["Up to 10 bots", "Advanced strategies", "Priority support", "Multiple exchanges"],
+      features: ["Up to 10 bots", "1,000 trades/month", "Advanced AI", "Whale tracking", "Priority support"],
+      trialDays: 3,
     },
     yearly: {
       priceId: "price_premium_yearly",
-      amount: 29999, // $299.99
+      amount: 99000, // $990.00 (save $198)
       currency: "usd",
       interval: "year",
       name: "Premium Yearly",
-      features: ["Up to 10 bots", "Advanced strategies", "Priority support", "Multiple exchanges", "2 months free"],
+      features: [
+        "Up to 10 bots",
+        "1,000 trades/month",
+        "Advanced AI",
+        "Whale tracking",
+        "Priority support",
+        "2 months free",
+      ],
+      trialDays: 3,
     },
   },
   enterprise: {
     monthly: {
       priceId: "price_enterprise_monthly",
-      amount: 9999, // $99.99
+      amount: 29900, // $299.00
       currency: "usd",
       interval: "month",
       name: "Enterprise Monthly",
-      features: ["Unlimited bots", "All strategies", "24/7 support", "Custom integrations", "API access"],
+      features: [
+        "Unlimited bots",
+        "Unlimited trades",
+        "All AI features",
+        "Custom strategies",
+        "24/7 support",
+        "API access",
+      ],
+      trialDays: 3,
     },
     yearly: {
       priceId: "price_enterprise_yearly",
-      amount: 99999, // $999.99
+      amount: 299000, // $2,990.00 (save $598)
       currency: "usd",
       interval: "year",
       name: "Enterprise Yearly",
       features: [
         "Unlimited bots",
-        "All strategies",
+        "Unlimited trades",
+        "All AI features",
+        "Custom strategies",
         "24/7 support",
-        "Custom integrations",
         "API access",
         "2 months free",
       ],
+      trialDays: 3,
     },
   },
 }
@@ -79,28 +100,28 @@ export const ADD_ONS = {
   extra_bots: {
     priceId: "price_extra_bots",
     name: "Extra Bot Slots",
-    price: 9.99,
+    price: 999, // $9.99
     description: "Add 5 more bot slots to your plan",
     features: ["5 additional bot slots", "Same features as your current plan"],
   },
   premium_support: {
     priceId: "price_premium_support",
     name: "Premium Support",
-    price: 19.99,
+    price: 1999, // $19.99
     description: "24/7 priority support with dedicated account manager",
     features: ["24/7 priority support", "Dedicated account manager", "Phone support", "Custom integrations help"],
   },
   advanced_analytics: {
     priceId: "price_advanced_analytics",
     name: "Advanced Analytics",
-    price: 14.99,
+    price: 1499, // $14.99
     description: "Advanced trading analytics and reporting",
     features: ["Advanced performance metrics", "Custom reports", "Risk analysis", "Portfolio optimization"],
   },
   api_access: {
     priceId: "price_api_access",
     name: "API Access",
-    price: 24.99,
+    price: 2499, // $24.99
     description: "Full API access for custom integrations",
     features: ["REST API access", "Webhook notifications", "Custom integrations", "Developer documentation"],
   },
@@ -161,7 +182,7 @@ export function constructWebhookEvent(payload: string | Buffer, signature: strin
   return stripe.webhooks.constructEvent(payload, signature, secret)
 }
 
-// Helper function to create a checkout session for subscription
+// Helper function to create a checkout session for subscription with trial
 export async function createSubscriptionCheckout({
   priceId,
   customerId,
@@ -169,6 +190,7 @@ export async function createSubscriptionCheckout({
   successUrl,
   cancelUrl,
   metadata = {},
+  trialDays = 3,
 }: {
   priceId: string
   customerId?: string
@@ -176,6 +198,7 @@ export async function createSubscriptionCheckout({
   successUrl: string
   cancelUrl: string
   metadata?: Record<string, string>
+  trialDays?: number
 }) {
   const sessionParams: Stripe.Checkout.SessionCreateParams = {
     payment_method_types: ["card"],
@@ -194,6 +217,9 @@ export async function createSubscriptionCheckout({
     customer_update: {
       address: "auto",
       name: "auto",
+    },
+    subscription_data: {
+      trial_period_days: trialDays,
     },
   }
 
@@ -319,6 +345,23 @@ export function verifyWebhookSignature(payload: string | Buffer, signature: stri
   } catch (error) {
     console.error("Webhook signature verification failed:", error)
     return false
+  }
+}
+
+// Helper function to create trial checkout (free trial without payment method)
+export async function createTrialCheckout({
+  userId,
+  successUrl,
+  cancelUrl,
+}: {
+  userId: string
+  successUrl: string
+  cancelUrl: string
+}) {
+  // For a free trial, we don't need Stripe checkout
+  // This would be handled by our internal trial system
+  return {
+    url: `${successUrl}?trial=started&userId=${userId}`,
   }
 }
 
