@@ -1,146 +1,207 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { apiKeyManager } from "./api-key-manager"
+import { AuthService } from "./auth"
+import { AdminService } from "./admin"
 import { database } from "./database"
 
-export interface AuthenticatedRequest extends NextRequest {
+export interface APIAuthContext {
   user?: {
-    userId: string
-    apiKey: string
-    permissions: string[]
-    plan: string
-    subscriptionStatus: "active" | "expired" | "cancelled"
+    id: string
+    email: string
+    name: string
+    subscription?: {
+      plan: string
+      status: string
+      endDate?: Date
+    }
   }
+  admin?: {
+    userId: string
+    username: string
+    email: string
+    isAdmin: boolean
+  }
+  isAuthenticated: boolean
+  isAdmin: boolean
 }
 
-export async function withAPIAuth(
-  handler: (req: AuthenticatedRequest) => Promise<NextResponse>,
-  requiredPermission?: string,
-) {
-  return async (req: NextRequest) => {
-    const startTime = Date.now()
-
+export function withAPIAuth(handler: (req: NextRequest, context: APIAuthContext) => Promise<NextResponse>) {
+  return async (req: NextRequest): Promise<NextResponse> => {
     try {
-      // Extract API key from Authorization header
-      const authHeader = req.headers.get("authorization")
-      if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return NextResponse.json({ error: "Missing or invalid authorization header" }, { status: 401 })
+      const context: APIAuthContext = {
+        isAuthenticated: false,
+        isAdmin: false,
       }
 
-      const token = authHeader.substring(7) // Remove 'Bearer '
-      const [keyId, secret] = token.split(":")
-
-      if (!keyId || !secret) {
-        return NextResponse.json({ error: "Invalid API key format. Use keyId:secret" }, { status: 401 })
-      }
-
-      // Validate API key
-      const apiKey = await apiKeyManager.validateAPIKey(keyId, secret)
-      if (!apiKey) {
-        return NextResponse.json({ error: "Invalid API key" }, { status: 401 })
-      }
-
-      // Check rate limits
-      const rateLimitCheck = await apiKeyManager.checkRateLimit(keyId)
-      if (!rateLimitCheck.allowed) {
-        const response = NextResponse.json(
-          {
-            error: "Rate limit exceeded",
-            resetTime: rateLimitCheck.resetTime?.toISOString(),
-          },
-          { status: 429 },
-        )
-
-        response.headers.set("X-RateLimit-Remaining", "0")
-        if (rateLimitCheck.resetTime) {
-          response.headers.set("X-RateLimit-Reset", Math.floor(rateLimitCheck.resetTime.getTime() / 1000).toString())
+      // Check for admin authentication first
+      const adminToken = req.cookies.get("admin-token")?.value
+      if (adminToken) {
+        const admin = AdminService.verifyAdminToken(adminToken)
+        if (admin) {
+          context.admin = admin
+          context.isAdmin = true
+          context.isAuthenticated = true
         }
-
-        return response
       }
 
-      // Get user subscription status
-      const userSettings = await database.getUserSettings(apiKey.userId)
-      const subscriptionStatus = userSettings?.subscription.status || "expired"
-
-      // Check if user has required permission
-      if (requiredPermission && !apiKey.permissions.includes(requiredPermission)) {
-        return NextResponse.json(
-          { error: `Insufficient permissions. Required: ${requiredPermission}` },
-          { status: 403 },
-        )
+      // If not admin, check for user authentication
+      if (!context.isAuthenticated) {
+        const userToken = req.cookies.get("auth-token")?.value
+        if (userToken) {
+          const user = AuthService.verifyToken(userToken)
+          if (user) {
+            // Get user settings for subscription info
+            const userSettings = await database.getUserSettings(user.id)
+            context.user = {
+              ...user,
+              subscription: userSettings?.subscription,
+            }
+            context.isAuthenticated = true
+          }
+        }
       }
 
-      // For write operations, check if subscription is active
-      const writeOperations = ["bots:create", "bots:manage", "bots:update", "bots:delete"]
-      const isWriteOperation = requiredPermission && writeOperations.some((op) => requiredPermission.includes(op))
-
-      if (isWriteOperation && subscriptionStatus !== "active") {
-        return NextResponse.json(
-          {
-            error:
-              "Subscription expired. Your existing bots will continue running, but you cannot create or modify bots until you renew your subscription.",
-            subscriptionStatus,
-            renewUrl: "/subscription",
-          },
-          { status: 402 }, // Payment Required
-        )
-      }
-
-      // Add user info to request
-      const authenticatedReq = req as AuthenticatedRequest
-      authenticatedReq.user = {
-        userId: apiKey.userId,
-        apiKey: keyId,
-        permissions: apiKey.permissions,
-        plan: userSettings?.subscription.plan || "free",
-        subscriptionStatus,
-      }
-
-      // Execute the handler
-      const response = await handler(authenticatedReq)
-
-      // Record usage
-      const responseTime = Date.now() - startTime
-      const userAgent = req.headers.get("user-agent") || undefined
-      const ipAddress = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip") || undefined
-
-      await apiKeyManager.recordUsage(
-        keyId,
-        req.nextUrl.pathname,
-        req.method,
-        response.status,
-        responseTime,
-        userAgent,
-        ipAddress,
-      )
-
-      // Add rate limit headers
-      response.headers.set("X-RateLimit-Remaining", (rateLimitCheck.remaining || 0).toString())
-      response.headers.set("X-RateLimit-Limit", apiKey.rateLimit.requestsPerMinute.toString())
-
-      return response
+      return await handler(req, context)
     } catch (error) {
-      console.error("API middleware error:", error)
+      console.error("API Auth middleware error:", error)
       return NextResponse.json({ error: "Internal server error" }, { status: 500 })
     }
   }
 }
 
-export function withGracefulExpiration(handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
-  return withAPIAuth(async (req: AuthenticatedRequest) => {
-    const { subscriptionStatus } = req.user!
+export function withGracefulExpiration(handler: (req: NextRequest, context: APIAuthContext) => Promise<NextResponse>) {
+  return withAPIAuth(async (req: NextRequest, context: APIAuthContext) => {
+    try {
+      // If user is authenticated, check if their subscription is expired
+      if (context.user?.subscription) {
+        const { subscription } = context.user
 
-    // Add subscription status to response headers for client awareness
-    const response = await handler(req)
-    response.headers.set("X-Subscription-Status", subscriptionStatus)
+        // Check if subscription is expired
+        if (subscription.status === "active" && subscription.plan !== "free") {
+          const settings = await database.getUserSettings(context.user.id)
+          if (settings?.subscription?.endDate && new Date() > settings.subscription.endDate) {
+            // Gracefully downgrade to free plan
+            await database.updateUserSettings(context.user.id, {
+              subscription: {
+                plan: "free",
+                status: "active",
+                startDate: new Date(),
+              },
+            })
 
-    // Add warning header if subscription is expired
-    if (subscriptionStatus === "expired") {
-      response.headers.set(
-        "X-Subscription-Warning",
-        "Your subscription has expired. Existing bots will continue running, but new actions require renewal.",
-      )
+            // Update context
+            context.user.subscription = {
+              plan: "free",
+              status: "active",
+            }
+          }
+        }
+      }
+
+      return await handler(req, context)
+    } catch (error) {
+      console.error("Graceful expiration middleware error:", error)
+      return await handler(req, context)
     }
+  })
+}
+
+export function requireAuth(handler: (req: NextRequest, context: APIAuthContext) => Promise<NextResponse>) {
+  return withAPIAuth(async (req: NextRequest, context: APIAuthContext) => {
+    if (!context.isAuthenticated) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    }
+    return await handler(req, context)
+  })
+}
+
+export function requireAdmin(handler: (req: NextRequest, context: APIAuthContext) => Promise<NextResponse>) {
+  return withAPIAuth(async (req: NextRequest, context: APIAuthContext) => {
+    if (!context.isAdmin) {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+    }
+    return await handler(req, context)
+  })
+}
+
+export function requireSubscription(plans: string[]) {
+  return (handler: (req: NextRequest, context: APIAuthContext) => Promise<NextResponse>) =>
+    requireAuth(async (req: NextRequest, context: APIAuthContext) => {
+      // Admin always has access
+      if (context.isAdmin) {
+        return await handler(req, context)
+      }
+
+      // Check user subscription
+      if (!context.user?.subscription) {
+        return NextResponse.json({ error: "Subscription required" }, { status: 403 })
+      }
+
+      const userPlan = context.user.subscription.plan
+      if (!plans.includes(userPlan) && userPlan !== "admin") {
+        return NextResponse.json(
+          {
+            error: "Subscription upgrade required",
+            requiredPlans: plans,
+            currentPlan: userPlan,
+          },
+          { status: 403 },
+        )
+      }
+
+      return await handler(req, context)
+    })
+}
+
+export function withRateLimit(maxRequests: number, windowMs: number) {
+  const requests = new Map<string, { count: number; resetTime: number }>()
+
+  return (handler: (req: NextRequest, context: APIAuthContext) => Promise<NextResponse>) =>
+    withAPIAuth(async (req: NextRequest, context: APIAuthContext) => {
+      const identifier = context.user?.id || context.admin?.userId || req.ip || "anonymous"
+      const now = Date.now()
+
+      const userRequests = requests.get(identifier)
+
+      if (!userRequests || now > userRequests.resetTime) {
+        requests.set(identifier, { count: 1, resetTime: now + windowMs })
+      } else {
+        userRequests.count++
+
+        if (userRequests.count > maxRequests) {
+          return NextResponse.json(
+            {
+              error: "Rate limit exceeded",
+              retryAfter: Math.ceil((userRequests.resetTime - now) / 1000),
+            },
+            { status: 429 },
+          )
+        }
+      }
+
+      return await handler(req, context)
+    })
+}
+
+export function withCORS(handler: (req: NextRequest, context: APIAuthContext) => Promise<NextResponse>) {
+  return withAPIAuth(async (req: NextRequest, context: APIAuthContext) => {
+    // Handle preflight requests
+    if (req.method === "OPTIONS") {
+      return new NextResponse(null, {
+        status: 200,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        },
+      })
+    }
+
+    const response = await handler(req, context)
+
+    // Add CORS headers to response
+    response.headers.set("Access-Control-Allow-Origin", "*")
+    response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
     return response
   })
