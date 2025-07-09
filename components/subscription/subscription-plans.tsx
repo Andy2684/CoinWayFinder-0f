@@ -4,7 +4,7 @@ import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Check, Loader2, Crown, Zap, Rocket } from "lucide-react"
+import { Check, Loader2, Crown, Zap, Rocket, ExternalLink } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { STRIPE_PLANS } from "@/lib/stripe"
 
@@ -35,7 +35,6 @@ export function SubscriptionPlans({ currentPlan = "free", onPlanSelect }: Subscr
         throw new Error(data.error || "Failed to create checkout session")
       }
 
-      // Redirect to Stripe Checkout
       if (data.url) {
         window.location.href = data.url
       } else {
@@ -51,6 +50,14 @@ export function SubscriptionPlans({ currentPlan = "free", onPlanSelect }: Subscr
     } finally {
       setLoading(null)
     }
+  }
+
+  const handleCryptoPayment = () => {
+    window.open(
+      "https://commerce.coinbase.com/checkout/d8e91b96-8299-4b72-a9ed-77981687a3cc",
+      "_blank",
+      "noopener,noreferrer",
+    )
   }
 
   const plans = [
@@ -141,7 +148,7 @@ export function SubscriptionPlans({ currentPlan = "free", onPlanSelect }: Subscr
               </ul>
             </CardContent>
 
-            <CardFooter>
+            <CardFooter className="flex flex-col gap-2">
               <Button
                 className="w-full"
                 variant={plan.popular ? "default" : "outline"}
@@ -159,6 +166,18 @@ export function SubscriptionPlans({ currentPlan = "free", onPlanSelect }: Subscr
                   plan.buttonText
                 )}
               </Button>
+
+              {plan.id !== "free" && currentPlan !== plan.id && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full text-xs bg-transparent"
+                  onClick={handleCryptoPayment}
+                >
+                  🪙 Pay with Crypto
+                  <ExternalLink className="ml-1 h-3 w-3" />
+                </Button>
+              )}
             </CardFooter>
           </Card>
         ))}
@@ -166,28 +185,38 @@ export function SubscriptionPlans({ currentPlan = "free", onPlanSelect }: Subscr
 
       <div className="mt-12 text-center">
         <div className="bg-muted/50 rounded-lg p-6 max-w-4xl mx-auto">
-          <h3 className="text-lg font-semibold mb-4">🔒 Secure Payment with Stripe</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center justify-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              SSL Encrypted
+          <h3 className="text-lg font-semibold mb-4">🔒 Secure Payment Options</h3>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {/* Stripe Payment */}
+            <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
+              <h4 className="font-semibold text-blue-700 dark:text-blue-300 mb-2">💳 Credit Card (Stripe)</h4>
+              <ul className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
+                <li>• SSL Encrypted & PCI Compliant</li>
+                <li>• Instant activation</li>
+                <li>• Cancel anytime</li>
+                <li>• Test: 4242 4242 4242 4242</li>
+              </ul>
             </div>
-            <div className="flex items-center justify-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              PCI Compliant
-            </div>
-            <div className="flex items-center justify-center gap-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              Cancel Anytime
+
+            {/* Crypto Payment */}
+            <div className="p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
+              <h4 className="font-semibold text-orange-700 dark:text-orange-300 mb-2">🪙 Cryptocurrency (Coinbase)</h4>
+              <ul className="text-sm text-orange-600 dark:text-orange-400 space-y-1">
+                <li>• Bitcoin, Ethereum, USDC</li>
+                <li>• Secure blockchain payments</li>
+                <li>• No chargebacks</li>
+                <li>• Manual activation (24h)</li>
+              </ul>
             </div>
           </div>
 
-          <div className="mt-4 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-            <p className="text-sm font-medium text-blue-700 dark:text-blue-300">
-              💳 Test Mode Active - Use card: 4242 4242 4242 4242
+          <div className="p-4 bg-green-50 dark:bg-green-950/20 rounded-lg">
+            <p className="text-sm font-medium text-green-700 dark:text-green-300">
+              ✅ Both payment methods unlock the same premium features
             </p>
-            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-              Any future expiry date, any CVC, any ZIP code
+            <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+              Crypto payments may take up to 24 hours for manual verification and activation
             </p>
           </div>
         </div>

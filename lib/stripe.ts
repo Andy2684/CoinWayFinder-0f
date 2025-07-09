@@ -6,77 +6,90 @@ if (!process.env.STRIPE_SECRET_KEY) {
 
 export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
   apiVersion: "2024-06-20",
-  typescript: true,
 })
 
 export const STRIPE_PLANS = {
   basic: {
     name: "Basic Plan",
     price: 2900, // $29.00 in cents
-    interval: "month",
-    features: ["3 Trading Bots", "100 Trades/Month", "AI Analysis", "News Alerts", "Email Support"],
+    interval: "month" as const,
+    features: ["5 Trading Bots", "100 Trades/Month", "All Strategies", "Email Support", "Basic Analytics"],
+    limits: {
+      maxBots: 5,
+      maxDailyTrades: 100,
+      maxInvestmentPerBot: 5000,
+    },
   },
   premium: {
     name: "Premium Plan",
     price: 4900, // $49.00 in cents
-    interval: "month",
+    interval: "month" as const,
     features: [
-      "10 Trading Bots",
-      "1,000 Trades/Month",
-      "AI Analysis",
-      "Whale Tracking",
-      "News Alerts",
-      "Premium Strategies",
-      "API Access",
+      "15 Trading Bots",
+      "500 Trades/Month",
+      "AI Risk Analysis",
       "Priority Support",
+      "Advanced Analytics",
+      "Custom Strategies",
     ],
+    limits: {
+      maxBots: 15,
+      maxDailyTrades: 500,
+      maxInvestmentPerBot: 25000,
+    },
   },
   enterprise: {
     name: "Enterprise Plan",
     price: 9900, // $99.00 in cents
-    interval: "month",
+    interval: "month" as const,
     features: [
-      "Unlimited Trading Bots",
+      "Unlimited Bots",
       "Unlimited Trades",
-      "AI Analysis",
-      "Whale Tracking",
-      "News Alerts",
-      "Premium Strategies",
+      "White-label Solution",
+      "24/7 Phone Support",
+      "Custom Development",
       "API Access",
-      "Priority Support",
-      "Custom Integrations",
     ],
+    limits: {
+      maxBots: -1, // unlimited
+      maxDailyTrades: -1, // unlimited
+      maxInvestmentPerBot: -1, // unlimited
+    },
   },
 }
 
-export async function createStripeCustomer(email: string, name: string) {
-  return await stripe.customers.create({
-    email,
-    name,
-  })
-}
-
 export async function createCheckoutSession({
-  customerId,
-  priceId,
-  userId,
   planId,
+  userId,
   successUrl,
   cancelUrl,
 }: {
-  customerId: string
-  priceId: string
+  planId: keyof typeof STRIPE_PLANS
   userId: string
-  planId: string
   successUrl: string
   cancelUrl: string
 }) {
-  return await stripe.checkout.sessions.create({
-    customer: customerId,
+  const plan = STRIPE_PLANS[planId]
+
+  if (!plan) {
+    throw new Error(`Invalid plan ID: ${planId}`)
+  }
+
+  const session = await stripe.checkout.sessions.create({
     payment_method_types: ["card"],
     line_items: [
       {
-        price: priceId,
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: plan.name,
+            description: `CoinWayFinder ${plan.name} - ${plan.features.join(", ")}`,
+          },
+          unit_amount: plan.price,
+          recurring: {
+            interval: plan.interval,
+          },
+        },
         quantity: 1,
       },
     ],
@@ -94,4 +107,6 @@ export async function createCheckoutSession({
       },
     },
   })
+
+  return session
 }

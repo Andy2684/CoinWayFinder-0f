@@ -48,7 +48,6 @@ export interface UserBot {
     recommendations: string[]
     analyzedAt: Date
   }
-  // New fields for background execution
   lastExecutedAt?: Date
   lastError?: string
   lastErrorAt?: Date
@@ -117,6 +116,16 @@ export interface UserSettings {
     referredUsers: string[]
     bonusDays: number
   }
+  paymentStatus?: {
+    lastPayment: Date
+    stripeSessionId?: string
+    stripeSubscriptionId?: string
+    coinbaseChargeId?: string
+    amount: number
+    currency: string
+    stripeInvoiceId?: string
+  }
+  stripeSubscriptionId?: string
   createdAt: Date
   updatedAt: Date
 }
@@ -186,41 +195,28 @@ class DatabaseManager {
     await this.client.connect()
     this.db = this.client.db(dbName)
 
-    // Create indexes
     await this.createIndexes()
-
     console.log("Connected to MongoDB")
   }
 
   private async createIndexes(): Promise<void> {
     if (!this.db) return
 
-    // User indexes
     await this.db.collection("users").createIndex({ email: 1 }, { unique: true })
     await this.db.collection("users").createIndex({ verificationToken: 1 })
-
-    // Bot indexes
     await this.db.collection("bots").createIndex({ userId: 1 })
     await this.db.collection("bots").createIndex({ status: 1 })
     await this.db.collection("bots").createIndex({ strategy: 1 })
     await this.db.collection("bots").createIndex({ lastExecutedAt: 1 })
-
-    // Trade indexes
     await this.db.collection("trades").createIndex({ botId: 1 })
     await this.db.collection("trades").createIndex({ userId: 1 })
     await this.db.collection("trades").createIndex({ timestamp: -1 })
     await this.db.collection("trades").createIndex({ symbol: 1 })
-
-    // User settings indexes
     await this.db.collection("user_settings").createIndex({ userId: 1 }, { unique: true })
     await this.db.collection("user_settings").createIndex({ "referrals.referralCode": 1 }, { unique: true })
-
-    // Arbitrage indexes
     await this.db.collection("arbitrage").createIndex({ symbol: 1 })
     await this.db.collection("arbitrage").createIndex({ timestamp: -1 })
     await this.db.collection("arbitrage").createIndex({ status: 1 })
-
-    // AI Analysis indexes
     await this.db.collection("ai_analysis").createIndex({ userId: 1 })
     await this.db.collection("ai_analysis").createIndex({ symbol: 1 })
     await this.db.collection("ai_analysis").createIndex({ timestamp: -1 })
@@ -248,7 +244,6 @@ class DatabaseManager {
     return decrypted
   }
 
-  // User Management
   async createUser(user: Omit<User, "_id" | "createdAt" | "updatedAt">): Promise<string> {
     await this.connect()
     const collection = this.db!.collection<User>("users")
@@ -287,7 +282,6 @@ class DatabaseManager {
     return result.modifiedCount > 0
   }
 
-  // Bot Management
   async createBot(bot: Omit<UserBot, "_id" | "createdAt" | "updatedAt">): Promise<string> {
     await this.connect()
     const collection = this.db!.collection<UserBot>("bots")
@@ -317,7 +311,6 @@ class DatabaseManager {
     const bot = await collection.findOne({ _id: new ObjectId(botId), userId })
     if (!bot) return null
 
-    // Decrypt credentials
     if (bot.credentials.encrypted) {
       bot.credentials.apiKey = this.decrypt(bot.credentials.apiKey)
       bot.credentials.secretKey = this.decrypt(bot.credentials.secretKey)
@@ -336,7 +329,6 @@ class DatabaseManager {
 
     const bots = await collection.find({ userId }).toArray()
 
-    // Decrypt credentials for each bot
     return bots.map((bot) => {
       if (bot.credentials.encrypted) {
         bot.credentials.apiKey = this.decrypt(bot.credentials.apiKey)
@@ -356,7 +348,6 @@ class DatabaseManager {
 
     const bots = await collection.find({ status: "running" }).toArray()
 
-    // Decrypt credentials for each bot
     return bots.map((bot) => {
       if (bot.credentials.encrypted) {
         bot.credentials.apiKey = this.decrypt(bot.credentials.apiKey)
@@ -376,7 +367,6 @@ class DatabaseManager {
 
     const updateDoc: any = { ...updates, updatedAt: new Date() }
 
-    // Encrypt credentials if they're being updated
     if (updates.credentials) {
       updateDoc.credentials = {
         ...updates.credentials,
@@ -387,7 +377,6 @@ class DatabaseManager {
       }
     }
 
-    // Increment execution count if this is an execution update
     if (updates.lastExecutedAt) {
       updateDoc.$inc = { executionCount: 1 }
     }
@@ -405,7 +394,6 @@ class DatabaseManager {
     return result.deletedCount > 0
   }
 
-  // Trade Records
   async saveTrade(trade: Omit<TradeRecord, "_id">): Promise<string> {
     await this.connect()
     const collection = this.db!.collection<TradeRecord>("trades")
@@ -446,7 +434,6 @@ class DatabaseManager {
     return result.modifiedCount > 0
   }
 
-  // User Settings
   async getUserSettings(userId: string): Promise<UserSettings | null> {
     await this.connect()
     const collection = this.db!.collection<UserSettings>("user_settings")
@@ -470,15 +457,12 @@ class DatabaseManager {
   async createUserWithTrial(userId: string, referredBy?: string): Promise<UserSettings> {
     const referralCode = crypto.randomBytes(8).toString("hex").toUpperCase()
     const trialEndDate = new Date()
-    trialEndDate.setDate(trialEndDate.getDate() + 3) // 3-day trial
+    trialEndDate.setDate(trialEndDate.getDate() + 3)
 
     let bonusDays = 0
     if (referredBy) {
-      // Add bonus days for referral
       bonusDays = 5
       trialEndDate.setDate(trialEndDate.getDate() + bonusDays)
-
-      // Add bonus to referrer
       await this.addReferralBonus(referredBy, userId)
     }
 
@@ -540,7 +524,6 @@ class DatabaseManager {
     )
   }
 
-  // Arbitrage Opportunities
   async saveArbitrageOpportunity(opportunity: Omit<ArbitrageOpportunity, "_id">): Promise<string> {
     await this.connect()
     const collection = this.db!.collection<ArbitrageOpportunity>("arbitrage")
@@ -561,14 +544,13 @@ class DatabaseManager {
       .find({
         status: "active",
         profitPercent: { $gte: minProfitPercent },
-        timestamp: { $gte: new Date(Date.now() - 5 * 60 * 1000) }, // Last 5 minutes
+        timestamp: { $gte: new Date(Date.now() - 5 * 60 * 1000) },
       })
       .sort({ profitPercent: -1 })
       .limit(limit)
       .toArray()
   }
 
-  // AI Analysis
   async saveAIAnalysis(analysis: Omit<AIAnalysis, "_id">): Promise<string> {
     await this.connect()
     const collection = this.db!.collection<AIAnalysis>("ai_analysis")
@@ -588,7 +570,6 @@ class DatabaseManager {
     return collection.findOne({ userId, symbol }, { sort: { timestamp: -1 } })
   }
 
-  // Analytics
   async getBotPerformance(botId: string): Promise<{
     totalTrades: number
     totalProfit: number
@@ -624,7 +605,6 @@ class DatabaseManager {
     const winRate = (winningTrades.length / trades.length) * 100
     const avgProfit = totalProfit / trades.length
 
-    // Calculate max drawdown
     let maxDrawdown = 0
     let peak = 0
     let runningProfit = 0
@@ -640,7 +620,6 @@ class DatabaseManager {
       }
     })
 
-    // Calculate profit by day
     const profitByDay = new Map<string, number>()
     trades.forEach((trade) => {
       const date = trade.timestamp.toISOString().split("T")[0]
@@ -685,7 +664,6 @@ class DatabaseManager {
     const avgWinRate = trades.length > 0 ? (winningTrades.length / trades.length) * 100 : 0
     const totalInvestment = bots.reduce((sum, bot) => sum + bot.config.investment, 0)
 
-    // Calculate daily P&L (last 24 hours)
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000)
     const dailyTrades = trades.filter((trade) => trade.timestamp >= yesterday)
     const dailyPnL = dailyTrades.reduce((sum, trade) => sum + (trade.profit || 0), 0)
@@ -777,7 +755,6 @@ class DatabaseManager {
     return this.db!.collection("bots").aggregate(pipeline).toArray()
   }
 
-  // Subscription Management
   async getExpiredSubscriptions(): Promise<UserSettings[]> {
     await this.connect()
     const collection = this.db!.collection<UserSettings>("user_settings")
@@ -830,7 +807,6 @@ class DatabaseManager {
 
 export const database = new DatabaseManager()
 
-// Legacy export for backward compatibility
 export const connectToDatabase = async () => {
   await database.connect()
   return database

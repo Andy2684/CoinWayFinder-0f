@@ -28,7 +28,6 @@ export class AccessControl {
       const hasAccess = isActive && hasValidEndDate
 
       if (!hasAccess) {
-        // Stop all bots if access expired
         await database.stopUserBots(userId, "Subscription expired or inactive")
       }
 
