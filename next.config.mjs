@@ -1,8 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['bcryptjs', 'mongodb', 'ioredis'],
-  },
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -10,21 +7,61 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**',
-      },
-    ],
     unoptimized: true,
   },
-  env: {
-    JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
-    NEXT_PUBLIC_BASE_URL: process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000',
+  experimental: {
+    serverComponentsExternalPackages: ['stripe']
   },
-  // Optimize for Vercel deployment
-  output: 'standalone',
-  swcMinify: true,
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on'
+          },
+          {
+            key: 'X-Powered-By',
+            value: 'CoinWayFinder'
+          },
+          {
+            key: 'Server',
+            value: 'CoinWayFinder'
+          }
+        ]
+      },
+      {
+        source: '/api/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate, proxy-revalidate'
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache'
+          },
+          {
+            key: 'Expires',
+            value: '0'
+          }
+        ]
+      }
+    ]
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/health',
+        destination: '/api/health'
+      },
+      {
+        source: '/status',
+        destination: '/api/health'
+      }
+    ]
+  }
 }
 
 export default nextConfig
