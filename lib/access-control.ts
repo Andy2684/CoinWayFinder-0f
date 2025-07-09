@@ -1,228 +1,187 @@
-export interface AccessLevel {
-  name: string
-  features: string[]
-  limits: {
-    maxBots: number
-    maxAPIKeys: number
-    maxRequestsPerMinute: number
-    maxRequestsPerDay: number
-  }
-}
+import { subscriptionManager, SUBSCRIPTION_PLANS } from "./subscription-manager"
+import { adminManager } from "./admin"
 
-export const ACCESS_LEVELS: Record<string, AccessLevel> = {
-  free: {
-    name: "Free",
-    features: ["basic_dashboard", "market_data", "news_feed"],
-    limits: {
-      maxBots: 1,
-      maxAPIKeys: 1,
-      maxRequestsPerMinute: 10,
-      maxRequestsPerDay: 100,
-    },
-  },
-  trial: {
-    name: "Trial",
-    features: [
-      "basic_dashboard",
-      "market_data",
-      "news_feed",
-      "bot_creation",
-      "basic_strategies",
-      "telegram_alerts",
-      "api_access",
-    ],
-    limits: {
-      maxBots: 3,
-      maxAPIKeys: 2,
-      maxRequestsPerMinute: 30,
-      maxRequestsPerDay: 500,
-    },
-  },
-  starter: {
-    name: "Starter",
-    features: [
-      "basic_dashboard",
-      "market_data",
-      "news_feed",
-      "bot_creation",
-      "basic_strategies",
-      "telegram_alerts",
-      "api_access",
-      "portfolio_tracking",
-    ],
-    limits: {
-      maxBots: 5,
-      maxAPIKeys: 3,
-      maxRequestsPerMinute: 60,
-      maxRequestsPerDay: 2000,
-    },
-  },
-  pro: {
-    name: "Pro",
-    features: [
-      "basic_dashboard",
-      "market_data",
-      "news_feed",
-      "bot_creation",
-      "basic_strategies",
-      "advanced_strategies",
-      "telegram_alerts",
-      "api_access",
-      "portfolio_tracking",
-      "whale_alerts",
-      "ai_signals",
-      "backtesting",
-    ],
-    limits: {
-      maxBots: 20,
-      maxAPIKeys: 10,
-      maxRequestsPerMinute: 200,
-      maxRequestsPerDay: 10000,
-    },
-  },
-  enterprise: {
-    name: "Enterprise",
-    features: [
-      "basic_dashboard",
-      "market_data",
-      "news_feed",
-      "bot_creation",
-      "basic_strategies",
-      "advanced_strategies",
-      "custom_strategies",
-      "telegram_alerts",
-      "api_access",
-      "portfolio_tracking",
-      "whale_alerts",
-      "ai_signals",
-      "backtesting",
-      "priority_support",
-      "custom_integrations",
-    ],
-    limits: {
-      maxBots: -1, // Unlimited
-      maxAPIKeys: -1, // Unlimited
-      maxRequestsPerMinute: 1000,
-      maxRequestsPerDay: 50000,
-    },
-  },
+export interface AccessControlResult {
+  allowed: boolean
+  reason?: string
+  upgradeRequired?: boolean
+  requiredPlan?: string
 }
 
 export class AccessControl {
-  static hasFeatureAccess(userPlan: string, feature: string): boolean {
-    const accessLevel = ACCESS_LEVELS[userPlan]
-    if (!accessLevel) {
-      return false
+  async checkFeatureAccess(userId: string, feature: string): Promise<AccessControlResult> {
+    // Check if user is admin (bypass all restrictions)
+    const admin = await adminManager.getCurrentAdmin()
+    if (admin && admin.userId === userId) {
+      return { allowed: true }
     }
 
-    return accessLevel.features.includes(feature)
-  }
+    // Check subscription access
+    const hasAccess = await subscriptionManager.checkAccess(userId, feature)
 
-  static checkLimit(userPlan: string, limitType: keyof AccessLevel["limits"], currentValue: number): boolean {
-    const accessLevel = ACCESS_LEVELS[userPlan]
-    if (!accessLevel) {
-      return false
-    }
+    if (!hasAccess) {
+      const subscription = await subscriptionManager.getUserSubscription(userId)
+      const requiredPlan = this.getRequiredPlanForFeature(feature)
 
-    const limit = accessLevel.limits[limitType]
-    if (limit === -1) {
-      return true // Unlimited
-    }
-
-    return currentValue < limit
-  }
-
-  static getFeatureList(userPlan: string): string[] {
-    const accessLevel = ACCESS_LEVELS[userPlan]
-    return accessLevel ? accessLevel.features : []
-  }
-
-  static getLimits(userPlan: string): AccessLevel["limits"] | null {
-    const accessLevel = ACCESS_LEVELS[userPlan]
-    return accessLevel ? accessLevel.limits : null
-  }
-
-  static canUpgrade(currentPlan: string, targetPlan: string): boolean {
-    const planHierarchy = ["free", "trial", "starter", "pro", "enterprise"]
-    const currentIndex = planHierarchy.indexOf(currentPlan)
-    const targetIndex = planHierarchy.indexOf(targetPlan)
-
-    return targetIndex > currentIndex
-  }
-
-  static getUpgradeOptions(currentPlan: string): string[] {
-    const planHierarchy = ["free", "trial", "starter", "pro", "enterprise"]
-    const currentIndex = planHierarchy.indexOf(currentPlan)
-
-    if (currentIndex === -1) {
-      return []
-    }
-
-    return planHierarchy.slice(currentIndex + 1)
-  }
-
-  static validateBotCreation(
-    userPlan: string,
-    currentBotCount: number,
-  ): {
-    allowed: boolean
-    reason?: string
-    upgradeRequired?: boolean
-  } {
-    if (!this.hasFeatureAccess(userPlan, "bot_creation")) {
       return {
         allowed: false,
-        reason: "Bot creation not available in your current plan",
+        reason: `This feature requires a ${requiredPlan} subscription or higher`,
         upgradeRequired: true,
-      }
-    }
-
-    if (!this.checkLimit(userPlan, "maxBots", currentBotCount)) {
-      const limits = this.getLimits(userPlan)
-      return {
-        allowed: false,
-        reason: `You have reached the maximum number of bots (${limits?.maxBots}) for your plan`,
-        upgradeRequired: true,
+        requiredPlan,
       }
     }
 
     return { allowed: true }
   }
 
-  static validateAPIKeyCreation(
-    userPlan: string,
-    currentKeyCount: number,
-  ): {
-    allowed: boolean
-    reason?: string
-    upgradeRequired?: boolean
-  } {
-    if (!this.hasFeatureAccess(userPlan, "api_access")) {
-      return {
-        allowed: false,
-        reason: "API access not available in your current plan",
-        upgradeRequired: true,
-      }
+  async checkBotCreation(userId: string): Promise<AccessControlResult> {
+    // Check if user is admin
+    const admin = await adminManager.getCurrentAdmin()
+    if (admin && admin.userId === userId) {
+      return { allowed: true }
     }
 
-    if (!this.checkLimit(userPlan, "maxAPIKeys", currentKeyCount)) {
-      const limits = this.getLimits(userPlan)
+    const result = await subscriptionManager.canCreateBot(userId)
+
+    if (!result.allowed) {
       return {
         allowed: false,
-        reason: `You have reached the maximum number of API keys (${limits?.maxAPIKeys}) for your plan`,
+        reason: result.reason,
         upgradeRequired: true,
+        requiredPlan: "basic",
       }
     }
 
     return { allowed: true }
   }
 
-  static getTrialFeatures(): string[] {
-    return ACCESS_LEVELS.trial.features
+  async checkExchangeAccess(userId: string, exchange: string): Promise<AccessControlResult> {
+    // Check if user is admin
+    const admin = await adminManager.getCurrentAdmin()
+    if (admin && admin.userId === userId) {
+      return { allowed: true }
+    }
+
+    const hasAccess = await subscriptionManager.canUseExchange(userId, exchange)
+
+    if (!hasAccess) {
+      const requiredPlan = this.getRequiredPlanForExchange(exchange)
+
+      return {
+        allowed: false,
+        reason: `Access to ${exchange} requires a ${requiredPlan} subscription or higher`,
+        upgradeRequired: true,
+        requiredPlan,
+      }
+    }
+
+    return { allowed: true }
   }
 
-  static isTrialFeature(feature: string): boolean {
-    return this.getTrialFeatures().includes(feature)
+  async checkStrategyAccess(userId: string, strategy: string): Promise<AccessControlResult> {
+    // Check if user is admin
+    const admin = await adminManager.getCurrentAdmin()
+    if (admin && admin.userId === userId) {
+      return { allowed: true }
+    }
+
+    const hasAccess = await subscriptionManager.canUseStrategy(userId, strategy)
+
+    if (!hasAccess) {
+      const requiredPlan = this.getRequiredPlanForStrategy(strategy)
+
+      return {
+        allowed: false,
+        reason: `The ${strategy} strategy requires a ${requiredPlan} subscription or higher`,
+        upgradeRequired: true,
+        requiredPlan,
+      }
+    }
+
+    return { allowed: true }
+  }
+
+  private getRequiredPlanForFeature(feature: string): string {
+    switch (feature) {
+      case "analytics":
+        return "basic"
+      case "webhooks":
+      case "api_access":
+        return "premium"
+      case "advanced_strategies":
+        return "premium"
+      case "multiple_exchanges":
+        return "basic"
+      case "priority_support":
+        return "premium"
+      default:
+        return "basic"
+    }
+  }
+
+  private getRequiredPlanForExchange(exchange: string): string {
+    const basicExchanges = ["binance", "coinbase"]
+    const premiumExchanges = ["kraken", "bybit", "okx", "kucoin"]
+
+    if (basicExchanges.includes(exchange)) {
+      return "basic"
+    } else if (premiumExchanges.includes(exchange)) {
+      return "premium"
+    } else {
+      return "enterprise"
+    }
+  }
+
+  private getRequiredPlanForStrategy(strategy: string): string {
+    const basicStrategies = ["basic", "dca"]
+    const premiumStrategies = ["grid", "scalping", "arbitrage"]
+    const enterpriseStrategies = ["ml", "ai", "custom"]
+
+    if (basicStrategies.includes(strategy)) {
+      return "basic"
+    } else if (premiumStrategies.includes(strategy)) {
+      return "premium"
+    } else if (enterpriseStrategies.includes(strategy)) {
+      return "enterprise"
+    } else {
+      return "basic"
+    }
+  }
+
+  async getUserPermissions(userId: string): Promise<{
+    plan: string
+    features: string[]
+    limits: {
+      maxBots: number
+      maxTrades: number
+      exchanges: string[]
+      strategies: string[]
+    }
+  }> {
+    const subscription = await subscriptionManager.getUserSubscription(userId)
+    const planFeatures = SUBSCRIPTION_PLANS[subscription.plan].features
+
+    return {
+      plan: subscription.plan,
+      features: Object.keys(planFeatures).filter(
+        (feature) => planFeatures[feature as keyof typeof planFeatures] === true,
+      ),
+      limits: {
+        maxBots: planFeatures.maxBots,
+        maxTrades: planFeatures.maxTrades,
+        exchanges: planFeatures.exchanges,
+        strategies: planFeatures.strategies,
+      },
+    }
+  }
+
+  async checkRateLimit(userId: string, action: string): Promise<AccessControlResult> {
+    // Simple rate limiting based on subscription plan
+    const subscription = await subscriptionManager.getUserSubscription(userId)
+    const plan = SUBSCRIPTION_PLANS[subscription.plan]
+
+    // For now, just return allowed - in production, implement proper rate limiting
+    return { allowed: true }
   }
 }
 

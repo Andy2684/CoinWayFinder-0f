@@ -1,4 +1,4 @@
-import { randomBytes, createHash } from "crypto"
+import crypto from "crypto"
 
 export interface APIKey {
   id: string
@@ -8,8 +8,8 @@ export interface APIKey {
   hashedSecret: string
   permissions: string[]
   isActive: boolean
+  lastUsed?: Date
   createdAt: Date
-  lastUsedAt?: Date
   expiresAt?: Date
   rateLimit: {
     requestsPerMinute: number
@@ -18,7 +18,10 @@ export interface APIKey {
   }
   usage: {
     totalRequests: number
-    lastResetAt: Date
+    lastReset: Date
+    currentMinute: number
+    currentHour: number
+    currentDay: number
   }
 }
 
@@ -37,20 +40,37 @@ export interface RateLimitCheck {
   allowed: boolean
   remaining?: number
   resetTime?: Date
+  limit: number
 }
 
 class APIKeyManager {
   private apiKeys = new Map<string, APIKey>()
-  private usageRecords = new Map<string, APIKeyUsage[]>()
-  private rateLimitCounters = new Map<string, { count: number; resetTime: Date }>()
+  private usageHistory = new Map<string, APIKeyUsage[]>()
 
-  generateAPIKey(userId: string, name: string, permissions: string[] = []): { keyId: string; secret: string } {
-    const keyId = `cwf_${randomBytes(16).toString("hex")}`
-    const secret = randomBytes(32).toString("hex")
+  private hashSecret(secret: string): string {
+    return crypto.createHash("sha256").update(secret).digest("hex")
+  }
+
+  private generateKeyId(): string {
+    return `cwf_${crypto.randomBytes(16).toString("hex")}`
+  }
+
+  private generateSecret(): string {
+    return crypto.randomBytes(32).toString("hex")
+  }
+
+  async createAPIKey(
+    userId: string,
+    name: string,
+    permissions: string[] = ["read"],
+    expiresAt?: Date,
+  ): Promise<{ keyId: string; secret: string; apiKey: APIKey }> {
+    const keyId = this.generateKeyId()
+    const secret = this.generateSecret()
     const hashedSecret = this.hashSecret(secret)
 
     const apiKey: APIKey = {
-      id: randomBytes(8).toString("hex"),
+      id: crypto.randomUUID(),
       userId,
       name,
       keyId,
@@ -58,6 +78,7 @@ class APIKeyManager {
       permissions,
       isActive: true,
       createdAt: new Date(),
+      expiresAt,
       rateLimit: {
         requestsPerMinute: 60,
         requestsPerHour: 1000,
@@ -65,21 +86,28 @@ class APIKeyManager {
       },
       usage: {
         totalRequests: 0,
-        lastResetAt: new Date(),
+        lastReset: new Date(),
+        currentMinute: 0,
+        currentHour: 0,
+        currentDay: 0,
       },
     }
 
     this.apiKeys.set(keyId, apiKey)
-    return { keyId, secret }
-  }
-
-  private hashSecret(secret: string): string {
-    return createHash("sha256").update(secret).digest("hex")
+    return { keyId, secret, apiKey }
   }
 
   async validateAPIKey(keyId: string, secret: string): Promise<APIKey | null> {
     const apiKey = this.apiKeys.get(keyId)
-    if (!apiKey || !apiKey.isActive) {
+    if (!apiKey) {
+      return null
+    }
+
+    if (!apiKey.isActive) {
+      return null
+    }
+
+    if (apiKey.expiresAt && apiKey.expiresAt < new Date()) {
       return null
     }
 
@@ -88,47 +116,72 @@ class APIKeyManager {
       return null
     }
 
-    // Check expiration
-    if (apiKey.expiresAt && apiKey.expiresAt < new Date()) {
-      return null
-    }
-
     // Update last used
-    apiKey.lastUsedAt = new Date()
+    apiKey.lastUsed = new Date()
     return apiKey
   }
 
   async checkRateLimit(keyId: string): Promise<RateLimitCheck> {
     const apiKey = this.apiKeys.get(keyId)
     if (!apiKey) {
-      return { allowed: false }
+      return { allowed: false, limit: 0 }
     }
 
     const now = new Date()
-    const minuteKey = `${keyId}:${Math.floor(now.getTime() / 60000)}`
+    const currentMinute = Math.floor(now.getTime() / 60000)
+    const currentHour = Math.floor(now.getTime() / 3600000)
+    const currentDay = Math.floor(now.getTime() / 86400000)
 
-    let counter = this.rateLimitCounters.get(minuteKey)
-    if (!counter) {
-      counter = {
-        count: 0,
-        resetTime: new Date(Math.ceil(now.getTime() / 60000) * 60000),
-      }
-      this.rateLimitCounters.set(minuteKey, counter)
+    // Reset counters if time periods have changed
+    const lastResetMinute = Math.floor(apiKey.usage.lastReset.getTime() / 60000)
+    const lastResetHour = Math.floor(apiKey.usage.lastReset.getTime() / 3600000)
+    const lastResetDay = Math.floor(apiKey.usage.lastReset.getTime() / 86400000)
+
+    if (currentMinute > lastResetMinute) {
+      apiKey.usage.currentMinute = 0
+    }
+    if (currentHour > lastResetHour) {
+      apiKey.usage.currentHour = 0
+    }
+    if (currentDay > lastResetDay) {
+      apiKey.usage.currentDay = 0
     }
 
-    if (counter.count >= apiKey.rateLimit.requestsPerMinute) {
+    // Check limits
+    if (apiKey.usage.currentMinute >= apiKey.rateLimit.requestsPerMinute) {
+      const resetTime = new Date((currentMinute + 1) * 60000)
       return {
         allowed: false,
         remaining: 0,
-        resetTime: counter.resetTime,
+        resetTime,
+        limit: apiKey.rateLimit.requestsPerMinute,
       }
     }
 
-    counter.count++
+    if (apiKey.usage.currentHour >= apiKey.rateLimit.requestsPerHour) {
+      const resetTime = new Date((currentHour + 1) * 3600000)
+      return {
+        allowed: false,
+        remaining: 0,
+        resetTime,
+        limit: apiKey.rateLimit.requestsPerHour,
+      }
+    }
+
+    if (apiKey.usage.currentDay >= apiKey.rateLimit.requestsPerDay) {
+      const resetTime = new Date((currentDay + 1) * 86400000)
+      return {
+        allowed: false,
+        remaining: 0,
+        resetTime,
+        limit: apiKey.rateLimit.requestsPerDay,
+      }
+    }
+
     return {
       allowed: true,
-      remaining: apiKey.rateLimit.requestsPerMinute - counter.count,
-      resetTime: counter.resetTime,
+      remaining: apiKey.rateLimit.requestsPerMinute - apiKey.usage.currentMinute,
+      limit: apiKey.rateLimit.requestsPerMinute,
     }
   }
 
@@ -142,8 +195,17 @@ class APIKeyManager {
     ipAddress?: string,
   ): Promise<void> {
     const apiKey = this.apiKeys.get(keyId)
-    if (!apiKey) return
+    if (!apiKey) {
+      return
+    }
 
+    // Update usage counters
+    apiKey.usage.totalRequests++
+    apiKey.usage.currentMinute++
+    apiKey.usage.currentHour++
+    apiKey.usage.currentDay++
+
+    // Record usage history
     const usage: APIKeyUsage = {
       keyId,
       endpoint,
@@ -155,37 +217,26 @@ class APIKeyManager {
       ipAddress,
     }
 
-    let records = this.usageRecords.get(keyId)
-    if (!records) {
-      records = []
-      this.usageRecords.set(keyId, records)
+    if (!this.usageHistory.has(keyId)) {
+      this.usageHistory.set(keyId, [])
     }
 
-    records.push(usage)
-    apiKey.usage.totalRequests++
+    const history = this.usageHistory.get(keyId)!
+    history.push(usage)
 
-    // Keep only last 1000 records per key
-    if (records.length > 1000) {
-      records.splice(0, records.length - 1000)
+    // Keep only last 1000 entries
+    if (history.length > 1000) {
+      history.splice(0, history.length - 1000)
     }
   }
 
-  async getUserAPIKeys(userId: string): Promise<Omit<APIKey, "hashedSecret">[]> {
-    const userKeys: Omit<APIKey, "hashedSecret">[] = []
-
-    for (const apiKey of this.apiKeys.values()) {
-      if (apiKey.userId === userId) {
-        const { hashedSecret, ...safeKey } = apiKey
-        userKeys.push(safeKey)
-      }
-    }
-
-    return userKeys.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+  async getUserAPIKeys(userId: string): Promise<APIKey[]> {
+    return Array.from(this.apiKeys.values()).filter((key) => key.userId === userId)
   }
 
-  async revokeAPIKey(keyId: string, userId: string): Promise<boolean> {
+  async revokeAPIKey(keyId: string): Promise<boolean> {
     const apiKey = this.apiKeys.get(keyId)
-    if (!apiKey || apiKey.userId !== userId) {
+    if (!apiKey) {
       return false
     }
 
@@ -193,20 +244,20 @@ class APIKeyManager {
     return true
   }
 
-  async deleteAPIKey(keyId: string, userId: string): Promise<boolean> {
-    const apiKey = this.apiKeys.get(keyId)
-    if (!apiKey || apiKey.userId !== userId) {
-      return false
-    }
-
-    this.apiKeys.delete(keyId)
-    this.usageRecords.delete(keyId)
-    return true
+  async deleteAPIKey(keyId: string): Promise<boolean> {
+    const deleted = this.apiKeys.delete(keyId)
+    this.usageHistory.delete(keyId)
+    return deleted
   }
 
-  async updateAPIKeyPermissions(keyId: string, userId: string, permissions: string[]): Promise<boolean> {
+  async getAPIKeyUsage(keyId: string, limit = 100): Promise<APIKeyUsage[]> {
+    const history = this.usageHistory.get(keyId) || []
+    return history.slice(-limit)
+  }
+
+  async updateAPIKeyPermissions(keyId: string, permissions: string[]): Promise<boolean> {
     const apiKey = this.apiKeys.get(keyId)
-    if (!apiKey || apiKey.userId !== userId) {
+    if (!apiKey) {
       return false
     }
 
@@ -214,58 +265,30 @@ class APIKeyManager {
     return true
   }
 
-  async getAPIKeyUsage(keyId: string, userId: string, limit = 100): Promise<APIKeyUsage[]> {
-    const apiKey = this.apiKeys.get(keyId)
-    if (!apiKey || apiKey.userId !== userId) {
-      return []
-    }
-
-    const records = this.usageRecords.get(keyId) || []
-    return records.slice(-limit).reverse()
-  }
-
-  async getUsageStats(
+  async updateRateLimit(
     keyId: string,
-    userId: string,
-  ): Promise<{
-    totalRequests: number
-    requestsToday: number
-    requestsThisHour: number
-    averageResponseTime: number
-    errorRate: number
-  }> {
+    rateLimit: {
+      requestsPerMinute?: number
+      requestsPerHour?: number
+      requestsPerDay?: number
+    },
+  ): Promise<boolean> {
     const apiKey = this.apiKeys.get(keyId)
-    if (!apiKey || apiKey.userId !== userId) {
-      return {
-        totalRequests: 0,
-        requestsToday: 0,
-        requestsThisHour: 0,
-        averageResponseTime: 0,
-        errorRate: 0,
-      }
+    if (!apiKey) {
+      return false
     }
 
-    const records = this.usageRecords.get(keyId) || []
-    const now = new Date()
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const hourStart = new Date(now.getTime() - 60 * 60 * 1000)
-
-    const requestsToday = records.filter((r) => r.timestamp >= todayStart).length
-    const requestsThisHour = records.filter((r) => r.timestamp >= hourStart).length
-
-    const totalResponseTime = records.reduce((sum, r) => sum + r.responseTime, 0)
-    const averageResponseTime = records.length > 0 ? totalResponseTime / records.length : 0
-
-    const errorRequests = records.filter((r) => r.statusCode >= 400).length
-    const errorRate = records.length > 0 ? (errorRequests / records.length) * 100 : 0
-
-    return {
-      totalRequests: apiKey.usage.totalRequests,
-      requestsToday,
-      requestsThisHour,
-      averageResponseTime: Math.round(averageResponseTime),
-      errorRate: Math.round(errorRate * 100) / 100,
+    if (rateLimit.requestsPerMinute !== undefined) {
+      apiKey.rateLimit.requestsPerMinute = rateLimit.requestsPerMinute
     }
+    if (rateLimit.requestsPerHour !== undefined) {
+      apiKey.rateLimit.requestsPerHour = rateLimit.requestsPerHour
+    }
+    if (rateLimit.requestsPerDay !== undefined) {
+      apiKey.rateLimit.requestsPerDay = rateLimit.requestsPerDay
+    }
+
+    return true
   }
 }
 
