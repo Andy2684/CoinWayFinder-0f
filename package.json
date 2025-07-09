@@ -4,14 +4,16 @@
   "private": true,
   "scripts": {
     "build": "next build",
+    "clean": "rm -rf .next node_modules",
     "dev": "next dev",
-    "postinstall": "npm run build",
     "lint": "next lint",
-    "start": "next start"
+    "scheduler:prod": "node scripts/start-bot-scheduler.js",
+    "start": "next start",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@ai-sdk/openai": "latest",
-    "@auth/core": "latest",
+    "@auth/core": "^0.37.2",
     "@aws-sdk/credential-providers": "latest",
     "@hookform/resolvers": "^3.9.1",
     "@mongodb-js/zstd": "latest",
@@ -92,6 +94,7 @@
     "typescript": "^5"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   }
 }
