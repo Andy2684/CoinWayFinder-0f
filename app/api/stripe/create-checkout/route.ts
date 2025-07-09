@@ -1,28 +1,32 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createCheckoutSession } from "@/lib/stripe"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { database } from "@/lib/database"
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const body = await request.json()
+    const { planId, userId, addOns = [] } = body
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+    if (!userId) {
+      return NextResponse.json({ error: "User ID required" }, { status: 400 })
     }
 
-    const body = await request.json()
-    const { planId } = body
-
-    if (!planId || !["basic", "premium", "enterprise"].includes(planId)) {
+    if (!planId || !["starter", "pro", "enterprise"].includes(planId)) {
       return NextResponse.json({ error: "Invalid plan ID" }, { status: 400 })
+    }
+
+    // Verify user exists
+    const user = await database.getUserById(userId)
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
 
     const checkoutSession = await createCheckoutSession({
       planId,
-      userId: session.user.id,
+      userId,
+      addOns,
       successUrl: `${baseUrl}/subscription/success?session_id={CHECKOUT_SESSION_ID}`,
       cancelUrl: `${baseUrl}/subscription/cancel`,
     })

@@ -2,90 +2,144 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { XCircle, ArrowLeft, MessageCircle } from "lucide-react"
+import { XCircle, ArrowLeft, MessageCircle, Mail } from "lucide-react"
 import Link from "next/link"
 
 export default function SubscriptionCancelPage() {
   return (
     <div className="container mx-auto px-4 py-16">
-      <div className="max-w-2xl mx-auto text-center">
-        <div className="mb-8">
-          <XCircle className="h-16 w-16 text-orange-500 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold mb-2">Payment Cancelled</h1>
-          <p className="text-muted-foreground">No worries! Your payment was cancelled and no charges were made.</p>
+      <div className="max-w-2xl mx-auto">
+        {/* Cancel Header */}
+        <div className="text-center mb-8">
+          <div className="text-orange-500 text-6xl mb-4">
+            <XCircle className="h-16 w-16 mx-auto" />
+          </div>
+          <h1 className="text-3xl font-bold mb-2">Subscription Cancelled</h1>
+          <p className="text-lg text-muted-foreground">Your payment was cancelled and no charges were made</p>
         </div>
 
+        {/* What Happened */}
         <Card className="mb-8">
           <CardHeader>
             <CardTitle>What happened?</CardTitle>
-            <CardDescription>
-              You cancelled the payment process before it was completed. This is completely normal and happens often.
-            </CardDescription>
+            <CardDescription>You cancelled the payment process before completion</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg">
-              <h3 className="font-semibold text-blue-700 dark:text-blue-300 mb-2">
-                💡 Common reasons for cancellation:
-              </h3>
-              <ul className="text-sm text-blue-600 dark:text-blue-400 space-y-1">
-                <li>• Wanted to review the features again</li>
-                <li>• Needed to check with team/budget</li>
-                <li>• Preferred to try the free plan first</li>
-                <li>• Had questions about the service</li>
+            <div className="p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg">
+              <h4 className="font-semibold text-orange-700 dark:text-orange-300 mb-2">No Payment Processed</h4>
+              <ul className="text-sm text-orange-600 dark:text-orange-400 space-y-1">
+                <li>• Your card was not charged</li>
+                <li>• No subscription was created</li>
+                <li>• Your account remains on the free plan</li>
+                <li>• You can try again anytime</li>
               </ul>
             </div>
+          </CardContent>
+        </Card>
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button asChild size="lg">
-                <Link href="/subscription">
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Try Again
+        {/* Try Again */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>Ready to try again?</CardTitle>
+            <CardDescription>Choose a plan that works best for your trading needs</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 border rounded-lg text-center">
+                <div className="text-2xl mb-2">🔵</div>
+                <h4 className="font-semibold mb-1">Starter Plan</h4>
+                <p className="text-2xl font-bold mb-2">
+                  $29<span className="text-sm font-normal">/month</span>
+                </p>
+                <Button size="sm" asChild>
+                  <Link href="/subscription">Choose Plan</Link>
+                </Button>
+              </div>
+
+              <div className="p-4 border-2 border-primary rounded-lg text-center">
+                <div className="text-2xl mb-2">🟡</div>
+                <h4 className="font-semibold mb-1">Pro Trader</h4>
+                <p className="text-2xl font-bold mb-2">
+                  $79<span className="text-sm font-normal">/month</span>
+                </p>
+                <Button size="sm" asChild>
+                  <Link href="/subscription">Choose Plan</Link>
+                </Button>
+              </div>
+
+              <div className="p-4 border rounded-lg text-center">
+                <div className="text-2xl mb-2">🔴</div>
+                <h4 className="font-semibold mb-1">Enterprise</h4>
+                <p className="text-2xl font-bold mb-2">
+                  $199<span className="text-sm font-normal">/month</span>
+                </p>
+                <Button size="sm" variant="outline" asChild>
+                  <Link href="/subscription">Choose Plan</Link>
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Alternative Payment Methods */}
+        <Card className="mb-8">
+          <CardHeader>
+            <CardTitle>🪙 Try Crypto Payment</CardTitle>
+            <CardDescription>Pay with Bitcoin, Ethereum, or other cryptocurrencies</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="p-4 bg-orange-50 dark:bg-orange-950/20 rounded-lg mb-4">
+              <h4 className="font-semibold text-orange-700 dark:text-orange-300 mb-2">Crypto Payment Benefits</h4>
+              <ul className="text-sm text-orange-600 dark:text-orange-400 space-y-1">
+                <li>• No credit card required</li>
+                <li>• Secure blockchain payments</li>
+                <li>• Support for Bitcoin, Ethereum, USDC</li>
+                <li>• No chargebacks or payment disputes</li>
+              </ul>
+            </div>
+            <Button
+              className="w-full"
+              onClick={() =>
+                window.open("https://commerce.coinbase.com/checkout/d8e91b96-8299-4b72-a9ed-77981687a3cc", "_blank")
+              }
+            >
+              🪙 Pay with Cryptocurrency
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Need Help */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Need Help?</CardTitle>
+            <CardDescription>Our team is here to assist you with any questions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Button variant="outline" asChild>
+                <Link href="mailto:support@coinwayfinder.com">
+                  <Mail className="mr-2 h-4 w-4" />
+                  Email Support
                 </Link>
               </Button>
-
               <Button variant="outline" asChild>
-                <Link href="/dashboard">Continue with Free Plan</Link>
+                <Link href="https://t.me/coinwayfinder" target="_blank">
+                  <MessageCircle className="mr-2 h-4 w-4" />
+                  Telegram Support
+                </Link>
               </Button>
             </div>
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">🆓 Free Plan Available</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-3">You can still use CoinWayFinder with our free plan:</p>
-              <ul className="text-sm space-y-1">
-                <li>• 1 Trading Bot</li>
-                <li>• 10 Trades/Month</li>
-                <li>• Basic Strategies</li>
-                <li>• Email Support</li>
-              </ul>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">❓ Have Questions?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-3">We're here to help you make the right decision:</p>
-              <Button variant="outline" size="sm" asChild className="w-full bg-transparent">
-                <Link href="/support">
-                  <MessageCircle className="mr-2 h-4 w-4" />
-                  Contact Support
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="text-center">
-          <p className="text-sm text-muted-foreground">
-            Ready to upgrade later? You can always change your plan from your dashboard.
-          </p>
+        {/* Back to Plans */}
+        <div className="text-center mt-8">
+          <Button variant="ghost" asChild>
+            <Link href="/subscription">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Pricing Plans
+            </Link>
+          </Button>
         </div>
       </div>
     </div>
