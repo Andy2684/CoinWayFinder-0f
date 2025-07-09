@@ -8,7 +8,7 @@ function createToken(payload: any, secret: string, expiresIn = "24h"): string {
   }
 
   const now = Math.floor(Date.now() / 1000)
-  const exp = expiresIn === "24h" ? now + 24 * 60 * 60 : now + Number.parseInt(expiresIn)
+  const exp = now + (expiresIn === "24h" ? 24 * 60 * 60 : 60 * 60) // 24 hours or 1 hour
 
   const jwtPayload = {
     ...payload,
@@ -30,9 +30,21 @@ function createToken(payload: any, secret: string, expiresIn = "24h"): string {
 function verifyToken(token: string, secret: string): any {
   try {
     const parts = token.split(".")
-    if (parts.length !== 3) return null
+    if (parts.length !== 3) {
+      return null
+    }
 
     const [encodedHeader, encodedPayload, signature] = parts
+
+    // Verify signature (simplified)
+    const expectedSignature = btoa(`${encodedHeader}.${encodedPayload}.${secret}`)
+      .replace(/=/g, "")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+
+    if (signature !== expectedSignature) {
+      return null
+    }
 
     // Decode payload
     const payload = JSON.parse(atob(encodedPayload.replace(/-/g, "+").replace(/_/g, "/")))
@@ -40,15 +52,6 @@ function verifyToken(token: string, secret: string): any {
     // Check expiration
     const now = Math.floor(Date.now() / 1000)
     if (payload.exp && payload.exp < now) {
-      return null
-    }
-
-    // Verify signature (simplified)
-    const expectedSignature = btoa(`${encodedHeader}.${encodedPayload}.${secret}`)
-      .replace(/=/g, "")
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-    if (signature !== expectedSignature) {
       return null
     }
 
@@ -60,98 +63,110 @@ function verifyToken(token: string, secret: string): any {
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const token = request.cookies.get("auth-token")?.value
 
   // Public routes that don't require authentication
-  const publicRoutes = [
-    "/",
-    "/api/auth/signin",
-    "/api/auth/signup",
-    "/api/admin/signin",
-    "/api/stripe/webhook",
-    "/api/subscription/webhook",
-    "/api/telegram-webhook",
-  ]
+  const publicRoutes = ["/", "/api/auth/signin", "/api/auth/signup", "/api/telegram-webhook"]
+
+  // Admin routes
+  const adminRoutes = ["/admin", "/api/admin"]
+
+  // Protected routes
+  const protectedRoutes = ["/dashboard", "/bots", "/integrations", "/profile", "/subscription", "/news"]
 
   // API routes that require authentication
   const protectedApiRoutes = [
-    "/api/auth/me",
-    "/api/auth/signout",
     "/api/bots",
-    "/api/portfolio",
     "/api/trades",
+    "/api/portfolio",
     "/api/user",
     "/api/subscription",
-    "/api/crypto",
-    "/api/news",
+    "/api/stripe",
+    "/api/auth/me",
+    "/api/auth/signout",
   ]
 
-  // Admin routes
-  const adminRoutes = ["/api/admin/me", "/api/admin/users", "/api/admin/signout"]
-
-  // Dashboard routes
-  const dashboardRoutes = ["/dashboard", "/bots", "/integrations", "/profile", "/subscription", "/news"]
-
   // Check if route is public
-  if (publicRoutes.includes(pathname) || pathname.startsWith("/api/v1/")) {
+  if (publicRoutes.some((route) => pathname === route || pathname.startsWith(route))) {
     return NextResponse.next()
   }
 
-  // Get token from cookie or Authorization header
-  const token = request.cookies.get("auth-token")?.value || request.headers.get("Authorization")?.replace("Bearer ", "")
-
-  if (!token) {
-    if (dashboardRoutes.some((route) => pathname.startsWith(route))) {
+  // Check authentication for protected routes
+  if (
+    protectedRoutes.some((route) => pathname.startsWith(route)) ||
+    protectedApiRoutes.some((route) => pathname.startsWith(route)) ||
+    adminRoutes.some((route) => pathname.startsWith(route))
+  ) {
+    if (!token) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
       return NextResponse.redirect(new URL("/", request.url))
     }
-    if (protectedApiRoutes.some((route) => pathname.startsWith(route))) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    if (adminRoutes.some((route) => pathname.startsWith(route))) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    return NextResponse.next()
-  }
 
-  // Verify token
-  const payload = verifyToken(token, process.env.JWT_SECRET || "your-secret-key")
-  if (!payload) {
-    if (dashboardRoutes.some((route) => pathname.startsWith(route))) {
+    // Verify token
+    const payload = verifyToken(token, process.env.JWT_SECRET || "default-secret")
+    if (!payload) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Invalid token" }, { status: 401 })
+      }
+      // Clear invalid token and redirect
       const response = NextResponse.redirect(new URL("/", request.url))
       response.cookies.delete("auth-token")
       return response
     }
-    if (
-      protectedApiRoutes.some((route) => pathname.startsWith(route)) ||
-      adminRoutes.some((route) => pathname.startsWith(route))
-    ) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
-    }
-    return NextResponse.next()
-  }
 
-  // Check admin routes
-  if (adminRoutes.some((route) => pathname.startsWith(route))) {
-    if (!payload.isAdmin) {
-      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+    // Check admin access
+    if (adminRoutes.some((route) => pathname.startsWith(route))) {
+      if (!payload.isAdmin) {
+        if (pathname.startsWith("/api/")) {
+          return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+        }
+        return NextResponse.redirect(new URL("/dashboard", request.url))
+      }
     }
-  }
 
-  // Check subscription status for protected routes
-  if (
-    dashboardRoutes.some((route) => pathname.startsWith(route)) ||
-    protectedApiRoutes.some((route) => pathname.startsWith(route))
-  ) {
-    // Allow access but the individual route handlers will check subscription limits
-    const response = NextResponse.next()
-    response.headers.set("x-user-id", payload.userId)
-    response.headers.set("x-user-email", payload.email)
-    response.headers.set("x-is-admin", payload.isAdmin ? "true" : "false")
-    return response
+    // Check subscription status for premium features
+    if (pathname.startsWith("/bots") || pathname.startsWith("/api/bots")) {
+      const now = new Date()
+      const subscriptionExpiry = payload.subscriptionExpiry ? new Date(payload.subscriptionExpiry) : null
+
+      // Allow access but with limitations for expired subscriptions
+      if (subscriptionExpiry && subscriptionExpiry < now) {
+        // Add header to indicate expired subscription
+        const response = NextResponse.next()
+        response.headers.set("X-Subscription-Status", "expired")
+        return response
+      }
+    }
+
+    // Add user info to headers for API routes
+    if (pathname.startsWith("/api/")) {
+      const response = NextResponse.next()
+      response.headers.set("X-User-Id", payload.userId)
+      response.headers.set("X-User-Email", payload.email)
+      response.headers.set("X-User-Subscription", payload.subscription || "free")
+      response.headers.set("X-Is-Admin", payload.isAdmin ? "true" : "false")
+      return response
+    }
   }
 
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|public/).*)"],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     * - image files (png, jpg, jpeg, gif, svg)
+     */
+    "/((?!_next/static|_next/image|favicon.ico|public|.*\\.png$|.*\\.jpg$|.*\\.jpeg$|.*\\.gif$|.*\\.svg$).*)",
+  ],
 }
+
+// Export helper functions for use in API routes
+export { createToken, verifyToken }

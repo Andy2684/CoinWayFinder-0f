@@ -74,6 +74,38 @@ export const STRIPE_PLANS = {
   },
 }
 
+// Add-ons configuration
+export const ADD_ONS = {
+  extra_bots: {
+    priceId: "price_extra_bots",
+    name: "Extra Bot Slots",
+    price: 9.99,
+    description: "Add 5 more bot slots to your plan",
+    features: ["5 additional bot slots", "Same features as your current plan"],
+  },
+  premium_support: {
+    priceId: "price_premium_support",
+    name: "Premium Support",
+    price: 19.99,
+    description: "24/7 priority support with dedicated account manager",
+    features: ["24/7 priority support", "Dedicated account manager", "Phone support", "Custom integrations help"],
+  },
+  advanced_analytics: {
+    priceId: "price_advanced_analytics",
+    name: "Advanced Analytics",
+    price: 14.99,
+    description: "Advanced trading analytics and reporting",
+    features: ["Advanced performance metrics", "Custom reports", "Risk analysis", "Portfolio optimization"],
+  },
+  api_access: {
+    priceId: "price_api_access",
+    name: "API Access",
+    price: 24.99,
+    description: "Full API access for custom integrations",
+    features: ["REST API access", "Webhook notifications", "Custom integrations", "Developer documentation"],
+  },
+}
+
 // Create checkout session
 export function createCheckoutSession(params: Stripe.Checkout.SessionCreateParams) {
   return stripe.checkout.sessions.create(params)
@@ -237,6 +269,11 @@ export function getPlanByPriceId(priceId: string) {
   return null
 }
 
+// Helper function to get add-on details by price ID
+export function getAddOnByPriceId(priceId: string) {
+  return Object.values(ADD_ONS).find((addon) => addon.priceId === priceId) || null
+}
+
 // Helper function to format price
 export function formatPrice(amount: number, currency = "usd"): string {
   return new Intl.NumberFormat("en-US", {
@@ -263,10 +300,26 @@ export function getAllPlans() {
   return plans
 }
 
+// Helper function to get all available add-ons
+export function getAllAddOns() {
+  return Object.values(ADD_ONS)
+}
+
 // Helper function to calculate savings for yearly plans
 export function calculateYearlySavings(monthlyAmount: number, yearlyAmount: number): number {
   const monthlyYearly = monthlyAmount * 12
   return monthlyYearly - yearlyAmount
+}
+
+// Helper function to verify webhook signature
+export function verifyWebhookSignature(payload: string | Buffer, signature: string, secret: string): boolean {
+  try {
+    stripe.webhooks.constructEvent(payload, signature, secret)
+    return true
+  } catch (error) {
+    console.error("Webhook signature verification failed:", error)
+    return false
+  }
 }
 
 // Export the stripe instance
