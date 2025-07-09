@@ -1,101 +1,182 @@
-import { database } from "./database"
 import { subscriptionManager } from "./subscription-manager"
+import type { AdminSession } from "./admin"
 
-export interface AccessCheck {
-  hasAccess: boolean
-  plan: string
-  status: string
-  message: string
-  limits?: any
+export interface AccessControlContext {
+  userId: string
+  adminSession?: AdminSession | null
+  userPlan?: string
+  isAdmin?: boolean
 }
 
 export class AccessControl {
-  static async checkUserAccess(userId: string): Promise<AccessCheck> {
-    try {
-      const userSettings = await database.getUserSettings(userId)
+  static async checkFeatureAccess(
+    context: AccessControlContext,
+    feature: string,
+  ): Promise<{ hasAccess: boolean; reason?: string }> {
+    // Admin always has access
+    if (context.adminSession?.isAdmin) {
+      return { hasAccess: true }
+    }
 
-      if (!userSettings) {
+    try {
+      const hasAccess = await subscriptionManager.checkAccess(context.userId, feature)
+
+      if (!hasAccess) {
+        const subscriptionStatus = await subscriptionManager.getSubscriptionStatus(context.userId)
         return {
           hasAccess: false,
-          plan: "free",
-          status: "inactive",
-          message: "No subscription found. Please upgrade to access premium features.",
+          reason: `This feature requires ${this.getRequiredPlanForFeature(feature)} plan. Current plan: ${subscriptionStatus.plan}`,
         }
       }
 
-      const isActive = userSettings.subscription.status === "active"
-      const hasValidEndDate = new Date() < new Date(userSettings.subscription.endDate)
-      const hasAccess = isActive && hasValidEndDate
+      return { hasAccess: true }
+    } catch (error) {
+      console.error("Access control error:", error)
+      return { hasAccess: false, reason: "Unable to verify access" }
+    }
+  }
 
-      if (!hasAccess) {
-        await database.stopUserBots(userId, "Subscription expired or inactive")
-      }
+  static async checkResourceLimit(
+    context: AccessControlContext,
+    resource: "bots" | "apiCalls",
+  ): Promise<{ canCreate: boolean; limit: number; used: number; remaining: number }> {
+    // Admin bypass
+    if (context.adminSession?.isAdmin) {
+      return { canCreate: true, limit: -1, used: 0, remaining: -1 }
+    }
 
-      const limits = await subscriptionManager.getUserLimits(userId)
+    try {
+      const limits = await subscriptionManager.getRemainingLimits(context.userId)
+      const resourceLimit = limits[resource]
 
       return {
-        hasAccess,
-        plan: userSettings.subscription.plan,
-        status: userSettings.subscription.status,
-        message: hasAccess
-          ? "Access granted"
-          : "Subscription required. Please upgrade to continue using premium features.",
-        limits,
+        canCreate: resourceLimit.remaining > 0 || resourceLimit.remaining === -1,
+        limit: resourceLimit.limit,
+        used: resourceLimit.used,
+        remaining: resourceLimit.remaining,
       }
     } catch (error) {
-      console.error("Access check failed:", error)
+      console.error("Resource limit check error:", error)
+      return { canCreate: false, limit: 0, used: 0, remaining: 0 }
+    }
+  }
+
+  static getRequiredPlanForFeature(feature: string): string {
+    const featurePlanMap: Record<string, string> = {
+      unlimited_bots: "Pro",
+      advanced_strategies: "Starter",
+      api_access: "Starter",
+      priority_support: "Starter",
+      custom_strategies: "Pro",
+      white_label: "Enterprise",
+      dedicated_support: "Enterprise",
+    }
+
+    return featurePlanMap[feature] || "Starter"
+  }
+
+  static async canPerformAction(
+    context: AccessControlContext,
+    action: string,
+    resource?: string,
+  ): Promise<{ allowed: boolean; reason?: string }> {
+    // Admin can perform all actions
+    if (context.adminSession?.isAdmin) {
+      return { allowed: true }
+    }
+
+    // Check specific action permissions
+    switch (action) {
+      case "create_bot":
+        const botLimit = await this.checkResourceLimit(context, "bots")
+        return {
+          allowed: botLimit.canCreate,
+          reason: botLimit.canCreate ? undefined : `Bot limit reached (${botLimit.used}/${botLimit.limit})`,
+        }
+
+      case "use_api":
+        const apiLimit = await this.checkResourceLimit(context, "apiCalls")
+        return {
+          allowed: apiLimit.canCreate,
+          reason: apiLimit.canCreate ? undefined : `API call limit reached (${apiLimit.used}/${apiLimit.limit})`,
+        }
+
+      case "access_advanced_features":
+        return await this.checkFeatureAccess(context, "advanced_strategies")
+
+      case "priority_support":
+        return await this.checkFeatureAccess(context, "priority_support")
+
+      default:
+        return { allowed: true }
+    }
+  }
+
+  static async getAccessSummary(context: AccessControlContext): Promise<{
+    plan: string
+    features: Record<string, boolean>
+    limits: {
+      bots: { used: number; limit: number; remaining: number }
+      apiCalls: { used: number; limit: number; remaining: number }
+    }
+    isAdmin: boolean
+  }> {
+    try {
+      // Admin summary
+      if (context.adminSession?.isAdmin) {
+        return {
+          plan: "Admin",
+          features: {
+            unlimited_bots: true,
+            advanced_strategies: true,
+            api_access: true,
+            priority_support: true,
+            custom_strategies: true,
+            white_label: true,
+            dedicated_support: true,
+          },
+          limits: {
+            bots: { used: 0, limit: -1, remaining: -1 },
+            apiCalls: { used: 0, limit: -1, remaining: -1 },
+          },
+          isAdmin: true,
+        }
+      }
+
+      const [subscriptionStatus, limits] = await Promise.all([
+        subscriptionManager.getSubscriptionStatus(context.userId),
+        subscriptionManager.getRemainingLimits(context.userId),
+      ])
+
+      const features = {
+        unlimited_bots: await subscriptionManager.checkAccess(context.userId, "unlimited_bots"),
+        advanced_strategies: await subscriptionManager.checkAccess(context.userId, "advanced_strategies"),
+        api_access: await subscriptionManager.checkAccess(context.userId, "api_access"),
+        priority_support: await subscriptionManager.checkAccess(context.userId, "priority_support"),
+        custom_strategies: await subscriptionManager.checkAccess(context.userId, "custom_strategies"),
+        white_label: false, // Enterprise only
+        dedicated_support: subscriptionStatus.plan === "enterprise",
+      }
+
       return {
-        hasAccess: false,
+        plan: subscriptionStatus.plan,
+        features,
+        limits,
+        isAdmin: false,
+      }
+    } catch (error) {
+      console.error("Access summary error:", error)
+      return {
         plan: "free",
-        status: "error",
-        message: "Unable to verify access. Please try again.",
+        features: {},
+        limits: {
+          bots: { used: 0, limit: 1, remaining: 1 },
+          apiCalls: { used: 0, limit: 100, remaining: 100 },
+        },
+        isAdmin: false,
       }
-    }
-  }
-
-  static async requireAccess(userId: string, feature?: string): Promise<boolean> {
-    const access = await this.checkUserAccess(userId)
-
-    if (!access.hasAccess) {
-      throw new Error(`Access denied: ${access.message}`)
-    }
-
-    return true
-  }
-
-  static async canCreateBot(userId: string): Promise<{ allowed: boolean; message: string }> {
-    const access = await this.checkUserAccess(userId)
-
-    if (!access.hasAccess) {
-      return {
-        allowed: false,
-        message: "Premium subscription required to create trading bots.",
-      }
-    }
-
-    const canCreate = await subscriptionManager.canCreateBot(userId)
-
-    return {
-      allowed: canCreate,
-      message: canCreate ? "Bot creation allowed" : "Bot limit reached for your current plan. Please upgrade.",
-    }
-  }
-
-  static async canExecuteTrade(userId: string): Promise<{ allowed: boolean; message: string }> {
-    const access = await this.checkUserAccess(userId)
-
-    if (!access.hasAccess) {
-      return {
-        allowed: false,
-        message: "Premium subscription required to execute trades.",
-      }
-    }
-
-    const canTrade = await subscriptionManager.canExecuteTrade(userId)
-
-    return {
-      allowed: canTrade,
-      message: canTrade ? "Trade execution allowed" : "Trade limit reached for your current plan. Please upgrade.",
     }
   }
 }
+
+export const accessControl = AccessControl

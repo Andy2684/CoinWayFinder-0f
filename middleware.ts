@@ -69,11 +69,79 @@ const authRoutes = ["/auth", "/login", "/register"]
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const token = request.cookies.get("auth-token")?.value
+  const adminToken = request.cookies.get("admin-token")?.value
 
-  // Check if route is protected
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
+  // Add CORS headers for API routes
+  if (pathname.startsWith("/api/")) {
+    const response = NextResponse.next()
+
+    // Add CORS headers
+    response.headers.set("Access-Control-Allow-Origin", "*")
+    response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+    // Handle preflight requests
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 200, headers: response.headers })
+    }
+
+    // Public API routes
+    const publicApiRoutes = [
+      "/api/auth/signin",
+      "/api/auth/signup",
+      "/api/crypto/prices",
+      "/api/crypto/news",
+      "/api/stripe/webhook",
+      "/api/telegram-webhook",
+    ]
+
+    const isPublicApi = publicApiRoutes.some((route) => pathname.startsWith(route))
+
+    if (!isPublicApi) {
+      // Protected API routes require authentication
+      if (!token) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      }
+
+      // Admin API routes
+      if (pathname.startsWith("/api/admin/") && !adminToken) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+
+      // Check API usage limits for non-admin users
+      if (!adminToken && !pathname.startsWith("/api/auth/")) {
+        // Add API usage tracking here if needed
+        // For now, we'll allow all authenticated requests
+      }
+    }
+
+    return response
+  }
+
+  // Redirect root to dashboard if authenticated
+  if (pathname === "/") {
+    if (token || adminToken) {
+      return NextResponse.redirect(new URL("/dashboard", request.url))
+    }
+  }
+
+  // Protect admin routes
   const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route))
-  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route))
+  if (isAdminRoute) {
+    if (!adminToken) {
+      return NextResponse.redirect(new URL("/", request.url))
+    }
+    return NextResponse.next()
+  }
+
+  // Protect authenticated routes
+  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
+
+  if (isProtectedRoute) {
+    if (!token && !adminToken) {
+      return NextResponse.redirect(new URL("/", request.url))
+    }
+  }
 
   // Verify token if present
   let user = null
@@ -113,43 +181,8 @@ export function middleware(request: NextRequest) {
   }
 
   // Handle auth routes (redirect if already logged in)
-  if (isAuthRoute && user) {
+  if (authRoutes.some((route) => pathname.startsWith(route)) && user) {
     return NextResponse.redirect(new URL("/dashboard", request.url))
-  }
-
-  // Handle API routes
-  if (pathname.startsWith("/api/")) {
-    // Public API routes
-    const publicApiRoutes = [
-      "/api/auth/signin",
-      "/api/auth/signup",
-      "/api/crypto/prices",
-      "/api/crypto/news",
-      "/api/stripe/webhook",
-      "/api/telegram-webhook",
-    ]
-
-    const isPublicApi = publicApiRoutes.some((route) => pathname.startsWith(route))
-
-    if (!isPublicApi) {
-      // Protected API routes require authentication
-      if (!user) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      }
-
-      // Admin API routes
-      if (pathname.startsWith("/api/admin/") && !user.isAdmin) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-      }
-
-      // Check API usage limits for non-admin users
-      if (!user.isAdmin && !pathname.startsWith("/api/auth/")) {
-        // Add API usage tracking here if needed
-        // For now, we'll allow all authenticated requests
-      }
-    }
-
-    return NextResponse.next()
   }
 
   return NextResponse.next()
