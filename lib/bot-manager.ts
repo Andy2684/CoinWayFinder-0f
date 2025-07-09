@@ -1,207 +1,60 @@
-import { createExchangeClient, type ExchangeAPIClient } from "./exchange-api-client"
-import { database, type UserBot } from "./database"
-import { DCAStrategy, type DCAConfig } from "./trading-strategies/dca-strategy"
-import { ScalpingStrategy, type ScalpingConfig } from "./trading-strategies/scalping-strategy"
+import { database, type Bot } from "./database"
+import { subscriptionManager } from "./subscription-manager"
 
-export interface BotManagerConfig {
-  userId: string
+export interface BotConfig {
+  name: string
+  exchange: string
+  strategy: string
+  symbol: string
+  apiKey: string
+  secretKey: string
+  riskLevel: number
+  lotSize: number
+  takeProfit: number
+  stopLoss: number
+  dcaInterval?: string
+  investment: number
+  parameters?: any
 }
 
-export class BotManager {
+export interface BotStats {
+  totalTrades: number
+  winRate: number
+  totalProfit: number
+  totalLoss: number
+  currentDrawdown: number
+  lastTradeAt?: Date
+  performance24h: number
+  performance7d: number
+  performance30d: number
+}
+
+class BotManager {
   private userId: string
-  private runningBots: Map<
-    string,
-    {
-      client: ExchangeAPIClient
-      strategy: DCAStrategy | ScalpingStrategy
-      bot: UserBot
-    }
-  > = new Map()
 
-  constructor(config: BotManagerConfig) {
-    this.userId = config.userId
+  constructor(userId: string) {
+    this.userId = userId
   }
 
-  async startBot(botId: string): Promise<boolean> {
+  async createBot(config: BotConfig): Promise<string | null> {
     try {
-      // Get bot from database
-      const bot = await database.getBot(botId, this.userId)
-      if (!bot) {
-        throw new Error("Bot not found")
+      // Check if user can create more bots
+      const canCreate = await subscriptionManager.canCreateBot(this.userId)
+      if (!canCreate.allowed) {
+        throw new Error(canCreate.reason)
       }
 
-      if (this.runningBots.has(botId)) {
-        console.log(`Bot ${botId} is already running`)
-        return true
+      // Validate exchange credentials (mock validation)
+      const isValidCredentials = await this.validateExchangeCredentials(
+        config.exchange,
+        config.apiKey,
+        config.secretKey,
+      )
+      if (!isValidCredentials) {
+        throw new Error("Invalid exchange credentials")
       }
 
-      // Create exchange client
-      const client = createExchangeClient(bot.exchange, {
-        apiKey: bot.credentials.apiKey,
-        secretKey: bot.credentials.secretKey,
-        sandbox: process.env.NODE_ENV !== "production",
-      })
-
-      // Test connection
-      const connectionTest = await client.testConnection()
-      if (!connectionTest) {
-        throw new Error("Failed to connect to exchange")
-      }
-
-      // Create strategy based on bot configuration
-      let strategy: DCAStrategy | ScalpingStrategy
-
-      switch (bot.strategy) {
-        case "dca":
-          const dcaConfig: DCAConfig = {
-            symbol: bot.symbol,
-            interval: this.parseInterval(bot.config.dcaInterval || "1h"),
-            amount: bot.config.lotSize,
-            priceDeviation: bot.config.parameters.priceDeviation || 5,
-            maxOrders: bot.config.parameters.maxOrders || 10,
-            stopLoss: bot.config.stopLoss,
-            takeProfit: bot.config.takeProfit,
-          }
-          strategy = new DCAStrategy(client, dcaConfig, botId, this.userId)
-          break
-
-        case "scalping":
-          const scalpingConfig: ScalpingConfig = {
-            symbol: bot.symbol,
-            quantity: bot.config.lotSize,
-            profitTarget: bot.config.takeProfit,
-            stopLoss: bot.config.stopLoss,
-            maxHoldTime: bot.config.parameters.maxHoldTime || 30,
-            rsiPeriod: bot.config.parameters.rsiPeriod || 14,
-            rsiOverbought: bot.config.parameters.rsiOverbought || 70,
-            rsiOversold: bot.config.parameters.rsiOversold || 30,
-            macdFast: bot.config.parameters.macdFast || 12,
-            macdSlow: bot.config.parameters.macdSlow || 26,
-            macdSignal: bot.config.parameters.macdSignal || 9,
-          }
-          strategy = new ScalpingStrategy(client, scalpingConfig, botId, this.userId)
-          break
-
-        default:
-          throw new Error(`Unsupported strategy: ${bot.strategy}`)
-      }
-
-      // Start the strategy
-      await strategy.start()
-
-      // Store running bot
-      this.runningBots.set(botId, { client, strategy, bot })
-
-      // Update bot status in database
-      await database.updateBot(botId, this.userId, { status: "running" })
-
-      console.log(`Bot ${bot.name} started successfully`)
-      return true
-    } catch (error) {
-      console.error(`Failed to start bot ${botId}:`, error)
-
-      // Update bot status to error
-      await database.updateBot(botId, this.userId, { status: "error" })
-
-      return false
-    }
-  }
-
-  async stopBot(botId: string): Promise<boolean> {
-    try {
-      const runningBot = this.runningBots.get(botId)
-      if (!runningBot) {
-        console.log(`Bot ${botId} is not running`)
-        return true
-      }
-
-      // Stop the strategy
-      await runningBot.strategy.stop()
-
-      // Remove from running bots
-      this.runningBots.delete(botId)
-
-      // Update bot status in database
-      await database.updateBot(botId, this.userId, { status: "stopped" })
-
-      console.log(`Bot ${botId} stopped successfully`)
-      return true
-    } catch (error) {
-      console.error(`Failed to stop bot ${botId}:`, error)
-      return false
-    }
-  }
-
-  async pauseBot(botId: string): Promise<boolean> {
-    try {
-      const runningBot = this.runningBots.get(botId)
-      if (!runningBot) {
-        return false
-      }
-
-      // Stop the strategy but keep it in memory
-      await runningBot.strategy.stop()
-
-      // Update bot status in database
-      await database.updateBot(botId, this.userId, { status: "paused" })
-
-      console.log(`Bot ${botId} paused successfully`)
-      return true
-    } catch (error) {
-      console.error(`Failed to pause bot ${botId}:`, error)
-      return false
-    }
-  }
-
-  async deleteBot(botId: string): Promise<boolean> {
-    try {
-      // Stop bot if running
-      await this.stopBot(botId)
-
-      // Delete from database
-      const deleted = await database.deleteBot(botId, this.userId)
-
-      if (deleted) {
-        console.log(`Bot ${botId} deleted successfully`)
-      }
-
-      return deleted
-    } catch (error) {
-      console.error(`Failed to delete bot ${botId}:`, error)
-      return false
-    }
-  }
-
-  async createBot(config: {
-    name: string
-    exchange: string
-    strategy: string
-    symbol: string
-    apiKey: string
-    secretKey: string
-    riskLevel: number
-    lotSize: number
-    takeProfit: number
-    stopLoss: number
-    dcaInterval?: string
-    investment: number
-    parameters: Record<string, any>
-  }): Promise<string | null> {
-    try {
-      // Test exchange connection first
-      const client = createExchangeClient(config.exchange, {
-        apiKey: config.apiKey,
-        secretKey: config.secretKey,
-        sandbox: process.env.NODE_ENV !== "production",
-      })
-
-      const connectionTest = await client.testConnection()
-      if (!connectionTest) {
-        throw new Error("Invalid API credentials or exchange connection failed")
-      }
-
-      // Create bot in database
-      const botId = await database.createBot({
+      const botData: Omit<Bot, "_id"> = {
         userId: this.userId,
         name: config.name,
         exchange: config.exchange,
@@ -213,105 +66,258 @@ export class BotManager {
           lotSize: config.lotSize,
           takeProfit: config.takeProfit,
           stopLoss: config.stopLoss,
-          dcaInterval: config.dcaInterval,
           investment: config.investment,
+          dcaInterval: config.dcaInterval,
           parameters: config.parameters,
-        },
-        credentials: {
-          apiKey: config.apiKey,
-          secretKey: config.secretKey,
-          encrypted: false,
         },
         stats: {
           totalTrades: 0,
-          winningTrades: 0,
+          winRate: 0,
           totalProfit: 0,
           totalLoss: 0,
-          winRate: 0,
-          createdAt: new Date(),
+          currentDrawdown: 0,
         },
-      })
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
 
-      console.log(`Bot ${config.name} created with ID: ${botId}`)
-      return botId
+      const bot = await database.createBot(botData)
+
+      // Increment bot usage
+      await subscriptionManager.incrementUsage(this.userId, "bots")
+
+      return bot._id!.toString()
     } catch (error) {
-      console.error("Failed to create bot:", error)
+      console.error("Create bot error:", error)
       return null
     }
   }
 
-  async getBotStats(botId: string): Promise<any> {
-    const runningBot = this.runningBots.get(botId)
-    if (!runningBot) {
-      return null
-    }
-
-    // Get strategy-specific stats
-    let strategyStats = {}
-    if (runningBot.strategy instanceof DCAStrategy) {
-      strategyStats = runningBot.strategy.getStats()
-    } else if (runningBot.strategy instanceof ScalpingStrategy) {
-      strategyStats = runningBot.strategy.getStats()
-    }
-
-    // Get performance stats from database
-    const performanceStats = await database.getBotPerformance(botId)
-
-    return {
-      ...strategyStats,
-      ...performanceStats,
-      isRunning: true,
-    }
-  }
-
-  async getAllBots(): Promise<UserBot[]> {
+  async getAllBots(): Promise<Bot[]> {
     return database.getUserBots(this.userId)
   }
 
-  async getPortfolioStats(): Promise<any> {
-    return database.getPortfolioStats(this.userId)
+  async getBotById(botId: string): Promise<Bot | null> {
+    const bot = await database.getBotById(botId)
+
+    // Ensure user owns the bot
+    if (bot && bot.userId !== this.userId) {
+      return null
+    }
+
+    return bot
   }
 
-  async emergencyStopAll(): Promise<void> {
-    console.log("Emergency stop activated - stopping all bots")
+  async updateBot(botId: string, updates: Partial<BotConfig>): Promise<boolean> {
+    try {
+      const bot = await this.getBotById(botId)
+      if (!bot) {
+        return false
+      }
 
-    const stopPromises = Array.from(this.runningBots.keys()).map((botId) => this.stopBot(botId))
-    await Promise.all(stopPromises)
+      const updateData: Partial<Bot> = {
+        updatedAt: new Date(),
+      }
 
-    console.log("All bots stopped")
-  }
+      if (updates.name) updateData.name = updates.name
+      if (updates.strategy) updateData.strategy = updates.strategy
+      if (updates.symbol) updateData.symbol = updates.symbol
 
-  private parseInterval(interval: string): number {
-    const unit = interval.slice(-1)
-    const value = Number.parseInt(interval.slice(0, -1))
+      if (
+        updates.riskLevel !== undefined ||
+        updates.lotSize !== undefined ||
+        updates.takeProfit !== undefined ||
+        updates.stopLoss !== undefined ||
+        updates.investment !== undefined
+      ) {
+        updateData.config = {
+          ...bot.config,
+          ...(updates.riskLevel !== undefined && { riskLevel: updates.riskLevel }),
+          ...(updates.lotSize !== undefined && { lotSize: updates.lotSize }),
+          ...(updates.takeProfit !== undefined && { takeProfit: updates.takeProfit }),
+          ...(updates.stopLoss !== undefined && { stopLoss: updates.stopLoss }),
+          ...(updates.investment !== undefined && { investment: updates.investment }),
+        }
+      }
 
-    switch (unit) {
-      case "m":
-        return value
-      case "h":
-        return value * 60
-      case "d":
-        return value * 60 * 24
-      default:
-        return 60 // Default to 1 hour
+      await database.updateBot(botId, updateData)
+      return true
+    } catch (error) {
+      console.error("Update bot error:", error)
+      return false
     }
   }
 
-  getRunningBotsCount(): number {
-    return this.runningBots.size
+  async deleteBot(botId: string): Promise<boolean> {
+    try {
+      const bot = await this.getBotById(botId)
+      if (!bot) {
+        return false
+      }
+
+      await database.deleteBot(botId)
+
+      // Decrement bot usage
+      await subscriptionManager.decrementUsage(this.userId, "bots")
+
+      return true
+    } catch (error) {
+      console.error("Delete bot error:", error)
+      return false
+    }
   }
 
-  isRunning(botId: string): boolean {
-    return this.runningBots.has(botId)
+  async startBot(botId: string): Promise<boolean> {
+    try {
+      const bot = await this.getBotById(botId)
+      if (!bot) {
+        return false
+      }
+
+      await database.updateBot(botId, {
+        status: "running",
+        lastRunAt: new Date(),
+        updatedAt: new Date(),
+      })
+
+      return true
+    } catch (error) {
+      console.error("Start bot error:", error)
+      return false
+    }
+  }
+
+  async stopBot(botId: string): Promise<boolean> {
+    try {
+      const bot = await this.getBotById(botId)
+      if (!bot) {
+        return false
+      }
+
+      await database.updateBot(botId, {
+        status: "stopped",
+        updatedAt: new Date(),
+      })
+
+      return true
+    } catch (error) {
+      console.error("Stop bot error:", error)
+      return false
+    }
+  }
+
+  async pauseBot(botId: string): Promise<boolean> {
+    try {
+      const bot = await this.getBotById(botId)
+      if (!bot) {
+        return false
+      }
+
+      await database.updateBot(botId, {
+        status: "paused",
+        updatedAt: new Date(),
+      })
+
+      return true
+    } catch (error) {
+      console.error("Pause bot error:", error)
+      return false
+    }
+  }
+
+  async updateBotStats(botId: string, stats: Partial<BotStats>): Promise<boolean> {
+    try {
+      const bot = await this.getBotById(botId)
+      if (!bot) {
+        return false
+      }
+
+      const updatedStats = {
+        ...bot.stats,
+        ...stats,
+      }
+
+      await database.updateBot(botId, {
+        stats: updatedStats,
+        updatedAt: new Date(),
+      })
+
+      return true
+    } catch (error) {
+      console.error("Update bot stats error:", error)
+      return false
+    }
+  }
+
+  async getBotPerformance(botId: string): Promise<{
+    totalReturn: number
+    dailyReturns: number[]
+    monthlyReturns: number[]
+    sharpeRatio: number
+    maxDrawdown: number
+    winRate: number
+  } | null> {
+    try {
+      const bot = await this.getBotById(botId)
+      if (!bot) {
+        return null
+      }
+
+      // Mock performance data - in production, this would come from trade history
+      return {
+        totalReturn: bot.stats.totalProfit - bot.stats.totalLoss,
+        dailyReturns: Array.from({ length: 30 }, () => (Math.random() - 0.5) * 5),
+        monthlyReturns: Array.from({ length: 12 }, () => (Math.random() - 0.5) * 20),
+        sharpeRatio: 1.2 + Math.random() * 0.8,
+        maxDrawdown: bot.stats.currentDrawdown,
+        winRate: bot.stats.winRate,
+      }
+    } catch (error) {
+      console.error("Get bot performance error:", error)
+      return null
+    }
+  }
+
+  private async validateExchangeCredentials(exchange: string, apiKey: string, secretKey: string): Promise<boolean> {
+    // Mock validation - in production, this would test the actual exchange API
+    return apiKey.length > 10 && secretKey.length > 10
+  }
+
+  async getActiveBots(): Promise<Bot[]> {
+    const allBots = await this.getAllBots()
+    return allBots.filter((bot) => bot.status === "running")
+  }
+
+  async getBotsByStatus(status: string): Promise<Bot[]> {
+    const allBots = await this.getAllBots()
+    return allBots.filter((bot) => bot.status === status)
+  }
+
+  async getTotalStats(): Promise<{
+    totalBots: number
+    activeBots: number
+    totalProfit: number
+    totalTrades: number
+    averageWinRate: number
+  }> {
+    const bots = await this.getAllBots()
+
+    const totalProfit = bots.reduce((sum, bot) => sum + (bot.stats.totalProfit - bot.stats.totalLoss), 0)
+    const totalTrades = bots.reduce((sum, bot) => sum + bot.stats.totalTrades, 0)
+    const averageWinRate = bots.length > 0 ? bots.reduce((sum, bot) => sum + bot.stats.winRate, 0) / bots.length : 0
+
+    return {
+      totalBots: bots.length,
+      activeBots: bots.filter((bot) => bot.status === "running").length,
+      totalProfit,
+      totalTrades,
+      averageWinRate,
+    }
   }
 }
-
-// Global bot managers for different users
-const botManagers: Map<string, BotManager> = new Map()
 
 export function getBotManager(userId: string): BotManager {
-  if (!botManagers.has(userId)) {
-    botManagers.set(userId, new BotManager({ userId }))
-  }
-  return botManagers.get(userId)!
+  return new BotManager(userId)
 }
+
+export { BotManager }

@@ -1,36 +1,21 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { verifyAdminToken, getAdminStats } from "@/lib/admin"
+import { AdminService } from "@/lib/admin"
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get("admin-token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "No admin token found" }, { status: 401 })
-    }
-
-    const admin = verifyAdminToken(token)
+    const admin = await AdminService.getCurrentAdmin()
 
     if (!admin) {
-      return NextResponse.json({ error: "Invalid admin token" }, { status: 401 })
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
-    const stats = getAdminStats()
-
     return NextResponse.json({
+      success: true,
       admin: {
+        id: admin.adminId,
         username: admin.username,
         email: admin.email,
         role: admin.role,
-      },
-      stats,
-      privileges: {
-        unlimitedBots: true,
-        unlimitedTrades: true,
-        whaleTracking: true,
-        newsAccess: true,
-        userManagement: true,
-        systemStats: true,
       },
     })
   } catch (error) {

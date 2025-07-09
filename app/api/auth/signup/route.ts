@@ -24,10 +24,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const result = await AuthService.signUp(email, password, name)
+    const result = await AuthService.signUp(email, name, password)
 
-    if (result.success) {
-      return NextResponse.json(result, { status: 201 })
+    if (result.success && result.user) {
+      // Set auth cookie
+      await AuthService.setUserCookie(result.user)
+
+      return NextResponse.json(
+        {
+          success: true,
+          message: result.message,
+          user: {
+            id: result.user.id,
+            email: result.user.email,
+            username: result.user.username,
+          },
+        },
+        { status: 201 },
+      )
     } else {
       return NextResponse.json(result, { status: 400 })
     }

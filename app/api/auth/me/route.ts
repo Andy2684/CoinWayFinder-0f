@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { AuthService } from "@/lib/auth"
+import { database } from "@/lib/database"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const user = await AuthService.getCurrentUser()
 
@@ -9,9 +10,20 @@ export async function GET() {
       return NextResponse.json({ success: false, message: "Not authenticated" }, { status: 401 })
     }
 
+    // Get additional user data
+    const userSettings = await database.getUserSettings(user.userId)
+
     return NextResponse.json({
       success: true,
-      user,
+      user: {
+        id: user.userId,
+        email: user.email,
+        username: user.username,
+        subscription: userSettings?.subscription || {
+          plan: "free",
+          status: "inactive",
+        },
+      },
     })
   } catch (error) {
     console.error("Get current user error:", error)

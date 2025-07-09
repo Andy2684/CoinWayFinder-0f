@@ -1,51 +1,42 @@
 import jwt from "jsonwebtoken"
 import bcrypt from "bcryptjs"
 import { cookies } from "next/headers"
-import { database } from "./database"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production"
-const ADMIN_JWT_SECRET = process.env.ADMIN_JWT_SECRET || "admin-secret-key-change-in-production"
 
-// Admin system with backdoor access for project.command.center@gmail.com
-interface AdminUser {
+export interface Admin {
   id: string
   username: string
   email: string
-  password: string
-  isAdmin: boolean
+  role: string
   createdAt: string
-  lastLogin?: string
 }
 
 export interface AdminSession {
-  userId: string
+  adminId: string
   username: string
   email: string
-  isAdmin: boolean
+  role: string
   token: string
   expiresAt: number
 }
 
-interface SystemStats {
-  totalUsers: number
-  activeUsers: number
-  totalBots: number
-  activeBots: number
-  totalTrades: number
-  totalVolume: number
-  subscriptionBreakdown: Record<string, number>
-  revenueStats: {
-    monthly: number
-    total: number
-  }
+export interface AdminCredentials {
+  username: string
+  password: string
 }
 
-// Hardcoded admin credentials
-const ADMIN_CREDENTIALS = {
-  username: "admin",
-  email: "project.command.center@gmail.com",
-  password: "CoinWayFinder2024!",
-}
+// Mock admin data - in production, this would be in a database
+const ADMIN_USERS = [
+  {
+    id: "admin-1",
+    username: "admin",
+    email: "admin@coinwayfinder.com",
+    password: "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj3QJK9fHPyG", // CoinWayFinder2024!
+    role: "admin",
+    createdAt: new Date().toISOString(),
+  },
+]
 
 export class AdminService {
   private static adminSessions = new Map<string, AdminSession>()
@@ -58,27 +49,27 @@ export class AdminService {
     return bcrypt.compare(password, hashedPassword)
   }
 
-  static generateAdminToken(admin: AdminUser): string {
+  static generateAdminToken(admin: Admin): string {
     return jwt.sign(
       {
         id: admin.id,
         username: admin.username,
         email: admin.email,
-        isAdmin: true,
+        role: admin.role,
       },
-      ADMIN_JWT_SECRET,
+      JWT_SECRET,
       { expiresIn: "24h" },
     )
   }
 
   static verifyAdminToken(token: string): AdminSession | null {
     try {
-      const decoded = jwt.verify(token, ADMIN_JWT_SECRET) as any
+      const decoded = jwt.verify(token, JWT_SECRET) as any
       return {
-        userId: decoded.id,
+        adminId: decoded.id,
         username: decoded.username,
         email: decoded.email,
-        isAdmin: decoded.isAdmin,
+        role: decoded.role,
         token,
         expiresAt: decoded.exp * 1000,
       }
@@ -87,37 +78,36 @@ export class AdminService {
     }
   }
 
-  static async validateAdminCredentials(
-    username: string,
-    password: string,
-  ): Promise<{ success: boolean; admin?: AdminUser }> {
-    // Check hardcoded admin credentials
-    if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-      const admin: AdminUser = {
-        id: "admin-001",
-        username: ADMIN_CREDENTIALS.username,
-        email: ADMIN_CREDENTIALS.email,
-        password: await this.hashPassword(ADMIN_CREDENTIALS.password),
-        isAdmin: true,
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString(),
-      }
-      return { success: true, admin }
+  static async validateAdminCredentials(username: string, password: string): Promise<Admin | null> {
+    const admin = ADMIN_USERS.find((a) => a.username === username)
+    if (!admin) {
+      return null
     }
 
-    return { success: false }
+    const isValidPassword = await this.comparePassword(password, admin.password)
+    if (!isValidPassword) {
+      return null
+    }
+
+    return {
+      id: admin.id,
+      username: admin.username,
+      email: admin.email,
+      role: admin.role,
+      createdAt: admin.createdAt,
+    }
   }
 
-  static async setAdminCookie(admin: AdminUser): Promise<void> {
+  static async setAdminCookie(admin: Admin): Promise<void> {
     const token = this.generateAdminToken(admin)
     const cookieStore = await cookies()
 
     // Store session
     const session: AdminSession = {
-      userId: admin.id,
+      adminId: admin.id,
       username: admin.username,
       email: admin.email,
-      isAdmin: true,
+      role: admin.role,
       token,
       expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
     }
@@ -127,7 +117,7 @@ export class AdminService {
     cookieStore.set("admin-token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "strict",
       maxAge: 24 * 60 * 60, // 24 hours
     })
   }
@@ -177,149 +167,22 @@ export class AdminService {
     }
     return admin
   }
-
-  static async getAdminStats(): Promise<SystemStats> {
-    try {
-      const totalUsers = await database.getUserCount()
-      const activeSubscriptions = await database.getActiveSubscriptions()
-
-      return {
-        totalUsers,
-        activeUsers: Math.floor(totalUsers * 0.7), // Mock active users
-        totalBots: Math.floor(totalUsers * 2.5), // Mock total bots
-        activeBots: Math.floor(totalUsers * 1.2), // Mock active bots
-        totalTrades: Math.floor(totalUsers * 50), // Mock total trades
-        totalVolume: totalUsers * 2345.67, // Mock volume
-        subscriptionBreakdown: {
-          free: Math.floor(totalUsers * 0.6),
-          basic: Math.floor(totalUsers * 0.25),
-          premium: Math.floor(totalUsers * 0.12),
-          enterprise: Math.floor(totalUsers * 0.03),
-        },
-        revenueStats: {
-          monthly: activeSubscriptions * 45,
-          total: activeSubscriptions * 234,
-        },
-      }
-    } catch (error) {
-      console.error("Error getting admin stats:", error)
-      return {
-        totalUsers: 0,
-        activeUsers: 0,
-        totalBots: 0,
-        activeBots: 0,
-        totalTrades: 0,
-        totalVolume: 0,
-        subscriptionBreakdown: {
-          free: 0,
-          basic: 0,
-          premium: 0,
-          enterprise: 0,
-        },
-        revenueStats: {
-          monthly: 0,
-          total: 0,
-        },
-      }
-    }
-  }
 }
 
-class AdminManager {
-  bypassSubscriptionCheck(adminSession: AdminSession | null): boolean {
-    return adminSession?.isAdmin === true && adminSession.expiresAt > Date.now()
-  }
-
-  async getSystemHealth(): Promise<{
-    status: "healthy" | "warning" | "critical"
-    services: Record<string, boolean>
-    uptime: number
-  }> {
-    return {
-      status: "healthy",
-      services: {
-        database: true,
-        redis: true,
-        telegram: true,
-        exchanges: true,
-        payments: true,
-      },
-      uptime: process.uptime(),
-    }
-  }
-
-  async getRecentActivity(): Promise<
-    Array<{
-      id: string
-      type: "user_signup" | "bot_created" | "trade_executed" | "subscription_upgraded"
-      userId: string
-      timestamp: string
-      details: Record<string, any>
-    }>
-  > {
-    // Mock recent activity
-    return [
-      {
-        id: "1",
-        type: "user_signup",
-        userId: "user-123",
-        timestamp: new Date().toISOString(),
-        details: { email: "user@example.com" },
-      },
-      {
-        id: "2",
-        type: "bot_created",
-        userId: "user-456",
-        timestamp: new Date().toISOString(),
-        details: { strategy: "DCA", exchange: "binance" },
-      },
-    ]
-  }
-
-  async getAllUsers(): Promise<any[]> {
+export class AdminManager {
+  async signIn(username: string, password: string): Promise<{ success: boolean; message: string; admin?: Admin }> {
     try {
-      return await database.getAllUsers()
+      const admin = await AdminService.validateAdminCredentials(username, password)
+      if (!admin) {
+        return { success: false, message: "Invalid credentials" }
+      }
+
+      await AdminService.setAdminCookie(admin)
+      return { success: true, message: "Admin signed in successfully", admin }
     } catch (error) {
-      console.error("Error getting all users:", error)
-      return []
+      console.error("Admin sign in error:", error)
+      return { success: false, message: "Failed to sign in" }
     }
-  }
-
-  async updateUserSubscription(userId: string, plan: string): Promise<{ success: boolean; message: string }> {
-    try {
-      await database.updateUserSettings(userId, {
-        subscription: {
-          plan,
-          status: "active",
-          startDate: new Date(),
-          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        },
-      })
-
-      return { success: true, message: `User ${userId} subscription updated to ${plan}` }
-    } catch (error) {
-      console.error("Error updating user subscription:", error)
-      return { success: false, message: "Failed to update user subscription" }
-    }
-  }
-
-  async deleteUser(userId: string): Promise<{ success: boolean; message: string }> {
-    try {
-      await database.deleteUser(userId)
-      return { success: true, message: `User ${userId} deleted successfully` }
-    } catch (error) {
-      console.error("Error deleting user:", error)
-      return { success: false, message: "Failed to delete user" }
-    }
-  }
-
-  async signIn(username: string, password: string): Promise<{ success: boolean; message: string; admin?: AdminUser }> {
-    const result = await AdminService.validateAdminCredentials(username, password)
-    if (result.success && result.admin) {
-      await AdminService.setAdminCookie(result.admin)
-      return { success: true, message: "Admin signed in successfully", admin: result.admin }
-    }
-    return { success: false, message: "Invalid admin credentials" }
   }
 
   async signOut(): Promise<void> {
@@ -333,16 +196,13 @@ class AdminManager {
   async requireAdmin(): Promise<AdminSession> {
     return AdminService.requireAdmin()
   }
-
-  async getStats(): Promise<SystemStats> {
-    return AdminService.getAdminStats()
-  }
 }
 
 export const adminManager = new AdminManager()
 
 // Export functions for backward compatibility
-export const verifyAdminToken = AdminService.verifyAdminToken
-export const getAdminStats = AdminService.getAdminStats
 export const validateAdminCredentials = AdminService.validateAdminCredentials
 export const generateAdminToken = AdminService.generateAdminToken
+export const verifyAdminToken = AdminService.verifyAdminToken
+export const getCurrentAdmin = AdminService.getCurrentAdmin
+export const requireAdmin = AdminService.requireAdmin

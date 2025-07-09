@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { validateAdminCredentials, generateAdminToken } from "@/lib/admin"
+import { AdminService } from "@/lib/admin"
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,32 +9,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Username and password are required" }, { status: 400 })
     }
 
-    const admin = await validateAdminCredentials(username, password)
+    const admin = await AdminService.validateAdminCredentials(username, password)
 
     if (!admin) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
-    const token = generateAdminToken(admin)
+    // Set admin cookie
+    await AdminService.setAdminCookie(admin)
 
-    const response = NextResponse.json({
+    return NextResponse.json({
       success: true,
       admin: {
+        id: admin.id,
         username: admin.username,
         email: admin.email,
         role: admin.role,
       },
     })
-
-    // Set HTTP-only cookie
-    response.cookies.set("admin-token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 24 * 60 * 60, // 24 hours
-    })
-
-    return response
   } catch (error) {
     console.error("Admin signin error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
