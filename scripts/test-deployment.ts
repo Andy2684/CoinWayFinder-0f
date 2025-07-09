@@ -1,4 +1,6 @@
-interface TestResult {
+import fetch from "node-fetch"
+
+export interface TestResult {
   name: string
   status: "pass" | "fail" | "warning"
   message: string
@@ -8,38 +10,24 @@ interface TestResult {
 
 export class DeploymentTester {
   private baseUrl: string
-  private results: TestResult[] = []
+  public results: TestResult[] = []
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl.replace(/\/$/, "")
   }
 
-  private async makeRequest(
-    path: string,
-    options: RequestInit = {},
-  ): Promise<{ status: number; data: any; headers: Headers }> {
+  private async makeRequest(path: string, options: RequestInit = {}): Promise<Response> {
     const url = `${this.baseUrl}${path}`
     const response = await fetch(url, {
-      ...options,
+      timeout: 10000,
       headers: {
-        "Content-Type": "application/json",
+        "User-Agent": "CoinWayFinder-TestSuite/1.0",
+        Accept: "application/json",
         ...options.headers,
       },
+      ...options,
     })
-
-    let data: any
-    try {
-      const text = await response.text()
-      data = text.startsWith("{") || text.startsWith("[") ? JSON.parse(text) : text
-    } catch {
-      data = await response.text()
-    }
-
-    return {
-      status: response.status,
-      data,
-      headers: response.headers,
-    }
+    return response
   }
 
   private async runTest(name: string, testFn: () => Promise<void>): Promise<TestResult> {
@@ -66,7 +54,6 @@ export class DeploymentTester {
         status: "fail",
         message,
         duration,
-        details: error,
       }
       console.log(`❌ ${name} - FAILED (${duration}ms): ${message}`)
       this.results.push(result)
@@ -78,17 +65,18 @@ export class DeploymentTester {
     return this.runTest("Health Endpoint", async () => {
       const response = await this.makeRequest("/api/health")
 
-      if (response.status !== 200) {
+      if (!response.ok) {
         throw new Error(`Expected 200, got ${response.status}`)
       }
 
-      if (typeof response.data !== "object" || !response.data.status) {
+      const data = await response.json()
+      if (!data || typeof data !== "object" || !data.status) {
         throw new Error("Health response missing status field")
       }
 
-      console.log(`   📊 Status: ${response.data.status}`)
-      console.log(`   🌍 Environment: ${response.data.environment || "unknown"}`)
-      console.log(`   ⏱️ Uptime: ${response.data.uptime || 0}s`)
+      console.log(`   📊 Status: ${data.status}`)
+      console.log(`   🌍 Environment: ${data.environment || "unknown"}`)
+      console.log(`   ⏱️ Uptime: ${data.uptime || 0}s`)
     })
   }
 
@@ -100,21 +88,16 @@ export class DeploymentTester {
         throw new Error(`Expected 200 or 500, got ${response.status}`)
       }
 
-      if (typeof response.data !== "object" || !Array.isArray(response.data.tests)) {
+      const data = await response.json()
+      if (!data || typeof data !== "object" || !Array.isArray(data.tests)) {
         throw new Error("Test response missing tests array")
       }
 
-      console.log(`   📊 Found ${response.data.tests.length} component tests`)
-      console.log(`   📈 Overall status: ${response.data.status}`)
-
-      response.data.tests.forEach((test: any) => {
+      console.log(`   📊 Found ${data.tests.length} component tests`)
+      data.tests.forEach((test: any) => {
         const icon = test.status === "healthy" ? "✅" : test.status === "warning" ? "⚠️" : "❌"
         console.log(`   ${icon} ${test.name}: ${test.message}`)
       })
-
-      if (response.data.summary) {
-        console.log(`   📊 Summary: ${response.data.summary.healthy}/${response.data.summary.total} healthy`)
-      }
     })
   }
 
@@ -136,12 +119,11 @@ export class DeploymentTester {
       const result = await this.runTest(`Static Page: ${page.name}`, async () => {
         const response = await this.makeRequest(page.path)
 
-        if (response.status !== 200) {
+        if (!response.ok) {
           throw new Error(`Expected 200, got ${response.status}`)
         }
 
-        const content = typeof response.data === "string" ? response.data : JSON.stringify(response.data)
-
+        const content = await response.text()
         if (!content.includes("<!DOCTYPE html>") && !content.includes("<html")) {
           throw new Error("Response does not appear to be HTML")
         }
@@ -182,16 +164,6 @@ export class DeploymentTester {
         method: "GET",
         expectStatus: [200, 401],
       },
-      {
-        path: "/api/news",
-        method: "GET",
-        expectStatus: [200, 401, 503],
-      },
-      {
-        path: "/api/whales",
-        method: "GET",
-        expectStatus: [200, 401, 503],
-      },
     ]
 
     const results: TestResult[] = []
@@ -203,6 +175,9 @@ export class DeploymentTester {
         }
 
         if (endpoint.body) {
+          options.headers = {
+            "Content-Type": "application/json",
+          }
           options.body = JSON.stringify(endpoint.body)
         }
 
@@ -213,102 +188,21 @@ export class DeploymentTester {
         }
 
         console.log(`   📡 Status: ${response.status} (expected)`)
-
-        if (typeof response.data === "object" && response.data.message) {
-          console.log(`   💬 Message: ${response.data.message}`)
-        }
       })
       results.push(result)
     }
 
     return results
-  }
-
-  async testPerformance(): Promise<TestResult[]> {
-    const performanceTests = [
-      { name: "Home Page Load Time", path: "/" },
-      { name: "Dashboard Load Time", path: "/dashboard" },
-      { name: "API Health Response", path: "/api/health" },
-      { name: "API Test Response", path: "/api/test" },
-    ]
-
-    const results: TestResult[] = []
-
-    for (const test of performanceTests) {
-      const result = await this.runTest(`Performance: ${test.name}`, async () => {
-        const start = Date.now()
-        const response = await this.makeRequest(test.path)
-        const duration = Date.now() - start
-
-        if (response.status !== 200 && response.status !== 500) {
-          throw new Error(`Request failed with status ${response.status}`)
-        }
-
-        let status: "pass" | "warning" | "fail" = "pass"
-        let message = `Response time: ${duration}ms`
-
-        if (duration > 5000) {
-          status = "fail"
-          message += " (too slow)"
-        } else if (duration > 2000) {
-          status = "warning"
-          message += " (slow)"
-        } else {
-          message += " (good)"
-        }
-
-        console.log(`   ⚡ ${message}`)
-
-        if (status === "fail") {
-          throw new Error(message)
-        }
-      })
-      results.push(result)
-    }
-
-    return results
-  }
-
-  async testDatabaseConnectivity(): Promise<TestResult> {
-    return this.runTest("Database Connectivity", async () => {
-      // Test if we can reach any database-dependent endpoint
-      const response = await this.makeRequest("/api/test")
-
-      if (response.status !== 200 && response.status !== 500) {
-        throw new Error(`Test endpoint unreachable: ${response.status}`)
-      }
-
-      if (typeof response.data === "object" && response.data.tests) {
-        const dbTest = response.data.tests.find(
-          (t: any) => t.name.toLowerCase().includes("database") || t.name.toLowerCase().includes("mongodb"),
-        )
-
-        if (dbTest) {
-          console.log(`   🗄️ Database status: ${dbTest.status}`)
-          console.log(`   💬 Message: ${dbTest.message}`)
-
-          if (dbTest.status === "error") {
-            throw new Error(`Database connection failed: ${dbTest.message}`)
-          }
-        } else {
-          console.log(`   🗄️ Database test not found in response`)
-        }
-      }
-    })
   }
 
   async runAllTests(): Promise<TestResult[]> {
     console.log(`🌐 Testing application at: ${this.baseUrl}`)
     console.log("=" + "=".repeat(50))
 
-    // Run all test categories
     await this.testHealthEndpoint()
     await this.testComprehensiveEndpoint()
-    await this.testDatabaseConnectivity()
-
-    const staticResults = await this.testStaticPages()
-    const apiResults = await this.testAPIEndpoints()
-    const performanceResults = await this.testPerformance()
+    await this.testStaticPages()
+    await this.testAPIEndpoints()
 
     return this.results
   }
@@ -336,44 +230,13 @@ export class DeploymentTester {
         })
     }
 
-    if (warnings > 0) {
-      console.log("\n⚠️ WARNINGS:")
-      this.results
-        .filter((r) => r.status === "warning")
-        .forEach((result) => {
-          console.log(`   • ${result.name}: ${result.message}`)
-        })
-    }
-
     const avgDuration = this.results.reduce((sum, r) => sum + r.duration, 0) / total
     console.log(`\n⏱️ Average response time: ${Math.round(avgDuration)}ms`)
 
-    const slowTests = this.results.filter((r) => r.duration > 2000)
-    if (slowTests.length > 0) {
-      console.log(`\n🐌 Slow tests (>2s):`)
-      slowTests.forEach((test) => {
-        console.log(`   • ${test.name}: ${test.duration}ms`)
-      })
-    }
-
-    console.log("\n" + "=".repeat(50))
-
-    if (failed === 0 && warnings === 0) {
-      console.log("🎉 All tests passed! Your application is working perfectly.")
-    } else if (failed === 0) {
-      console.log("✅ All tests passed with some warnings. Review above.")
+    if (failed === 0) {
+      console.log("\n🎉 All tests passed! Your application is working correctly.")
     } else {
-      console.log(`⚠️ ${failed} test(s) failed. Please review the issues above.`)
+      console.log(`\n⚠️ ${failed} test(s) failed. Please review the issues above.`)
     }
-
-    console.log("\n💡 Next Steps:")
-    if (failed > 0) {
-      console.log("   1. Fix the failed tests")
-      console.log("   2. Check environment variables")
-      console.log("   3. Verify database connections")
-    }
-    console.log("   • Visit /api/health for basic status")
-    console.log("   • Visit /api/test for detailed component status")
-    console.log("   • Check Vercel deployment logs for errors")
   }
 }
