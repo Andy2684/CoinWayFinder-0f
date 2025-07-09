@@ -5,47 +5,31 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatCurrency(amount: number, currency = "USD", locale = "en-US"): string {
-  return new Intl.NumberFormat(locale, {
-    style: "currency",
-    currency,
-  }).format(amount)
-}
-
-export function formatNumber(number: number, options?: Intl.NumberFormatOptions): string {
-  return new Intl.NumberFormat("en-US", options).format(number)
-}
-
-export function formatPercentage(value: number, decimals = 2): string {
-  return `${(value * 100).toFixed(decimals)}%`
-}
-
-export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOptions): string {
-  const dateObj = typeof date === "string" ? new Date(date) : date
-  return new Intl.DateTimeFormat("en-US", {
+// Date utilities
+export function formatDate(date: Date | string): string {
+  const d = new Date(date)
+  return d.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
-    ...options,
-  }).format(dateObj)
+  })
 }
 
-export function formatDateTime(date: Date | string, options?: Intl.DateTimeFormatOptions): string {
-  const dateObj = typeof date === "string" ? new Date(date) : date
-  return new Intl.DateTimeFormat("en-US", {
+export function formatDateTime(date: Date | string): string {
+  const d = new Date(date)
+  return d.toLocaleString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-    ...options,
-  }).format(dateObj)
+  })
 }
 
 export function formatRelativeTime(date: Date | string): string {
-  const dateObj = typeof date === "string" ? new Date(date) : date
+  const d = new Date(date)
   const now = new Date()
-  const diffInSeconds = Math.floor((now.getTime() - dateObj.getTime()) / 1000)
+  const diffInSeconds = Math.floor((now.getTime() - d.getTime()) / 1000)
 
   if (diffInSeconds < 60) {
     return "just now"
@@ -53,121 +37,100 @@ export function formatRelativeTime(date: Date | string): string {
 
   const diffInMinutes = Math.floor(diffInSeconds / 60)
   if (diffInMinutes < 60) {
-    return `${diffInMinutes} minute${diffInMinutes > 1 ? "s" : ""} ago`
+    return `${diffInMinutes}m ago`
   }
 
   const diffInHours = Math.floor(diffInMinutes / 60)
   if (diffInHours < 24) {
-    return `${diffInHours} hour${diffInHours > 1 ? "s" : ""} ago`
+    return `${diffInHours}h ago`
   }
 
   const diffInDays = Math.floor(diffInHours / 24)
   if (diffInDays < 7) {
-    return `${diffInDays} day${diffInDays > 1 ? "s" : ""} ago`
+    return `${diffInDays}d ago`
   }
 
-  const diffInWeeks = Math.floor(diffInDays / 7)
-  if (diffInWeeks < 4) {
-    return `${diffInWeeks} week${diffInWeeks > 1 ? "s" : ""} ago`
-  }
-
-  const diffInMonths = Math.floor(diffInDays / 30)
-  if (diffInMonths < 12) {
-    return `${diffInMonths} month${diffInMonths > 1 ? "s" : ""} ago`
-  }
-
-  const diffInYears = Math.floor(diffInDays / 365)
-  return `${diffInYears} year${diffInYears > 1 ? "s" : ""} ago`
+  return formatDate(d)
 }
 
-export function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text
-  return text.slice(0, maxLength) + "..."
+// Currency utilities
+export function formatCurrency(amount: number, currency = "USD"): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(amount)
 }
 
-export function slugify(text: string): string {
-  return text
+export function formatCrypto(amount: number, symbol = "BTC", decimals = 8): string {
+  return `${amount.toFixed(decimals)} ${symbol}`
+}
+
+export function formatPercentage(value: number, decimals = 2): string {
+  return `${value.toFixed(decimals)}%`
+}
+
+// Number utilities
+export function formatNumber(num: number, decimals = 2): string {
+  if (num >= 1e9) {
+    return `${(num / 1e9).toFixed(decimals)}B`
+  }
+  if (num >= 1e6) {
+    return `${(num / 1e6).toFixed(decimals)}M`
+  }
+  if (num >= 1e3) {
+    return `${(num / 1e3).toFixed(decimals)}K`
+  }
+  return num.toFixed(decimals)
+}
+
+export function parseNumber(str: string): number {
+  const num = Number.parseFloat(str.replace(/[^0-9.-]/g, ""))
+  return isNaN(num) ? 0 : num
+}
+
+// Validation utilities
+export function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(email)
+}
+
+export function isValidPassword(password: string): boolean {
+  // At least 8 characters, 1 uppercase, 1 lowercase, 1 number
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/
+  return passwordRegex.test(password)
+}
+
+export function isValidUsername(username: string): boolean {
+  // 3-20 characters, alphanumeric and underscores only
+  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
+  return usernameRegex.test(username)
+}
+
+// String utilities
+export function truncateString(str: string, length: number): string {
+  if (str.length <= length) return str
+  return str.substring(0, length) + "..."
+}
+
+export function slugify(str: string): string {
+  return str
     .toLowerCase()
     .replace(/[^\w\s-]/g, "")
     .replace(/[\s_-]+/g, "-")
     .replace(/^-+|-+$/g, "")
 }
 
-export function generateId(length = 8): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-  let result = ""
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return result
+export function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
 
-export function generateUUID(): string {
-  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
-    const r = (Math.random() * 16) | 0
-    const v = c === "x" ? r : (r & 0x3) | 0x8
-    return v.toString(16)
-  })
+export function camelToKebab(str: string): string {
+  return str.replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, "$1-$2").toLowerCase()
 }
 
-export function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email)
-}
-
-export function isValidUrl(url: string): boolean {
-  try {
-    new URL(url)
-    return true
-  } catch {
-    return false
-  }
-}
-
-export function sanitizeHtml(html: string): string {
-  // Basic HTML sanitization - in production, use a proper library like DOMPurify
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
-    .replace(/javascript:/gi, "")
-    .replace(/on\w+\s*=/gi, "")
-}
-
-export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout | null = null
-  return (...args: Parameters<T>) => {
-    if (timeout) clearTimeout(timeout)
-    timeout = setTimeout(() => func(...args), wait)
-  }
-}
-
-export function throttle<T extends (...args: any[]) => any>(func: T, limit: number): (...args: Parameters<T>) => void {
-  let inThrottle: boolean
-  return (...args: Parameters<T>) => {
-    if (!inThrottle) {
-      func(...args)
-      inThrottle = true
-      setTimeout(() => (inThrottle = false), limit)
-    }
-  }
-}
-
-export function deepClone<T>(obj: T): T {
-  if (obj === null || typeof obj !== "object") return obj
-  if (obj instanceof Date) return new Date(obj.getTime()) as unknown as T
-  if (obj instanceof Array) return obj.map((item) => deepClone(item)) as unknown as T
-  if (typeof obj === "object") {
-    const clonedObj = {} as { [key: string]: any }
-    for (const key in obj) {
-      if (obj.hasOwnProperty(key)) {
-        clonedObj[key] = deepClone(obj[key])
-      }
-    }
-    return clonedObj as T
-  }
-  return obj
-}
-
+// Object utilities
 export function omit<T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
   const result = { ...obj }
   keys.forEach((key) => delete result[key])
@@ -184,29 +147,35 @@ export function pick<T extends Record<string, any>, K extends keyof T>(obj: T, k
   return result
 }
 
-export function groupBy<T>(array: T[], keyFn: (item: T) => string | number): Record<string | number, T[]> {
-  return array.reduce(
-    (groups, item) => {
-      const key = keyFn(item)
-      if (!groups[key]) {
-        groups[key] = []
-      }
-      groups[key].push(item)
-      return groups
-    },
-    {} as Record<string | number, T[]>,
-  )
+export function deepMerge<T extends Record<string, any>>(target: T, source: Partial<T>): T {
+  const result = { ...target }
+
+  for (const key in source) {
+    if (source[key] && typeof source[key] === "object" && !Array.isArray(source[key])) {
+      result[key] = deepMerge(result[key] || {}, source[key] as any)
+    } else {
+      result[key] = source[key] as any
+    }
+  }
+
+  return result
 }
 
-export function sortBy<T>(array: T[], keyFn: (item: T) => string | number, direction: "asc" | "desc" = "asc"): T[] {
-  return [...array].sort((a, b) => {
-    const aVal = keyFn(a)
-    const bVal = keyFn(b)
+// Array utilities
+export function unique<T>(array: T[]): T[] {
+  return [...new Set(array)]
+}
 
-    if (aVal < bVal) return direction === "asc" ? -1 : 1
-    if (aVal > bVal) return direction === "asc" ? 1 : -1
-    return 0
-  })
+export function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
+  return array.reduce(
+    (groups, item) => {
+      const group = String(item[key])
+      groups[group] = groups[group] || []
+      groups[group].push(item)
+      return groups
+    },
+    {} as Record<string, T[]>,
+  )
 }
 
 export function chunk<T>(array: T[], size: number): T[][] {
@@ -217,78 +186,7 @@ export function chunk<T>(array: T[], size: number): T[][] {
   return chunks
 }
 
-export function unique<T>(array: T[]): T[] {
-  return [...new Set(array)]
-}
-
-export function intersection<T>(array1: T[], array2: T[]): T[] {
-  return array1.filter((item) => array2.includes(item))
-}
-
-export function difference<T>(array1: T[], array2: T[]): T[] {
-  return array1.filter((item) => !array2.includes(item))
-}
-
-export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
-}
-
-export function retry<T>(fn: () => Promise<T>, maxAttempts = 3, delay = 1000): Promise<T> {
-  return new Promise((resolve, reject) => {
-    let attempts = 0
-
-    const attempt = async () => {
-      try {
-        const result = await fn()
-        resolve(result)
-      } catch (error) {
-        attempts++
-        if (attempts >= maxAttempts) {
-          reject(error)
-        } else {
-          setTimeout(attempt, delay * attempts)
-        }
-      }
-    }
-
-    attempt()
-  })
-}
-
-export function parseJSON<T>(json: string, fallback: T): T {
-  try {
-    return JSON.parse(json)
-  } catch {
-    return fallback
-  }
-}
-
-export function safeStringify(obj: any, space?: number): string {
-  try {
-    return JSON.stringify(obj, null, space)
-  } catch {
-    return "{}"
-  }
-}
-
-export function calculatePercentageChange(oldValue: number, newValue: number): number {
-  if (oldValue === 0) return newValue > 0 ? 100 : 0
-  return ((newValue - oldValue) / oldValue) * 100
-}
-
-export function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max)
-}
-
-export function roundToDecimals(value: number, decimals: number): number {
-  return Math.round(value * Math.pow(10, decimals)) / Math.pow(10, decimals)
-}
-
-export function getRandomElement<T>(array: T[]): T {
-  return array[Math.floor(Math.random() * array.length)]
-}
-
-export function shuffleArray<T>(array: T[]): T[] {
+export function shuffle<T>(array: T[]): T[] {
   const shuffled = [...array]
   for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
@@ -297,124 +195,145 @@ export function shuffleArray<T>(array: T[]): T[] {
   return shuffled
 }
 
-export function createRange(start: number, end: number, step = 1): number[] {
-  const range: number[] = []
-  for (let i = start; i <= end; i += step) {
-    range.push(i)
+// URL utilities
+export function buildUrl(base: string, params: Record<string, any>): string {
+  const url = new URL(base)
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null) {
+      url.searchParams.set(key, String(value))
+    }
+  })
+  return url.toString()
+}
+
+export function parseQueryString(query: string): Record<string, string> {
+  const params = new URLSearchParams(query)
+  const result: Record<string, string> = {}
+  params.forEach((value, key) => {
+    result[key] = value
+  })
+  return result
+}
+
+// Crypto utilities
+export function generateId(length = 16): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+  let result = ""
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
   }
-  return range
+  return result
 }
 
-export function sum(numbers: number[]): number {
-  return numbers.reduce((total, num) => total + num, 0)
-}
-
-export function average(numbers: number[]): number {
-  return numbers.length > 0 ? sum(numbers) / numbers.length : 0
-}
-
-export function median(numbers: number[]): number {
-  const sorted = [...numbers].sort((a, b) => a - b)
-  const mid = Math.floor(sorted.length / 2)
-  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
-}
-
-export function standardDeviation(numbers: number[]): number {
-  const avg = average(numbers)
-  const squaredDiffs = numbers.map((num) => Math.pow(num - avg, 2))
-  return Math.sqrt(average(squaredDiffs))
-}
-
+// Error utilities
 export function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  if (typeof error === "string") return error
+  if (error instanceof Error) {
+    return error.message
+  }
+  if (typeof error === "string") {
+    return error
+  }
   return "An unknown error occurred"
 }
 
-export function createErrorResponse(message: string, code?: string) {
-  return {
-    error: true,
-    message,
-    code,
-    timestamp: new Date().toISOString(),
+export function isError(value: unknown): value is Error {
+  return value instanceof Error
+}
+
+// Type utilities
+export function isString(value: unknown): value is string {
+  return typeof value === "string"
+}
+
+export function isNumber(value: unknown): value is number {
+  return typeof value === "number" && !isNaN(value)
+}
+
+export function isBoolean(value: unknown): value is boolean {
+  return typeof value === "boolean"
+}
+
+export function isObject(value: unknown): value is Record<string, any> {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+}
+
+export function isArray(value: unknown): value is any[] {
+  return Array.isArray(value)
+}
+
+// Async utilities
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+export function timeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Operation timed out")), ms)),
+  ])
+}
+
+export function retry<T>(fn: () => Promise<T>, attempts = 3, delay = 1000): Promise<T> {
+  return fn().catch(async (error) => {
+    if (attempts <= 1) {
+      throw error
+    }
+    await sleep(delay)
+    return retry(fn, attempts - 1, delay * 2)
+  })
+}
+
+// Local storage utilities
+export function getFromStorage(key: string): string | null {
+  if (typeof window === "undefined") return null
+  try {
+    return localStorage.getItem(key)
+  } catch {
+    return null
   }
 }
 
-export function createSuccessResponse<T>(data: T, message?: string) {
-  return {
-    success: true,
-    data,
-    message,
-    timestamp: new Date().toISOString(),
+export function setToStorage(key: string, value: string): void {
+  if (typeof window === "undefined") return
+  try {
+    localStorage.setItem(key, value)
+  } catch {
+    // Ignore storage errors
   }
 }
 
-export function validateRequired(value: any, fieldName: string): void {
-  if (value === null || value === undefined || value === "") {
-    throw new Error(`${fieldName} is required`)
+export function removeFromStorage(key: string): void {
+  if (typeof window === "undefined") return
+  try {
+    localStorage.removeItem(key)
+  } catch {
+    // Ignore storage errors
   }
 }
 
-export function validateEmail(email: string): void {
-  if (!isValidEmail(email)) {
-    throw new Error("Invalid email format")
+// Theme utilities
+export function getSystemTheme(): "light" | "dark" {
+  if (typeof window === "undefined") return "light"
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"
+}
+
+// Debounce utility
+export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout)
+    timeout = setTimeout(() => func(...args), wait)
   }
 }
 
-export function validateUrl(url: string): void {
-  if (!isValidUrl(url)) {
-    throw new Error("Invalid URL format")
+// Throttle utility
+export function throttle<T extends (...args: any[]) => any>(func: T, limit: number): (...args: Parameters<T>) => void {
+  let inThrottle: boolean
+  return (...args: Parameters<T>) => {
+    if (!inThrottle) {
+      func(...args)
+      inThrottle = true
+      setTimeout(() => (inThrottle = false), limit)
+    }
   }
-}
-
-export function validateLength(value: string, min: number, max: number, fieldName: string): void {
-  if (value.length < min || value.length > max) {
-    throw new Error(`${fieldName} must be between ${min} and ${max} characters`)
-  }
-}
-
-export function validateNumber(value: number, min?: number, max?: number, fieldName?: string): void {
-  if (isNaN(value)) {
-    throw new Error(`${fieldName || "Value"} must be a valid number`)
-  }
-  if (min !== undefined && value < min) {
-    throw new Error(`${fieldName || "Value"} must be at least ${min}`)
-  }
-  if (max !== undefined && value > max) {
-    throw new Error(`${fieldName || "Value"} must be at most ${max}`)
-  }
-}
-
-export function createPagination(page: number, limit: number, total: number) {
-  const totalPages = Math.ceil(total / limit)
-  const hasNext = page < totalPages
-  const hasPrev = page > 1
-
-  return {
-    page,
-    limit,
-    total,
-    totalPages,
-    hasNext,
-    hasPrev,
-    nextPage: hasNext ? page + 1 : null,
-    prevPage: hasPrev ? page - 1 : null,
-  }
-}
-
-export function getBaseUrl(): string {
-  if (typeof window !== "undefined") {
-    return window.location.origin
-  }
-
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`
-  }
-
-  return process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-}
-
-export function createApiUrl(path: string): string {
-  const baseUrl = getBaseUrl()
-  return `${baseUrl}/api${path.startsWith("/") ? path : `/${path}`}`
 }

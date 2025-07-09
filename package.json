@@ -4,9 +4,14 @@
   "private": true,
   "scripts": {
     "build": "next build",
+    "deploy": "vercel --prod",
+    "deploy:preview": "vercel",
     "dev": "next dev",
+    "health-check": "curl -f http://localhost:3000/api/health || exit 1",
+    "postinstall": "npm audit fix || true",
     "lint": "next lint",
-    "start": "next start"
+    "start": "next start",
+    "vercel-build": "next build"
   },
   "dependencies": {
     "@ai-sdk/openai": "latest",
