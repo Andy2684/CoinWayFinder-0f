@@ -19,21 +19,35 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Invalid signature" }, { status: 400 })
     }
 
+    console.log(`Processing webhook event: ${event.type}`)
+
     switch (event.type) {
       case "checkout.session.completed":
         await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session)
         break
 
-      case "invoice.payment_succeeded":
-        await handlePaymentSucceeded(event.data.object as Stripe.Invoice)
+      case "customer.subscription.created":
+        await handleSubscriptionCreated(event.data.object as Stripe.Subscription)
+        break
+
+      case "customer.subscription.updated":
+        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription)
         break
 
       case "customer.subscription.deleted":
         await handleSubscriptionCancelled(event.data.object as Stripe.Subscription)
         break
 
+      case "invoice.payment_succeeded":
+        await handlePaymentSucceeded(event.data.object as Stripe.Invoice)
+        break
+
       case "invoice.payment_failed":
         await handlePaymentFailed(event.data.object as Stripe.Invoice)
+        break
+
+      case "customer.subscription.trial_will_end":
+        await handleTrialWillEnd(event.data.object as Stripe.Subscription)
         break
 
       default:
@@ -48,7 +62,7 @@ export async function POST(request: NextRequest) {
 }
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  const { userId, planId, addOns } = session.metadata || {}
+  const { userId, planId, billingCycle, addOns } = session.metadata || {}
 
   if (!userId || !planId) {
     console.error("Missing metadata in checkout session")
@@ -56,42 +70,154 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 
   try {
-    // Get or create user settings
+    console.log(`Processing checkout completion for user ${userId}, plan ${planId}`)
+
+    // Get user settings
     let userSettings = await database.getUserSettings(userId)
 
     if (!userSettings) {
       userSettings = await database.createUserWithTrial(userId)
     }
 
-    // Calculate subscription end date (1 month from now)
+    // Calculate subscription end date
+    const startDate = new Date()
     const endDate = new Date()
-    endDate.setMonth(endDate.getMonth() + 1)
+
+    if (billingCycle === "yearly") {
+      endDate.setFullYear(endDate.getFullYear() + 1)
+    } else {
+      endDate.setMonth(endDate.getMonth() + 1)
+    }
 
     // Update subscription
     userSettings.subscription = {
       plan: planId as any,
       status: "active",
-      startDate: new Date(),
+      startDate,
       endDate,
       trialUsed: true,
+      billingCycle: billingCycle || "monthly",
     }
 
     // Store payment information
     userSettings.paymentStatus = {
       lastPayment: new Date(),
       stripeSessionId: session.id,
+      stripeCustomerId: session.customer as string,
       stripeSubscriptionId: session.subscription as string,
       amount: session.amount_total || 0,
       currency: session.currency || "usd",
     }
 
     userSettings.stripeSubscriptionId = session.subscription as string
+    userSettings.stripeCustomerId = session.customer as string
+
+    // Add add-ons if any
+    if (addOns) {
+      userSettings.addOns = addOns.split(",").filter(Boolean)
+    }
 
     await database.saveUserSettings(userSettings)
 
     console.log(`Subscription activated for user ${userId} with plan ${planId}`)
+
+    // Send welcome email (optional)
+    await sendWelcomeEmail(userId, planId)
   } catch (error) {
     console.error("Error handling checkout completion:", error)
+  }
+}
+
+async function handleSubscriptionCreated(subscription: Stripe.Subscription) {
+  const { userId, planId } = subscription.metadata || {}
+
+  if (!userId) return
+
+  try {
+    console.log(`Subscription created for user ${userId}`)
+
+    const userSettings = await database.getUserSettings(userId)
+    if (!userSettings) return
+
+    // Update subscription status
+    userSettings.subscription = {
+      ...userSettings.subscription,
+      status: subscription.status as any,
+      stripeSubscriptionId: subscription.id,
+      currentPeriodStart: new Date(subscription.current_period_start * 1000),
+      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+    }
+
+    await database.saveUserSettings(userSettings)
+  } catch (error) {
+    console.error("Error handling subscription creation:", error)
+  }
+}
+
+async function handleSubscriptionUpdated(subscription: Stripe.Subscription) {
+  const { userId } = subscription.metadata || {}
+
+  if (!userId) return
+
+  try {
+    console.log(`Subscription updated for user ${userId}`)
+
+    const userSettings = await database.getUserSettings(userId)
+    if (!userSettings) return
+
+    // Update subscription details
+    userSettings.subscription = {
+      ...userSettings.subscription,
+      status: subscription.status as any,
+      currentPeriodStart: new Date(subscription.current_period_start * 1000),
+      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+    }
+
+    // Handle plan changes
+    if (subscription.items.data.length > 0) {
+      const priceId = subscription.items.data[0].price.id
+      const planMapping = {
+        [process.env.STRIPE_STARTER_PRICE_ID!]: "starter",
+        [process.env.STRIPE_PRO_PRICE_ID!]: "pro",
+        [process.env.STRIPE_ENTERPRISE_PRICE_ID!]: "enterprise",
+      }
+
+      const newPlan = planMapping[priceId]
+      if (newPlan) {
+        userSettings.subscription.plan = newPlan as any
+      }
+    }
+
+    await database.saveUserSettings(userSettings)
+  } catch (error) {
+    console.error("Error handling subscription update:", error)
+  }
+}
+
+async function handleSubscriptionCancelled(subscription: Stripe.Subscription) {
+  const { userId } = subscription.metadata || {}
+
+  if (!userId) return
+
+  try {
+    console.log(`Subscription cancelled for user ${userId}`)
+
+    const userSettings = await database.getUserSettings(userId)
+    if (!userSettings) return
+
+    // Update subscription status
+    userSettings.subscription = {
+      ...userSettings.subscription,
+      status: "cancelled",
+      cancelledAt: new Date(),
+    }
+
+    await database.saveUserSettings(userSettings)
+
+    // Send cancellation email (optional)
+    await sendCancellationEmail(userId)
+  } catch (error) {
+    console.error("Error handling subscription cancellation:", error)
   }
 }
 
@@ -101,48 +227,103 @@ async function handlePaymentSucceeded(invoice: Stripe.Invoice) {
   if (!subscriptionId) return
 
   try {
-    // Find user by subscription ID
-    const userSettings = await database.getUserSettings("")
-    // Note: You'll need to implement a method to find user by subscription ID
-    // This is a simplified version
+    console.log(`Payment succeeded for subscription ${subscriptionId}`)
 
-    if (userSettings && userSettings.stripeSubscriptionId === subscriptionId) {
-      // Extend subscription
-      const endDate = new Date()
-      endDate.setMonth(endDate.getMonth() + 1)
+    // Get subscription details
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+    const { userId } = subscription.metadata || {}
 
-      userSettings.subscription.endDate = endDate
-      userSettings.subscription.status = "active"
+    if (!userId) return
 
-      if (userSettings.paymentStatus) {
-        userSettings.paymentStatus.lastPayment = new Date()
-        userSettings.paymentStatus.stripeInvoiceId = invoice.id
-        userSettings.paymentStatus.amount = invoice.amount_paid
-      }
+    const userSettings = await database.getUserSettings(userId)
+    if (!userSettings) return
 
-      await database.saveUserSettings(userSettings)
-      console.log(`Subscription renewed for subscription ${subscriptionId}`)
+    // Update payment status
+    if (userSettings.paymentStatus) {
+      userSettings.paymentStatus.lastPayment = new Date()
+      userSettings.paymentStatus.stripeInvoiceId = invoice.id
+      userSettings.paymentStatus.amount = invoice.amount_paid
     }
+
+    // Ensure subscription is active
+    userSettings.subscription = {
+      ...userSettings.subscription,
+      status: "active",
+      currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+    }
+
+    await database.saveUserSettings(userSettings)
+
+    console.log(`Payment processed for user ${userId}`)
   } catch (error) {
     console.error("Error handling payment success:", error)
   }
 }
 
-async function handleSubscriptionCancelled(subscription: Stripe.Subscription) {
-  try {
-    // Find user by subscription ID and update status
-    // This would require implementing a method to find user by subscription ID
-    console.log(`Subscription cancelled: ${subscription.id}`)
-  } catch (error) {
-    console.error("Error handling subscription cancellation:", error)
-  }
-}
-
 async function handlePaymentFailed(invoice: Stripe.Invoice) {
+  const subscriptionId = invoice.subscription as string
+
+  if (!subscriptionId) return
+
   try {
-    // Handle failed payment - maybe send notification
-    console.log(`Payment failed for invoice: ${invoice.id}`)
+    console.log(`Payment failed for subscription ${subscriptionId}`)
+
+    // Get subscription details
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+    const { userId } = subscription.metadata || {}
+
+    if (!userId) return
+
+    const userSettings = await database.getUserSettings(userId)
+    if (!userSettings) return
+
+    // Update subscription status
+    userSettings.subscription = {
+      ...userSettings.subscription,
+      status: "past_due",
+    }
+
+    await database.saveUserSettings(userSettings)
+
+    // Send payment failed email (optional)
+    await sendPaymentFailedEmail(userId)
   } catch (error) {
     console.error("Error handling payment failure:", error)
   }
+}
+
+async function handleTrialWillEnd(subscription: Stripe.Subscription) {
+  const { userId } = subscription.metadata || {}
+
+  if (!userId) return
+
+  try {
+    console.log(`Trial ending soon for user ${userId}`)
+
+    // Send trial ending email (optional)
+    await sendTrialEndingEmail(userId)
+  } catch (error) {
+    console.error("Error handling trial will end:", error)
+  }
+}
+
+// Email notification functions (implement as needed)
+async function sendWelcomeEmail(userId: string, planId: string) {
+  // Implement welcome email logic
+  console.log(`Sending welcome email to user ${userId} for plan ${planId}`)
+}
+
+async function sendCancellationEmail(userId: string) {
+  // Implement cancellation email logic
+  console.log(`Sending cancellation email to user ${userId}`)
+}
+
+async function sendPaymentFailedEmail(userId: string) {
+  // Implement payment failed email logic
+  console.log(`Sending payment failed email to user ${userId}`)
+}
+
+async function sendTrialEndingEmail(userId: string) {
+  // Implement trial ending email logic
+  console.log(`Sending trial ending email to user ${userId}`)
 }
