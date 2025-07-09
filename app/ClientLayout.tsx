@@ -5,7 +5,7 @@ import { AuthProvider } from "@/hooks/use-auth"
 import { Navigation } from "@/components/navigation"
 import { Toaster } from "@/components/ui/sonner"
 
-export function ClientLayout({ children }: { children: React.ReactNode }) {
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <div className="min-h-screen bg-background">

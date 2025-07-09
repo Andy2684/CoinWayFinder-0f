@@ -75,7 +75,7 @@ export class AuthService {
       const admin = await AdminService.getCurrentAdmin()
       if (admin) {
         return {
-          id: admin.id,
+          id: admin.userId,
           email: admin.email,
           name: admin.username,
           subscription: {
@@ -200,5 +200,24 @@ export class AuthService {
       throw new Error("Authentication required")
     }
     return user
+  }
+}
+
+// Auth Manager class for backward compatibility
+export class AuthManager {
+  static async getCurrentUser(): Promise<AuthUser | null> {
+    return AuthService.getCurrentUser()
+  }
+
+  static async requireAuth(): Promise<AuthUser> {
+    return AuthService.requireAuth()
+  }
+
+  static async signOut(): Promise<void> {
+    return AuthService.signOut()
+  }
+
+  static async validateSession(token: string): Promise<AuthUser | null> {
+    return AuthService.verifyToken(token)
   }
 }

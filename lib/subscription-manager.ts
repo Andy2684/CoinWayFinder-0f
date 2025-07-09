@@ -55,6 +55,53 @@ export const SUBSCRIPTION_LIMITS: Record<string, SubscriptionLimits> = {
   },
 }
 
+export const SUBSCRIPTION_PLANS = {
+  free: {
+    name: "Free",
+    price: 0,
+    interval: "month",
+    features: ["1 Trading Bot", "10 Trades per month", "Basic Support", "Community Access"],
+    limits: SUBSCRIPTION_LIMITS.free,
+  },
+  basic: {
+    name: "Basic",
+    price: 29,
+    interval: "month",
+    features: ["3 Trading Bots", "100 Trades per month", "AI Analysis", "News Alerts", "Email Support"],
+    limits: SUBSCRIPTION_LIMITS.basic,
+  },
+  premium: {
+    name: "Premium",
+    price: 99,
+    interval: "month",
+    features: [
+      "10 Trading Bots",
+      "1,000 Trades per month",
+      "AI Analysis",
+      "Whale Tracking",
+      "Premium Strategies",
+      "API Access",
+      "Priority Support",
+    ],
+    limits: SUBSCRIPTION_LIMITS.premium,
+  },
+  enterprise: {
+    name: "Enterprise",
+    price: 299,
+    interval: "month",
+    features: [
+      "Unlimited Trading Bots",
+      "Unlimited Trades",
+      "All AI Features",
+      "Custom Strategies",
+      "Full API Access",
+      "Dedicated Support",
+      "White-label Options",
+    ],
+    limits: SUBSCRIPTION_LIMITS.enterprise,
+  },
+}
+
 class SubscriptionManager {
   private static instance: SubscriptionManager
 
@@ -150,10 +197,9 @@ class SubscriptionManager {
         // Update subscription status
         await database.updateSubscriptionStatus(userSettings.userId, "expired")
 
-        // Stop all running bots for expired users
-        const stoppedBots = await database.stopUserBots(userSettings.userId, "Subscription expired")
-
-        console.log(`Stopped ${stoppedBots} bots for expired user: ${userSettings.userId}`)
+        // Don't stop running bots - let them finish gracefully
+        // Only prevent new bot creation and modifications
+        console.log(`Subscription expired for user: ${userSettings.userId} - graceful expiration applied`)
       }
     } catch (error) {
       console.error("Error checking subscription expiry:", error)
@@ -181,6 +227,27 @@ class SubscriptionManager {
       console.error("Error upgrading subscription:", error)
       return false
     }
+  }
+
+  // Graceful expiration check - allows existing operations to continue
+  async isGracefullyExpired(userId: string): Promise<boolean> {
+    try {
+      const userSettings = await database.getUserSettings(userId)
+      return userSettings?.subscription.status === "expired"
+    } catch (error) {
+      return false
+    }
+  }
+
+  // Check if user can perform write operations (create/modify)
+  async canPerformWriteOperations(userId: string, adminSession?: AdminSession | null): Promise<boolean> {
+    // Admin bypass
+    if (adminSession?.isAdmin && adminManager.bypassSubscriptionCheck(adminSession)) {
+      return true
+    }
+
+    const isExpired = await this.isGracefullyExpired(userId)
+    return !isExpired
   }
 }
 
