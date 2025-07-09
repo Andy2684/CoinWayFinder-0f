@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { AuthService } from "./auth"
 import { AdminService } from "./admin"
+import { subscriptionManager } from "./subscription-manager"
 
 interface APIResponse<T = any> {
   success: boolean
@@ -33,6 +34,15 @@ interface RateLimitStore {
     count: number
     resetTime: number
   }
+}
+
+export interface APIContext {
+  user: {
+    userId: string
+    email: string
+    username: string
+  }
+  isAdmin?: boolean
 }
 
 class APIMiddleware {
@@ -346,3 +356,118 @@ setInterval(
   },
   5 * 60 * 1000,
 )
+
+export function withSubscriptionCheck(
+  handler: (req: NextRequest, context: APIContext) => Promise<NextResponse>,
+  requiredFeature?: string,
+) {
+  return withAPIAuth(async (req: NextRequest, context: APIContext): Promise<NextResponse> => {
+    try {
+      // Admin bypass
+      if (context.isAdmin) {
+        return handler(req, context)
+      }
+
+      // Check subscription access
+      if (requiredFeature) {
+        const hasAccess = await subscriptionManager.checkAccess(context.user.userId, requiredFeature)
+        if (!hasAccess) {
+          return NextResponse.json(
+            {
+              error: "Subscription required",
+              message: `This feature requires a subscription. Please upgrade your plan.`,
+              feature: requiredFeature,
+            },
+            { status: 403 },
+          )
+        }
+      }
+
+      return handler(req, context)
+    } catch (error) {
+      console.error("Subscription check middleware error:", error)
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    }
+  })
+}
+
+export function withRateLimit(
+  handler: (req: NextRequest, context: APIContext) => Promise<NextResponse>,
+  limit = 100,
+  windowMs: number = 60 * 1000, // 1 minute
+) {
+  const requests = new Map<string, { count: number; resetTime: number }>()
+
+  return withAPIAuth(async (req: NextRequest, context: APIContext): Promise<NextResponse> => {
+    try {
+      const key = context.user.userId
+      const now = Date.now()
+
+      // Clean up expired entries
+      for (const [userId, data] of requests.entries()) {
+        if (now > data.resetTime) {
+          requests.delete(userId)
+        }
+      }
+
+      // Get or create rate limit data
+      let rateLimitData = requests.get(key)
+      if (!rateLimitData || now > rateLimitData.resetTime) {
+        rateLimitData = { count: 0, resetTime: now + windowMs }
+        requests.set(key, rateLimitData)
+      }
+
+      // Check rate limit
+      if (rateLimitData.count >= limit) {
+        return NextResponse.json(
+          {
+            error: "Rate limit exceeded",
+            message: `Too many requests. Limit: ${limit} per ${windowMs / 1000} seconds`,
+            retryAfter: Math.ceil((rateLimitData.resetTime - now) / 1000),
+          },
+          { status: 429 },
+        )
+      }
+
+      // Increment counter
+      rateLimitData.count++
+
+      const response = await handler(req, context)
+
+      // Add rate limit headers
+      response.headers.set("X-RateLimit-Limit", limit.toString())
+      response.headers.set("X-RateLimit-Remaining", (limit - rateLimitData.count).toString())
+      response.headers.set("X-RateLimit-Reset", rateLimitData.resetTime.toString())
+
+      return response
+    } catch (error) {
+      console.error("Rate limit middleware error:", error)
+      return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    }
+  })
+}
+
+export function corsMiddleware(handler: (req: NextRequest) => Promise<NextResponse>) {
+  return async (req: NextRequest): Promise<NextResponse> => {
+    // Handle preflight requests
+    if (req.method === "OPTIONS") {
+      return new NextResponse(null, {
+        status: 200,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type, Authorization",
+        },
+      })
+    }
+
+    const response = await handler(req)
+
+    // Add CORS headers to all responses
+    response.headers.set("Access-Control-Allow-Origin", "*")
+    response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+    return response
+  }
+}
