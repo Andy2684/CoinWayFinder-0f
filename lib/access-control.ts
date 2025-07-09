@@ -1,312 +1,222 @@
-import { database } from "./database"
 import { subscriptionManager } from "./subscription-manager"
 
 interface AccessRule {
-  feature: string
-  requiredPlans: string[]
-  requiredPermissions?: string[]
-  customCheck?: (userId: string, context?: any) => Promise<boolean>
+  resource: string
+  action: string
+  requiredRole?: string
+  requiredPlan?: string
+  requiredPermission?: string
 }
 
 interface AccessContext {
-  userId: string
+  userId?: string
+  userRole?: string
   userPlan?: string
-  userPermissions?: string[]
+  permissions?: string[]
   isAdmin?: boolean
 }
 
 class AccessControl {
-  private rules: Map<string, AccessRule> = new Map()
+  private rules: AccessRule[] = [
+    // Bot management
+    { resource: "bot", action: "create", requiredPlan: "starter" },
+    { resource: "bot", action: "read", requiredPlan: "free" },
+    { resource: "bot", action: "update", requiredPlan: "free" },
+    { resource: "bot", action: "delete", requiredPlan: "free" },
 
-  constructor() {
-    this.initializeRules()
-  }
+    // Trading
+    { resource: "trade", action: "execute", requiredPlan: "starter" },
+    { resource: "trade", action: "read", requiredPlan: "free" },
 
-  private initializeRules(): void {
-    const rules: AccessRule[] = [
-      {
-        feature: "create_bot",
-        requiredPlans: ["starter", "pro", "enterprise"],
-        customCheck: async (userId: string) => {
-          const stats = await database.getUserStats(userId)
-          const subscription = await subscriptionManager.getUserSubscription(userId)
-          const plan = subscriptionManager.getPlan(subscription?.plan || "free")
+    // Analytics
+    { resource: "analytics", action: "basic", requiredPlan: "free" },
+    { resource: "analytics", action: "advanced", requiredPlan: "pro" },
 
-          if (!plan) return false
+    // API access
+    { resource: "api", action: "read", requiredPlan: "starter" },
+    { resource: "api", action: "write", requiredPlan: "pro" },
 
-          // Check bot limit
-          if (plan.limits.bots !== -1 && stats.totalBots >= plan.limits.bots) {
-            return false
-          }
+    // Admin
+    { resource: "admin", action: "*", requiredRole: "admin" },
 
-          return true
-        },
-      },
-      {
-        feature: "advanced_strategies",
-        requiredPlans: ["pro", "enterprise"],
-      },
-      {
-        feature: "api_access",
-        requiredPlans: ["pro", "enterprise"],
-      },
-      {
-        feature: "telegram_notifications",
-        requiredPlans: ["starter", "pro", "enterprise"],
-      },
-      {
-        feature: "priority_support",
-        requiredPlans: ["starter", "pro", "enterprise"],
-      },
-      {
-        feature: "custom_indicators",
-        requiredPlans: ["pro", "enterprise"],
-      },
-      {
-        feature: "white_label",
-        requiredPlans: ["enterprise"],
-      },
-      {
-        feature: "unlimited_bots",
-        requiredPlans: ["pro", "enterprise"],
-      },
-      {
-        feature: "advanced_analytics",
-        requiredPlans: ["pro", "enterprise"],
-      },
-      {
-        feature: "multiple_exchanges",
-        requiredPlans: ["starter", "pro", "enterprise"],
-        customCheck: async (userId: string) => {
-          const subscription = await subscriptionManager.getUserSubscription(userId)
-          const plan = subscriptionManager.getPlan(subscription?.plan || "free")
+    // Webhooks
+    { resource: "webhook", action: "*", requiredPlan: "pro" },
 
-          if (!plan) return false
+    // Custom strategies
+    { resource: "strategy", action: "custom", requiredPlan: "pro" },
+    { resource: "strategy", action: "basic", requiredPlan: "free" },
+  ]
 
-          // Free plan only allows 1 exchange
-          return plan.limits.exchanges !== 1
-        },
-      },
-    ]
-
-    rules.forEach((rule) => this.rules.set(rule.feature, rule))
-  }
-
-  async checkAccess(
-    feature: string,
-    context: AccessContext,
-  ): Promise<{
-    allowed: boolean
-    reason?: string
-    upgradeRequired?: boolean
-    requiredPlans?: string[]
-  }> {
-    // Admin always has access
-    if (context.isAdmin) {
-      return { allowed: true }
-    }
-
-    const rule = this.rules.get(feature)
-    if (!rule) {
-      // If no rule exists, allow access
-      return { allowed: true }
-    }
-
-    // Get user subscription
-    const subscription = await subscriptionManager.getUserSubscription(context.userId)
-    const currentPlan = subscription?.plan || "free"
-
-    // Check if subscription is active
-    if (subscription && subscription.status !== "active" && subscription.status !== "trial") {
-      return {
-        allowed: false,
-        reason: "Subscription expired or cancelled",
-        upgradeRequired: true,
-        requiredPlans: rule.requiredPlans,
+  async checkAccess(resource: string, action: string, context: AccessContext): Promise<boolean> {
+    try {
+      // Admin bypass
+      if (context.isAdmin) {
+        return true
       }
-    }
 
-    // Check if current plan is in required plans
-    if (!rule.requiredPlans.includes(currentPlan)) {
-      return {
-        allowed: false,
-        reason: `Feature requires ${rule.requiredPlans.join(" or ")} plan`,
-        upgradeRequired: true,
-        requiredPlans: rule.requiredPlans,
+      // Find applicable rule
+      const rule = this.rules.find((r) => r.resource === resource && (r.action === action || r.action === "*"))
+
+      if (!rule) {
+        // No rule found, default to deny
+        return false
       }
-    }
 
-    // Check permissions if required
-    if (rule.requiredPermissions && context.userPermissions) {
-      const hasPermission = rule.requiredPermissions.some((permission) => context.userPermissions!.includes(permission))
+      // Check role requirement
+      if (rule.requiredRole && context.userRole !== rule.requiredRole) {
+        return false
+      }
 
-      if (!hasPermission) {
-        return {
-          allowed: false,
-          reason: `Missing required permissions: ${rule.requiredPermissions.join(", ")}`,
-          upgradeRequired: false,
+      // Check plan requirement
+      if (rule.requiredPlan && context.userId) {
+        const hasAccess = await subscriptionManager.checkAccess(context.userId, `${resource}_${action}`)
+        if (!hasAccess) {
+          return false
         }
       }
-    }
 
-    // Run custom check if provided
-    if (rule.customCheck) {
-      const customResult = await rule.customCheck(context.userId)
-      if (!customResult) {
-        return {
-          allowed: false,
-          reason: "Custom access check failed",
-          upgradeRequired: true,
-          requiredPlans: rule.requiredPlans,
+      // Check permission requirement
+      if (rule.requiredPermission && context.permissions) {
+        if (!context.permissions.includes(rule.requiredPermission)) {
+          return false
         }
       }
-    }
 
-    return { allowed: true }
+      return true
+    } catch (error) {
+      console.error("Access check error:", error)
+      return false
+    }
   }
 
-  async getUserFeatures(
-    userId: string,
-    isAdmin = false,
-  ): Promise<{
-    features: string[]
-    plan: string
-    limits: Record<string, number>
-  }> {
-    if (isAdmin) {
+  async getUserContext(userId?: string, isAdmin?: boolean): Promise<AccessContext> {
+    try {
+      if (isAdmin) {
+        return {
+          userId,
+          userRole: "admin",
+          userPlan: "enterprise",
+          permissions: ["*"],
+          isAdmin: true,
+        }
+      }
+
+      if (!userId) {
+        return {
+          userRole: "guest",
+          userPlan: "free",
+          permissions: [],
+        }
+      }
+
+      const subscription = await subscriptionManager.getSubscriptionStatus(userId)
+
       return {
-        features: Array.from(this.rules.keys()),
-        plan: "admin",
-        limits: {},
+        userId,
+        userRole: "user",
+        userPlan: subscription.plan,
+        permissions: ["read", "write"], // Would be fetched from user settings
+        isAdmin: false,
       }
-    }
-
-    const subscription = await subscriptionManager.getUserSubscription(userId)
-    const plan = subscriptionManager.getPlan(subscription?.plan || "free")
-
-    if (!plan) {
-      return { features: [], plan: "free", limits: {} }
-    }
-
-    const availableFeatures: string[] = []
-
-    for (const [feature, rule] of this.rules.entries()) {
-      const access = await this.checkAccess(feature, { userId })
-      if (access.allowed) {
-        availableFeatures.push(feature)
-      }
-    }
-
-    return {
-      features: availableFeatures,
-      plan: plan.id,
-      limits: plan.limits,
-    }
-  }
-
-  async canCreateBot(userId: string): Promise<{
-    allowed: boolean
-    reason?: string
-    currentCount?: number
-    limit?: number
-  }> {
-    const stats = await database.getUserStats(userId)
-    const subscription = await subscriptionManager.getUserSubscription(userId)
-    const plan = subscriptionManager.getPlan(subscription?.plan || "free")
-
-    if (!plan) {
-      return { allowed: false, reason: "Invalid subscription plan" }
-    }
-
-    // Check subscription status
-    if (subscription && subscription.status !== "active" && subscription.status !== "trial") {
-      return { allowed: false, reason: "Subscription expired or cancelled" }
-    }
-
-    // Check bot limit
-    if (plan.limits.bots !== -1 && stats.totalBots >= plan.limits.bots) {
+    } catch (error) {
+      console.error("Get user context error:", error)
       return {
-        allowed: false,
-        reason: `Bot limit reached (${plan.limits.bots})`,
-        currentCount: stats.totalBots,
-        limit: plan.limits.bots,
+        userRole: "guest",
+        userPlan: "free",
+        permissions: [],
       }
-    }
-
-    return {
-      allowed: true,
-      currentCount: stats.totalBots,
-      limit: plan.limits.bots === -1 ? undefined : plan.limits.bots,
     }
   }
 
-  async canUseExchange(
-    userId: string,
-    exchangeCount: number,
-  ): Promise<{
-    allowed: boolean
-    reason?: string
-    limit?: number
-  }> {
-    const subscription = await subscriptionManager.getUserSubscription(userId)
-    const plan = subscriptionManager.getPlan(subscription?.plan || "free")
+  async requireAccess(resource: string, action: string, userId?: string, isAdmin?: boolean): Promise<void> {
+    const context = await this.getUserContext(userId, isAdmin)
+    const hasAccess = await this.checkAccess(resource, action, context)
 
-    if (!plan) {
-      return { allowed: false, reason: "Invalid subscription plan" }
+    if (!hasAccess) {
+      throw new Error(`Access denied: ${action} on ${resource}`)
     }
+  }
 
-    if (plan.limits.exchanges !== -1 && exchangeCount > plan.limits.exchanges) {
+  async canCreateBot(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+    try {
+      const context = await this.getUserContext(userId)
+      const hasAccess = await this.checkAccess("bot", "create", context)
+
+      if (!hasAccess) {
+        return {
+          allowed: false,
+          reason: "Upgrade your plan to create more bots",
+        }
+      }
+
+      // Check bot limits
+      return await subscriptionManager.canCreateBot(userId)
+    } catch (error) {
+      console.error("Can create bot check error:", error)
       return {
         allowed: false,
-        reason: `Exchange limit reached (${plan.limits.exchanges})`,
-        limit: plan.limits.exchanges,
+        reason: "Failed to check bot creation permissions",
       }
-    }
-
-    return {
-      allowed: true,
-      limit: plan.limits.exchanges === -1 ? undefined : plan.limits.exchanges,
     }
   }
 
-  getFeatureList(): { feature: string; requiredPlans: string[] }[] {
-    return Array.from(this.rules.entries()).map(([feature, rule]) => ({
-      feature,
-      requiredPlans: rule.requiredPlans,
-    }))
+  async canUseFeature(userId: string, feature: string): Promise<boolean> {
+    try {
+      const context = await this.getUserContext(userId)
+
+      switch (feature) {
+        case "advanced_analytics":
+          return this.checkAccess("analytics", "advanced", context)
+        case "custom_strategies":
+          return this.checkAccess("strategy", "custom", context)
+        case "webhooks":
+          return this.checkAccess("webhook", "*", context)
+        case "api_access":
+          return this.checkAccess("api", "read", context)
+        default:
+          return false
+      }
+    } catch (error) {
+      console.error("Can use feature check error:", error)
+      return false
+    }
+  }
+
+  addRule(rule: AccessRule): void {
+    this.rules.push(rule)
+  }
+
+  removeRule(resource: string, action: string): void {
+    this.rules = this.rules.filter((r) => !(r.resource === resource && r.action === action))
+  }
+
+  getRules(): AccessRule[] {
+    return [...this.rules]
   }
 }
 
 export const accessControl = new AccessControl()
 
-// Helper functions for common access checks
-export async function requireFeatureAccess(feature: string, userId: string, isAdmin = false): Promise<void> {
-  const result = await accessControl.checkAccess(feature, { userId, isAdmin })
-
-  if (!result.allowed) {
-    const error = new Error(result.reason || "Access denied")
-    ;(error as any).upgradeRequired = result.upgradeRequired
-    ;(error as any).requiredPlans = result.requiredPlans
-    throw error
+// Convenience functions
+export async function requireAuth(userId?: string): Promise<void> {
+  if (!userId) {
+    throw new Error("Authentication required")
   }
 }
 
-export async function checkBotCreationAccess(userId: string): Promise<{
-  allowed: boolean
-  reason?: string
-  currentCount?: number
-  limit?: number
-}> {
-  return accessControl.canCreateBot(userId)
+export async function requireAdmin(isAdmin?: boolean): Promise<void> {
+  if (!isAdmin) {
+    throw new Error("Admin access required")
+  }
 }
 
-export async function getUserAccessLevel(
-  userId: string,
-  isAdmin = false,
-): Promise<{
-  features: string[]
-  plan: string
-  limits: Record<string, number>
-}> {
-  return accessControl.getUserFeatures(userId, isAdmin)
+export async function requirePlan(userId: string, requiredPlan: string): Promise<void> {
+  const subscription = await subscriptionManager.getSubscriptionStatus(userId)
+  const planHierarchy = ["free", "starter", "pro", "enterprise"]
+  const userPlanIndex = planHierarchy.indexOf(subscription.plan)
+  const requiredPlanIndex = planHierarchy.indexOf(requiredPlan)
+
+  if (userPlanIndex < requiredPlanIndex) {
+    throw new Error(`${requiredPlan} plan required`)
+  }
 }

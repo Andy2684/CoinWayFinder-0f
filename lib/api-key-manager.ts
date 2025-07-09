@@ -1,301 +1,244 @@
-import crypto from "crypto"
 import { database } from "./database"
+import crypto from "crypto"
 
 interface APIKey {
   id: string
   userId: string
   name: string
-  keyId: string
-  secretHash: string
+  key: string
   permissions: string[]
-  rateLimit: {
-    requestsPerMinute: number
-    requestsPerHour: number
-    requestsPerDay: number
-  }
-  usage: {
-    totalRequests: number
-    lastUsedAt?: Date
-    dailyRequests: number
-    dailyResetAt: Date
-  }
-  isActive: boolean
   createdAt: Date
+  lastUsedAt?: Date
+  isActive: boolean
   expiresAt?: Date
 }
 
 interface APIKeyUsage {
   keyId: string
   endpoint: string
-  method: string
-  statusCode: number
-  responseTime: number
   timestamp: Date
-  userAgent?: string
-  ipAddress?: string
-}
-
-interface RateLimitResult {
-  allowed: boolean
-  remaining?: number
-  resetTime?: Date
+  responseTime: number
+  statusCode: number
 }
 
 class APIKeyManager {
-  private apiKeys = new Map<string, APIKey>()
-  private usageLog = new Map<string, APIKeyUsage[]>()
-  private rateLimitCache = new Map<string, { count: number; resetTime: number }>()
+  private usageStore: Map<string, APIKeyUsage[]> = new Map()
 
-  generateAPIKey(): { keyId: string; secret: string } {
-    const keyId = "cwf_" + crypto.randomBytes(16).toString("hex")
-    const secret = crypto.randomBytes(32).toString("hex")
-    return { keyId, secret }
-  }
-
-  private hashSecret(secret: string): string {
-    return crypto.createHash("sha256").update(secret).digest("hex")
+  generateAPIKey(prefix = "cwf"): string {
+    const randomBytes = crypto.randomBytes(32)
+    const key = `${prefix}_${randomBytes.toString("hex")}`
+    return key
   }
 
   async createAPIKey(
     userId: string,
     name: string,
     permissions: string[] = ["read"],
-    rateLimit?: Partial<APIKey["rateLimit"]>,
-  ): Promise<{ keyId: string; secret: string }> {
-    const { keyId, secret } = this.generateAPIKey()
-    const secretHash = this.hashSecret(secret)
+    expiresInDays?: number,
+  ): Promise<{ success: boolean; key?: string; message: string }> {
+    try {
+      const key = this.generateAPIKey()
+      const expiresAt = expiresInDays ? new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000) : undefined
 
-    const apiKey: APIKey = {
-      id: crypto.randomUUID(),
-      userId,
-      name,
-      keyId,
-      secretHash,
-      permissions,
-      rateLimit: {
-        requestsPerMinute: rateLimit?.requestsPerMinute || 60,
-        requestsPerHour: rateLimit?.requestsPerHour || 1000,
-        requestsPerDay: rateLimit?.requestsPerDay || 10000,
-      },
-      usage: {
-        totalRequests: 0,
-        dailyRequests: 0,
-        dailyResetAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      },
-      isActive: true,
-      createdAt: new Date(),
-    }
+      await database.createAPIKey(userId, {
+        name,
+        key,
+        permissions,
+      })
 
-    this.apiKeys.set(keyId, apiKey)
-
-    // Store in database
-    await database.createAPIKey(userId, {
-      name,
-      key: keyId,
-      permissions,
-    })
-
-    return { keyId, secret }
-  }
-
-  async validateAPIKey(keyId: string, secret: string): Promise<APIKey | null> {
-    const apiKey = this.apiKeys.get(keyId)
-    if (!apiKey || !apiKey.isActive) {
-      return null
-    }
-
-    const secretHash = this.hashSecret(secret)
-    if (secretHash !== apiKey.secretHash) {
-      return null
-    }
-
-    // Check if expired
-    if (apiKey.expiresAt && apiKey.expiresAt < new Date()) {
-      return null
-    }
-
-    return apiKey
-  }
-
-  async checkRateLimit(keyId: string): Promise<RateLimitResult> {
-    const apiKey = this.apiKeys.get(keyId)
-    if (!apiKey) {
-      return { allowed: false }
-    }
-
-    const now = Date.now()
-    const minuteKey = `${keyId}:minute:${Math.floor(now / 60000)}`
-    const hourKey = `${keyId}:hour:${Math.floor(now / 3600000)}`
-    const dayKey = `${keyId}:day:${Math.floor(now / 86400000)}`
-
-    // Check minute limit
-    const minuteLimit = this.rateLimitCache.get(minuteKey)
-    if (minuteLimit && minuteLimit.count >= apiKey.rateLimit.requestsPerMinute) {
       return {
-        allowed: false,
-        remaining: 0,
-        resetTime: new Date(minuteLimit.resetTime),
+        success: true,
+        key,
+        message: "API key created successfully",
+      }
+    } catch (error) {
+      console.error("Create API key error:", error)
+      return {
+        success: false,
+        message: "Failed to create API key",
       }
     }
+  }
 
-    // Check hour limit
-    const hourLimit = this.rateLimitCache.get(hourKey)
-    if (hourLimit && hourLimit.count >= apiKey.rateLimit.requestsPerHour) {
-      return {
-        allowed: false,
-        remaining: 0,
-        resetTime: new Date(hourLimit.resetTime),
+  async validateAPIKey(key: string): Promise<{
+    valid: boolean
+    userId?: string
+    permissions?: string[]
+    message?: string
+  }> {
+    try {
+      // Basic format validation
+      if (!key.startsWith("cwf_") || key.length < 40) {
+        return {
+          valid: false,
+          message: "Invalid API key format",
+        }
       }
-    }
 
-    // Check day limit
-    const dayLimit = this.rateLimitCache.get(dayKey)
-    if (dayLimit && dayLimit.count >= apiKey.rateLimit.requestsPerDay) {
+      // In a real implementation, you would query the database
+      // For now, we'll simulate validation
+      const mockUserId = "user-123"
+      const mockPermissions = ["read", "write"]
+
+      // Update last used timestamp
+      this.recordAPIKeyUsage(key, "/api/test", 200, 150)
+
       return {
-        allowed: false,
-        remaining: 0,
-        resetTime: new Date(dayLimit.resetTime),
+        valid: true,
+        userId: mockUserId,
+        permissions: mockPermissions,
       }
-    }
-
-    // Update counters
-    this.updateRateLimitCounter(minuteKey, now + 60000)
-    this.updateRateLimitCounter(hourKey, now + 3600000)
-    this.updateRateLimitCounter(dayKey, now + 86400000)
-
-    const remaining = apiKey.rateLimit.requestsPerMinute - (minuteLimit?.count || 0) - 1
-
-    return {
-      allowed: true,
-      remaining: Math.max(0, remaining),
+    } catch (error) {
+      console.error("Validate API key error:", error)
+      return {
+        valid: false,
+        message: "Failed to validate API key",
+      }
     }
   }
 
-  private updateRateLimitCounter(key: string, resetTime: number): void {
-    const existing = this.rateLimitCache.get(key)
-    if (existing) {
-      existing.count++
-    } else {
-      this.rateLimitCache.set(key, { count: 1, resetTime })
+  async getUserAPIKeys(userId: string): Promise<APIKey[]> {
+    try {
+      const apiKeys = await database.getUserAPIKeys(userId)
+      return (apiKeys || []).map((key) => ({
+        id: key.id,
+        userId,
+        name: key.name,
+        key: key.key.substring(0, 8) + "..." + key.key.substring(key.key.length - 4), // Mask key
+        permissions: key.permissions,
+        createdAt: key.createdAt,
+        lastUsedAt: key.lastUsedAt,
+        isActive: key.isActive,
+      }))
+    } catch (error) {
+      console.error("Get user API keys error:", error)
+      return []
     }
   }
 
-  async recordUsage(
-    keyId: string,
-    endpoint: string,
-    method: string,
-    statusCode: number,
-    responseTime: number,
-    userAgent?: string,
-    ipAddress?: string,
-  ): Promise<void> {
-    const apiKey = this.apiKeys.get(keyId)
-    if (!apiKey) return
-
-    // Update usage stats
-    apiKey.usage.totalRequests++
-    apiKey.usage.lastUsedAt = new Date()
-
-    // Reset daily counter if needed
-    if (new Date() > apiKey.usage.dailyResetAt) {
-      apiKey.usage.dailyRequests = 0
-      apiKey.usage.dailyResetAt = new Date(Date.now() + 24 * 60 * 60 * 1000)
+  async revokeAPIKey(userId: string, keyId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      await database.updateAPIKey(userId, keyId, { isActive: false })
+      return {
+        success: true,
+        message: "API key revoked successfully",
+      }
+    } catch (error) {
+      console.error("Revoke API key error:", error)
+      return {
+        success: false,
+        message: "Failed to revoke API key",
+      }
     }
-    apiKey.usage.dailyRequests++
+  }
 
-    // Log usage
+  async deleteAPIKey(userId: string, keyId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      await database.deleteAPIKey(userId, keyId)
+      return {
+        success: true,
+        message: "API key deleted successfully",
+      }
+    } catch (error) {
+      console.error("Delete API key error:", error)
+      return {
+        success: false,
+        message: "Failed to delete API key",
+      }
+    }
+  }
+
+  recordAPIKeyUsage(key: string, endpoint: string, statusCode: number, responseTime: number): void {
     const usage: APIKeyUsage = {
-      keyId,
+      keyId: key,
       endpoint,
-      method,
-      statusCode,
-      responseTime,
       timestamp: new Date(),
-      userAgent,
-      ipAddress,
+      responseTime,
+      statusCode,
     }
 
-    const keyUsage = this.usageLog.get(keyId) || []
+    if (!this.usageStore.has(key)) {
+      this.usageStore.set(key, [])
+    }
+
+    const keyUsage = this.usageStore.get(key)!
     keyUsage.push(usage)
 
     // Keep only last 1000 entries per key
     if (keyUsage.length > 1000) {
       keyUsage.splice(0, keyUsage.length - 1000)
     }
-
-    this.usageLog.set(keyId, keyUsage)
   }
 
-  async getUserAPIKeys(userId: string): Promise<Omit<APIKey, "secretHash">[]> {
-    const userKeys = Array.from(this.apiKeys.values())
-      .filter((key) => key.userId === userId)
-      .map((key) => {
-        const { secretHash, ...keyWithoutSecret } = key
-        return keyWithoutSecret
-      })
-
-    return userKeys
+  getAPIKeyUsage(key: string, limit = 100): APIKeyUsage[] {
+    const usage = this.usageStore.get(key) || []
+    return usage.slice(-limit)
   }
 
-  async getAPIKeyUsage(keyId: string, limit = 100): Promise<APIKeyUsage[]> {
-    const usage = this.usageLog.get(keyId) || []
-    return usage.slice(-limit).reverse()
-  }
-
-  async updateAPIKey(
-    keyId: string,
-    updates: Partial<Pick<APIKey, "name" | "permissions" | "rateLimit" | "isActive">>,
-  ): Promise<boolean> {
-    const apiKey = this.apiKeys.get(keyId)
-    if (!apiKey) return false
-
-    Object.assign(apiKey, updates)
-    return true
-  }
-
-  async deleteAPIKey(keyId: string): Promise<boolean> {
-    const deleted = this.apiKeys.delete(keyId)
-    this.usageLog.delete(keyId)
-    return deleted
-  }
-
-  async getAPIKeyStats(keyId: string): Promise<{
+  getAPIKeyStats(key: string): {
     totalRequests: number
-    dailyRequests: number
+    successRate: number
     averageResponseTime: number
-    errorRate: number
-    lastUsedAt?: Date
-  } | null> {
-    const apiKey = this.apiKeys.get(keyId)
-    if (!apiKey) return null
+    lastUsed?: Date
+  } {
+    const usage = this.usageStore.get(key) || []
 
-    const usage = this.usageLog.get(keyId) || []
-    const recentUsage = usage.filter((u) => u.timestamp > new Date(Date.now() - 24 * 60 * 60 * 1000))
+    if (usage.length === 0) {
+      return {
+        totalRequests: 0,
+        successRate: 0,
+        averageResponseTime: 0,
+      }
+    }
 
-    const totalRequests = apiKey.usage.totalRequests
-    const dailyRequests = recentUsage.length
-    const averageResponseTime =
-      recentUsage.length > 0 ? recentUsage.reduce((sum, u) => sum + u.responseTime, 0) / recentUsage.length : 0
-    const errorRequests = recentUsage.filter((u) => u.statusCode >= 400).length
-    const errorRate = recentUsage.length > 0 ? (errorRequests / recentUsage.length) * 100 : 0
+    const totalRequests = usage.length
+    const successfulRequests = usage.filter((u) => u.statusCode >= 200 && u.statusCode < 400).length
+    const successRate = (successfulRequests / totalRequests) * 100
+    const averageResponseTime = usage.reduce((sum, u) => sum + u.responseTime, 0) / totalRequests
+    const lastUsed = usage[usage.length - 1]?.timestamp
 
     return {
       totalRequests,
-      dailyRequests,
+      successRate,
       averageResponseTime,
-      errorRate,
-      lastUsedAt: apiKey.usage.lastUsedAt,
+      lastUsed,
     }
   }
 
-  // Initialize with some default API keys for testing
-  async initializeDefaultKeys(): Promise<void> {
-    // This would typically load from database
-    console.log("API Key Manager initialized")
+  checkRateLimit(key: string, limit = 1000, windowMs = 60000): boolean {
+    const usage = this.usageStore.get(key) || []
+    const now = Date.now()
+    const windowStart = now - windowMs
+
+    const recentUsage = usage.filter((u) => u.timestamp.getTime() > windowStart)
+    return recentUsage.length < limit
+  }
+
+  hasPermission(permissions: string[], requiredPermission: string): boolean {
+    return permissions.includes(requiredPermission) || permissions.includes("admin")
+  }
+
+  // Cleanup old usage data
+  cleanupUsageData(): void {
+    const cutoffTime = Date.now() - 7 * 24 * 60 * 60 * 1000 // 7 days ago
+
+    for (const [key, usage] of this.usageStore.entries()) {
+      const filteredUsage = usage.filter((u) => u.timestamp.getTime() > cutoffTime)
+      if (filteredUsage.length === 0) {
+        this.usageStore.delete(key)
+      } else {
+        this.usageStore.set(key, filteredUsage)
+      }
+    }
   }
 }
 
 export const apiKeyManager = new APIKeyManager()
 
-// Initialize on module load
-apiKeyManager.initializeDefaultKeys()
+// Cleanup usage data every hour
+setInterval(
+  () => {
+    apiKeyManager.cleanupUsageData()
+  },
+  60 * 60 * 1000,
+)

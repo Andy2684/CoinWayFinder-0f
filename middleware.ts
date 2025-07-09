@@ -2,61 +2,105 @@ import { type NextRequest, NextResponse } from "next/server"
 import { AuthService } from "./lib/auth"
 import { AdminService } from "./lib/admin"
 
-// Define protected routes
-const protectedRoutes = ["/dashboard", "/bots", "/integrations", "/profile", "/subscription"]
-
-const adminRoutes = ["/admin"]
-
-const apiRoutes = ["/api/auth", "/api/user", "/api/bots", "/api/portfolio", "/api/trades"]
-
-const publicApiRoutes = [
-  "/api/auth/signin",
-  "/api/auth/signup",
-  "/api/crypto/prices",
-  "/api/crypto/news",
-  "/api/stripe/webhook",
-]
-
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  
-  // Skip middleware for static files and public routes
+
+  // Skip middleware for static files and API routes that don't need auth
   if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/static') ||
-    pathname.includes('.') ||
-    pathname === '/' ||
-    pathname === '/api-docs'
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/stripe/webhook") ||
+    pathname.startsWith("/api/telegram-webhook") ||
+    pathname.includes(".")
   ) {
     return NextResponse.next()
   }
 
-  // Handle admin routes
-  if (adminRoutes.some(route => pathname.startsWith(route))) {
+  // Admin routes protection
+  if (pathname.startsWith("/admin")) {
     try {
       const admin = await AdminService.getCurrentAdmin()
       if (!admin) {
-        return NextResponse.redirect(new URL('/?admin=login', request.url))
+        return NextResponse.redirect(new URL("/", request.url))
       }
-      return NextResponse.next()
     } catch (error) {
-      return NextResponse.redirect(new URL('/?admin=login', request.url))
+      return NextResponse.redirect(new URL("/", request.url))
     }
   }
 
-  // Handle protected routes
-  if (protectedRoutes.some(route => pathname.startsWith(route))) {
+  // Protected routes that require authentication
+  const protectedRoutes = ["/dashboard", "/bots", "/profile", "/subscription", "/integrations", "/news"]
+
+  if (protectedRoutes.some((route) => pathname.startsWith(route))) {
     try {
       const user = await AuthService.getCurrentUser()
       if (!user) {
-        return NextResponse.redirect(new URL('/?login=required', request.url))
+        return NextResponse.redirect(new URL("/", request.url))
       }
-      return NextResponse.next()
     } catch (error) {
-      return NextResponse.redirect(new URL('/?login=required', request.url))
+      return NextResponse.redirect(new URL("/", request.url))
     }
   }
 
-  // Handle API routes
-  if (pathname.startsWith('/api/')) {
-// Allow public API routes
+  // API routes protection
+  if (pathname.startsWith("/api/")) {
+    // Skip auth for public API routes
+    const publicAPIRoutes = [
+      "/api/crypto/prices",
+      "/api/crypto/news",
+      "/api/crypto/trends",
+      "/api/news",
+      "/api/whales",
+      "/api/v1/trends",
+      "/api/v1/whales",
+    ]
+
+    if (publicAPIRoutes.includes(pathname)) {
+      return NextResponse.next()
+    }
+
+    // Admin API routes
+    if (pathname.startsWith("/api/admin/")) {
+      try {
+        const admin = await AdminService.getCurrentAdmin()
+        if (!admin) {
+          return NextResponse.json({ error: "Admin authentication required" }, { status: 401 })
+        }
+      } catch (error) {
+        return NextResponse.json({ error: "Admin authentication required" }, { status: 401 })
+      }
+    }
+
+    // User API routes
+    if (
+      pathname.startsWith("/api/user/") ||
+      pathname.startsWith("/api/bots/") ||
+      pathname.startsWith("/api/portfolio/") ||
+      pathname.startsWith("/api/subscription/") ||
+      pathname.startsWith("/api/trades/")
+    ) {
+      try {
+        const user = await AuthService.getCurrentUser()
+        if (!user) {
+          return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+        }
+      } catch (error) {
+        return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+      }
+    }
+  }
+
+  return NextResponse.next()
+}
+
+export const config = {
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    "/((?!_next/static|_next/image|favicon.ico).*)",
+  ],
+}

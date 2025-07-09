@@ -161,6 +161,11 @@ class Database {
     return users.find({}).toArray()
   }
 
+  async getUserCount(): Promise<number> {
+    const users = await this.getCollection<User>("users")
+    return users.countDocuments()
+  }
+
   // User Settings operations
   async createUserSettings(settingsData: Omit<UserSettings, "_id">): Promise<UserSettings> {
     const settings = await this.getCollection<UserSettings>("userSettings")
@@ -176,9 +181,16 @@ class Database {
     return settings.findOne({ userId })
   }
 
-  async updateUserSettings(userId: string, updates: Partial<UserSettings>): Promise<void> {
+  async updateUserSettings(userId: string, updates: Partial<UserSettings>): Promise<boolean> {
     const settings = await this.getCollection<UserSettings>("userSettings")
-    await settings.updateOne({ userId }, { $set: updates }, { upsert: true })
+    const result = await settings.updateOne({ userId }, { $set: updates }, { upsert: true })
+    return result.modifiedCount > 0 || result.upsertedCount > 0
+  }
+
+  async updateSubscription(userId: string, subscription: UserSettings["subscription"]): Promise<boolean> {
+    const settings = await this.getCollection<UserSettings>("userSettings")
+    const result = await settings.updateOne({ userId }, { $set: { subscription } }, { upsert: true })
+    return result.modifiedCount > 0 || result.upsertedCount > 0
   }
 
   async createUserWithTrial(userId: string): Promise<UserSettings> {
@@ -214,6 +226,82 @@ class Database {
     return this.createUserSettings(userSettings)
   }
 
+  async startTrial(userId: string): Promise<boolean> {
+    const startDate = new Date()
+    const endDate = new Date(startDate.getTime() + 3 * 24 * 60 * 60 * 1000) // 3 days
+
+    const result = await this.updateUserSettings(userId, {
+      trial: {
+        hasUsed: true,
+        startDate,
+        endDate,
+        isActive: true,
+      },
+      subscription: {
+        plan: "premium",
+        status: "trialing",
+        startDate,
+        endDate,
+      },
+    })
+
+    return result
+  }
+
+  async endTrial(userId: string): Promise<boolean> {
+    const result = await this.updateUserSettings(userId, {
+      trial: {
+        hasUsed: true,
+        isActive: false,
+        startDate: new Date(),
+        endDate: new Date(),
+      },
+      subscription: {
+        plan: "free",
+        status: "inactive",
+        startDate: new Date(),
+        endDate: new Date(),
+      },
+    })
+
+    return result
+  }
+
+  async getTrialStatus(userId: string): Promise<{
+    hasUsed: boolean
+    isActive: boolean
+    daysRemaining: number
+    endDate?: Date
+  }> {
+    const settings = await this.getUserSettings(userId)
+
+    if (!settings?.trial) {
+      return {
+        hasUsed: false,
+        isActive: false,
+        daysRemaining: 3,
+      }
+    }
+
+    const { trial } = settings
+    const now = new Date()
+    const daysRemaining = trial.endDate
+      ? Math.max(0, Math.ceil((trial.endDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)))
+      : 0
+
+    return {
+      hasUsed: trial.hasUsed,
+      isActive: trial.isActive && daysRemaining > 0,
+      daysRemaining,
+      endDate: trial.endDate,
+    }
+  }
+
+  async getActiveSubscriptions(): Promise<number> {
+    const settings = await this.getCollection<UserSettings>("userSettings")
+    return settings.countDocuments({ "subscription.status": "active" })
+  }
+
   // Bot operations
   async createBot(botData: Omit<Bot, "_id">): Promise<Bot> {
     const bots = await this.getCollection<Bot>("bots")
@@ -238,14 +326,16 @@ class Database {
     return bots.find({ userId }).toArray()
   }
 
-  async updateBot(botId: string, updates: Partial<Bot>): Promise<void> {
+  async updateBot(botId: string, updates: Partial<Bot>): Promise<boolean> {
     const bots = await this.getCollection<Bot>("bots")
-    await bots.updateOne({ _id: new ObjectId(botId) }, { $set: { ...updates, updatedAt: new Date() } })
+    const result = await bots.updateOne({ _id: new ObjectId(botId) }, { $set: { ...updates, updatedAt: new Date() } })
+    return result.modifiedCount > 0
   }
 
-  async deleteBot(botId: string): Promise<void> {
+  async deleteBot(botId: string): Promise<boolean> {
     const bots = await this.getCollection<Bot>("bots")
-    await bots.deleteOne({ _id: new ObjectId(botId) })
+    const result = await bots.deleteOne({ _id: new ObjectId(botId) })
+    return result.deletedCount > 0
   }
 
   async getActiveBots(): Promise<Bot[]> {
@@ -276,9 +366,10 @@ class Database {
     return trades.find({ botId }).sort({ timestamp: -1 }).limit(limit).toArray()
   }
 
-  async updateTrade(tradeId: string, updates: Partial<Trade>): Promise<void> {
+  async updateTrade(tradeId: string, updates: Partial<Trade>): Promise<boolean> {
     const trades = await this.getCollection<Trade>("trades")
-    await trades.updateOne({ _id: new ObjectId(tradeId) }, { $set: updates })
+    const result = await trades.updateOne({ _id: new ObjectId(tradeId) }, { $set: updates })
+    return result.modifiedCount > 0
   }
 
   // API Key operations
@@ -371,3 +462,11 @@ class Database {
 }
 
 export const database = new Database()
+
+export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db }> {
+  await database.connect()
+  return {
+    client: database["client"]!,
+    db: database["db"]!,
+  }
+}
