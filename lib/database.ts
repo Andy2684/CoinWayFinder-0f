@@ -133,18 +133,13 @@ export interface UserSettings {
 export interface User {
   _id?: ObjectId
   email: string
-  password: string
-  name: string
-  createdAt: Date
-  updatedAt: Date
-  lastLoginAt?: Date
-  isVerified: boolean
-  verificationToken?: string
-  id: string
+  passwordHash: string
   username: string
   subscriptionStatus: "active" | "expired" | "cancelled"
-  subscriptionPlan: "free" | "pro" | "enterprise"
-  subscriptionExpiry?: Date
+  subscriptionPlan: string
+  subscriptionExpiry: Date
+  createdAt: Date
+  updatedAt: Date
 }
 
 export interface ArbitrageOpportunity {
@@ -187,9 +182,11 @@ export interface Bot {
   name: string
   strategy: string
   status: "running" | "stopped" | "paused"
+  subscriptionStatus: "active" | "expired"
   autoStop: boolean
   createdAt: Date
   updatedAt: Date
+  config: any
 }
 
 class DatabaseManager {
@@ -272,7 +269,7 @@ class DatabaseManager {
       username: user.email.split("@")[0],
       subscriptionStatus: "active",
       subscriptionPlan: "free",
-      subscriptionExpiry: undefined,
+      subscriptionExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
     }
 
     const result = await collection.insertOne(newUser)
@@ -303,113 +300,58 @@ class DatabaseManager {
     return result.modifiedCount > 0
   }
 
-  async createBot(bot: Omit<UserBot, "_id" | "createdAt" | "updatedAt">): Promise<string> {
+  async createBot(bot: Omit<Bot, "_id" | "createdAt" | "updatedAt">): Promise<string> {
     await this.connect()
-    const collection = this.db!.collection<UserBot>("bots")
+    const collection = this.db!.collection<Bot>("bots")
 
-    const encryptedBot: UserBot = {
+    const newBot: Bot = {
       ...bot,
-      credentials: {
-        ...bot.credentials,
-        apiKey: this.encrypt(bot.credentials.apiKey),
-        secretKey: this.encrypt(bot.credentials.secretKey),
-        passphrase: bot.credentials.passphrase ? this.encrypt(bot.credentials.passphrase) : undefined,
-        encrypted: true,
-      },
-      executionCount: 0,
+      id: Date.now().toString(),
       createdAt: new Date(),
       updatedAt: new Date(),
+      subscriptionStatus: "active",
     }
 
-    const result = await collection.insertOne(encryptedBot)
+    const result = await collection.insertOne(newBot)
     return result.insertedId.toString()
   }
 
-  async getBot(botId: string, userId: string): Promise<UserBot | null> {
+  async getBot(botId: string, userId: string): Promise<Bot | null> {
     await this.connect()
-    const collection = this.db!.collection<UserBot>("bots")
+    const collection = this.db!.collection<Bot>("bots")
 
-    const bot = await collection.findOne({ _id: new ObjectId(botId), userId })
-    if (!bot) return null
-
-    if (bot.credentials.encrypted) {
-      bot.credentials.apiKey = this.decrypt(bot.credentials.apiKey)
-      bot.credentials.secretKey = this.decrypt(bot.credentials.secretKey)
-      if (bot.credentials.passphrase) {
-        bot.credentials.passphrase = this.decrypt(bot.credentials.passphrase)
-      }
-      bot.credentials.encrypted = false
-    }
-
-    return bot
+    return collection.findOne({ _id: new ObjectId(botId), userId })
   }
 
-  async getUserBots(userId: string): Promise<UserBot[]> {
+  async getUserBots(userId: string): Promise<Bot[]> {
     await this.connect()
-    const collection = this.db!.collection<UserBot>("bots")
+    const collection = this.db!.collection<Bot>("bots")
 
-    const bots = await collection.find({ userId }).toArray()
-
-    return bots.map((bot) => {
-      if (bot.credentials.encrypted) {
-        bot.credentials.apiKey = this.decrypt(bot.credentials.apiKey)
-        bot.credentials.secretKey = this.decrypt(bot.credentials.secretKey)
-        if (bot.credentials.passphrase) {
-          bot.credentials.passphrase = this.decrypt(bot.credentials.passphrase)
-        }
-        bot.credentials.encrypted = false
-      }
-      return bot
-    })
+    return collection.find({ userId }).toArray()
   }
 
-  async getRunningBots(): Promise<UserBot[]> {
+  async getRunningBots(): Promise<Bot[]> {
     await this.connect()
-    const collection = this.db!.collection<UserBot>("bots")
+    const collection = this.db!.collection<Bot>("bots")
 
-    const bots = await collection.find({ status: "running" }).toArray()
-
-    return bots.map((bot) => {
-      if (bot.credentials.encrypted) {
-        bot.credentials.apiKey = this.decrypt(bot.credentials.apiKey)
-        bot.credentials.secretKey = this.decrypt(bot.credentials.secretKey)
-        if (bot.credentials.passphrase) {
-          bot.credentials.passphrase = this.decrypt(bot.credentials.passphrase)
-        }
-        bot.credentials.encrypted = false
-      }
-      return bot
-    })
+    return collection.find({ status: "running" }).toArray()
   }
 
-  async updateBot(botId: string, userId: string, updates: Partial<UserBot>): Promise<boolean> {
+  async updateBot(botId: string, userId: string, updates: Partial<Bot>): Promise<boolean> {
     await this.connect()
-    const collection = this.db!.collection<UserBot>("bots")
+    const collection = this.db!.collection<Bot>("bots")
 
-    const updateDoc: any = { ...updates, updatedAt: new Date() }
-
-    if (updates.credentials) {
-      updateDoc.credentials = {
-        ...updates.credentials,
-        apiKey: this.encrypt(updates.credentials.apiKey),
-        secretKey: this.encrypt(updates.credentials.secretKey),
-        passphrase: updates.credentials.passphrase ? this.encrypt(updates.credentials.passphrase) : undefined,
-        encrypted: true,
-      }
-    }
-
-    if (updates.lastExecutedAt) {
-      updateDoc.$inc = { executionCount: 1 }
-    }
-
-    const result = await collection.updateOne({ _id: new ObjectId(botId), userId }, { $set: updateDoc })
+    const result = await collection.updateOne(
+      { _id: new ObjectId(botId), userId },
+      { $set: { ...updates, updatedAt: new Date() } },
+    )
 
     return result.modifiedCount > 0
   }
 
   async deleteBot(botId: string, userId: string): Promise<boolean> {
     await this.connect()
-    const collection = this.db!.collection<UserBot>("bots")
+    const collection = this.db!.collection<Bot>("bots")
 
     const result = await collection.deleteOne({ _id: new ObjectId(botId), userId })
     return result.deletedCount > 0
@@ -668,7 +610,7 @@ class DatabaseManager {
   }> {
     await this.connect()
 
-    const botsCollection = this.db!.collection<UserBot>("bots")
+    const botsCollection = this.db!.collection<Bot>("bots")
     const tradesCollection = this.db!.collection<TradeRecord>("trades")
 
     const bots = await botsCollection.find({ userId }).toArray()
@@ -808,7 +750,7 @@ class DatabaseManager {
 
   async stopUserBots(userId: string, reason: string): Promise<number> {
     await this.connect()
-    const collection = this.db!.collection<UserBot>("bots")
+    const collection = this.db!.collection<Bot>("bots")
 
     const result = await collection.updateMany(
       { userId, status: "running" },
@@ -827,117 +769,102 @@ class DatabaseManager {
 }
 
 // Mock database implementation for development
-const mockUsers: User[] = [
-  {
-    id: "1",
-    email: "user@example.com",
-    username: "testuser",
-    subscriptionStatus: "active",
-    subscriptionPlan: "pro",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-]
+const users: Map<string, User> = new Map()
+const bots: Map<string, Bot> = new Map()
 
-const mockBots: Bot[] = [
-  {
-    id: "1",
-    userId: "1",
-    name: "DCA Bot",
-    strategy: "dca",
-    status: "running",
-    autoStop: false,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-]
+// Initialize with some mock data
+const mockUser: User = {
+  id: "user_1",
+  email: "project.command.center@gmail.com",
+  username: "admin",
+  passwordHash: "$2a$10$mockhashedpassword",
+  subscriptionStatus: "active",
+  subscriptionPlan: "pro",
+  subscriptionExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+  createdAt: new Date(),
+  updatedAt: new Date(),
+}
+
+users.set(mockUser.id, mockUser)
 
 export class Database {
-  static async connect() {
-    console.log("📊 Connected to mock database")
-    return true
+  // User operations
+  static async findUserByEmail(email: string): Promise<User | null> {
+    for (const user of users.values()) {
+      if (user.email === email) {
+        return user
+      }
+    }
+    return null
   }
 
-  static async disconnect() {
-    console.log("📊 Disconnected from mock database")
-    return true
-  }
-
-  static async getUser(id: string): Promise<User | null> {
-    return mockUsers.find((user) => user.id === id) || null
-  }
-
-  static async getUserByEmail(email: string): Promise<User | null> {
-    return mockUsers.find((user) => user.email === email) || null
+  static async findUserById(id: string): Promise<User | null> {
+    return users.get(id) || null
   }
 
   static async createUser(userData: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
     const user: User = {
       ...userData,
-      id: Date.now().toString(),
+      id: `user_${Date.now()}`,
       createdAt: new Date(),
       updatedAt: new Date(),
     }
-    mockUsers.push(user)
+    users.set(user.id, user)
     return user
   }
 
   static async updateUser(id: string, updates: Partial<User>): Promise<User | null> {
-    const userIndex = mockUsers.findIndex((user) => user.id === id)
-    if (userIndex === -1) return null
+    const user = users.get(id)
+    if (!user) return null
 
-    mockUsers[userIndex] = {
-      ...mockUsers[userIndex],
-      ...updates,
-      updatedAt: new Date(),
-    }
-    return mockUsers[userIndex]
+    const updatedUser = { ...user, ...updates, updatedAt: new Date() }
+    users.set(id, updatedUser)
+    return updatedUser
   }
 
-  static async getUserBots(userId: string): Promise<Bot[]> {
-    return mockBots.filter((bot) => bot.userId === userId)
+  // Bot operations
+  static async findBotsByUserId(userId: string): Promise<Bot[]> {
+    return Array.from(bots.values()).filter((bot) => bot.userId === userId)
+  }
+
+  static async findBotById(id: string): Promise<Bot | null> {
+    return bots.get(id) || null
   }
 
   static async createBot(botData: Omit<Bot, "id" | "createdAt" | "updatedAt">): Promise<Bot> {
     const bot: Bot = {
       ...botData,
-      id: Date.now().toString(),
+      id: `bot_${Date.now()}`,
       createdAt: new Date(),
       updatedAt: new Date(),
     }
-    mockBots.push(bot)
+    bots.set(bot.id, bot)
     return bot
   }
 
   static async updateBot(id: string, updates: Partial<Bot>): Promise<Bot | null> {
-    const botIndex = mockBots.findIndex((bot) => bot.id === id)
-    if (botIndex === -1) return null
+    const bot = bots.get(id)
+    if (!bot) return null
 
-    mockBots[botIndex] = {
-      ...mockBots[botIndex],
-      ...updates,
-      updatedAt: new Date(),
-    }
-    return mockBots[botIndex]
+    const updatedBot = { ...bot, ...updates, updatedAt: new Date() }
+    bots.set(id, updatedBot)
+    return updatedBot
   }
 
   static async deleteBot(id: string): Promise<boolean> {
-    const botIndex = mockBots.findIndex((bot) => bot.id === id)
-    if (botIndex === -1) return false
-
-    mockBots.splice(botIndex, 1)
-    return true
+    return bots.delete(id)
   }
 
-  static async getExpiredUsers(): Promise<User[]> {
-    return mockUsers.filter(
-      (user) =>
-        user.subscriptionStatus === "expired" || (user.subscriptionExpiry && user.subscriptionExpiry < new Date()),
+  // Subscription operations
+  static async findExpiredUsers(): Promise<User[]> {
+    const now = new Date()
+    return Array.from(users.values()).filter(
+      (user) => user.subscriptionExpiry < now && user.subscriptionStatus === "active",
     )
   }
 
-  static async getRunningBots(): Promise<Bot[]> {
-    return mockBots.filter((bot) => bot.status === "running")
+  static async findRunningBotsByUserId(userId: string): Promise<Bot[]> {
+    return Array.from(bots.values()).filter((bot) => bot.userId === userId && bot.status === "running")
   }
 }
 

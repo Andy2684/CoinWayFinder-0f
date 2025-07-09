@@ -1,39 +1,56 @@
 import { type NextRequest, NextResponse } from "next/server"
+import jwt from "jsonwebtoken"
+
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 
 export function middleware(request: NextRequest) {
   // Get the pathname of the request (e.g. /, /dashboard, /api/bots)
   const { pathname } = request.nextUrl
 
   // Skip middleware for static files and API routes that don't need auth
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/admin") ||
-    pathname.startsWith("/api/stripe") ||
-    pathname.startsWith("/api/coinbase") ||
-    pathname.includes(".") ||
-    pathname === "/" ||
-    pathname === "/subscription" ||
-    pathname === "/subscription/success" ||
-    pathname === "/subscription/cancel"
-  ) {
+  const publicRoutes = ["/", "/api/auth/signin", "/api/auth/signup"]
+  if (publicRoutes.includes(pathname)) {
     return NextResponse.next()
   }
 
   // Check for authentication token
   const token = request.cookies.get("auth-token")?.value
 
-  if (
-    !token &&
-    (pathname.startsWith("/dashboard") || pathname.startsWith("/bots") || pathname.startsWith("/profile"))
-  ) {
+  if (!token) {
     // Redirect to home page if not authenticated
-    return NextResponse.redirect(new URL("/", request.url))
+    if (pathname.startsWith("/dashboard") || pathname.startsWith("/bots") || pathname.startsWith("/profile")) {
+      return NextResponse.redirect(new URL("/", request.url))
+    }
+
+    // For API routes that need authentication
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
   }
 
-  // For API routes that need authentication
-  if (pathname.startsWith("/api/") && !token) {
-    return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+  try {
+    // Verify JWT token
+    const decoded = jwt.verify(token!, JWT_SECRET) as any
+
+    // Add user info to request headers
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set("x-user-id", decoded.userId)
+    requestHeaders.set("x-user-email", decoded.email)
+
+    return NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
+  } catch (error) {
+    // Invalid token - redirect or return error
+    if (pathname.startsWith("/dashboard") || pathname.startsWith("/bots") || pathname.startsWith("/profile")) {
+      return NextResponse.redirect(new URL("/", request.url))
+    }
+
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
+    }
   }
 
   return NextResponse.next()
@@ -46,7 +63,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - public (public routes)
      */
-    "/((?!_next/static|_next/image|favicon.ico).*)",
+    "/((?!_next/static|_next/image|favicon.ico|public).*)",
   ],
 }
