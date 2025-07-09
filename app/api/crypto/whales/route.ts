@@ -1,29 +1,17 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { cryptoAPI } from "@/lib/crypto-api"
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url)
-    const minValue = Number.parseInt(searchParams.get("min_value") || "1000000")
-
-    const whaleTransactions = await cryptoAPI.getWhaleTransactions(minValue)
+    const whaleAlerts = await cryptoAPI.getWhaleAlerts()
 
     return NextResponse.json({
       success: true,
-      data: whaleTransactions,
-      count: whaleTransactions.length,
+      data: whaleAlerts,
       timestamp: new Date().toISOString(),
-      source: "Whale Alert API",
     })
   } catch (error) {
-    console.error("Whale transactions API error:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch whale transactions",
-        message: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 },
-    )
+    console.error("Whale alerts API error:", error)
+    return NextResponse.json({ success: false, error: "Failed to fetch whale alerts" }, { status: 500 })
   }
 }

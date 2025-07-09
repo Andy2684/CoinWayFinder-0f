@@ -4,165 +4,204 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Newspaper, ExternalLink, RefreshCw, TrendingUp, TrendingDown, Minus } from "lucide-react"
+import { Newspaper, ExternalLink, Clock, TrendingUp, TrendingDown, Minus } from "lucide-react"
 import type { CryptoNews } from "@/lib/crypto-api"
 
 export function CryptoNewsFeed() {
   const [news, setNews] = useState<CryptoNews[]>([])
   const [loading, setLoading] = useState(true)
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
+  const [selectedFilter, setSelectedFilter] = useState<"all" | "positive" | "negative" | "neutral">("all")
+
+  useEffect(() => {
+    fetchNews()
+    const interval = setInterval(fetchNews, 300000) // Update every 5 minutes
+    return () => clearInterval(interval)
+  }, [])
 
   const fetchNews = async () => {
     try {
-      setLoading(true)
-      const response = await fetch("/api/crypto/news?limit=15")
+      const response = await fetch("/api/crypto/news")
       const data = await response.json()
 
       if (data.success) {
         setNews(data.data)
-        setLastUpdate(new Date())
       }
     } catch (error) {
-      console.error("Failed to fetch crypto news:", error)
+      console.error("Error fetching crypto news:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    fetchNews()
+  const getTimeAgo = (timestamp: string) => {
+    const now = new Date()
+    const time = new Date(timestamp)
+    const diffInMinutes = Math.floor((now.getTime() - time.getTime()) / (1000 * 60))
 
-    // Auto-refresh every 5 minutes
-    const interval = setInterval(fetchNews, 300000)
-    return () => clearInterval(interval)
-  }, [])
+    if (diffInMinutes < 1) return "Just now"
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
+    return `${Math.floor(diffInMinutes / 1440)}d ago`
+  }
 
   const getSentimentIcon = (sentiment: string) => {
     switch (sentiment) {
       case "positive":
-        return <TrendingUp className="w-3 h-3 text-green-400" />
+        return <TrendingUp className="h-3 w-3 text-green-500" />
       case "negative":
-        return <TrendingDown className="w-3 h-3 text-red-400" />
+        return <TrendingDown className="h-3 w-3 text-red-500" />
       default:
-        return <Minus className="w-3 h-3 text-gray-400" />
+        return <Minus className="h-3 w-3 text-gray-500" />
     }
   }
 
   const getSentimentColor = (sentiment: string) => {
     switch (sentiment) {
       case "positive":
-        return "bg-green-500/10 text-green-400 border-green-500/20"
+        return "bg-green-100 text-green-800 border-green-200"
       case "negative":
-        return "bg-red-500/10 text-red-400 border-red-500/20"
+        return "bg-red-100 text-red-800 border-red-200"
       default:
-        return "bg-gray-500/10 text-gray-400 border-gray-500/20"
+        return "bg-gray-100 text-gray-800 border-gray-200"
     }
   }
 
-  const getTimeAgo = (dateString: string) => {
-    const now = new Date()
-    const date = new Date(dateString)
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+  const filteredNews = news.filter((article) => selectedFilter === "all" || article.sentiment === selectedFilter)
 
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
-    return `${Math.floor(diffInMinutes / 1440)}d ago`
-  }
-
-  return (
-    <Card className="bg-gray-900/50 border-gray-800">
-      <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-white flex items-center">
-            <Newspaper className="w-5 h-5 mr-2 text-[#30D5C8]" />
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Newspaper className="h-5 w-5" />
             Crypto News Feed
           </CardTitle>
-          <div className="flex items-center space-x-2">
-            <Badge className="bg-blue-500/10 text-blue-400">
-              <Newspaper className="w-3 h-3 mr-1" />
-              Real-time
-            </Badge>
-            <Button variant="ghost" size="sm" onClick={fetchNews} disabled={loading} className="h-8 w-8 p-0">
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            </Button>
-          </div>
-        </div>
-        <p className="text-sm text-gray-400">Latest crypto news • Last updated: {lastUpdate.toLocaleTimeString()}</p>
-      </CardHeader>
-      <CardContent>
-        {loading && news.length === 0 ? (
+        </CardHeader>
+        <CardContent>
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="p-4 bg-gray-800/30 rounded-lg border border-gray-700">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="h-4 bg-gray-700 rounded w-3/4 mb-2"></div>
-                      <div className="h-3 bg-gray-700 rounded w-full mb-2"></div>
-                      <div className="h-3 bg-gray-700 rounded w-2/3"></div>
-                    </div>
-                    <div className="h-6 bg-gray-700 rounded w-16 ml-4"></div>
+                <div className="p-4 border rounded-lg space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-3 bg-gray-200 rounded w-16"></div>
+                    <div className="h-3 bg-gray-200 rounded w-12"></div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <div className="h-3 bg-gray-700 rounded w-20"></div>
-                    <div className="h-3 bg-gray-700 rounded w-16"></div>
-                  </div>
+                  <div className="h-4 bg-gray-200 rounded w-full"></div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-3 bg-gray-200 rounded w-24"></div>
                 </div>
               </div>
             ))}
           </div>
-        ) : (
-          <div className="space-y-3 max-h-96 overflow-y-auto">
-            {news.map((article) => (
-              <div
-                key={article.id}
-                className="p-4 bg-gray-800/30 rounded-lg border border-gray-700 hover:border-[#30D5C8]/50 transition-colors group cursor-pointer"
-                onClick={() => window.open(article.url, "_blank")}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1 pr-4">
-                    <h4 className="text-white font-semibold mb-2 line-clamp-2 group-hover:text-[#30D5C8] transition-colors">
-                      {article.title}
-                    </h4>
-                    <p className="text-gray-300 text-sm line-clamp-2 mb-2">{article.summary}</p>
-                  </div>
-                  <div className="flex flex-col items-end space-y-2">
-                    <Badge className={getSentimentColor(article.sentiment)}>
-                      {getSentimentIcon(article.sentiment)}
-                      <span className="ml-1 capitalize">{article.sentiment}</span>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Newspaper className="h-5 w-5" />
+          Crypto News Feed
+        </CardTitle>
+        <div className="flex gap-2 mt-4">
+          <Button
+            variant={selectedFilter === "all" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSelectedFilter("all")}
+          >
+            All
+          </Button>
+          <Button
+            variant={selectedFilter === "positive" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSelectedFilter("positive")}
+            className="text-green-600 border-green-200 hover:bg-green-50"
+          >
+            <TrendingUp className="h-3 w-3 mr-1" />
+            Bullish
+          </Button>
+          <Button
+            variant={selectedFilter === "negative" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSelectedFilter("negative")}
+            className="text-red-600 border-red-200 hover:bg-red-50"
+          >
+            <TrendingDown className="h-3 w-3 mr-1" />
+            Bearish
+          </Button>
+          <Button
+            variant={selectedFilter === "neutral" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setSelectedFilter("neutral")}
+          >
+            Neutral
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4 max-h-96 overflow-y-auto">
+          {filteredNews.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <Newspaper className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p>No news articles found</p>
+              <p className="text-sm">Try adjusting your filter</p>
+            </div>
+          ) : (
+            filteredNews.map((article) => (
+              <div key={article.id} className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-xs">
+                      {article.source}
                     </Badge>
-                    {article.votes && (
-                      <div className="text-xs text-gray-500">
-                        👍 {article.votes.positive} 👎 {article.votes.negative}
+                    <Badge className={`text-xs ${getSentimentColor(article.sentiment)}`}>
+                      <div className="flex items-center gap-1">
+                        {getSentimentIcon(article.sentiment)}
+                        {article.sentiment}
                       </div>
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    {getTimeAgo(article.published_at)}
+                  </div>
+                </div>
+
+                <h3 className="font-semibold mb-2 line-clamp-2 leading-tight">{article.title}</h3>
+
+                {article.currencies.length > 0 && (
+                  <div className="flex gap-1 mb-2">
+                    {article.currencies.slice(0, 3).map((currency) => (
+                      <Badge key={currency} variant="secondary" className="text-xs">
+                        {currency}
+                      </Badge>
+                    ))}
+                    {article.currencies.length > 3 && (
+                      <Badge variant="secondary" className="text-xs">
+                        +{article.currencies.length - 3} more
+                      </Badge>
                     )}
                   </div>
-                </div>
+                )}
 
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <div className="flex items-center space-x-3">
-                    <span className="font-medium">{article.source}</span>
-                    <Badge variant="outline" className="text-xs border-gray-600 text-gray-400">
-                      {article.category}
-                    </Badge>
+                <div className="flex items-center justify-between">
+                  <div className="text-xs text-muted-foreground">
+                    {article.summary && article.summary.length > 80
+                      ? `${article.summary.substring(0, 80)}...`
+                      : article.summary}
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <span>{getTimeAgo(article.published_at)}</span>
-                    <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
+                  <Button variant="ghost" size="sm" asChild>
+                    <a href={article.url} target="_blank" rel="noopener noreferrer">
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </Button>
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-
-        {news.length === 0 && !loading && (
-          <div className="text-center py-8">
-            <Newspaper className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-400 mb-2">No news available</h3>
-            <p className="text-gray-500">Check back later for the latest crypto news</p>
-          </div>
-        )}
+            ))
+          )}
+        </div>
       </CardContent>
     </Card>
   )

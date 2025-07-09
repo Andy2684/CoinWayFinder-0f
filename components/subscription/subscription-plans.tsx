@@ -4,8 +4,9 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Check, X, Zap, Crown, Building, Gift } from "lucide-react"
+import { Check, X, Zap, Crown, Building, Gift, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { useAuth } from "@/hooks/use-auth"
 
 interface SubscriptionPlan {
   id: string
@@ -42,22 +43,21 @@ interface SubscriptionInfo {
   availablePlans: SubscriptionPlan[]
 }
 
-interface SubscriptionPlansProps {
-  userId: string
-}
-
-export function SubscriptionPlans({ userId }: SubscriptionPlansProps) {
+export function SubscriptionPlans() {
+  const { user } = useAuth()
   const [subscriptionInfo, setSubscriptionInfo] = useState<SubscriptionInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [upgrading, setUpgrading] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchSubscriptionInfo()
-  }, [userId])
+    if (user) {
+      fetchSubscriptionInfo()
+    }
+  }, [user])
 
   const fetchSubscriptionInfo = async () => {
     try {
-      const response = await fetch(`/api/subscription?userId=${userId}`)
+      const response = await fetch(`/api/subscription?userId=${user?.id}`)
       if (response.ok) {
         const data = await response.json()
         setSubscriptionInfo(data)
@@ -71,28 +71,32 @@ export function SubscriptionPlans({ userId }: SubscriptionPlansProps) {
   }
 
   const handleUpgrade = async (planId: string) => {
+    if (!user) {
+      toast.error("Please sign in to upgrade your plan")
+      return
+    }
+
     setUpgrading(planId)
 
     try {
-      const response = await fetch("/api/subscription", {
+      const response = await fetch("/api/stripe/create-checkout", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          userId,
-          action: "upgrade",
           planId,
+          interval: "month",
         }),
       })
 
       const result = await response.json()
 
-      if (result.success) {
-        toast.success("Plan upgraded successfully!")
-        await fetchSubscriptionInfo()
+      if (result.success && result.url) {
+        // Redirect to Stripe Checkout
+        window.location.href = result.url
       } else {
-        toast.error(result.error || "Failed to upgrade plan")
+        toast.error(result.error || "Failed to create checkout session")
       }
     } catch (error) {
       console.error("Upgrade failed:", error)
@@ -286,7 +290,16 @@ export function SubscriptionPlans({ userId }: SubscriptionPlansProps) {
                   className="w-full"
                   variant={plan.id === "premium" ? "default" : "outline"}
                 >
-                  {upgrading === plan.id ? "Upgrading..." : plan.price === 0 ? "Start Free Trial" : "Upgrade"}
+                  {upgrading === plan.id ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : plan.price === 0 ? (
+                    "Start Free Trial"
+                  ) : (
+                    "Upgrade"
+                  )}
                 </Button>
               )}
             </CardFooter>

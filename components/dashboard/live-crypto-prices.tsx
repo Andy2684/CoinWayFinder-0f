@@ -3,18 +3,22 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { TrendingUp, TrendingDown, RefreshCw, Activity } from "lucide-react"
+import { TrendingUp, TrendingDown, Activity } from "lucide-react"
 import type { CryptoPrice } from "@/lib/crypto-api"
 
 export function LiveCryptoPrices() {
   const [prices, setPrices] = useState<CryptoPrice[]>([])
   const [loading, setLoading] = useState(true)
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+
+  useEffect(() => {
+    fetchPrices()
+    const interval = setInterval(fetchPrices, 30000) // Update every 30 seconds
+    return () => clearInterval(interval)
+  }, [])
 
   const fetchPrices = async () => {
     try {
-      setLoading(true)
       const response = await fetch("/api/crypto/prices")
       const data = await response.json()
 
@@ -23,24 +27,19 @@ export function LiveCryptoPrices() {
         setLastUpdate(new Date())
       }
     } catch (error) {
-      console.error("Failed to fetch crypto prices:", error)
+      console.error("Error fetching prices:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    fetchPrices()
-
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(fetchPrices, 30000)
-    return () => clearInterval(interval)
-  }, [])
-
   const formatPrice = (price: number) => {
-    if (price < 1) return `$${price.toFixed(6)}`
-    if (price < 100) return `$${price.toFixed(4)}`
-    return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: price < 1 ? 6 : 2,
+    }).format(price)
   }
 
   const formatMarketCap = (marketCap: number) => {
@@ -50,92 +49,105 @@ export function LiveCryptoPrices() {
     return `$${marketCap.toLocaleString()}`
   }
 
-  return (
-    <Card className="bg-gray-900/50 border-gray-800">
-      <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-white flex items-center">
-            <Activity className="w-5 h-5 mr-2 text-[#30D5C8]" />
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5" />
             Live Crypto Prices
           </CardTitle>
-          <div className="flex items-center space-x-2">
-            <Badge className="bg-green-500/10 text-green-400">
-              <Activity className="w-3 h-3 mr-1" />
-              Live
-            </Badge>
-            <Button variant="ghost" size="sm" onClick={fetchPrices} disabled={loading} className="h-8 w-8 p-0">
-              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            </Button>
-          </div>
-        </div>
-        <p className="text-sm text-gray-400">Last updated: {lastUpdate.toLocaleTimeString()}</p>
-      </CardHeader>
-      <CardContent>
-        {loading && prices.length === 0 ? (
+        </CardHeader>
+        <CardContent>
           <div className="space-y-4">
             {[...Array(5)].map((_, i) => (
               <div key={i} className="animate-pulse">
-                <div className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gray-700 rounded-full"></div>
-                    <div>
-                      <div className="h-4 bg-gray-700 rounded w-16 mb-1"></div>
-                      <div className="h-3 bg-gray-700 rounded w-12"></div>
+                <div className="flex items-center justify-between p-4 border rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-gray-200 rounded-full"></div>
+                    <div className="space-y-1">
+                      <div className="h-4 bg-gray-200 rounded w-16"></div>
+                      <div className="h-3 bg-gray-200 rounded w-12"></div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="h-5 bg-gray-700 rounded w-20 mb-1"></div>
-                    <div className="h-4 bg-gray-700 rounded w-16"></div>
+                  <div className="text-right space-y-1">
+                    <div className="h-4 bg-gray-200 rounded w-20"></div>
+                    <div className="h-3 bg-gray-200 rounded w-16"></div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        ) : (
-          <div className="space-y-3">
-            {prices.map((coin) => (
-              <div
-                key={coin.id}
-                className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg border border-gray-700 hover:border-[#30D5C8]/50 transition-colors"
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-[#30D5C8] to-blue-500 rounded-full flex items-center justify-center">
-                    <span className="text-white font-bold text-sm">{coin.symbol.slice(0, 2)}</span>
-                  </div>
-                  <div>
-                    <h4 className="text-white font-semibold">{coin.symbol}</h4>
-                    <p className="text-gray-400 text-sm">{coin.name}</p>
-                  </div>
-                </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
-                <div className="text-right">
-                  <p className="text-lg font-bold text-white">{formatPrice(coin.current_price)}</p>
-                  <div className="flex items-center space-x-1">
-                    {coin.price_change_percentage_24h > 0 ? (
-                      <TrendingUp className="w-3 h-3 text-green-400" />
-                    ) : (
-                      <TrendingDown className="w-3 h-3 text-red-400" />
-                    )}
-                    <span className={coin.price_change_percentage_24h > 0 ? "text-green-400" : "text-red-400"}>
-                      {coin.price_change_percentage_24h > 0 ? "+" : ""}
-                      {coin.price_change_percentage_24h.toFixed(2)}%
-                    </span>
-                  </div>
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            Live Crypto Prices
+          </div>
+          {lastUpdate && (
+            <span className="text-sm text-muted-foreground">Updated {lastUpdate.toLocaleTimeString()}</span>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {prices.map((coin) => (
+            <div
+              key={coin.id}
+              className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                  {coin.symbol.charAt(0)}
                 </div>
-
-                <div className="hidden md:block text-right">
-                  <p className="text-sm text-gray-300">{formatMarketCap(coin.market_cap)}</p>
-                  <p className="text-xs text-gray-500">Market Cap</p>
-                </div>
-
-                <div className="hidden lg:block text-right">
-                  <p className="text-sm text-gray-300">{formatMarketCap(coin.total_volume)}</p>
-                  <p className="text-xs text-gray-500">24h Volume</p>
+                <div>
+                  <div className="font-semibold">{coin.symbol}</div>
+                  <div className="text-sm text-muted-foreground">{coin.name}</div>
                 </div>
               </div>
-            ))}
+
+              <div className="text-right">
+                <div className="font-semibold">{formatPrice(coin.current_price)}</div>
+                <div className="flex items-center gap-1">
+                  {coin.price_change_percentage_24h >= 0 ? (
+                    <TrendingUp className="h-3 w-3 text-green-500" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3 text-red-500" />
+                  )}
+                  <Badge
+                    variant={coin.price_change_percentage_24h >= 0 ? "default" : "destructive"}
+                    className="text-xs"
+                  >
+                    {coin.price_change_percentage_24h >= 0 ? "+" : ""}
+                    {coin.price_change_percentage_24h.toFixed(2)}%
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-4">
+          <div className="text-center p-3 bg-muted/50 rounded-lg">
+            <div className="text-sm text-muted-foreground">Total Market Cap</div>
+            <div className="font-semibold">
+              {formatMarketCap(prices.reduce((sum, coin) => sum + coin.market_cap, 0))}
+            </div>
           </div>
-        )}
+          <div className="text-center p-3 bg-muted/50 rounded-lg">
+            <div className="text-sm text-muted-foreground">24h Volume</div>
+            <div className="font-semibold">
+              {formatMarketCap(prices.reduce((sum, coin) => sum + coin.total_volume, 0))}
+            </div>
+          </div>
+        </div>
       </CardContent>
     </Card>
   )
