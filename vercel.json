@@ -1,6 +1,5 @@
 {
   "buildCommand": "npm install --force && npm run build",
-  "framework": "nextjs",
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 30
@@ -15,7 +14,6 @@
   "env": {
     "NPM_CONFIG_FORCE": "true"
   },
-  "regions": ["iad1"],
   "rewrites": [
     {
       "source": "/api/(.*)",

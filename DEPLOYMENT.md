@@ -3,157 +3,176 @@
 ## Prerequisites
 
 1. **Vercel Account**: Sign up at [vercel.com](https://vercel.com)
-2. **MongoDB Atlas**: Set up a cluster at [mongodb.com](https://cloud.mongodb.com)
-3. **Redis Instance**: Set up at [upstash.com](https://upstash.com) (recommended)
+2. **MongoDB Atlas**: Set up a MongoDB cluster at [mongodb.com/atlas](https://mongodb.com/atlas)
+3. **Redis Instance**: Use Upstash Redis or another Redis provider
 4. **Stripe Account**: For payment processing
-5. **OpenAI API Key**: For AI features
+5. **API Keys**: Various exchange and service API keys
 
 ## Environment Variables
 
-Set these environment variables in your Vercel dashboard:
+Configure these environment variables in your Vercel dashboard:
 
-### Core Configuration
+### Database Configuration
 \`\`\`
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/coinwayfinder?retryWrites=true&w=majority
 REDIS_URL=redis://username:password@host:port
-NEXTAUTH_SECRET=your-super-secret-key-min-32-characters
+\`\`\`
+
+### Authentication
+\`\`\`
+JWT_SECRET=your-super-secret-jwt-key-min-32-chars
+NEXTAUTH_SECRET=your-nextauth-secret-key
 NEXTAUTH_URL=https://your-domain.vercel.app
 \`\`\`
 
-### API Keys
+### Stripe Configuration
 \`\`\`
-OPENAI_API_KEY=sk-...
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_PUBLISHABLE_KEY=pk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
-\`\`\`
-
-### Stripe Price IDs
-\`\`\`
 STRIPE_STARTER_PRICE_ID=price_...
 STRIPE_PRO_PRICE_ID=price_...
 STRIPE_ENTERPRISE_PRICE_ID=price_...
 \`\`\`
 
-### Additional Configuration
+### API Keys
 \`\`\`
-DB_NAME=coinwayfinder
 API_SECRET_KEY=your-api-secret-key
+OPENAI_API_KEY=sk-...
+\`\`\`
+
+### App Configuration
+\`\`\`
 NEXT_PUBLIC_BASE_URL=https://your-domain.vercel.app
-JWT_SECRET=your-jwt-secret-key
+VERCEL_REGION=us-east-1
 \`\`\`
 
 ## Deployment Steps
 
-### 1. Clone and Prepare Repository
+### 1. Prepare Repository
+
 \`\`\`bash
-git clone <your-repo-url>
-cd coinwayfinder
-npm install
+git add .
+git commit -m "Deploy to Vercel"
+git push origin main
 \`\`\`
 
-### 2. Deploy to Vercel
-\`\`\`bash
-# Install Vercel CLI
-npm install -g vercel
+### 2. Import to Vercel
 
-# Login to Vercel
-vercel login
-
-# Deploy
-vercel --prod
-\`\`\`
+1. Go to [vercel.com/dashboard](https://vercel.com/dashboard)
+2. Click "New Project"
+3. Import your GitHub repository
+4. Configure build settings:
+   - Framework Preset: Next.js
+   - Root Directory: ./
+   - Build Command: \`npm install --force && npm run build\`
+   - Output Directory: .next
+   - Install Command: \`npm install --force\`
 
 ### 3. Configure Environment Variables
-Go to your Vercel dashboard → Project → Settings → Environment Variables and add all the variables listed above.
 
-### 4. Set Up Database
-- Create MongoDB Atlas cluster
-- Add your IP address to the whitelist
-- Create a database user
-- Update MONGODB_URI with your connection string
+1. Go to Project Settings → Environment Variables
+2. Add all environment variables listed above
+3. Make sure to use production values
 
-### 5. Configure Redis
-- Set up Upstash Redis instance
-- Update REDIS_URL with your connection string
+### 4. Configure Domains
 
-### 6. Configure Stripe
-- Set up Stripe products and prices
-- Configure webhook endpoints:
-  - `https://your-domain.vercel.app/api/stripe/webhook`
-  - `https://your-domain.vercel.app/api/subscription/webhook`
+1. Go to Project Settings → Domains
+2. Add your custom domain
+3. Configure DNS records as instructed
 
-### 7. Verify Deployment
-- Check all API endpoints are working
-- Test user authentication
-- Verify payment processing
-- Check cron jobs are running
+### 5. Set Up Webhooks
 
-## Post-Deployment Configuration
+Configure webhooks for:
+- **Stripe**: \`https://your-domain.vercel.app/api/stripe/webhook\`
+- **Telegram**: \`https://your-domain.vercel.app/api/telegram-webhook\`
 
-### 1. Webhook Configuration
-Configure these webhook endpoints in your external services:
+## Post-Deployment Verification
 
-**Stripe Webhooks:**
-- URL: `https://your-domain.vercel.app/api/stripe/webhook`
-- Events: `checkout.session.completed`, `invoice.payment_succeeded`, `customer.subscription.updated`
+### 1. Health Checks
 
-**Coinbase Webhooks (if using):**
-- URL: `https://your-domain.vercel.app/api/coinbase/webhook`
-
-### 2. Cron Jobs
-The following cron job is automatically configured:
-- Bot Scheduler: Runs every 5 minutes at `/api/bots/scheduler`
-
-### 3. API Rate Limits
-Default rate limits are configured in the API middleware. Adjust as needed for your usage.
-
-## Monitoring and Logs
-
-### 1. Vercel Analytics
-Enable Vercel Analytics in your project settings for performance monitoring.
-
-### 2. Error Tracking
-Consider integrating with Sentry or similar for error tracking:
 \`\`\`bash
-npm install @sentry/nextjs
+# Test API endpoints
+curl https://your-domain.vercel.app/api/health
+curl https://your-domain.vercel.app/api/crypto/prices
 \`\`\`
 
-### 3. Database Monitoring
-Monitor your MongoDB Atlas cluster and Redis instance for performance.
+### 2. Database Connection
 
-## Security Considerations
+- Verify MongoDB connection in logs
+- Check Redis connectivity
+- Test user registration/login
 
-1. **Environment Variables**: Never commit secrets to version control
-2. **API Keys**: Rotate API keys regularly
-3. **Database**: Use MongoDB Atlas with proper access controls
-4. **HTTPS**: Always use HTTPS in production
-5. **CORS**: Configure CORS properly for your domain
+### 3. Payment System
+
+- Test Stripe webhook endpoint
+- Verify subscription flow
+- Check payment processing
+
+### 4. Trading Features
+
+- Test exchange API connections
+- Verify bot creation and management
+- Check trade execution logs
+
+## Monitoring & Maintenance
+
+### Vercel Analytics
+- Enable Web Analytics in project settings
+- Monitor performance and usage
+
+### Error Tracking
+- Check Vercel function logs
+- Monitor API endpoint performance
+- Set up alerts for critical errors
+
+### Scheduled Jobs
+- Verify cron job execution: \`/api/bots/scheduler\`
+- Monitor bot performance metrics
+- Check automated trade execution
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Environment Variables**: Ensure all required variables are set
-2. **Database Connection**: Check MongoDB connection string
-3. **API Timeouts**: Adjust function timeouts in vercel.json
-4. **Memory Issues**: Monitor function memory usage
-5. **Build Errors**: Check build logs in Vercel dashboard
+1. **Build Failures**
+   - Check dependency conflicts
+   - Verify Node.js version compatibility
+   - Review build logs for specific errors
 
-### Support
-For deployment issues, check:
-- Vercel deployment logs
-- MongoDB Atlas logs
-- Redis connection status
-- Stripe webhook logs
+2. **Environment Variables**
+   - Ensure all required variables are set
+   - Check for typos in variable names
+   - Verify secret key formats
 
-## Scaling Considerations
+3. **Database Connection**
+   - Whitelist Vercel IP addresses in MongoDB Atlas
+   - Check connection string format
+   - Verify network access settings
 
-1. **Database**: Use MongoDB Atlas auto-scaling
-2. **Redis**: Consider Redis clustering for high load
-3. **API Limits**: Monitor and adjust rate limits
-4. **Function Timeouts**: Optimize long-running operations
-5. **Caching**: Implement caching strategies for frequently accessed data
+4. **API Rate Limits**
+   - Monitor exchange API usage
+   - Implement proper rate limiting
+   - Use caching where appropriate
+
+## Security Checklist
+
+- [ ] All API keys are properly secured
+- [ ] JWT secret is strong and unique
+- [ ] Stripe webhook endpoints are verified
+- [ ] Database access is restricted
+- [ ] CORS is properly configured
+- [ ] Rate limiting is implemented
+- [ ] Input validation is in place
+- [ ] Error messages don't expose sensitive data
+
+## Support
+
+For deployment issues:
+1. Check Vercel deployment logs
+2. Review function execution logs
+3. Monitor database connections
+4. Verify webhook configurations
 \`\`\`
 
-Now let's create a health check endpoint to monitor the deployment:
+Let's also create a health check endpoint to verify deployment:

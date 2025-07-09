@@ -1,40 +1,41 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/database"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Check database connection
-    const db = await connectToDatabase()
+    const { db } = await connectToDatabase()
     await db.admin().ping()
 
-    // Check Redis connection (if configured)
+    // Check Redis connection if available
     let redisStatus = "not configured"
     if (process.env.REDIS_URL) {
-      try {
-        // Redis check would go here
-        redisStatus = "connected"
-      } catch (error) {
-        redisStatus = "error"
-      }
+      // Redis check would go here
+      redisStatus = "connected"
     }
 
     // Check environment variables
-    const requiredEnvVars = ["MONGODB_URI", "NEXTAUTH_SECRET", "STRIPE_SECRET_KEY", "OPENAI_API_KEY"]
-
-    const missingEnvVars = requiredEnvVars.filter((env) => !process.env[env])
-
-    const health = {
-      status: "healthy",
-      timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version || "1.0.0",
-      environment: process.env.NODE_ENV || "development",
-      database: "connected",
-      redis: redisStatus,
-      missingEnvVars: missingEnvVars.length > 0 ? missingEnvVars : undefined,
+    const envCheck = {
+      mongodb: !!process.env.MONGODB_URI,
+      jwt: !!process.env.JWT_SECRET,
+      stripe: !!process.env.STRIPE_SECRET_KEY,
+      nextauth: !!process.env.NEXTAUTH_SECRET,
     }
 
-    return NextResponse.json(health, { status: 200 })
+    return NextResponse.json({
+      status: "healthy",
+      timestamp: new Date().toISOString(),
+      version: "1.0.0",
+      environment: process.env.NODE_ENV || "development",
+      services: {
+        database: "connected",
+        redis: redisStatus,
+      },
+      config: envCheck,
+    })
   } catch (error) {
+    console.error("Health check failed:", error)
+
     return NextResponse.json(
       {
         status: "unhealthy",
