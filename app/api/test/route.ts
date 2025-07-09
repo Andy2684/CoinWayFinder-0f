@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-interface ComponentTest {
+interface TestResult {
   name: string
   status: "healthy" | "warning" | "error"
   message: string
@@ -8,37 +8,33 @@ interface ComponentTest {
 }
 
 export async function GET(request: NextRequest) {
-  const tests: ComponentTest[] = []
+  const startTime = Date.now()
+  const tests: TestResult[] = []
 
   // Test 1: Environment Variables
   try {
-    const requiredEnvVars = ["JWT_SECRET", "NEXTAUTH_SECRET", "NEXT_PUBLIC_BASE_URL"]
+    const requiredEnvVars = [
+      "MONGODB_URI",
+      "JWT_SECRET",
+      "NEXTAUTH_SECRET",
+      "STRIPE_PUBLISHABLE_KEY",
+      "STRIPE_STARTER_PRICE_ID",
+    ]
 
-    const optionalEnvVars = ["MONGODB_URI", "REDIS_URL", "STRIPE_SECRET_KEY", "OPENAI_API_KEY"]
+    const missingVars = requiredEnvVars.filter((envVar) => !process.env[envVar])
 
-    const missingRequired = requiredEnvVars.filter((env) => !process.env[env])
-    const missingOptional = optionalEnvVars.filter((env) => !process.env[env])
-
-    if (missingRequired.length === 0) {
+    if (missingVars.length === 0) {
       tests.push({
         name: "Environment Variables",
-        status: missingOptional.length > 0 ? "warning" : "healthy",
-        message:
-          missingOptional.length > 0
-            ? `Missing optional vars: ${missingOptional.join(", ")}`
-            : "All environment variables configured",
-        details: {
-          required: requiredEnvVars.length,
-          optional: optionalEnvVars.length - missingOptional.length,
-          missing: missingOptional,
-        },
+        status: "healthy",
+        message: "All required environment variables are set",
       })
     } else {
       tests.push({
         name: "Environment Variables",
-        status: "error",
-        message: `Missing required vars: ${missingRequired.join(", ")}`,
-        details: { missing: missingRequired },
+        status: "warning",
+        message: `Missing variables: ${missingVars.join(", ")}`,
+        details: { missing: missingVars },
       })
     }
   } catch (error) {
@@ -53,153 +49,187 @@ export async function GET(request: NextRequest) {
   // Test 2: Database Connection
   try {
     if (process.env.MONGODB_URI) {
-      // Simulate database connection test
-      tests.push({
-        name: "Database Connection",
-        status: "healthy",
-        message: "MongoDB URI configured",
-        details: { uri: process.env.MONGODB_URI.replace(/\/\/.*@/, "//***:***@") },
-      })
+      // We can't actually test the connection without importing MongoDB
+      // but we can check if the URI is properly formatted
+      const uri = process.env.MONGODB_URI
+      if (uri.startsWith("mongodb://") || uri.startsWith("mongodb+srv://")) {
+        tests.push({
+          name: "Database Configuration",
+          status: "healthy",
+          message: "MongoDB URI is properly configured",
+        })
+      } else {
+        tests.push({
+          name: "Database Configuration",
+          status: "warning",
+          message: "MongoDB URI format may be incorrect",
+        })
+      }
     } else {
       tests.push({
-        name: "Database Connection",
-        status: "warning",
+        name: "Database Configuration",
+        status: "error",
         message: "MongoDB URI not configured",
-        details: { note: "Database features will not work" },
       })
     }
   } catch (error) {
     tests.push({
-      name: "Database Connection",
+      name: "Database Configuration",
       status: "error",
-      message: "Database connection test failed",
+      message: "Database configuration check failed",
       details: error instanceof Error ? error.message : "Unknown error",
     })
   }
 
-  // Test 3: Redis Connection
+  // Test 3: Redis Configuration
   try {
-    if (process.env.REDIS_URL) {
+    if (process.env.Redis_URL) {
       tests.push({
-        name: "Redis Connection",
+        name: "Redis Configuration",
         status: "healthy",
-        message: "Redis URL configured",
-        details: { configured: true },
+        message: "Redis URL is configured",
       })
     } else {
       tests.push({
-        name: "Redis Connection",
+        name: "Redis Configuration",
         status: "warning",
-        message: "Redis URL not configured",
-        details: { note: "Caching and sessions will use memory" },
+        message: "Redis URL not configured - some features may not work",
       })
     }
   } catch (error) {
     tests.push({
-      name: "Redis Connection",
+      name: "Redis Configuration",
       status: "error",
-      message: "Redis connection test failed",
-      details: error instanceof Error ? error.message : "Unknown error",
+      message: "Redis configuration check failed",
     })
   }
 
   // Test 4: Stripe Configuration
   try {
-    const stripeKeys = ["STRIPE_SECRET_KEY", "STRIPE_PUBLISHABLE_KEY"]
-    const hasStripe = stripeKeys.every((key) => process.env[key])
+    const stripeVars = [
+      "STRIPE_PUBLISHABLE_KEY",
+      "STRIPE_STARTER_PRICE_ID",
+      "STRIPE_PRO_PRICE_ID",
+      "STRIPE_ENTERPRISE_PRICE_ID",
+    ]
 
-    if (hasStripe) {
+    const configuredStripeVars = stripeVars.filter((envVar) => process.env[envVar])
+
+    if (configuredStripeVars.length === stripeVars.length) {
       tests.push({
-        name: "Stripe Integration",
+        name: "Stripe Configuration",
         status: "healthy",
-        message: "Stripe keys configured",
-        details: { configured: true },
+        message: "All Stripe configuration variables are set",
+      })
+    } else if (configuredStripeVars.length > 0) {
+      tests.push({
+        name: "Stripe Configuration",
+        status: "warning",
+        message: `${configuredStripeVars.length}/${stripeVars.length} Stripe variables configured`,
       })
     } else {
       tests.push({
-        name: "Stripe Integration",
-        status: "warning",
-        message: "Stripe keys not configured",
-        details: { note: "Subscription features will not work" },
+        name: "Stripe Configuration",
+        status: "error",
+        message: "No Stripe configuration found",
       })
     }
   } catch (error) {
     tests.push({
-      name: "Stripe Integration",
+      name: "Stripe Configuration",
       status: "error",
-      message: "Stripe configuration test failed",
-      details: error instanceof Error ? error.message : "Unknown error",
+      message: "Stripe configuration check failed",
     })
   }
 
-  // Test 5: API Routes
+  // Test 5: Memory Usage
   try {
-    const apiRoutes = ["/api/health", "/api/auth/signin", "/api/crypto/prices", "/api/bots"]
+    const memoryUsage = process.memoryUsage()
+    const heapUsedMB = Math.round(memoryUsage.heapUsed / 1024 / 1024)
 
-    tests.push({
-      name: "API Routes",
-      status: "healthy",
-      message: `${apiRoutes.length} API routes available`,
-      details: { routes: apiRoutes },
-    })
+    if (heapUsedMB < 100) {
+      tests.push({
+        name: "Memory Usage",
+        status: "healthy",
+        message: `Memory usage: ${heapUsedMB}MB (good)`,
+        details: { heapUsedMB },
+      })
+    } else if (heapUsedMB < 500) {
+      tests.push({
+        name: "Memory Usage",
+        status: "warning",
+        message: `Memory usage: ${heapUsedMB}MB (moderate)`,
+        details: { heapUsedMB },
+      })
+    } else {
+      tests.push({
+        name: "Memory Usage",
+        status: "error",
+        message: `Memory usage: ${heapUsedMB}MB (high)`,
+        details: { heapUsedMB },
+      })
+    }
   } catch (error) {
     tests.push({
-      name: "API Routes",
+      name: "Memory Usage",
       status: "error",
-      message: "API routes test failed",
-      details: error instanceof Error ? error.message : "Unknown error",
+      message: "Memory usage check failed",
     })
   }
 
-  // Test 6: System Resources
+  // Test 6: API Key Configuration
   try {
-    const memory = process.memoryUsage()
-    const uptime = process.uptime()
-
-    tests.push({
-      name: "System Resources",
-      status: memory.heapUsed < 100 * 1024 * 1024 ? "healthy" : "warning",
-      message: `Uptime: ${Math.floor(uptime)}s, Memory: ${Math.floor(memory.heapUsed / 1024 / 1024)}MB`,
-      details: {
-        uptime: uptime,
-        memory: {
-          used: Math.floor(memory.heapUsed / 1024 / 1024),
-          total: Math.floor(memory.heapTotal / 1024 / 1024),
-          external: Math.floor(memory.external / 1024 / 1024),
-        },
-      },
-    })
+    if (process.env.API_SECRET_KEY) {
+      tests.push({
+        name: "API Key Configuration",
+        status: "healthy",
+        message: "API secret key is configured",
+      })
+    } else {
+      tests.push({
+        name: "API Key Configuration",
+        status: "warning",
+        message: "API secret key not configured",
+      })
+    }
   } catch (error) {
     tests.push({
-      name: "System Resources",
+      name: "API Key Configuration",
       status: "error",
-      message: "System resources test failed",
-      details: error instanceof Error ? error.message : "Unknown error",
+      message: "API key configuration check failed",
     })
   }
 
-  // Calculate overall status
-  const hasErrors = tests.some((test) => test.status === "error")
-  const hasWarnings = tests.some((test) => test.status === "warning")
+  // Calculate summary
+  const healthy = tests.filter((t) => t.status === "healthy").length
+  const warnings = tests.filter((t) => t.status === "warning").length
+  const errors = tests.filter((t) => t.status === "error").length
+  const total = tests.length
 
-  const overallStatus = hasErrors ? "error" : hasWarnings ? "warning" : "healthy"
+  let overallStatus = "healthy"
+  if (errors > 0) {
+    overallStatus = "error"
+  } else if (warnings > 0) {
+    overallStatus = "warning"
+  }
+
+  const responseTime = Date.now() - startTime
 
   return NextResponse.json(
     {
       status: overallStatus,
       timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV || "development",
-      version: "1.0.0",
-      tests: tests,
+      responseTime: `${responseTime}ms`,
       summary: {
-        total: tests.length,
-        healthy: tests.filter((t) => t.status === "healthy").length,
-        warnings: tests.filter((t) => t.status === "warning").length,
-        errors: tests.filter((t) => t.status === "error").length,
+        total,
+        healthy,
+        warnings,
+        errors,
       },
+      tests,
     },
     {
-      status: hasErrors ? 500 : 200,
+      status: overallStatus === "error" ? 500 : 200,
     },
   )
 }
