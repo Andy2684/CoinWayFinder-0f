@@ -1,5 +1,30 @@
 import { subscriptionManager, SUBSCRIPTION_PLANS } from "./subscription-manager"
 import { database } from "./database"
+import { adminManager } from "./admin"
+
+export interface Permission {
+  resource: string
+  action: string
+  conditions?: Record<string, any>
+}
+
+export interface Role {
+  name: string
+  permissions: Permission[]
+  inherits?: string[]
+}
+
+export interface AccessContext {
+  userId: string
+  userRole?: string
+  subscription?: {
+    plan: string
+    status: string
+  }
+  isAdmin?: boolean
+  resourceId?: string
+  resourceOwnerId?: string
+}
 
 export interface AccessResult {
   allowed: boolean
@@ -9,6 +34,393 @@ export interface AccessResult {
 }
 
 export class AccessControl {
+  private roles: Map<string, Role> = new Map()
+
+  constructor() {
+    this.initializeDefaultRoles()
+  }
+
+  private initializeDefaultRoles() {
+    // Define default roles
+    const roles: Role[] = [
+      {
+        name: "free",
+        permissions: [
+          { resource: "bot", action: "create", conditions: { maxCount: 1 } },
+          { resource: "bot", action: "read", conditions: { ownResource: true } },
+          { resource: "bot", action: "update", conditions: { ownResource: true } },
+          { resource: "bot", action: "delete", conditions: { ownResource: true } },
+          { resource: "trade", action: "read", conditions: { ownResource: true } },
+          { resource: "profile", action: "read", conditions: { ownResource: true } },
+          { resource: "profile", action: "update", conditions: { ownResource: true } },
+        ],
+      },
+      {
+        name: "starter",
+        permissions: [
+          { resource: "bot", action: "create", conditions: { maxCount: 5 } },
+          { resource: "bot", action: "read", conditions: { ownResource: true } },
+          { resource: "bot", action: "update", conditions: { ownResource: true } },
+          { resource: "bot", action: "delete", conditions: { ownResource: true } },
+          { resource: "trade", action: "read", conditions: { ownResource: true } },
+          { resource: "trade", action: "create", conditions: { maxPerDay: 100 } },
+          { resource: "api", action: "access", conditions: { rateLimit: 1000 } },
+          { resource: "profile", action: "read", conditions: { ownResource: true } },
+          { resource: "profile", action: "update", conditions: { ownResource: true } },
+          { resource: "webhook", action: "create", conditions: { maxCount: 3 } },
+        ],
+        inherits: ["free"],
+      },
+      {
+        name: "pro",
+        permissions: [
+          { resource: "bot", action: "create", conditions: { maxCount: 20 } },
+          { resource: "bot", action: "read", conditions: { ownResource: true } },
+          { resource: "bot", action: "update", conditions: { ownResource: true } },
+          { resource: "bot", action: "delete", conditions: { ownResource: true } },
+          { resource: "trade", action: "read", conditions: { ownResource: true } },
+          { resource: "trade", action: "create", conditions: { maxPerDay: 1000 } },
+          { resource: "api", action: "access", conditions: { rateLimit: 10000 } },
+          { resource: "profile", action: "read", conditions: { ownResource: true } },
+          { resource: "profile", action: "update", conditions: { ownResource: true } },
+          { resource: "webhook", action: "create", conditions: { maxCount: 10 } },
+          { resource: "strategy", action: "custom" },
+          { resource: "analytics", action: "advanced" },
+        ],
+        inherits: ["starter"],
+      },
+      {
+        name: "enterprise",
+        permissions: [
+          { resource: "bot", action: "create", conditions: { maxCount: -1 } },
+          { resource: "bot", action: "read", conditions: { ownResource: true } },
+          { resource: "bot", action: "update", conditions: { ownResource: true } },
+          { resource: "bot", action: "delete", conditions: { ownResource: true } },
+          { resource: "trade", action: "read", conditions: { ownResource: true } },
+          { resource: "trade", action: "create", conditions: { maxPerDay: -1 } },
+          { resource: "api", action: "access", conditions: { rateLimit: -1 } },
+          { resource: "profile", action: "read", conditions: { ownResource: true } },
+          { resource: "profile", action: "update", conditions: { ownResource: true } },
+          { resource: "webhook", action: "create", conditions: { maxCount: -1 } },
+          { resource: "strategy", action: "custom" },
+          { resource: "analytics", action: "advanced" },
+          { resource: "support", action: "priority" },
+          { resource: "whitelabel", action: "access" },
+        ],
+        inherits: ["pro"],
+      },
+      {
+        name: "admin",
+        permissions: [{ resource: "*", action: "*" }],
+      },
+    ]
+
+    roles.forEach((role) => {
+      this.roles.set(role.name, role)
+    })
+  }
+
+  private getAllPermissions(roleName: string): Permission[] {
+    const role = this.roles.get(roleName)
+    if (!role) return []
+
+    let permissions = [...role.permissions]
+
+    // Add inherited permissions
+    if (role.inherits) {
+      for (const inheritedRole of role.inherits) {
+        permissions = [...permissions, ...this.getAllPermissions(inheritedRole)]
+      }
+    }
+
+    return permissions
+  }
+
+  async checkAccess(context: AccessContext, resource: string, action: string): Promise<boolean> {
+    try {
+      // Admin always has access
+      if (context.isAdmin) {
+        return true
+      }
+
+      // Check if user is admin
+      const admin = await adminManager.getCurrentAdmin()
+      if (admin) {
+        return true
+      }
+
+      // Get user's subscription plan
+      const subscription = await subscriptionManager.getUserSubscription(context.userId)
+      if (!subscription) {
+        return false
+      }
+
+      const userRole = subscription.plan
+      const permissions = this.getAllPermissions(userRole)
+
+      // Check for wildcard permissions (admin)
+      const wildcardPermission = permissions.find((p) => p.resource === "*" && p.action === "*")
+      if (wildcardPermission) {
+        return true
+      }
+
+      // Find matching permission
+      const permission = permissions.find(
+        (p) => (p.resource === resource || p.resource === "*") && (p.action === action || p.action === "*"),
+      )
+
+      if (!permission) {
+        return false
+      }
+
+      // Check conditions
+      if (permission.conditions) {
+        return this.checkConditions(context, permission.conditions, resource, action)
+      }
+
+      return true
+    } catch (error) {
+      console.error("Error checking access:", error)
+      return false
+    }
+  }
+
+  private async checkConditions(
+    context: AccessContext,
+    conditions: Record<string, any>,
+    resource: string,
+    action: string,
+  ): Promise<boolean> {
+    // Check ownership condition
+    if (conditions.ownResource && context.resourceOwnerId !== context.userId) {
+      return false
+    }
+
+    // Check max count conditions
+    if (conditions.maxCount !== undefined && conditions.maxCount !== -1) {
+      const currentCount = await this.getCurrentResourceCount(context.userId, resource)
+      if (currentCount >= conditions.maxCount) {
+        return false
+      }
+    }
+
+    // Check daily limits
+    if (conditions.maxPerDay !== undefined && conditions.maxPerDay !== -1) {
+      const todayCount = await this.getTodayResourceCount(context.userId, resource)
+      if (todayCount >= conditions.maxPerDay) {
+        return false
+      }
+    }
+
+    // Check rate limits
+    if (conditions.rateLimit !== undefined && conditions.rateLimit !== -1) {
+      const currentRate = await this.getCurrentRateUsage(context.userId)
+      if (currentRate >= conditions.rateLimit) {
+        return false
+      }
+    }
+
+    return true
+  }
+
+  private async getCurrentResourceCount(userId: string, resource: string): Promise<number> {
+    // This would query the database for current resource count
+    // For now, return mock data
+    switch (resource) {
+      case "bot":
+        return 0 // Would query bots collection
+      case "webhook":
+        return 0 // Would query webhooks collection
+      default:
+        return 0
+    }
+  }
+
+  private async getTodayResourceCount(userId: string, resource: string): Promise<number> {
+    // This would query the database for today's resource count
+    // For now, return mock data
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    switch (resource) {
+      case "trade":
+        return 0 // Would query trades collection for today
+      default:
+        return 0
+    }
+  }
+
+  private async getCurrentRateUsage(userId: string): Promise<number> {
+    // This would query the database for current API usage
+    // For now, return mock data
+    return 0
+  }
+
+  async canCreateBot(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+    const context: AccessContext = { userId }
+    const allowed = await this.checkAccess(context, "bot", "create")
+
+    if (!allowed) {
+      const subscription = await subscriptionManager.getUserSubscription(userId)
+      const plan = subscription?.plan || "free"
+
+      return {
+        allowed: false,
+        reason: `Your ${plan} plan doesn't allow creating more bots. Please upgrade your subscription.`,
+      }
+    }
+
+    return { allowed: true }
+  }
+
+  async canExecuteTrade(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+    const context: AccessContext = { userId }
+    const allowed = await this.checkAccess(context, "trade", "create")
+
+    if (!allowed) {
+      const subscription = await subscriptionManager.getUserSubscription(userId)
+      const plan = subscription?.plan || "free"
+
+      return {
+        allowed: false,
+        reason: `Your ${plan} plan doesn't allow more trades today. Please upgrade your subscription.`,
+      }
+    }
+
+    return { allowed: true }
+  }
+
+  async canAccessAPI(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+    const context: AccessContext = { userId }
+    const allowed = await this.checkAccess(context, "api", "access")
+
+    if (!allowed) {
+      return {
+        allowed: false,
+        reason: "API access is not available on your current plan. Please upgrade to access the API.",
+      }
+    }
+
+    return { allowed: true }
+  }
+
+  async canUseAdvancedStrategies(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+    const context: AccessContext = { userId }
+    const allowed = await this.checkAccess(context, "strategy", "advanced")
+
+    if (!allowed) {
+      return {
+        allowed: false,
+        reason: "Advanced strategies are not available on your current plan. Please upgrade to Pro or Enterprise.",
+      }
+    }
+
+    return { allowed: true }
+  }
+
+  async canCreateCustomStrategy(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+    const context: AccessContext = { userId }
+    const allowed = await this.checkAccess(context, "strategy", "custom")
+
+    if (!allowed) {
+      return {
+        allowed: false,
+        reason: "Custom strategies are only available on Pro and Enterprise plans.",
+      }
+    }
+
+    return { allowed: true }
+  }
+
+  async canAccessAdvancedAnalytics(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+    const context: AccessContext = { userId }
+    const allowed = await this.checkAccess(context, "analytics", "advanced")
+
+    if (!allowed) {
+      return {
+        allowed: false,
+        reason: "Advanced analytics are only available on Pro and Enterprise plans.",
+      }
+    }
+
+    return { allowed: true }
+  }
+
+  async canCreateWebhook(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+    const context: AccessContext = { userId }
+    const allowed = await this.checkAccess(context, "webhook", "create")
+
+    if (!allowed) {
+      const subscription = await subscriptionManager.getUserSubscription(userId)
+      const plan = subscription?.plan || "free"
+
+      return {
+        allowed: false,
+        reason: `Your ${plan} plan doesn't allow creating more webhooks. Please upgrade your subscription.`,
+      }
+    }
+
+    return { allowed: true }
+  }
+
+  async getUserPermissions(userId: string): Promise<Permission[]> {
+    try {
+      const subscription = await subscriptionManager.getUserSubscription(userId)
+      if (!subscription) {
+        return this.getAllPermissions("free")
+      }
+
+      return this.getAllPermissions(subscription.plan)
+    } catch (error) {
+      console.error("Error getting user permissions:", error)
+      return []
+    }
+  }
+
+  async getUserLimits(userId: string): Promise<Record<string, any>> {
+    try {
+      const subscription = await subscriptionManager.getUserSubscription(userId)
+      if (!subscription) {
+        return {}
+      }
+
+      const permissions = this.getAllPermissions(subscription.plan)
+      const limits: Record<string, any> = {}
+
+      permissions.forEach((permission) => {
+        if (permission.conditions) {
+          Object.entries(permission.conditions).forEach(([key, value]) => {
+            if (!limits[permission.resource]) {
+              limits[permission.resource] = {}
+            }
+            limits[permission.resource][key] = value
+          })
+        }
+      })
+
+      return limits
+    } catch (error) {
+      console.error("Error getting user limits:", error)
+      return {}
+    }
+  }
+
+  addRole(role: Role): void {
+    this.roles.set(role.name, role)
+  }
+
+  removeRole(roleName: string): void {
+    this.roles.delete(roleName)
+  }
+
+  getRole(roleName: string): Role | undefined {
+    return this.roles.get(roleName)
+  }
+
+  getAllRoles(): Role[] {
+    return Array.from(this.roles.values())
+  }
+
   async canAccessFeature(userId: string, feature: string): Promise<AccessResult> {
     try {
       const hasAccess = await subscriptionManager.hasAccess(userId, feature as any)
@@ -32,81 +444,6 @@ export class AccessControl {
         allowed: false,
         reason: "Unable to verify access permissions",
       }
-    }
-  }
-
-  async canCreateBot(userId: string): Promise<AccessResult> {
-    try {
-      const result = await subscriptionManager.canCreateBot(userId)
-
-      if (result.allowed) {
-        return { allowed: true }
-      }
-
-      return {
-        allowed: false,
-        reason: result.reason,
-        upgradeRequired: true,
-        suggestedPlan: "pro",
-      }
-    } catch (error) {
-      console.error("Bot creation access error:", error)
-      return {
-        allowed: false,
-        reason: "Unable to verify bot creation permissions",
-      }
-    }
-  }
-
-  async canExecuteTrade(userId: string): Promise<AccessResult> {
-    try {
-      const result = await subscriptionManager.canExecuteTrade(userId)
-
-      if (result.allowed) {
-        return { allowed: true }
-      }
-
-      return {
-        allowed: false,
-        reason: result.reason,
-        upgradeRequired: true,
-        suggestedPlan: "pro",
-      }
-    } catch (error) {
-      console.error("Trade execution access error:", error)
-      return {
-        allowed: false,
-        reason: "Unable to verify trade execution permissions",
-      }
-    }
-  }
-
-  async canAccessApi(userId: string): Promise<AccessResult> {
-    return this.canAccessFeature(userId, "apiAccess")
-  }
-
-  async canUseAdvancedStrategies(userId: string): Promise<AccessResult> {
-    return this.canAccessFeature(userId, "advancedStrategies")
-  }
-
-  async canUseWebhooks(userId: string): Promise<AccessResult> {
-    return this.canAccessFeature(userId, "webhooks")
-  }
-
-  async canAccessPrioritySupport(userId: string): Promise<AccessResult> {
-    return this.canAccessFeature(userId, "prioritySupport")
-  }
-
-  async getUserLimits(userId: string): Promise<{
-    bots: { current: number; limit: number }
-    trades: { current: number; limit: number }
-    features: any
-  } | null> {
-    try {
-      return await subscriptionManager.getUsageStats(userId)
-    } catch (error) {
-      console.error("Get user limits error:", error)
-      return null
     }
   }
 
