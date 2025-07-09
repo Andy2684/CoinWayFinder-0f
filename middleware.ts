@@ -64,7 +64,6 @@ function verifyToken(token: string, secret: string): any {
 // Protected routes configuration
 const protectedRoutes = ["/dashboard", "/bots", "/integrations", "/profile", "/subscription"]
 const adminRoutes = ["/admin"]
-const authRoutes = ["/auth", "/login", "/register"]
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -85,44 +84,12 @@ export function middleware(request: NextRequest) {
       return new Response(null, { status: 200, headers: response.headers })
     }
 
-    // Public API routes
-    const publicApiRoutes = [
-      "/api/auth/signin",
-      "/api/auth/signup",
-      "/api/crypto/prices",
-      "/api/crypto/news",
-      "/api/stripe/webhook",
-      "/api/telegram-webhook",
-    ]
-
-    const isPublicApi = publicApiRoutes.some((route) => pathname.startsWith(route))
-
-    if (!isPublicApi) {
-      // Protected API routes require authentication
-      if (!token) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-      }
-
-      // Admin API routes
-      if (pathname.startsWith("/api/admin/") && !adminToken) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-      }
-
-      // Check API usage limits for non-admin users
-      if (!adminToken && !pathname.startsWith("/api/auth/")) {
-        // Add API usage tracking here if needed
-        // For now, we'll allow all authenticated requests
-      }
-    }
-
     return response
   }
 
   // Redirect root to dashboard if authenticated
-  if (pathname === "/") {
-    if (token || adminToken) {
-      return NextResponse.redirect(new URL("/dashboard", request.url))
-    }
+  if (pathname === "/" && token) {
+    return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
   // Protect admin routes
@@ -138,8 +105,10 @@ export function middleware(request: NextRequest) {
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
 
   if (isProtectedRoute) {
-    if (!token && !adminToken) {
-      return NextResponse.redirect(new URL("/", request.url))
+    if (!token) {
+      const loginUrl = new URL("/", request.url)
+      loginUrl.searchParams.set("redirect", pathname)
+      return NextResponse.redirect(loginUrl)
     }
   }
 
@@ -160,7 +129,9 @@ export function middleware(request: NextRequest) {
   // Handle protected routes
   if (isProtectedRoute) {
     if (!user) {
-      return NextResponse.redirect(new URL("/", request.url))
+      const loginUrl = new URL("/", request.url)
+      loginUrl.searchParams.set("redirect", pathname)
+      return NextResponse.redirect(loginUrl)
     }
 
     // Check subscription status for non-admin users
@@ -178,11 +149,6 @@ export function middleware(request: NextRequest) {
     }
 
     return NextResponse.next()
-  }
-
-  // Handle auth routes (redirect if already logged in)
-  if (authRoutes.some((route) => pathname.startsWith(route)) && user) {
-    return NextResponse.redirect(new URL("/dashboard", request.url))
   }
 
   return NextResponse.next()
