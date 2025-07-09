@@ -5,42 +5,28 @@ const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-producti
 interface JWTPayload {
   userId: string
   email: string
-  isAdmin?: boolean
-  subscription?: string
-  subscriptionExpiry?: string
+  role?: string
+  subscription?: { status: string; expiresAt: string }
   iat?: number
   exp?: number
 }
 
-// Protected routes that require authentication
-const protectedRoutes = [
-  "/dashboard",
-  "/bots",
-  "/integrations",
-  "/profile",
-  "/subscription",
-  "/api/bots",
-  "/api/trades",
-  "/api/user",
-  "/api/subscription",
-]
-
-// Admin-only routes
-const adminRoutes = ["/api/admin"]
-
-// Public API routes that don't require authentication
-const publicApiRoutes = [
+// Public routes that don't require authentication
+const publicRoutes = [
+  "/",
   "/api/auth/signin",
   "/api/auth/signup",
-  "/api/auth/signout",
   "/api/crypto/prices",
   "/api/crypto/news",
-  "/api/crypto/trends",
-  "/api/crypto/whales",
   "/api/news",
-  "/api/whales",
-  "/api/v1",
+  "/api-docs",
 ]
+
+// Admin routes
+const adminRoutes = ["/api/admin"]
+
+// Protected routes that require authentication
+const protectedRoutes = ["/dashboard", "/bots", "/integrations", "/profile"]
 
 // Routes that allow expired subscriptions (read-only)
 const gracefulExpirationRoutes = [
@@ -49,18 +35,6 @@ const gracefulExpirationRoutes = [
   "/api/portfolio", // GET requests only
   "/api/user/profile", // GET requests only
 ]
-
-function isProtectedRoute(pathname: string): boolean {
-  return protectedRoutes.some((route) => pathname.startsWith(route))
-}
-
-function isAdminRoute(pathname: string): boolean {
-  return adminRoutes.some((route) => pathname.startsWith(route))
-}
-
-function isPublicApiRoute(pathname: string): boolean {
-  return publicApiRoutes.some((route) => pathname.startsWith(route))
-}
 
 function getTokenFromRequest(request: NextRequest): string | null {
   // Try to get token from Authorization header
@@ -78,29 +52,32 @@ function getTokenFromRequest(request: NextRequest): string | null {
   return null
 }
 
-function verifyToken(token: string): JWTPayload | null {
+function verifyToken(token: string, secret: string): any {
   try {
-    // Simple token verification without jwt library to avoid dependency issues
     const parts = token.split(".")
     if (parts.length !== 3) return null
 
-    const payload = JSON.parse(atob(parts[1]))
+    const [encodedHeader, encodedPayload, signature] = parts
 
-    // Check if token is expired
-    if (payload.exp && payload.exp < Date.now() / 1000) {
+    // Verify signature (simplified)
+    const expectedSignature = btoa(`${encodedHeader}.${encodedPayload}.${secret}`)
+      .replace(/=/g, "")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+    if (signature !== expectedSignature) return null
+
+    // Decode payload
+    const payload = JSON.parse(atob(encodedPayload.replace(/-/g, "+").replace(/_/g, "/")))
+
+    // Check expiration
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
       return null
     }
 
-    return payload as JWTPayload
+    return payload
   } catch (error) {
-    console.error("Token verification failed:", error)
     return null
   }
-}
-
-function isSubscriptionExpired(subscriptionExpiry?: string): boolean {
-  if (!subscriptionExpiry) return false
-  return new Date(subscriptionExpiry) < new Date()
 }
 
 export function middleware(request: NextRequest) {
@@ -117,94 +94,66 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Allow public API routes
-  if (isPublicApiRoute(pathname)) {
+  // Check if route is public
+  if (publicRoutes.some((route) => pathname.startsWith(route))) {
     return NextResponse.next()
   }
 
-  // Check if route requires authentication
-  const isProtectedRouteFlag = isProtectedRoute(pathname)
-  const isAdminRouteFlag = isAdminRoute(pathname)
-  const isSubscriptionRouteFlag =
-    pathname.startsWith("/api/bots") || pathname.startsWith("/api/trades") || pathname.startsWith("/api/ai")
-  const isGracefulRouteFlag = gracefulExpirationRoutes.some((route) => pathname.startsWith(route))
+  // Get token from cookie or Authorization header
+  const token = getTokenFromRequest(request)
 
-  if (isProtectedRouteFlag || isAdminRouteFlag || isSubscriptionRouteFlag) {
-    const token = getTokenFromRequest(request)
-
-    if (!token) {
-      // Redirect to login for web pages, return 401 for API routes
-      if (pathname.startsWith("/api/")) {
-        return NextResponse.json({ error: "Authentication required" }, { status: 401 })
-      } else {
-        const loginUrl = new URL("/", request.url)
-        loginUrl.searchParams.set("redirect", pathname)
-        return NextResponse.redirect(loginUrl)
-      }
+  if (!token) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
+    return NextResponse.redirect(new URL("/", request.url))
+  }
 
-    const payload = verifyToken(token)
-    if (!payload) {
-      // Invalid token - redirect to login for web pages, return 401 for API routes
-      if (pathname.startsWith("/api/")) {
-        return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 })
-      } else {
-        const loginUrl = new URL("/", request.url)
-        loginUrl.searchParams.set("redirect", pathname)
-        return NextResponse.redirect(loginUrl)
-      }
+  // Verify token
+  const payload = verifyToken(token, JWT_SECRET)
+  if (!payload) {
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
     }
+    return NextResponse.redirect(new URL("/", request.url))
+  }
 
-    // Check admin access
-    if (isAdminRouteFlag && !payload.isAdmin) {
+  // Check admin access
+  if (adminRoutes.some((route) => pathname.startsWith(route))) {
+    if (payload.role !== "admin") {
       return NextResponse.json({ error: "Admin access required" }, { status: 403 })
     }
+  }
 
-    // Check subscription status for write operations
-    if (isSubscriptionRouteFlag && method !== "GET") {
-      if (payload.subscription === "expired") {
-        return NextResponse.json(
-          {
-            error: "Your subscription has expired. Please renew to continue.",
-            code: "SUBSCRIPTION_EXPIRED",
-            renewUrl: "/subscription",
-          },
-          {
-            status: 402, // Payment Required
-            headers: {
-              "X-Subscription-Status": "expired",
-              "X-Subscription-Warning": "Subscription expired - read-only access",
-            },
-          },
-        )
+  // Check subscription for protected routes
+  if (protectedRoutes.some((route) => pathname.startsWith(route))) {
+    if (payload.subscription?.status !== "active" || new Date(payload.subscription?.expiresAt) < new Date()) {
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Subscription required" }, { status: 402 })
       }
+      return NextResponse.redirect(new URL("/subscription", request.url))
     }
+  }
 
-    // Allow graceful expiration for read operations
-    if (isGracefulRouteFlag && method === "GET" && payload.subscription === "expired") {
-      const response = NextResponse.next()
-      response.headers.set("X-Subscription-Status", "expired")
-      response.headers.set("X-Subscription-Warning", "Subscription expired - read-only access")
-      response.headers.set("X-User-Id", payload.userId)
-      response.headers.set("X-User-Email", payload.email)
-      return response
-    }
-
-    // Add user info to request headers for API routes
+  // Allow graceful expiration for read operations
+  const isGracefulRouteFlag = gracefulExpirationRoutes.some((route) => pathname.startsWith(route))
+  if (isGracefulRouteFlag && method === "GET" && payload.subscription?.status === "expired") {
     const response = NextResponse.next()
+    response.headers.set("X-Subscription-Status", "expired")
+    response.headers.set("X-Subscription-Warning", "Subscription expired - read-only access")
     response.headers.set("X-User-Id", payload.userId)
     response.headers.set("X-User-Email", payload.email)
-    response.headers.set("X-Subscription-Status", payload.subscription || "active")
-    response.headers.set("X-Subscription-Plan", payload.subscriptionExpiry || "free")
-
-    if (payload.isAdmin) {
-      response.headers.set("X-User-Role", "admin")
-    }
-
     return response
   }
 
-  return NextResponse.next()
+  // Add user info to headers for API routes
+  const response = NextResponse.next()
+  response.headers.set("x-user-id", payload.userId)
+  response.headers.set("x-user-role", payload.role || "user")
+  response.headers.set("x-subscription-status", payload.subscription?.status || "inactive")
+  response.headers.set("x-subscription-plan", payload.subscription?.expiresAt || "free")
+
+  return response
 }
 
 export const config = {
@@ -226,21 +175,7 @@ export const getUserFromRequest = (request: NextRequest): JWTPayload | null => {
 
   if (!token) return null
 
-  try {
-    const parts = token.split(".")
-    if (parts.length !== 3) return null
-
-    const payload = JSON.parse(atob(parts[1]))
-
-    // Check if token is expired
-    if (payload.exp && payload.exp < Date.now() / 1000) {
-      return null
-    }
-
-    return payload as JWTPayload
-  } catch {
-    return null
-  }
+  return verifyToken(token, JWT_SECRET) as JWTPayload
 }
 
 export const requireAuth = (request: NextRequest): JWTPayload => {
@@ -253,7 +188,7 @@ export const requireAuth = (request: NextRequest): JWTPayload => {
 
 export const requireAdmin = (request: NextRequest): JWTPayload => {
   const user = requireAuth(request)
-  if (!user.isAdmin) {
+  if (user.role !== "admin") {
     throw new Error("Admin access required")
   }
   return user
@@ -261,37 +196,47 @@ export const requireAdmin = (request: NextRequest): JWTPayload => {
 
 export const checkSubscription = (user: JWTPayload, method: string): boolean => {
   // Allow read operations for expired subscriptions (graceful expiration)
-  if (method === "GET" && user.subscription === "expired") {
+  if (method === "GET" && user.subscription?.status === "expired") {
     return true
   }
 
   // Require active subscription for write operations
-  return user.subscription === "active"
+  return user.subscription?.status === "active"
 }
 
 export const createAuthToken = (payload: Omit<JWTPayload, "iat" | "exp">): string => {
-  // Simple token creation without jwt library
-  const header = { alg: "HS256", typ: "JWT" }
+  const header = {
+    alg: "HS256",
+    typ: "JWT",
+  }
+
   const now = Math.floor(Date.now() / 1000)
+  const exp = now + 24 * 60 * 60 // 24 hours
+
   const tokenPayload = {
     ...payload,
     iat: now,
-    exp: now + 7 * 24 * 60 * 60, // 7 days
+    exp: exp,
   }
 
-  const encodedHeader = btoa(JSON.stringify(header))
-  const encodedPayload = btoa(JSON.stringify(tokenPayload))
+  const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_")
+  const encodedPayload = btoa(JSON.stringify(tokenPayload)).replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_")
+
+  // Simple signature (in production, use proper HMAC)
   const signature = btoa(`${encodedHeader}.${encodedPayload}.${JWT_SECRET}`)
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
 
   return `${encodedHeader}.${encodedPayload}.${signature}`
 }
 
 export const verifyAuthToken = (token: string): JWTPayload => {
-  const payload = verifyToken(token)
+  const payload = verifyToken(token, JWT_SECRET)
   if (!payload) {
     throw new Error("Invalid token")
   }
-  return payload
+  return payload as JWTPayload
 }
 
 // Response helpers
@@ -303,7 +248,7 @@ export const createAuthResponse = (data: any, token?: string) => {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: 24 * 60 * 60, // 24 hours
       path: "/",
     })
   }
