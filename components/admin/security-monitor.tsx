@@ -4,122 +4,194 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { RefreshCw, Shield, AlertTriangle, Activity, Eye } from "lucide-react"
+import { Shield, AlertTriangle, Activity, RefreshCw, CheckCircle, XCircle, AlertCircle, Info } from "lucide-react"
 
 interface SecurityEvent {
   id: string
   type: string
-  severity: string
+  severity: "critical" | "high" | "medium" | "low"
   timestamp: string
   source: string
-  details: any
   ip?: string
   userAgent?: string
+  userId?: string
+  details: Record<string, any>
+  resolved: boolean
 }
 
-interface SecurityStats {
-  totalEvents: number
-  eventsByType: Record<string, number>
-  recentEvents: SecurityEvent[]
+interface SecurityAlert {
+  id: string
+  type: string
+  severity: "critical" | "high" | "medium" | "low"
+  count: number
+  firstOccurrence: string
+  lastOccurrence: string
+  threshold: number
+  timeWindow: number
+  active: boolean
+  notificationsSent: string[]
 }
 
-interface SecurityDashboard {
-  threatLevel: string
-  systemHealth: any
-  statistics: SecurityStats
-  recentEvents: SecurityEvent[]
-  alerts: {
-    active: SecurityEvent[]
-    resolved: SecurityEvent[]
+interface SecurityDashboardData {
+  threatLevel: "low" | "medium" | "high" | "critical"
+  systemHealth: {
+    uptime: number
+    memory: {
+      used: number
+      total: number
+      percentage: number
+    }
+    cpu: {
+      loadAverage: number[]
+    }
+    environment: string
+    timestamp: string
   }
+  securityStats: {
+    totalEvents: number
+    eventsByType: Record<string, number>
+    eventsBySeverity: Record<string, number>
+    activeAlerts: number
+  }
+  recentEvents: SecurityEvent[]
+  activeAlerts: SecurityAlert[]
   recommendations: string[]
+  lastUpdated: string
 }
 
 export function SecurityMonitor() {
-  const [dashboard, setDashboard] = useState<SecurityDashboard | null>(null)
-  const [events, setEvents] = useState<SecurityEvent[]>([])
+  const [data, setData] = useState<SecurityDashboardData | null>(null)
   const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [autoRefresh, setAutoRefresh] = useState(true)
 
-  const fetchDashboard = async () => {
+  const fetchSecurityData = async () => {
     try {
-      setRefreshing(true)
       const response = await fetch("/api/security/dashboard")
-      if (response.ok) {
-        const data = await response.json()
-        setDashboard(data.data)
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
       }
-    } catch (error) {
-      console.error("Failed to fetch security dashboard:", error)
+      const dashboardData = await response.json()
+      setData(dashboardData)
+      setError(null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load security data")
+      console.error("Security dashboard error:", err)
     } finally {
-      setRefreshing(false)
       setLoading(false)
     }
   }
 
-  const fetchEvents = async () => {
+  const resolveAlert = async (alertId: string) => {
     try {
-      const response = await fetch("/api/security/events?limit=100")
+      const response = await fetch("/api/security/events", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "resolve_alert", alertId }),
+      })
+
       if (response.ok) {
-        const data = await response.json()
-        setEvents(data.data.events)
+        // Refresh data after resolving alert
+        await fetchSecurityData()
+      } else {
+        throw new Error("Failed to resolve alert")
       }
-    } catch (error) {
-      console.error("Failed to fetch security events:", error)
+    } catch (err) {
+      console.error("Failed to resolve alert:", err)
     }
   }
 
   useEffect(() => {
-    fetchDashboard()
-    fetchEvents()
-
-    // Auto-refresh every 30 seconds
-    const interval = setInterval(() => {
-      fetchDashboard()
-      fetchEvents()
-    }, 30000)
-
-    return () => clearInterval(interval)
+    fetchSecurityData()
   }, [])
+
+  useEffect(() => {
+    if (autoRefresh) {
+      const interval = setInterval(fetchSecurityData, 30000) // Refresh every 30 seconds
+      return () => clearInterval(interval)
+    }
+  }, [autoRefresh])
 
   const getThreatLevelColor = (level: string) => {
     switch (level) {
       case "critical":
-        return "destructive"
+        return "bg-red-500"
       case "high":
-        return "destructive"
+        return "bg-orange-500"
       case "medium":
-        return "default"
+        return "bg-yellow-500"
       case "low":
-        return "secondary"
+        return "bg-green-500"
       default:
-        return "outline"
+        return "bg-gray-500"
     }
   }
 
-  const getSeverityColor = (severity: string) => {
+  const getSeverityIcon = (severity: string) => {
     switch (severity) {
       case "critical":
-        return "destructive"
+        return <XCircle className="h-4 w-4 text-red-500" />
       case "high":
-        return "destructive"
+        return <AlertTriangle className="h-4 w-4 text-orange-500" />
       case "medium":
-        return "default"
+        return <AlertCircle className="h-4 w-4 text-yellow-500" />
       case "low":
-        return "secondary"
+        return <Info className="h-4 w-4 text-blue-500" />
       default:
-        return "outline"
+        return <Info className="h-4 w-4 text-gray-500" />
     }
+  }
+
+  const formatUptime = (seconds: number) => {
+    const days = Math.floor(seconds / 86400)
+    const hours = Math.floor((seconds % 86400) / 3600)
+    const minutes = Math.floor((seconds % 3600) / 60)
+
+    if (days > 0) return `${days}d ${hours}h ${minutes}m`
+    if (hours > 0) return `${hours}h ${minutes}m`
+    return `${minutes}m`
+  }
+
+  const formatEventType = (type: string) => {
+    return type
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ")
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
         <RefreshCw className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading security dashboard...</span>
       </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <Alert className="m-4">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>
+          Failed to load security dashboard: {error}
+          <Button variant="outline" size="sm" className="ml-2 bg-transparent" onClick={fetchSecurityData}>
+            Retry
+          </Button>
+        </AlertDescription>
+      </Alert>
+    )
+  }
+
+  if (!data) {
+    return (
+      <Alert className="m-4">
+        <Info className="h-4 w-4" />
+        <AlertDescription>No security data available</AlertDescription>
+      </Alert>
     )
   }
 
@@ -131,100 +203,162 @@ export function SecurityMonitor() {
           <Shield className="h-6 w-6" />
           <h2 className="text-2xl font-bold">Security Monitor</h2>
         </div>
-        <Button onClick={fetchDashboard} disabled={refreshing} variant="outline" size="sm">
-          <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-          Refresh
-        </Button>
+        <div className="flex items-center space-x-2">
+          <Button variant="outline" size="sm" onClick={() => setAutoRefresh(!autoRefresh)}>
+            <Activity className={`h-4 w-4 mr-2 ${autoRefresh ? "animate-pulse" : ""}`} />
+            Auto Refresh: {autoRefresh ? "On" : "Off"}
+          </Button>
+          <Button variant="outline" size="sm" onClick={fetchSecurityData}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
-      {/* Threat Level Alert */}
-      {dashboard && dashboard.threatLevel !== "low" && (
-        <Alert variant={dashboard.threatLevel === "critical" ? "destructive" : "default"}>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Threat Level: {dashboard.threatLevel.toUpperCase()}</AlertTitle>
-          <AlertDescription>
-            Elevated security activity detected. Review recent events and take appropriate action.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {/* Overview Cards */}
+      {/* Threat Level Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Threat Level</CardTitle>
-            <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <Badge variant={getThreatLevelColor(dashboard?.threatLevel || "unknown")}>
-              {dashboard?.threatLevel?.toUpperCase() || "UNKNOWN"}
-            </Badge>
+            <div className="flex items-center space-x-2">
+              <div className={`w-3 h-3 rounded-full ${getThreatLevelColor(data.threatLevel)}`} />
+              <span className="text-2xl font-bold capitalize">{data.threatLevel}</span>
+            </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Events</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Total Events (24h)</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{dashboard?.statistics?.totalEvents || 0}</div>
+            <div className="text-2xl font-bold">{data.securityStats.totalEvents}</div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Active Alerts</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{dashboard?.alerts?.active?.length || 0}</div>
+            <div className="text-2xl font-bold text-red-500">{data.securityStats.activeAlerts}</div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Health</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">System Uptime</CardTitle>
           </CardHeader>
           <CardContent>
-            <Badge variant="secondary">{dashboard?.systemHealth?.status?.toUpperCase() || "UNKNOWN"}</Badge>
+            <div className="text-2xl font-bold">{formatUptime(data.systemHealth.uptime)}</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Main Content */}
-      <Tabs defaultValue="events" className="space-y-4">
+      {/* Active Alerts */}
+      {data.activeAlerts.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <span>Active Security Alerts</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {data.activeAlerts.map((alert) => (
+                <div key={alert.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    {getSeverityIcon(alert.severity)}
+                    <div>
+                      <div className="font-medium">{formatEventType(alert.type)}</div>
+                      <div className="text-sm text-gray-500">
+                        {alert.count} events in {Math.round(alert.timeWindow / 60000)} minutes
+                      </div>
+                    </div>
+                  </div>
+                  <Button variant="outline" size="sm" onClick={() => resolveAlert(alert.id)}>
+                    Resolve
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Main Dashboard */}
+      <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="events">Recent Events</TabsTrigger>
-          <TabsTrigger value="alerts">Active Alerts</TabsTrigger>
-          <TabsTrigger value="stats">Statistics</TabsTrigger>
+          <TabsTrigger value="system">System Health</TabsTrigger>
           <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="events">
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Events by Type */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Events by Type</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {Object.entries(data.securityStats.eventsByType).map(([type, count]) => (
+                    <div key={type} className="flex items-center justify-between">
+                      <span className="text-sm">{formatEventType(type)}</span>
+                      <Badge variant="secondary">{count}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Events by Severity */}
+            <Card>
+              <CardHeader>
+                <CardTitle>Events by Severity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {Object.entries(data.securityStats.eventsBySeverity).map(([severity, count]) => (
+                    <div key={severity} className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        {getSeverityIcon(severity)}
+                        <span className="text-sm capitalize">{severity}</span>
+                      </div>
+                      <Badge variant="secondary">{count}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="events" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Recent Security Events</CardTitle>
-              <CardDescription>Latest security events and incidents</CardDescription>
+              <CardDescription>Last 10 security events</CardDescription>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[400px]">
-                <div className="space-y-2">
-                  {events.map((event) => (
-                    <div key={event.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <Badge variant={getSeverityColor(event.severity)}>{event.severity}</Badge>
-                        <div>
-                          <p className="font-medium">{event.type.replace(/_/g, " ")}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {event.source} • {new Date(event.timestamp).toLocaleString()}
-                          </p>
+              <ScrollArea className="h-96">
+                <div className="space-y-3">
+                  {data.recentEvents.map((event) => (
+                    <div key={event.id} className="flex items-start space-x-3 p-3 border rounded-lg">
+                      {getSeverityIcon(event.severity)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <div className="font-medium">{formatEventType(event.type)}</div>
+                          <div className="text-xs text-gray-500">{new Date(event.timestamp).toLocaleString()}</div>
                         </div>
+                        <div className="text-sm text-gray-600">{event.source}</div>
+                        {event.ip && <div className="text-xs text-gray-500">IP: {event.ip}</div>}
                       </div>
-                      <Button variant="ghost" size="sm">
-                        <Eye className="h-4 w-4" />
-                      </Button>
                     </div>
                   ))}
                 </div>
@@ -233,64 +367,60 @@ export function SecurityMonitor() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="alerts">
-          <Card>
-            <CardHeader>
-              <CardTitle>Active Security Alerts</CardTitle>
-              <CardDescription>Alerts requiring immediate attention</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {dashboard?.alerts?.active?.length === 0 ? (
-                <p className="text-muted-foreground">No active alerts</p>
-              ) : (
+        <TabsContent value="system" className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Memory Usage</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <div className="space-y-2">
-                  {dashboard?.alerts?.active?.map((alert) => (
-                    <Alert key={alert.id} variant="destructive">
-                      <AlertTriangle className="h-4 w-4" />
-                      <AlertTitle>{alert.type.replace(/_/g, " ")}</AlertTitle>
-                      <AlertDescription>
-                        {alert.source} • {new Date(alert.timestamp).toLocaleString()}
-                      </AlertDescription>
-                    </Alert>
-                  ))}
+                  <div className="flex justify-between text-sm">
+                    <span>Used: {data.systemHealth.memory.used}MB</span>
+                    <span>Total: {data.systemHealth.memory.total}MB</span>
+                  </div>
+                  <Progress value={data.systemHealth.memory.percentage} />
+                  <div className="text-xs text-gray-500">{data.systemHealth.memory.percentage}% used</div>
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>System Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span>Environment:</span>
+                    <Badge variant="outline">{data.systemHealth.environment}</Badge>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Uptime:</span>
+                    <span>{formatUptime(data.systemHealth.uptime)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Last Updated:</span>
+                    <span>{new Date(data.lastUpdated).toLocaleTimeString()}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </TabsContent>
 
-        <TabsContent value="stats">
-          <Card>
-            <CardHeader>
-              <CardTitle>Event Statistics</CardTitle>
-              <CardDescription>Breakdown of security events by type</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                {dashboard?.statistics?.eventsByType &&
-                  Object.entries(dashboard.statistics.eventsByType).map(([type, count]) => (
-                    <div key={type} className="flex justify-between items-center">
-                      <span className="text-sm">{type.replace(/_/g, " ")}</span>
-                      <Badge variant="outline">{count}</Badge>
-                    </div>
-                  ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="recommendations">
+        <TabsContent value="recommendations" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>Security Recommendations</CardTitle>
-              <CardDescription>Suggested actions to improve security posture</CardDescription>
+              <CardDescription>AI-powered security improvement suggestions</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
-                {dashboard?.recommendations?.map((recommendation, index) => (
-                  <div key={index} className="flex items-start space-x-2">
-                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-2" />
-                    <p className="text-sm">{recommendation}</p>
+              <div className="space-y-3">
+                {data.recommendations.map((recommendation, index) => (
+                  <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
+                    <CheckCircle className="h-5 w-5 text-green-500 mt-0.5" />
+                    <div className="text-sm">{recommendation}</div>
                   </div>
                 ))}
               </div>

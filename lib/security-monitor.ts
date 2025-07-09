@@ -1,371 +1,423 @@
 import { Redis } from "ioredis"
 
+export enum SecurityEventType {
+  FAILED_AUTH_ATTEMPTS = "failed_auth_attempts",
+  SUSPICIOUS_LOGIN = "suspicious_login",
+  RATE_LIMIT_EXCEEDED = "rate_limit_exceeded",
+  SQL_INJECTION_ATTEMPT = "sql_injection_attempt",
+  XSS_ATTEMPT = "xss_attempt",
+  UNAUTHORIZED_ACCESS = "unauthorized_access",
+  CSP_VIOLATION = "csp_violation",
+  BRUTE_FORCE_ATTACK = "brute_force_attack",
+  SUSPICIOUS_USER_AGENT = "suspicious_user_agent",
+  INVALID_TOKEN = "invalid_token",
+  ADMIN_ACCESS_ATTEMPT = "admin_access_attempt",
+  API_ABUSE = "api_abuse",
+}
+
+export enum SecuritySeverity {
+  CRITICAL = "critical",
+  HIGH = "high",
+  MEDIUM = "medium",
+  LOW = "low",
+}
+
 export interface SecurityEvent {
   id: string
   type: SecurityEventType
   severity: SecuritySeverity
   timestamp: Date
   source: string
-  details: Record<string, any>
-  userAgent?: string
   ip?: string
+  userAgent?: string
   userId?: string
+  details: Record<string, any>
+  resolved: boolean
 }
 
-export enum SecurityEventType {
-  RATE_LIMIT_EXCEEDED = "rate_limit_exceeded",
-  SUSPICIOUS_LOGIN = "suspicious_login",
-  FAILED_AUTH_ATTEMPTS = "failed_auth_attempts",
-  CSP_VIOLATION = "csp_violation",
-  UNAUTHORIZED_ACCESS = "unauthorized_access",
-  SQL_INJECTION_ATTEMPT = "sql_injection_attempt",
-  XSS_ATTEMPT = "xss_attempt",
-  ADMIN_ACCESS = "admin_access",
-  API_ABUSE = "api_abuse",
-  UNUSUAL_TRAFFIC = "unusual_traffic",
-  SECURITY_HEADER_MISSING = "security_header_missing",
-  CORS_VIOLATION = "cors_violation",
-}
-
-export enum SecuritySeverity {
-  LOW = "low",
-  MEDIUM = "medium",
-  HIGH = "high",
-  CRITICAL = "critical",
-}
-
-export interface AlertConfig {
-  enabled: boolean
+export interface SecurityAlert {
+  id: string
+  type: SecurityEventType
+  severity: SecuritySeverity
+  count: number
+  firstOccurrence: Date
+  lastOccurrence: Date
   threshold: number
-  timeWindow: number // in minutes
-  channels: AlertChannel[]
+  timeWindow: number
+  active: boolean
+  notificationsSent: string[]
 }
 
-export enum AlertChannel {
-  EMAIL = "email",
-  SLACK = "slack",
-  WEBHOOK = "webhook",
-  SMS = "sms",
+export interface SecurityStats {
+  totalEvents: number
+  eventsByType: Record<SecurityEventType, number>
+  eventsBySeverity: Record<SecuritySeverity, number>
+  recentEvents: SecurityEvent[]
+  activeAlerts: SecurityAlert[]
+  threatLevel: "low" | "medium" | "high" | "critical"
 }
 
-export class SecurityMonitor {
-  private redis: Redis
-  private alertConfigs: Map<SecurityEventType, AlertConfig>
+class SecurityMonitor {
+  private redis: Redis | null = null
+  private alertThresholds: Record<SecurityEventType, { count: number; timeWindow: number }> = {
+    [SecurityEventType.FAILED_AUTH_ATTEMPTS]: { count: 5, timeWindow: 15 * 60 * 1000 }, // 5 in 15 minutes
+    [SecurityEventType.SUSPICIOUS_LOGIN]: { count: 3, timeWindow: 10 * 60 * 1000 }, // 3 in 10 minutes
+    [SecurityEventType.RATE_LIMIT_EXCEEDED]: { count: 10, timeWindow: 5 * 60 * 1000 }, // 10 in 5 minutes
+    [SecurityEventType.SQL_INJECTION_ATTEMPT]: { count: 1, timeWindow: 1 * 60 * 1000 }, // 1 immediately
+    [SecurityEventType.XSS_ATTEMPT]: { count: 1, timeWindow: 1 * 60 * 1000 }, // 1 immediately
+    [SecurityEventType.UNAUTHORIZED_ACCESS]: { count: 3, timeWindow: 5 * 60 * 1000 }, // 3 in 5 minutes
+    [SecurityEventType.CSP_VIOLATION]: { count: 5, timeWindow: 30 * 60 * 1000 }, // 5 in 30 minutes
+    [SecurityEventType.BRUTE_FORCE_ATTACK]: { count: 1, timeWindow: 1 * 60 * 1000 }, // 1 immediately
+    [SecurityEventType.SUSPICIOUS_USER_AGENT]: { count: 10, timeWindow: 60 * 60 * 1000 }, // 10 in 1 hour
+    [SecurityEventType.INVALID_TOKEN]: { count: 10, timeWindow: 15 * 60 * 1000 }, // 10 in 15 minutes
+    [SecurityEventType.ADMIN_ACCESS_ATTEMPT]: { count: 3, timeWindow: 10 * 60 * 1000 }, // 3 in 10 minutes
+    [SecurityEventType.API_ABUSE]: { count: 20, timeWindow: 30 * 60 * 1000 }, // 20 in 30 minutes
+  }
 
   constructor() {
-    this.redis = new Redis(process.env.Redis_URL || "redis://localhost:6379")
-    this.alertConfigs = this.initializeAlertConfigs()
+    this.initializeRedis()
   }
 
-  private initializeAlertConfigs(): Map<SecurityEventType, AlertConfig> {
-    const configs = new Map<SecurityEventType, AlertConfig>()
-
-    // Critical alerts
-    configs.set(SecurityEventType.SQL_INJECTION_ATTEMPT, {
-      enabled: true,
-      threshold: 1,
-      timeWindow: 1,
-      channels: [AlertChannel.EMAIL, AlertChannel.SLACK, AlertChannel.SMS],
-    })
-
-    configs.set(SecurityEventType.XSS_ATTEMPT, {
-      enabled: true,
-      threshold: 1,
-      timeWindow: 1,
-      channels: [AlertChannel.EMAIL, AlertChannel.SLACK],
-    })
-
-    configs.set(SecurityEventType.UNAUTHORIZED_ACCESS, {
-      enabled: true,
-      threshold: 3,
-      timeWindow: 5,
-      channels: [AlertChannel.EMAIL, AlertChannel.SLACK],
-    })
-
-    // High priority alerts
-    configs.set(SecurityEventType.FAILED_AUTH_ATTEMPTS, {
-      enabled: true,
-      threshold: 5,
-      timeWindow: 15,
-      channels: [AlertChannel.EMAIL],
-    })
-
-    configs.set(SecurityEventType.RATE_LIMIT_EXCEEDED, {
-      enabled: true,
-      threshold: 10,
-      timeWindow: 5,
-      channels: [AlertChannel.SLACK],
-    })
-
-    configs.set(SecurityEventType.API_ABUSE, {
-      enabled: true,
-      threshold: 5,
-      timeWindow: 10,
-      channels: [AlertChannel.EMAIL, AlertChannel.SLACK],
-    })
-
-    // Medium priority alerts
-    configs.set(SecurityEventType.CSP_VIOLATION, {
-      enabled: true,
-      threshold: 10,
-      timeWindow: 30,
-      channels: [AlertChannel.SLACK],
-    })
-
-    configs.set(SecurityEventType.SUSPICIOUS_LOGIN, {
-      enabled: true,
-      threshold: 3,
-      timeWindow: 60,
-      channels: [AlertChannel.EMAIL],
-    })
-
-    return configs
-  }
-
-  async logSecurityEvent(event: Omit<SecurityEvent, "id" | "timestamp">): Promise<void> {
-    const securityEvent: SecurityEvent = {
-      ...event,
-      id: this.generateEventId(),
-      timestamp: new Date(),
-    }
-
-    try {
-      // Store event in Redis
-      await this.storeEvent(securityEvent)
-
-      // Check if alert should be triggered
-      await this.checkAndTriggerAlert(securityEvent)
-
-      // Log to console for development
-      console.log(`[SECURITY] ${securityEvent.type}:`, securityEvent)
-    } catch (error) {
-      console.error("Failed to log security event:", error)
-    }
-  }
-
-  private async storeEvent(event: SecurityEvent): Promise<void> {
-    const key = `security:events:${event.type}`
-    const eventData = JSON.stringify(event)
-
-    // Store in sorted set with timestamp as score
-    await this.redis.zadd(key, event.timestamp.getTime(), eventData)
-
-    // Keep only last 1000 events per type
-    await this.redis.zremrangebyrank(key, 0, -1001)
-
-    // Store in general events list
-    await this.redis.lpush("security:events:all", eventData)
-    await this.redis.ltrim("security:events:all", 0, 9999)
-  }
-
-  private async checkAndTriggerAlert(event: SecurityEvent): Promise<void> {
-    const config = this.alertConfigs.get(event.type)
-    if (!config || !config.enabled) return
-
-    const key = `security:events:${event.type}`
-    const timeWindow = config.timeWindow * 60 * 1000 // Convert to milliseconds
-    const cutoffTime = Date.now() - timeWindow
-
-    // Count events in time window
-    const eventCount = await this.redis.zcount(key, cutoffTime, Date.now())
-
-    if (eventCount >= config.threshold) {
-      await this.triggerAlert(event, eventCount, config)
-    }
-  }
-
-  private async triggerAlert(event: SecurityEvent, count: number, config: AlertConfig): Promise<void> {
-    const alertKey = `security:alert:${event.type}:${Math.floor(Date.now() / (config.timeWindow * 60 * 1000))}`
-
-    // Check if alert already sent for this time window
-    const alreadySent = await this.redis.get(alertKey)
-    if (alreadySent) return
-
-    // Mark alert as sent
-    await this.redis.setex(alertKey, config.timeWindow * 60, "sent")
-
-    const alertData = {
-      eventType: event.type,
-      severity: this.getSeverityForEventType(event.type),
-      count,
-      timeWindow: config.timeWindow,
-      timestamp: new Date().toISOString(),
-      details: event.details,
-      source: event.source,
-      ip: event.ip,
-      userAgent: event.userAgent,
-    }
-
-    // Send alerts through configured channels
-    for (const channel of config.channels) {
+  private async initializeRedis() {
+    if (process.env.REDIS_URL) {
       try {
-        await this.sendAlert(channel, alertData)
+        this.redis = new Redis(process.env.REDIS_URL)
+        console.log("✅ Security Monitor: Redis connected")
       } catch (error) {
-        console.error(`Failed to send alert via ${channel}:`, error)
+        console.error("❌ Security Monitor: Redis connection failed:", error)
       }
+    } else {
+      console.warn("⚠️ Security Monitor: Redis URL not configured, using memory storage")
     }
   }
 
-  private async sendAlert(channel: AlertChannel, alertData: any): Promise<void> {
-    switch (channel) {
-      case AlertChannel.EMAIL:
-        await this.sendEmailAlert(alertData)
-        break
-      case AlertChannel.SLACK:
-        await this.sendSlackAlert(alertData)
-        break
-      case AlertChannel.WEBHOOK:
-        await this.sendWebhookAlert(alertData)
-        break
-      case AlertChannel.SMS:
-        await this.sendSMSAlert(alertData)
-        break
+  async logSecurityEvent(eventData: Omit<SecurityEvent, "id" | "timestamp" | "resolved">): Promise<void> {
+    const event: SecurityEvent = {
+      id: `sec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: new Date(),
+      resolved: false,
+      ...eventData,
     }
-  }
-
-  private async sendEmailAlert(alertData: any): Promise<void> {
-    // Email alert implementation
-    const emailBody = `
-      🚨 SECURITY ALERT - ${alertData.severity.toUpperCase()}
-
-      Event Type: ${alertData.eventType}
-      Count: ${alertData.count} events in ${alertData.timeWindow} minutes
-      Timestamp: ${alertData.timestamp}
-      Source: ${alertData.source}
-      IP Address: ${alertData.ip || "Unknown"}
-      User Agent: ${alertData.userAgent || "Unknown"}
-
-      Details: ${JSON.stringify(alertData.details, null, 2)}
-
-      Please investigate immediately.
-    `
-
-    console.log("[EMAIL ALERT]", emailBody)
-    // TODO: Integrate with email service (SendGrid, AWS SES, etc.)
-  }
-
-  private async sendSlackAlert(alertData: any): Promise<void> {
-    const slackMessage = {
-      text: `🚨 Security Alert: ${alertData.eventType}`,
-      attachments: [
-        {
-          color: this.getSlackColorForSeverity(alertData.severity),
-          fields: [
-            { title: "Event Type", value: alertData.eventType, short: true },
-            { title: "Severity", value: alertData.severity.toUpperCase(), short: true },
-            { title: "Count", value: `${alertData.count} events`, short: true },
-            { title: "Time Window", value: `${alertData.timeWindow} minutes`, short: true },
-            { title: "Source", value: alertData.source, short: true },
-            { title: "IP Address", value: alertData.ip || "Unknown", short: true },
-          ],
-          timestamp: Math.floor(Date.now() / 1000),
-        },
-      ],
-    }
-
-    console.log("[SLACK ALERT]", JSON.stringify(slackMessage, null, 2))
-    // TODO: Send to Slack webhook
-  }
-
-  private async sendWebhookAlert(alertData: any): Promise<void> {
-    const webhookUrl = process.env.SECURITY_WEBHOOK_URL
-    if (!webhookUrl) return
 
     try {
-      const response = await fetch(webhookUrl, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(alertData),
-      })
+      // Store in Redis if available
+      if (this.redis) {
+        const key = `security:events:${event.type}`
+        await this.redis.zadd(key, Date.now(), JSON.stringify(event))
+        await this.redis.expire(key, 7 * 24 * 60 * 60) // Keep for 7 days
 
-      if (!response.ok) {
-        throw new Error(`Webhook failed: ${response.status}`)
+        // Store in general events list
+        await this.redis.zadd("security:events:all", Date.now(), JSON.stringify(event))
+        await this.redis.expire("security:events:all", 7 * 24 * 60 * 60)
+      }
+
+      // Check if this should trigger an alert
+      await this.checkForAlerts(event.type)
+
+      // Log to console for immediate visibility
+      const severityIcon = this.getSeverityIcon(event.severity)
+      console.log(
+        `${severityIcon} Security Event: ${event.type} | ${event.severity.toUpperCase()} | ${event.source} | IP: ${event.ip || "unknown"}`,
+      )
+
+      // Send immediate notifications for critical events
+      if (event.severity === SecuritySeverity.CRITICAL) {
+        await this.sendImmediateAlert(event)
       }
     } catch (error) {
-      console.error("Webhook alert failed:", error)
+      console.error("❌ Failed to log security event:", error)
     }
   }
 
-  private async sendSMSAlert(alertData: any): Promise<void> {
-    const message = `🚨 SECURITY ALERT: ${alertData.eventType} - ${alertData.count} events detected. Check dashboard immediately.`
-    console.log("[SMS ALERT]", message)
-    // TODO: Integrate with SMS service (Twilio, AWS SNS, etc.)
-  }
-
-  private getSeverityForEventType(eventType: SecurityEventType): SecuritySeverity {
-    const severityMap: Record<SecurityEventType, SecuritySeverity> = {
-      [SecurityEventType.SQL_INJECTION_ATTEMPT]: SecuritySeverity.CRITICAL,
-      [SecurityEventType.XSS_ATTEMPT]: SecuritySeverity.CRITICAL,
-      [SecurityEventType.UNAUTHORIZED_ACCESS]: SecuritySeverity.HIGH,
-      [SecurityEventType.API_ABUSE]: SecuritySeverity.HIGH,
-      [SecurityEventType.FAILED_AUTH_ATTEMPTS]: SecuritySeverity.MEDIUM,
-      [SecurityEventType.SUSPICIOUS_LOGIN]: SecuritySeverity.MEDIUM,
-      [SecurityEventType.RATE_LIMIT_EXCEEDED]: SecuritySeverity.MEDIUM,
-      [SecurityEventType.CSP_VIOLATION]: SecuritySeverity.LOW,
-      [SecurityEventType.ADMIN_ACCESS]: SecuritySeverity.MEDIUM,
-      [SecurityEventType.UNUSUAL_TRAFFIC]: SecuritySeverity.MEDIUM,
-      [SecurityEventType.SECURITY_HEADER_MISSING]: SecuritySeverity.LOW,
-      [SecurityEventType.CORS_VIOLATION]: SecuritySeverity.MEDIUM,
+  private getSeverityIcon(severity: SecuritySeverity): string {
+    switch (severity) {
+      case SecuritySeverity.CRITICAL:
+        return "🚨"
+      case SecuritySeverity.HIGH:
+        return "⚠️"
+      case SecuritySeverity.MEDIUM:
+        return "⚡"
+      case SecuritySeverity.LOW:
+        return "ℹ️"
+      default:
+        return "📝"
     }
-
-    return severityMap[eventType] || SecuritySeverity.LOW
   }
 
-  private getSlackColorForSeverity(severity: SecuritySeverity): string {
-    const colorMap: Record<SecuritySeverity, string> = {
-      [SecuritySeverity.CRITICAL]: "#ff0000",
-      [SecuritySeverity.HIGH]: "#ff8800",
-      [SecuritySeverity.MEDIUM]: "#ffaa00",
-      [SecuritySeverity.LOW]: "#00aa00",
-    }
+  private async checkForAlerts(eventType: SecurityEventType): Promise<void> {
+    if (!this.redis) return
 
-    return colorMap[severity] || "#808080"
-  }
+    const threshold = this.alertThresholds[eventType]
+    if (!threshold) return
 
-  private generateEventId(): string {
-    return `sec_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-  }
+    const now = Date.now()
+    const windowStart = now - threshold.timeWindow
 
-  async getSecurityEvents(eventType?: SecurityEventType, limit = 100): Promise<SecurityEvent[]> {
     try {
-      let events: string[]
+      // Get events in the time window
+      const events = await this.redis.zrangebyscore(`security:events:${eventType}`, windowStart, now)
 
-      if (eventType) {
-        const key = `security:events:${eventType}`
-        events = await this.redis.zrevrange(key, 0, limit - 1)
-      } else {
-        events = await this.redis.lrange("security:events:all", 0, limit - 1)
+      if (events.length >= threshold.count) {
+        // Check if we already have an active alert for this
+        const existingAlert = await this.redis.get(`security:alert:${eventType}`)
+
+        if (!existingAlert) {
+          // Create new alert
+          const alert: SecurityAlert = {
+            id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            type: eventType,
+            severity: this.getEventSeverity(eventType),
+            count: events.length,
+            firstOccurrence: new Date(JSON.parse(events[0]).timestamp),
+            lastOccurrence: new Date(),
+            threshold: threshold.count,
+            timeWindow: threshold.timeWindow,
+            active: true,
+            notificationsSent: [],
+          }
+
+          // Store alert
+          await this.redis.setex(`security:alert:${eventType}`, 60 * 60, JSON.stringify(alert)) // 1 hour
+
+          // Send alert notifications
+          await this.sendAlert(alert)
+        }
+      }
+    } catch (error) {
+      console.error("❌ Failed to check for alerts:", error)
+    }
+  }
+
+  private getEventSeverity(eventType: SecurityEventType): SecuritySeverity {
+    switch (eventType) {
+      case SecurityEventType.SQL_INJECTION_ATTEMPT:
+      case SecurityEventType.XSS_ATTEMPT:
+      case SecurityEventType.BRUTE_FORCE_ATTACK:
+        return SecuritySeverity.CRITICAL
+      case SecurityEventType.UNAUTHORIZED_ACCESS:
+      case SecurityEventType.ADMIN_ACCESS_ATTEMPT:
+      case SecurityEventType.SUSPICIOUS_LOGIN:
+        return SecuritySeverity.HIGH
+      case SecurityEventType.FAILED_AUTH_ATTEMPTS:
+      case SecurityEventType.RATE_LIMIT_EXCEEDED:
+      case SecurityEventType.API_ABUSE:
+        return SecuritySeverity.MEDIUM
+      default:
+        return SecuritySeverity.LOW
+    }
+  }
+
+  private async sendImmediateAlert(event: SecurityEvent): Promise<void> {
+    try {
+      // Send to webhook if configured
+      if (process.env.SECURITY_WEBHOOK_URL) {
+        await fetch(process.env.SECURITY_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "security_event",
+            severity: event.severity,
+            event: event,
+            timestamp: new Date().toISOString(),
+          }),
+        })
       }
 
-      return events.map((eventData) => JSON.parse(eventData))
+      // Log for immediate attention
+      console.error(`🚨 CRITICAL SECURITY EVENT: ${event.type} from ${event.ip || "unknown IP"}`)
     } catch (error) {
-      console.error("Failed to get security events:", error)
+      console.error("❌ Failed to send immediate alert:", error)
+    }
+  }
+
+  private async sendAlert(alert: SecurityAlert): Promise<void> {
+    try {
+      const message =
+        `🚨 Security Alert: ${alert.type}\n` +
+        `Severity: ${alert.severity.toUpperCase()}\n` +
+        `Count: ${alert.count} events in ${Math.round(alert.timeWindow / 60000)} minutes\n` +
+        `Threshold: ${alert.threshold}\n` +
+        `Time: ${alert.lastOccurrence.toISOString()}`
+
+      // Send to webhook
+      if (process.env.SECURITY_WEBHOOK_URL) {
+        await fetch(process.env.SECURITY_WEBHOOK_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "security_alert",
+            alert: alert,
+            message: message,
+            timestamp: new Date().toISOString(),
+          }),
+        })
+      }
+
+      console.warn(`⚠️ Security Alert Sent: ${alert.type} (${alert.count} events)`)
+    } catch (error) {
+      console.error("❌ Failed to send alert:", error)
+    }
+  }
+
+  async getSecurityStats(): Promise<SecurityStats> {
+    const stats: SecurityStats = {
+      totalEvents: 0,
+      eventsByType: {} as Record<SecurityEventType, number>,
+      eventsBySeverity: {} as Record<SecuritySeverity, number>,
+      recentEvents: [],
+      activeAlerts: [],
+      threatLevel: "low",
+    }
+
+    try {
+      if (this.redis) {
+        // Get recent events (last 24 hours)
+        const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
+        const recentEventsData = await this.redis.zrangebyscore("security:events:all", oneDayAgo, Date.now())
+
+        stats.recentEvents = recentEventsData
+          .map((eventStr) => {
+            try {
+              return JSON.parse(eventStr) as SecurityEvent
+            } catch {
+              return null
+            }
+          })
+          .filter((event): event is SecurityEvent => event !== null)
+          .slice(-50) // Last 50 events
+
+        stats.totalEvents = stats.recentEvents.length
+
+        // Count by type and severity
+        stats.recentEvents.forEach((event) => {
+          stats.eventsByType[event.type] = (stats.eventsByType[event.type] || 0) + 1
+          stats.eventsBySeverity[event.severity] = (stats.eventsBySeverity[event.severity] || 0) + 1
+        })
+
+        // Get active alerts
+        const alertKeys = await this.redis.keys("security:alert:*")
+        for (const key of alertKeys) {
+          const alertData = await this.redis.get(key)
+          if (alertData) {
+            try {
+              const alert = JSON.parse(alertData) as SecurityAlert
+              if (alert.active) {
+                stats.activeAlerts.push(alert)
+              }
+            } catch {
+              // Invalid alert data, skip
+            }
+          }
+        }
+
+        // Calculate threat level
+        stats.threatLevel = this.calculateThreatLevel(stats)
+      }
+    } catch (error) {
+      console.error("❌ Failed to get security stats:", error)
+    }
+
+    return stats
+  }
+
+  private calculateThreatLevel(stats: SecurityStats): "low" | "medium" | "high" | "critical" {
+    const criticalEvents = stats.eventsBySeverity[SecuritySeverity.CRITICAL] || 0
+    const highEvents = stats.eventsBySeverity[SecuritySeverity.HIGH] || 0
+    const activeAlerts = stats.activeAlerts.length
+
+    if (criticalEvents > 0 || activeAlerts > 3) {
+      return "critical"
+    } else if (highEvents > 5 || activeAlerts > 1) {
+      return "high"
+    } else if (stats.totalEvents > 20 || activeAlerts > 0) {
+      return "medium"
+    } else {
+      return "low"
+    }
+  }
+
+  async getSecurityEvents(type?: SecurityEventType, limit = 50): Promise<SecurityEvent[]> {
+    if (!this.redis) return []
+
+    try {
+      const key = type ? `security:events:${type}` : "security:events:all"
+      const eventsData = await this.redis.zrevrange(key, 0, limit - 1)
+
+      return eventsData
+        .map((eventStr) => {
+          try {
+            return JSON.parse(eventStr) as SecurityEvent
+          } catch {
+            return null
+          }
+        })
+        .filter((event): event is SecurityEvent => event !== null)
+    } catch (error) {
+      console.error("❌ Failed to get security events:", error)
       return []
     }
   }
 
-  async getSecurityStats(): Promise<any> {
+  async resolveAlert(alertId: string): Promise<boolean> {
+    if (!this.redis) return false
+
     try {
-      const stats = {
-        totalEvents: await this.redis.llen("security:events:all"),
-        eventsByType: {} as Record<string, number>,
-        recentEvents: await this.getSecurityEvents(undefined, 10),
-        alertsTriggered: 0,
+      const alertKeys = await this.redis.keys("security:alert:*")
+      for (const key of alertKeys) {
+        const alertData = await this.redis.get(key)
+        if (alertData) {
+          const alert = JSON.parse(alertData) as SecurityAlert
+          if (alert.id === alertId) {
+            alert.active = false
+            await this.redis.setex(key, 60 * 60, JSON.stringify(alert))
+            return true
+          }
+        }
       }
-
-      // Get counts by event type
-      for (const eventType of Object.values(SecurityEventType)) {
-        const key = `security:events:${eventType}`
-        const count = await this.redis.zcard(key)
-        stats.eventsByType[eventType] = count
-      }
-
-      return stats
     } catch (error) {
-      console.error("Failed to get security stats:", error)
-      return null
+      console.error("❌ Failed to resolve alert:", error)
+    }
+
+    return false
+  }
+
+  async cleanup(): Promise<void> {
+    if (this.redis) {
+      try {
+        // Clean up old events (older than 7 days)
+        const sevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000
+        await this.redis.zremrangebyscore("security:events:all", 0, sevenDaysAgo)
+
+        // Clean up old alerts (older than 24 hours)
+        const alertKeys = await this.redis.keys("security:alert:*")
+        for (const key of alertKeys) {
+          const alertData = await this.redis.get(key)
+          if (alertData) {
+            const alert = JSON.parse(alertData) as SecurityAlert
+            const alertAge = Date.now() - alert.lastOccurrence.getTime()
+            if (alertAge > 24 * 60 * 60 * 1000) {
+              await this.redis.del(key)
+            }
+          }
+        }
+
+        console.log("✅ Security Monitor: Cleanup completed")
+      } catch (error) {
+        console.error("❌ Security Monitor: Cleanup failed:", error)
+      }
     }
   }
 }
 
+// Create singleton instance
 export const securityMonitor = new SecurityMonitor()
+
+// Cleanup every hour
+if (typeof setInterval !== "undefined") {
+  setInterval(
+    () => {
+      securityMonitor.cleanup()
+    },
+    60 * 60 * 1000,
+  ) // 1 hour
+}

@@ -1,121 +1,104 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { securityMonitor, SecurityEventType } from "@/lib/security-monitor"
-import { authService } from "@/lib/auth"
+import { securityMonitor } from "../../../../lib/security-monitor"
 
 export async function GET(request: NextRequest) {
   try {
-    // Check admin authentication
-    const adminToken = request.cookies.get("admin-token")?.value
-    if (!adminToken) {
-      return NextResponse.json({ error: "Admin authentication required" }, { status: 401 })
-    }
-
-    const admin = await authService.verifyAdminToken(adminToken)
-    if (!admin) {
-      return NextResponse.json({ error: "Invalid admin token" }, { status: 401 })
-    }
-
     // Get security statistics
     const stats = await securityMonitor.getSecurityStats()
-    const recentEvents = await securityMonitor.getSecurityEvents(undefined, 50)
 
-    // Calculate threat level
-    const threatLevel = calculateThreatLevel(stats)
-
-    // Get system health
-    const systemHealth = await getSystemHealth()
-
-    const dashboardData = {
-      timestamp: new Date().toISOString(),
-      threatLevel,
-      systemHealth,
-      statistics: stats,
-      recentEvents,
-      alerts: {
-        active: getActiveAlerts(recentEvents),
-        resolved: getResolvedAlerts(),
+    // Get system health metrics
+    const systemHealth = {
+      uptime: process.uptime(),
+      memory: {
+        used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
+        total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024),
+        percentage: Math.round((process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100),
       },
-      recommendations: generateSecurityRecommendations(stats, recentEvents),
+      cpu: {
+        loadAverage: process.platform !== "win32" ? require("os").loadavg() : [0, 0, 0],
+      },
+      environment: process.env.NODE_ENV || "development",
+      timestamp: new Date().toISOString(),
     }
 
-    return NextResponse.json({
-      status: "success",
-      data: dashboardData,
+    // Generate security recommendations
+    const recommendations = generateSecurityRecommendations(stats)
+
+    const dashboardData = {
+      threatLevel: stats.threatLevel,
+      systemHealth,
+      securityStats: {
+        totalEvents: stats.totalEvents,
+        eventsByType: stats.eventsByType,
+        eventsBySeverity: stats.eventsBySeverity,
+        activeAlerts: stats.activeAlerts.length,
+      },
+      recentEvents: stats.recentEvents.slice(0, 10), // Last 10 events
+      activeAlerts: stats.activeAlerts,
+      recommendations,
+      lastUpdated: new Date().toISOString(),
+    }
+
+    return NextResponse.json(dashboardData, {
+      headers: {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
+      },
     })
   } catch (error) {
-    console.error("Security dashboard error:", error)
+    console.error("❌ Security dashboard error:", error)
+
     return NextResponse.json(
       {
-        status: "error",
-        message: "Failed to load security dashboard",
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: "Failed to load security dashboard",
+        message: error instanceof Error ? error.message : "Unknown error",
+        timestamp: new Date().toISOString(),
       },
       { status: 500 },
     )
   }
 }
 
-function calculateThreatLevel(stats: any): string {
-  if (!stats) return "unknown"
-
-  const criticalEvents = stats.eventsByType[SecurityEventType.SQL_INJECTION_ATTEMPT] || 0
-  const highEvents =
-    (stats.eventsByType[SecurityEventType.UNAUTHORIZED_ACCESS] || 0) +
-    (stats.eventsByType[SecurityEventType.API_ABUSE] || 0)
-
-  if (criticalEvents > 0) return "critical"
-  if (highEvents > 10) return "high"
-  if (stats.totalEvents > 100) return "medium"
-  return "low"
-}
-
-async function getSystemHealth(): Promise<any> {
-  return {
-    uptime: process.uptime(),
-    memory: process.memoryUsage(),
-    timestamp: new Date().toISOString(),
-    status: "healthy",
-  }
-}
-
-function getActiveAlerts(events: any[]): any[] {
-  const now = Date.now()
-  const oneHourAgo = now - 60 * 60 * 1000
-
-  return events
-    .filter((event) => new Date(event.timestamp).getTime() > oneHourAgo)
-    .filter((event) =>
-      [
-        SecurityEventType.SQL_INJECTION_ATTEMPT,
-        SecurityEventType.XSS_ATTEMPT,
-        SecurityEventType.UNAUTHORIZED_ACCESS,
-      ].includes(event.type),
-    )
-    .slice(0, 10)
-}
-
-function getResolvedAlerts(): any[] {
-  // Mock resolved alerts - in production, this would come from database
-  return []
-}
-
-function generateSecurityRecommendations(stats: any, events: any[]): string[] {
+function generateSecurityRecommendations(stats: any): string[] {
   const recommendations: string[] = []
 
-  if (stats?.eventsByType[SecurityEventType.RATE_LIMIT_EXCEEDED] > 10) {
-    recommendations.push("Consider implementing stricter rate limiting")
+  // Check threat level
+  if (stats.threatLevel === "critical") {
+    recommendations.push("🚨 CRITICAL: Immediate security review required")
+    recommendations.push("🔒 Consider temporarily restricting access")
+  } else if (stats.threatLevel === "high") {
+    recommendations.push("⚠️ HIGH: Enhanced monitoring recommended")
+    recommendations.push("🔍 Review recent security events")
   }
 
-  if (stats?.eventsByType[SecurityEventType.CSP_VIOLATION] > 20) {
-    recommendations.push("Review and tighten Content Security Policy")
+  // Check for specific event types
+  if (stats.eventsByType.sql_injection_attempt > 0) {
+    recommendations.push("🛡️ SQL injection attempts detected - review input validation")
   }
 
-  if (stats?.eventsByType[SecurityEventType.FAILED_AUTH_ATTEMPTS] > 50) {
-    recommendations.push("Implement account lockout after failed attempts")
+  if (stats.eventsByType.xss_attempt > 0) {
+    recommendations.push("🔐 XSS attempts detected - review output encoding")
   }
 
+  if (stats.eventsByType.failed_auth_attempts > 10) {
+    recommendations.push("🔑 High authentication failures - consider account lockout policies")
+  }
+
+  if (stats.eventsByType.rate_limit_exceeded > 20) {
+    recommendations.push("⚡ High rate limiting - review API usage patterns")
+  }
+
+  // Active alerts
+  if (stats.activeAlerts.length > 0) {
+    recommendations.push(`🚨 ${stats.activeAlerts.length} active security alerts require attention`)
+  }
+
+  // General recommendations
   if (recommendations.length === 0) {
-    recommendations.push("Security posture is good - continue monitoring")
+    recommendations.push("✅ Security posture looks good")
+    recommendations.push("📊 Continue monitoring for anomalies")
+    recommendations.push("🔄 Regular security reviews recommended")
   }
 
   return recommendations
