@@ -20,38 +20,60 @@ export function formatNumber(num: number, decimals = 2): string {
 }
 
 export function formatPercentage(value: number, decimals = 2): string {
-  return `${formatNumber(value, decimals)}%`
+  return `${value >= 0 ? "+" : ""}${value.toFixed(decimals)}%`
 }
 
-export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOptions): string {
-  const dateObj = typeof date === "string" ? new Date(date) : date
-  return dateObj.toLocaleDateString("en-US", options)
+export function formatDate(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date
+  return d.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  })
 }
 
 export function formatDateTime(date: Date | string): string {
-  const dateObj = typeof date === "string" ? new Date(date) : date
-  return dateObj.toLocaleString("en-US")
+  const d = typeof date === "string" ? new Date(date) : date
+  return d.toLocaleString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
 }
 
-export function formatRelativeTime(date: Date | string): string {
-  const dateObj = typeof date === "string" ? new Date(date) : date
+export function formatTimeAgo(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date
   const now = new Date()
-  const diffInSeconds = Math.floor((now.getTime() - dateObj.getTime()) / 1000)
+  const diffInSeconds = Math.floor((now.getTime() - d.getTime()) / 1000)
 
   if (diffInSeconds < 60) {
     return "just now"
-  } else if (diffInSeconds < 3600) {
-    const minutes = Math.floor(diffInSeconds / 60)
-    return `${minutes} minute${minutes > 1 ? "s" : ""} ago`
-  } else if (diffInSeconds < 86400) {
-    const hours = Math.floor(diffInSeconds / 3600)
-    return `${hours} hour${hours > 1 ? "s" : ""} ago`
-  } else if (diffInSeconds < 2592000) {
-    const days = Math.floor(diffInSeconds / 86400)
-    return `${days} day${days > 1 ? "s" : ""} ago`
-  } else {
-    return formatDate(dateObj)
   }
+
+  const diffInMinutes = Math.floor(diffInSeconds / 60)
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes}m ago`
+  }
+
+  const diffInHours = Math.floor(diffInMinutes / 60)
+  if (diffInHours < 24) {
+    return `${diffInHours}h ago`
+  }
+
+  const diffInDays = Math.floor(diffInHours / 24)
+  if (diffInDays < 7) {
+    return `${diffInDays}d ago`
+  }
+
+  const diffInWeeks = Math.floor(diffInDays / 7)
+  if (diffInWeeks < 4) {
+    return `${diffInWeeks}w ago`
+  }
+
+  const diffInMonths = Math.floor(diffInDays / 30)
+  return `${diffInMonths}mo ago`
 }
 
 export function generateId(length = 8): string {
@@ -71,35 +93,9 @@ export function slugify(text: string): string {
     .replace(/^-+|-+$/g, "")
 }
 
-export function truncate(text: string, length = 100): string {
+export function truncate(text: string, length: number): string {
   if (text.length <= length) return text
-  return text.substring(0, length).trim() + "..."
-}
-
-export function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase()
-}
-
-export function camelToKebab(str: string): string {
-  return str.replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, "$1-$2").toLowerCase()
-}
-
-export function kebabToCamel(str: string): string {
-  return str.replace(/-([a-z])/g, (g) => g[1].toUpperCase())
-}
-
-export function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email)
-}
-
-export function isValidUrl(url: string): boolean {
-  try {
-    new URL(url)
-    return true
-  } catch {
-    return false
-  }
+  return text.substring(0, length) + "..."
 }
 
 export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): T {
@@ -121,160 +117,146 @@ export function throttle<T extends (...args: any[]) => any>(func: T, limit: numb
   }) as T
 }
 
+export function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(email)
+}
+
+export function isValidPassword(password: string): boolean {
+  // At least 8 characters, 1 uppercase, 1 lowercase, 1 number
+  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/
+  return passwordRegex.test(password)
+}
+
+export function getPasswordStrength(password: string): {
+  score: number
+  feedback: string[]
+} {
+  const feedback: string[] = []
+  let score = 0
+
+  if (password.length >= 8) {
+    score += 1
+  } else {
+    feedback.push("Use at least 8 characters")
+  }
+
+  if (/[a-z]/.test(password)) {
+    score += 1
+  } else {
+    feedback.push("Add lowercase letters")
+  }
+
+  if (/[A-Z]/.test(password)) {
+    score += 1
+  } else {
+    feedback.push("Add uppercase letters")
+  }
+
+  if (/\d/.test(password)) {
+    score += 1
+  } else {
+    feedback.push("Add numbers")
+  }
+
+  if (/[^a-zA-Z\d]/.test(password)) {
+    score += 1
+  } else {
+    feedback.push("Add special characters")
+  }
+
+  return { score, feedback }
+}
+
+export function calculatePnL(entryPrice: number, currentPrice: number, quantity: number, side: "buy" | "sell"): number {
+  if (side === "buy") {
+    return (currentPrice - entryPrice) * quantity
+  } else {
+    return (entryPrice - currentPrice) * quantity
+  }
+}
+
+export function calculatePercentageChange(oldValue: number, newValue: number): number {
+  if (oldValue === 0) return 0
+  return ((newValue - oldValue) / oldValue) * 100
+}
+
+export function formatLargeNumber(num: number): string {
+  if (num >= 1e9) {
+    return (num / 1e9).toFixed(1) + "B"
+  }
+  if (num >= 1e6) {
+    return (num / 1e6).toFixed(1) + "M"
+  }
+  if (num >= 1e3) {
+    return (num / 1e3).toFixed(1) + "K"
+  }
+  return num.toString()
+}
+
+export function getColorForPnL(pnl: number): string {
+  if (pnl > 0) return "text-green-600"
+  if (pnl < 0) return "text-red-600"
+  return "text-gray-600"
+}
+
+export function getColorForPercentage(percentage: number): string {
+  if (percentage > 0) return "text-green-600"
+  if (percentage < 0) return "text-red-600"
+  return "text-gray-600"
+}
+
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-export function randomBetween(min: number, max: number): number {
-  return Math.random() * (max - min) + min
-}
-
-export function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max)
-}
-
-export function roundTo(value: number, decimals: number): number {
-  return Number(Math.round(Number(value + "e" + decimals)) + "e-" + decimals)
-}
-
-export function calculatePercentageChange(oldValue: number, newValue: number): number {
-  if (oldValue === 0) return newValue > 0 ? 100 : 0
-  return ((newValue - oldValue) / oldValue) * 100
-}
-
-export function calculatePnL(entryPrice: number, exitPrice: number, quantity: number, side: "buy" | "sell"): number {
-  if (side === "buy") {
-    return (exitPrice - entryPrice) * quantity
-  } else {
-    return (entryPrice - exitPrice) * quantity
-  }
-}
-
-export function calculateWinRate(trades: Array<{ pnl: number }>): number {
-  if (trades.length === 0) return 0
-  const winningTrades = trades.filter((trade) => trade.pnl > 0).length
-  return (winningTrades / trades.length) * 100
-}
-
-export function calculateSharpeRatio(returns: number[], riskFreeRate = 0): number {
-  if (returns.length === 0) return 0
-
-  const avgReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length
-  const variance = returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length
-  const stdDev = Math.sqrt(variance)
-
-  if (stdDev === 0) return 0
-  return (avgReturn - riskFreeRate) / stdDev
-}
-
-export function calculateMaxDrawdown(values: number[]): number {
-  if (values.length === 0) return 0
-
-  let maxDrawdown = 0
-  let peak = values[0]
-
-  for (const value of values) {
-    if (value > peak) {
-      peak = value
+export function retry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+  return fn().catch((error) => {
+    if (retries > 0) {
+      return sleep(delay).then(() => retry(fn, retries - 1, delay * 2))
     }
-    const drawdown = (peak - value) / peak
-    if (drawdown > maxDrawdown) {
-      maxDrawdown = drawdown
-    }
-  }
-
-  return maxDrawdown * 100
-}
-
-export function validatePassword(password: string): {
-  isValid: boolean
-  errors: string[]
-} {
-  const errors: string[] = []
-
-  if (password.length < 8) {
-    errors.push("Password must be at least 8 characters long")
-  }
-
-  if (!/[A-Z]/.test(password)) {
-    errors.push("Password must contain at least one uppercase letter")
-  }
-
-  if (!/[a-z]/.test(password)) {
-    errors.push("Password must contain at least one lowercase letter")
-  }
-
-  if (!/\d/.test(password)) {
-    errors.push("Password must contain at least one number")
-  }
-
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    errors.push("Password must contain at least one special character")
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors,
-  }
-}
-
-export function sanitizeInput(input: string): string {
-  return input
-    .replace(/[<>]/g, "")
-    .replace(/javascript:/gi, "")
-    .replace(/on\w+=/gi, "")
-    .trim()
-}
-
-export function parseQueryParams(url: string): Record<string, string> {
-  const params: Record<string, string> = {}
-  const urlObj = new URL(url)
-
-  urlObj.searchParams.forEach((value, key) => {
-    params[key] = value
+    throw error
   })
-
-  return params
 }
 
-export function buildQueryString(params: Record<string, any>): string {
-  const searchParams = new URLSearchParams()
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== null && value !== undefined) {
-      searchParams.append(key, String(value))
-    }
-  })
-
-  return searchParams.toString()
-}
-
-export function deepClone<T>(obj: T): T {
-  if (obj === null || typeof obj !== "object") return obj
-  if (obj instanceof Date) return new Date(obj.getTime()) as T
-  if (obj instanceof Array) return obj.map((item) => deepClone(item)) as T
-  if (typeof obj === "object") {
-    const clonedObj = {} as T
-    Object.keys(obj).forEach((key) => {
-      ;(clonedObj as any)[key] = deepClone((obj as any)[key])
-    })
-    return clonedObj
+export function safeJsonParse<T>(json: string, fallback: T): T {
+  try {
+    return JSON.parse(json)
+  } catch {
+    return fallback
   }
-  return obj
 }
 
-export function omit<T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
-  const result = { ...obj }
-  keys.forEach((key) => delete result[key])
+export function removeUndefined<T extends Record<string, any>>(obj: T): T {
+  const result = {} as T
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      result[key as keyof T] = value
+    }
+  }
   return result
 }
 
-export function pick<T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
-  const result = {} as Pick<T, K>
-  keys.forEach((key) => {
-    if (key in obj) {
-      result[key] = obj[key]
-    }
-  })
-  return result
+export function groupBy<T, K extends keyof any>(array: T[], key: (item: T) => K): Record<K, T[]> {
+  return array.reduce(
+    (groups, item) => {
+      const group = key(item)
+      groups[group] = groups[group] || []
+      groups[group].push(item)
+      return groups
+    },
+    {} as Record<K, T[]>,
+  )
+}
+
+export function unique<T>(array: T[]): T[] {
+  return [...new Set(array)]
+}
+
+export function chunk<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size))
+  }
+  return chunks
 }
