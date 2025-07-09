@@ -1,34 +1,57 @@
 import { MongoClient, type Db } from "mongodb"
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017"
-const DB_NAME = process.env.DB_NAME || "coinwayfinder"
+if (!process.env.MONGODB_URI) {
+  throw new Error("Please add your MongoDB URI to .env.local")
+}
 
-let client: MongoClient
-let db: Db
+const uri: string = process.env.MONGODB_URI
+const dbName: string = process.env.DB_NAME || "coinwayfinder"
+
+let cachedClient: MongoClient | null = null
+let cachedDb: Db | null = null
 
 export async function connectToDatabase(): Promise<Db> {
-  if (db) {
-    return db
+  if (cachedClient && cachedDb) {
+    return cachedDb
   }
 
-  try {
-    client = new MongoClient(MONGODB_URI)
-    await client.connect()
-    db = client.db(DB_NAME)
+  const client = new MongoClient(uri, {
+    maxPoolSize: 10,
+    serverSelectionTimeoutMS: 5000,
+    socketTimeoutMS: 45000,
+  })
 
-    console.log("Connected to MongoDB")
+  await client.connect()
 
-    // Create indexes for better performance
-    await createIndexes()
+  const db = client.db(dbName)
 
-    return db
-  } catch (error) {
-    console.error("Failed to connect to MongoDB:", error)
-    throw error
+  cachedClient = client
+  cachedDb = db
+
+  return db
+}
+
+export async function closeDatabase(): Promise<void> {
+  if (cachedClient) {
+    await cachedClient.close()
+    cachedClient = null
+    cachedDb = null
   }
 }
 
-async function createIndexes() {
+// Test the connection
+export async function testDatabaseConnection(): Promise<boolean> {
+  try {
+    const db = await connectToDatabase()
+    await db.admin().ping()
+    return true
+  } catch (error) {
+    console.error("Database connection test failed:", error)
+    return false
+  }
+}
+
+async function createIndexes(db: Db) {
   try {
     // Users collection indexes
     await db.collection("users").createIndex({ email: 1 }, { unique: true })
@@ -244,6 +267,7 @@ export class Database {
 
   private async initialize() {
     this.db = await connectToDatabase()
+    await createIndexes(this.db)
   }
 
   // User operations
@@ -482,9 +506,7 @@ export class Database {
 
   // Cleanup operations
   async cleanup(): Promise<void> {
-    if (client) {
-      await client.close()
-    }
+    await closeDatabase()
   }
 }
 
