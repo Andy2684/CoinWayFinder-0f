@@ -1,27 +1,27 @@
-import { MongoClient, type Db, type Collection } from "mongodb"
+import { MongoClient, type Db, type Collection, ObjectId } from "mongodb"
 
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017"
 const DB_NAME = process.env.DB_NAME || "coinwayfinder"
 
 interface User {
-  _id?: string
-  id: string
+  _id?: ObjectId
   email: string
-  name: string
+  username: string
   password: string
   createdAt: Date
   lastLoginAt?: Date
-  isActive: boolean
-  emailVerified: boolean
-  referralCode?: string
-  referredBy?: string
+  emailVerified?: boolean
+  resetPasswordToken?: string
+  resetPasswordExpires?: Date
+  isActive?: boolean
 }
 
 interface UserSettings {
+  _id?: ObjectId
   userId: string
   subscription: {
-    plan: "free" | "basic" | "premium" | "enterprise"
-    status: "active" | "expired" | "cancelled" | "trialing"
+    plan: string
+    status: string
     startDate?: Date
     endDate?: Date
     stripeCustomerId?: string
@@ -29,9 +29,9 @@ interface UserSettings {
   }
   trial: {
     hasUsed: boolean
+    isActive: boolean
     startDate?: Date
     endDate?: Date
-    isActive: boolean
   }
   notifications: {
     email: boolean
@@ -39,15 +39,23 @@ interface UserSettings {
     push: boolean
   }
   preferences: {
-    theme: "light" | "dark"
+    theme: string
     currency: string
     timezone: string
   }
+  apiKeys?: Array<{
+    id: string
+    name: string
+    key: string
+    permissions: string[]
+    createdAt: Date
+    lastUsedAt?: Date
+    isActive: boolean
+  }>
 }
 
 interface Bot {
-  _id?: string
-  id: string
+  _id?: ObjectId
   userId: string
   name: string
   strategy: string
@@ -59,26 +67,26 @@ interface Bot {
     totalTrades: number
     winRate: number
     totalPnL: number
-    roi: number
+    currentDrawdown: number
   }
   createdAt: Date
   updatedAt: Date
 }
 
 interface Trade {
-  _id?: string
-  id: string
-  botId: string
+  _id?: ObjectId
   userId: string
+  botId: string
+  exchange: string
   symbol: string
   side: "buy" | "sell"
   amount: number
   price: number
   fee: number
   pnl?: number
-  status: "pending" | "filled" | "cancelled"
   timestamp: Date
-  exchange: string
+  orderId: string
+  status: "pending" | "filled" | "cancelled"
 }
 
 class Database {
@@ -86,9 +94,7 @@ class Database {
   private db: Db | null = null
 
   async connect(): Promise<void> {
-    if (this.client && this.db) {
-      return
-    }
+    if (this.client) return
 
     try {
       this.client = new MongoClient(MONGODB_URI)
@@ -96,7 +102,7 @@ class Database {
       this.db = this.client.db(DB_NAME)
       console.log("Connected to MongoDB")
     } catch (error) {
-      console.error("Failed to connect to MongoDB:", error)
+      console.error("MongoDB connection error:", error)
       throw error
     }
   }
@@ -116,184 +122,252 @@ class Database {
     return this.db!.collection<T>(name)
   }
 
-  // User methods
-  async createUser(user: Omit<User, "_id">): Promise<User> {
-    const collection = await this.getCollection<User>("users")
-    const result = await collection.insertOne(user as User)
-    return { ...user, _id: result.insertedId.toString() }
+  // User operations
+  async createUser(userData: Omit<User, "_id">): Promise<User> {
+    const users = await this.getCollection<User>("users")
+    const result = await users.insertOne({
+      ...userData,
+      createdAt: new Date(),
+      isActive: true,
+    })
+
+    const user = await users.findOne({ _id: result.insertedId })
+    if (!user) throw new Error("Failed to create user")
+    return user
+  }
+
+  async getUserById(userId: string): Promise<User | null> {
+    const users = await this.getCollection<User>("users")
+    return users.findOne({ _id: new ObjectId(userId) })
   }
 
   async getUserByEmail(email: string): Promise<User | null> {
-    const collection = await this.getCollection<User>("users")
-    return await collection.findOne({ email })
+    const users = await this.getCollection<User>("users")
+    return users.findOne({ email })
   }
 
-  async getUserById(id: string): Promise<User | null> {
-    const collection = await this.getCollection<User>("users")
-    return await collection.findOne({ id })
+  async updateUser(userId: string, updates: Partial<User>): Promise<void> {
+    const users = await this.getCollection<User>("users")
+    await users.updateOne({ _id: new ObjectId(userId) }, { $set: { ...updates, updatedAt: new Date() } })
   }
 
-  async updateUser(id: string, updates: Partial<User>): Promise<boolean> {
-    const collection = await this.getCollection<User>("users")
-    const result = await collection.updateOne({ id }, { $set: updates })
-    return result.modifiedCount > 0
+  async deleteUser(userId: string): Promise<void> {
+    const users = await this.getCollection<User>("users")
+    await users.deleteOne({ _id: new ObjectId(userId) })
   }
 
-  async getAllUsers(limit = 100): Promise<User[]> {
-    const collection = await this.getCollection<User>("users")
-    return await collection.find({}).limit(limit).toArray()
+  async getAllUsers(): Promise<User[]> {
+    const users = await this.getCollection<User>("users")
+    return users.find({}).toArray()
   }
 
-  async getUserCount(): Promise<number> {
-    const collection = await this.getCollection<User>("users")
-    return await collection.countDocuments()
+  // User Settings operations
+  async createUserSettings(settingsData: Omit<UserSettings, "_id">): Promise<UserSettings> {
+    const settings = await this.getCollection<UserSettings>("userSettings")
+    const result = await settings.insertOne(settingsData)
+
+    const userSettings = await settings.findOne({ _id: result.insertedId })
+    if (!userSettings) throw new Error("Failed to create user settings")
+    return userSettings
   }
 
-  // User Settings methods
   async getUserSettings(userId: string): Promise<UserSettings | null> {
-    const collection = await this.getCollection<UserSettings>("user_settings")
-    return await collection.findOne({ userId })
+    const settings = await this.getCollection<UserSettings>("userSettings")
+    return settings.findOne({ userId })
   }
 
-  async createUserSettings(settings: UserSettings): Promise<UserSettings> {
-    const collection = await this.getCollection<UserSettings>("user_settings")
-    await collection.insertOne(settings)
-    return settings
+  async updateUserSettings(userId: string, updates: Partial<UserSettings>): Promise<void> {
+    const settings = await this.getCollection<UserSettings>("userSettings")
+    await settings.updateOne({ userId }, { $set: updates }, { upsert: true })
   }
 
-  async updateUserSettings(userId: string, updates: Partial<UserSettings>): Promise<boolean> {
-    const collection = await this.getCollection<UserSettings>("user_settings")
-    const result = await collection.updateOne({ userId }, { $set: updates }, { upsert: true })
-    return result.modifiedCount > 0 || result.upsertedCount > 0
+  async createUserWithTrial(userId: string): Promise<UserSettings> {
+    const trialEndDate = new Date()
+    trialEndDate.setDate(trialEndDate.getDate() + 14) // 14-day trial
+
+    const userSettings: Omit<UserSettings, "_id"> = {
+      userId,
+      subscription: {
+        plan: "free",
+        status: "trial",
+        startDate: new Date(),
+        endDate: trialEndDate,
+      },
+      trial: {
+        hasUsed: true,
+        isActive: true,
+        startDate: new Date(),
+        endDate: trialEndDate,
+      },
+      notifications: {
+        email: true,
+        telegram: false,
+        push: false,
+      },
+      preferences: {
+        theme: "light",
+        currency: "USD",
+        timezone: "UTC",
+      },
+    }
+
+    return this.createUserSettings(userSettings)
   }
 
-  async updateSubscription(userId: string, subscription: UserSettings["subscription"]): Promise<boolean> {
-    const collection = await this.getCollection<UserSettings>("user_settings")
-    const result = await collection.updateOne({ userId }, { $set: { subscription } }, { upsert: true })
-    return result.modifiedCount > 0 || result.upsertedCount > 0
+  // Bot operations
+  async createBot(botData: Omit<Bot, "_id">): Promise<Bot> {
+    const bots = await this.getCollection<Bot>("bots")
+    const result = await bots.insertOne({
+      ...botData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+
+    const bot = await bots.findOne({ _id: result.insertedId })
+    if (!bot) throw new Error("Failed to create bot")
+    return bot
   }
 
-  async getActiveSubscriptions(): Promise<number> {
-    const collection = await this.getCollection<UserSettings>("user_settings")
-    return await collection.countDocuments({ "subscription.status": "active" })
+  async getBotById(botId: string): Promise<Bot | null> {
+    const bots = await this.getCollection<Bot>("bots")
+    return bots.findOne({ _id: new ObjectId(botId) })
   }
 
-  // Trial methods
-  async startTrial(userId: string): Promise<boolean> {
-    const startDate = new Date()
-    const endDate = new Date(startDate.getTime() + 3 * 24 * 60 * 60 * 1000) // 3 days
+  async getUserBots(userId: string): Promise<Bot[]> {
+    const bots = await this.getCollection<Bot>("bots")
+    return bots.find({ userId }).toArray()
+  }
 
-    const collection = await this.getCollection<UserSettings>("user_settings")
-    const result = await collection.updateOne(
+  async updateBot(botId: string, updates: Partial<Bot>): Promise<void> {
+    const bots = await this.getCollection<Bot>("bots")
+    await bots.updateOne({ _id: new ObjectId(botId) }, { $set: { ...updates, updatedAt: new Date() } })
+  }
+
+  async deleteBot(botId: string): Promise<void> {
+    const bots = await this.getCollection<Bot>("bots")
+    await bots.deleteOne({ _id: new ObjectId(botId) })
+  }
+
+  async getActiveBots(): Promise<Bot[]> {
+    const bots = await this.getCollection<Bot>("bots")
+    return bots.find({ status: "active" }).toArray()
+  }
+
+  // Trade operations
+  async createTrade(tradeData: Omit<Trade, "_id">): Promise<Trade> {
+    const trades = await this.getCollection<Trade>("trades")
+    const result = await trades.insertOne({
+      ...tradeData,
+      timestamp: new Date(),
+    })
+
+    const trade = await trades.findOne({ _id: result.insertedId })
+    if (!trade) throw new Error("Failed to create trade")
+    return trade
+  }
+
+  async getUserTrades(userId: string, limit = 100): Promise<Trade[]> {
+    const trades = await this.getCollection<Trade>("trades")
+    return trades.find({ userId }).sort({ timestamp: -1 }).limit(limit).toArray()
+  }
+
+  async getBotTrades(botId: string, limit = 100): Promise<Trade[]> {
+    const trades = await this.getCollection<Trade>("trades")
+    return trades.find({ botId }).sort({ timestamp: -1 }).limit(limit).toArray()
+  }
+
+  async updateTrade(tradeId: string, updates: Partial<Trade>): Promise<void> {
+    const trades = await this.getCollection<Trade>("trades")
+    await trades.updateOne({ _id: new ObjectId(tradeId) }, { $set: updates })
+  }
+
+  // API Key operations
+  async createAPIKey(
+    userId: string,
+    keyData: {
+      name: string
+      key: string
+      permissions: string[]
+    },
+  ): Promise<void> {
+    const settings = await this.getCollection<UserSettings>("userSettings")
+    await settings.updateOne(
       { userId },
       {
-        $set: {
-          trial: {
-            hasUsed: true,
-            startDate,
-            endDate,
+        $push: {
+          apiKeys: {
+            id: new ObjectId().toString(),
+            ...keyData,
+            createdAt: new Date(),
             isActive: true,
-          },
-          subscription: {
-            plan: "premium",
-            status: "trialing",
-            startDate,
-            endDate,
           },
         },
       },
       { upsert: true },
     )
-
-    return result.modifiedCount > 0 || result.upsertedCount > 0
   }
 
-  async getTrialStatus(userId: string): Promise<{
-    hasUsed: boolean
-    isActive: boolean
-    daysRemaining: number
-    endDate?: Date
-  }> {
+  async getUserAPIKeys(userId: string): Promise<UserSettings["apiKeys"]> {
     const settings = await this.getUserSettings(userId)
+    return settings?.apiKeys || []
+  }
 
-    if (!settings?.trial) {
-      return {
-        hasUsed: false,
-        isActive: false,
-        daysRemaining: 3,
-      }
-    }
+  async updateAPIKey(userId: string, keyId: string, updates: any): Promise<void> {
+    const settings = await this.getCollection<UserSettings>("userSettings")
+    await settings.updateOne({ userId, "apiKeys.id": keyId }, { $set: { "apiKeys.$": { ...updates } } })
+  }
 
-    const { trial } = settings
-    const now = new Date()
-    const daysRemaining = trial.endDate
-      ? Math.max(0, Math.ceil((trial.endDate.getTime() - now.getTime()) / (24 * 60 * 60 * 1000)))
-      : 0
+  async deleteAPIKey(userId: string, keyId: string): Promise<void> {
+    const settings = await this.getCollection<UserSettings>("userSettings")
+    await settings.updateOne({ userId }, { $pull: { apiKeys: { id: keyId } } })
+  }
+
+  // Analytics operations
+  async getUserStats(userId: string): Promise<{
+    totalBots: number
+    activeBots: number
+    totalTrades: number
+    totalPnL: number
+    winRate: number
+  }> {
+    const bots = await this.getUserBots(userId)
+    const trades = await this.getUserTrades(userId)
+
+    const totalBots = bots.length
+    const activeBots = bots.filter((bot) => bot.status === "active").length
+    const totalTrades = trades.length
+    const totalPnL = trades.reduce((sum, trade) => sum + (trade.pnl || 0), 0)
+    const winningTrades = trades.filter((trade) => (trade.pnl || 0) > 0).length
+    const winRate = totalTrades > 0 ? (winningTrades / totalTrades) * 100 : 0
 
     return {
-      hasUsed: trial.hasUsed,
-      isActive: trial.isActive && daysRemaining > 0,
-      daysRemaining,
-      endDate: trial.endDate,
+      totalBots,
+      activeBots,
+      totalTrades,
+      totalPnL,
+      winRate,
     }
   }
 
-  // Bot methods
-  async createBot(bot: Omit<Bot, "_id">): Promise<Bot> {
-    const collection = await this.getCollection<Bot>("bots")
-    const result = await collection.insertOne(bot as Bot)
-    return { ...bot, _id: result.insertedId.toString() }
-  }
-
-  async getUserBots(userId: string): Promise<Bot[]> {
-    const collection = await this.getCollection<Bot>("bots")
-    return await collection.find({ userId }).toArray()
-  }
-
-  async getBotById(id: string): Promise<Bot | null> {
-    const collection = await this.getCollection<Bot>("bots")
-    return await collection.findOne({ id })
-  }
-
-  async updateBot(id: string, updates: Partial<Bot>): Promise<boolean> {
-    const collection = await this.getCollection<Bot>("bots")
-    const result = await collection.updateOne({ id }, { $set: updates })
-    return result.modifiedCount > 0
-  }
-
-  async deleteBot(id: string): Promise<boolean> {
-    const collection = await this.getCollection<Bot>("bots")
-    const result = await collection.deleteOne({ id })
-    return result.deletedCount > 0
-  }
-
-  // Trade methods
-  async createTrade(trade: Omit<Trade, "_id">): Promise<Trade> {
-    const collection = await this.getCollection<Trade>("trades")
-    const result = await collection.insertOne(trade as Trade)
-    return { ...trade, _id: result.insertedId.toString() }
-  }
-
-  async getUserTrades(userId: string, limit = 100): Promise<Trade[]> {
-    const collection = await this.getCollection<Trade>("trades")
-    return await collection.find({ userId }).limit(limit).sort({ timestamp: -1 }).toArray()
-  }
-
-  async getBotTrades(botId: string, limit = 100): Promise<Trade[]> {
-    const collection = await this.getCollection<Trade>("trades")
-    return await collection.find({ botId }).limit(limit).sort({ timestamp: -1 }).toArray()
-  }
-
-  async updateTrade(id: string, updates: Partial<Trade>): Promise<boolean> {
-    const collection = await this.getCollection<Trade>("trades")
-    const result = await collection.updateOne({ id }, { $set: updates })
-    return result.modifiedCount > 0
+  // Portfolio operations
+  async getUserPortfolio(userId: string): Promise<{
+    totalValue: number
+    positions: Array<{
+      symbol: string
+      amount: number
+      value: number
+      pnl: number
+    }>
+  }> {
+    // Mock portfolio data - in real implementation, calculate from trades
+    return {
+      totalValue: 10000,
+      positions: [
+        { symbol: "BTC/USDT", amount: 0.5, value: 25000, pnl: 1250 },
+        { symbol: "ETH/USDT", amount: 10, value: 20000, pnl: -500 },
+      ],
+    }
   }
 }
 
 export const database = new Database()
-
-export async function connectToDatabase(): Promise<Database> {
-  await database.connect()
-  return database
-}

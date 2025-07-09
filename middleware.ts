@@ -1,68 +1,62 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { authManager } from "./lib/auth"
-import { adminManager } from "./lib/admin"
+import { AuthService } from "./lib/auth"
+import { AdminService } from "./lib/admin"
+
+// Define protected routes
+const protectedRoutes = ["/dashboard", "/bots", "/integrations", "/profile", "/subscription"]
+
+const adminRoutes = ["/admin"]
+
+const apiRoutes = ["/api/auth", "/api/user", "/api/bots", "/api/portfolio", "/api/trades"]
+
+const publicApiRoutes = [
+  "/api/auth/signin",
+  "/api/auth/signup",
+  "/api/crypto/prices",
+  "/api/crypto/news",
+  "/api/stripe/webhook",
+]
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-
-  // Skip middleware for static files and API routes that don't need auth
+  
+  // Skip middleware for static files and public routes
   if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/api/auth/signin") ||
-    pathname.startsWith("/api/auth/signup") ||
-    pathname.startsWith("/api/stripe/webhook") ||
-    pathname.startsWith("/api/coinbase/webhook") ||
-    pathname.includes(".")
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/static') ||
+    pathname.includes('.') ||
+    pathname === '/' ||
+    pathname === '/api-docs'
   ) {
     return NextResponse.next()
   }
 
-  // Admin routes
-  if (pathname.startsWith("/admin")) {
-    const admin = await adminManager.getCurrentAdmin()
-
-    if (!admin) {
-      return NextResponse.redirect(new URL("/", request.url))
-    }
-
-    return NextResponse.next()
-  }
-
-  // Protected routes that require authentication
-  const protectedRoutes = ["/dashboard", "/bots", "/profile", "/subscription", "/integrations", "/news"]
-
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
-
-  if (isProtectedRoute) {
-    const user = await authManager.getCurrentUser()
-
-    if (!user) {
-      return NextResponse.redirect(new URL("/", request.url))
+  // Handle admin routes
+  if (adminRoutes.some(route => pathname.startsWith(route))) {
+    try {
+      const admin = await AdminService.getCurrentAdmin()
+      if (!admin) {
+        return NextResponse.redirect(new URL('/?admin=login', request.url))
+      }
+      return NextResponse.next()
+    } catch (error) {
+      return NextResponse.redirect(new URL('/?admin=login', request.url))
     }
   }
 
-  // API routes that require authentication
-  if (pathname.startsWith("/api/") && !pathname.startsWith("/api/auth/")) {
-    const authHeader = request.headers.get("authorization")
-    const cookieToken = request.cookies.get("auth-token")?.value
-
-    if (!authHeader && !cookieToken) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+  // Handle protected routes
+  if (protectedRoutes.some(route => pathname.startsWith(route))) {
+    try {
+      const user = await AuthService.getCurrentUser()
+      if (!user) {
+        return NextResponse.redirect(new URL('/?login=required', request.url))
+      }
+      return NextResponse.next()
+    } catch (error) {
+      return NextResponse.redirect(new URL('/?login=required', request.url))
     }
   }
 
-  return NextResponse.next()
-}
-
-export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    "/((?!_next/static|_next/image|favicon.ico).*)",
-  ],
-}
+  // Handle API routes
+  if (pathname.startsWith('/api/')) {
+// Allow public API routes

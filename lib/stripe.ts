@@ -1,99 +1,132 @@
 import Stripe from "stripe"
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+const stripeSecretKey = process.env.STRIPE_SECRET_KEY
+const stripePublishableKey = process.env.STRIPE_PUBLISHABLE_KEY
+
+if (!stripeSecretKey) {
+  throw new Error("STRIPE_SECRET_KEY is not set in environment variables")
+}
+
+export const stripe = new Stripe(stripeSecretKey, {
   apiVersion: "2024-06-20",
+  typescript: true,
 })
 
-export interface CheckoutSessionData {
-  priceId: string
-  userId: string
-  userEmail: string
-  successUrl: string
-  cancelUrl: string
-  trialDays?: number
+export const stripeConfig = {
+  publishableKey: stripePublishableKey,
+  secretKey: stripeSecretKey,
+  webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
 }
 
-export async function createCheckoutSession(data: CheckoutSessionData): Promise<Stripe.Checkout.Session> {
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    payment_method_types: ["card"],
-    line_items: [
-      {
-        price: data.priceId,
-        quantity: 1,
-      },
-    ],
-    customer_email: data.userEmail,
-    metadata: {
-      userId: data.userId,
-    },
-    subscription_data: data.trialDays
-      ? {
-          trial_period_days: data.trialDays,
-        }
-      : undefined,
-    success_url: data.successUrl,
-    cancel_url: data.cancelUrl,
-  })
+// Stripe utility functions
+export class StripeService {
+  static async createCustomer(email: string, name?: string): Promise<Stripe.Customer> {
+    return stripe.customers.create({
+      email,
+      name,
+    })
+  }
 
-  return session
-}
+  static async createCheckoutSession(params: {
+    customerId?: string
+    customerEmail?: string
+    priceId: string
+    successUrl: string
+    cancelUrl: string
+    metadata?: Record<string, string>
+  }): Promise<Stripe.Checkout.Session> {
+    const sessionParams: Stripe.Checkout.SessionCreateParams = {
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price: params.priceId,
+          quantity: 1,
+        },
+      ],
+      mode: "subscription",
+      success_url: params.successUrl,
+      cancel_url: params.cancelUrl,
+      metadata: params.metadata,
+    }
 
-export async function createCustomerPortalSession(
-  customerId: string,
-  returnUrl: string,
-): Promise<Stripe.BillingPortal.Session> {
-  const session = await stripe.billingPortal.sessions.create({
-    customer: customerId,
-    return_url: returnUrl,
-  })
+    if (params.customerId) {
+      sessionParams.customer = params.customerId
+    } else if (params.customerEmail) {
+      sessionParams.customer_email = params.customerEmail
+    }
 
-  return session
-}
+    return stripe.checkout.sessions.create(sessionParams)
+  }
 
-export async function getSubscription(subscriptionId: string): Promise<Stripe.Subscription | null> {
-  try {
-    return await stripe.subscriptions.retrieve(subscriptionId)
-  } catch (error) {
-    console.error("Error retrieving subscription:", error)
-    return null
+  static async createPortalSession(customerId: string, returnUrl: string): Promise<Stripe.BillingPortal.Session> {
+    return stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: returnUrl,
+    })
+  }
+
+  static async getSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
+    return stripe.subscriptions.retrieve(subscriptionId)
+  }
+
+  static async cancelSubscription(subscriptionId: string, cancelAtPeriodEnd = true): Promise<Stripe.Subscription> {
+    if (cancelAtPeriodEnd) {
+      return stripe.subscriptions.update(subscriptionId, {
+        cancel_at_period_end: true,
+      })
+    } else {
+      return stripe.subscriptions.cancel(subscriptionId)
+    }
+  }
+
+  static async reactivateSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
+    return stripe.subscriptions.update(subscriptionId, {
+      cancel_at_period_end: false,
+    })
+  }
+
+  static async constructWebhookEvent(
+    payload: string | Buffer,
+    signature: string,
+    webhookSecret: string,
+  ): Promise<Stripe.Event> {
+    return stripe.webhooks.constructEvent(payload, signature, webhookSecret)
+  }
+
+  static async getCustomer(customerId: string): Promise<Stripe.Customer> {
+    return stripe.customers.retrieve(customerId) as Promise<Stripe.Customer>
+  }
+
+  static async updateCustomer(customerId: string, params: Stripe.CustomerUpdateParams): Promise<Stripe.Customer> {
+    return stripe.customers.update(customerId, params)
+  }
+
+  static async getInvoices(customerId: string, limit = 10): Promise<Stripe.Invoice[]> {
+    const invoices = await stripe.invoices.list({
+      customer: customerId,
+      limit,
+    })
+    return invoices.data
+  }
+
+  static async getPaymentMethods(customerId: string): Promise<Stripe.PaymentMethod[]> {
+    const paymentMethods = await stripe.paymentMethods.list({
+      customer: customerId,
+      type: "card",
+    })
+    return paymentMethods.data
+  }
+
+  static formatAmount(amount: number, currency = "usd"): string {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: currency.toUpperCase(),
+    }).format(amount / 100)
+  }
+
+  static formatDate(timestamp: number): string {
+    return new Date(timestamp * 1000).toLocaleDateString()
   }
 }
 
-export async function cancelSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
-  return await stripe.subscriptions.cancel(subscriptionId)
-}
-
-export async function updateSubscription(
-  subscriptionId: string,
-  updates: Stripe.SubscriptionUpdateParams,
-): Promise<Stripe.Subscription> {
-  return await stripe.subscriptions.update(subscriptionId, updates)
-}
-
-export async function createCustomer(email: string, name?: string): Promise<Stripe.Customer> {
-  return await stripe.customers.create({
-    email,
-    name,
-  })
-}
-
-export async function getCustomer(customerId: string): Promise<Stripe.Customer | null> {
-  try {
-    const customer = await stripe.customers.retrieve(customerId)
-    return customer as Stripe.Customer
-  } catch (error) {
-    console.error("Error retrieving customer:", error)
-    return null
-  }
-}
-
-export async function constructWebhookEvent(
-  payload: string | Buffer,
-  signature: string,
-  secret: string,
-): Promise<Stripe.Event> {
-  return stripe.webhooks.constructEvent(payload, signature, secret)
-}
-
-export { stripe }
+export default stripe

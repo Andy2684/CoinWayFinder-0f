@@ -23,8 +23,8 @@ export function formatPercentage(value: number, decimals = 2): string {
   return `${(value * 100).toFixed(decimals)}%`
 }
 
-export function formatDate(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date
+export function formatDate(date: Date | string | number): string {
+  const d = new Date(date)
   return d.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
@@ -32,8 +32,8 @@ export function formatDate(date: Date | string): string {
   })
 }
 
-export function formatDateTime(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date
+export function formatDateTime(date: Date | string | number): string {
+  const d = new Date(date)
   return d.toLocaleString("en-US", {
     year: "numeric",
     month: "short",
@@ -43,10 +43,10 @@ export function formatDateTime(date: Date | string): string {
   })
 }
 
-export function formatTimeAgo(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date
+export function formatTimeAgo(date: Date | string | number): string {
   const now = new Date()
-  const diffInSeconds = Math.floor((now.getTime() - d.getTime()) / 1000)
+  const past = new Date(date)
+  const diffInSeconds = Math.floor((now.getTime() - past.getTime()) / 1000)
 
   if (diffInSeconds < 60) {
     return "just now"
@@ -76,10 +76,13 @@ export function formatTimeAgo(date: Date | string): string {
   return `${diffInYears}y ago`
 }
 
-export function generateId(prefix = ""): string {
-  const timestamp = Date.now().toString(36)
-  const randomStr = Math.random().toString(36).substring(2, 8)
-  return `${prefix}${timestamp}${randomStr}`
+export function generateId(length = 8): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+  let result = ""
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return result
 }
 
 export function slugify(text: string): string {
@@ -92,27 +95,47 @@ export function slugify(text: string): string {
 
 export function truncate(text: string, length: number): string {
   if (text.length <= length) return text
-  return text.substring(0, length) + "..."
+  return text.slice(0, length) + "..."
 }
 
 export function capitalize(text: string): string {
-  return text.charAt(0).toUpperCase() + text.slice(1)
+  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase()
 }
 
-export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+export function camelToKebab(str: string): string {
+  return str.replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, "$1-$2").toLowerCase()
+}
+
+export function kebabToCamel(str: string): string {
+  return str.replace(/-([a-z])/g, (g) => g[1].toUpperCase())
+}
+
+export function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(email)
+}
+
+export function isValidUrl(url: string): boolean {
+  try {
+    new URL(url)
+    return true
+  } catch {
+    return false
+  }
 }
 
 export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout
+  let timeout: NodeJS.Timeout | null = null
+
   return (...args: Parameters<T>) => {
-    clearTimeout(timeout)
+    if (timeout) clearTimeout(timeout)
     timeout = setTimeout(() => func(...args), wait)
   }
 }
 
 export function throttle<T extends (...args: any[]) => any>(func: T, limit: number): (...args: Parameters<T>) => void {
   let inThrottle: boolean
+
   return (...args: Parameters<T>) => {
     if (!inThrottle) {
       func(...args)
@@ -122,67 +145,77 @@ export function throttle<T extends (...args: any[]) => any>(func: T, limit: numb
   }
 }
 
-export function isValidEmail(email: string): boolean {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email)
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-export function isValidPassword(password: string): boolean {
-  // At least 8 characters, 1 uppercase, 1 lowercase, 1 number
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/
-  return passwordRegex.test(password)
+export function randomBetween(min: number, max: number): number {
+  return Math.random() * (max - min) + min
 }
 
-export function getPasswordStrength(password: string): {
-  score: number
-  feedback: string[]
-} {
-  const feedback: string[] = []
-  let score = 0
-
-  if (password.length >= 8) {
-    score += 1
-  } else {
-    feedback.push("Use at least 8 characters")
-  }
-
-  if (/[a-z]/.test(password)) {
-    score += 1
-  } else {
-    feedback.push("Include lowercase letters")
-  }
-
-  if (/[A-Z]/.test(password)) {
-    score += 1
-  } else {
-    feedback.push("Include uppercase letters")
-  }
-
-  if (/\d/.test(password)) {
-    score += 1
-  } else {
-    feedback.push("Include numbers")
-  }
-
-  if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    score += 1
-  } else {
-    feedback.push("Include special characters")
-  }
-
-  return { score, feedback }
+export function randomInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
-export function generateRandomString(length: number): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-  let result = ""
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
+export function arrayChunk<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size))
   }
+  return chunks
+}
+
+export function arrayUnique<T>(array: T[]): T[] {
+  return [...new Set(array)]
+}
+
+export function arrayGroupBy<T, K extends keyof T>(array: T[], key: K): Record<string, T[]> {
+  return array.reduce(
+    (groups, item) => {
+      const group = String(item[key])
+      groups[group] = groups[group] || []
+      groups[group].push(item)
+      return groups
+    },
+    {} as Record<string, T[]>,
+  )
+}
+
+export function objectPick<T, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
+  const result = {} as Pick<T, K>
+  keys.forEach((key) => {
+    if (key in obj) {
+      result[key] = obj[key]
+    }
+  })
   return result
 }
 
-export function parseJSON<T>(json: string, fallback: T): T {
+export function objectOmit<T, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
+  const result = { ...obj }
+  keys.forEach((key) => {
+    delete result[key]
+  })
+  return result
+}
+
+export function deepClone<T>(obj: T): T {
+  if (obj === null || typeof obj !== "object") return obj
+  if (obj instanceof Date) return new Date(obj.getTime()) as unknown as T
+  if (obj instanceof Array) return obj.map((item) => deepClone(item)) as unknown as T
+  if (typeof obj === "object") {
+    const clonedObj = {} as T
+    for (const key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        clonedObj[key] = deepClone(obj[key])
+      }
+    }
+    return clonedObj
+  }
+  return obj
+}
+
+export function safeJsonParse<T>(json: string, fallback: T): T {
   try {
     return JSON.parse(json)
   } catch {
@@ -190,64 +223,113 @@ export function parseJSON<T>(json: string, fallback: T): T {
   }
 }
 
-export function safeStringify(obj: any): string {
+export function safeJsonStringify(obj: any, fallback = "{}"): string {
   try {
     return JSON.stringify(obj)
   } catch {
-    return "{}"
+    return fallback
   }
 }
 
-export function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max)
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === "string") return error
+  return "An unknown error occurred"
 }
 
-export function roundToDecimals(value: number, decimals: number): number {
-  return Math.round(value * Math.pow(10, decimals)) / Math.pow(10, decimals)
+export function createErrorResponse(message: string, code?: string) {
+  return {
+    success: false,
+    error: {
+      message,
+      code,
+      timestamp: new Date().toISOString(),
+    },
+  }
 }
 
-export function calculatePercentageChange(oldValue: number, newValue: number): number {
-  if (oldValue === 0) return 0
-  return ((newValue - oldValue) / oldValue) * 100
+export function createSuccessResponse<T>(data: T, message?: string) {
+  return {
+    success: true,
+    data,
+    message,
+    timestamp: new Date().toISOString(),
+  }
 }
 
-export function getColorForPercentage(percentage: number): string {
-  if (percentage > 0) return "text-green-600"
-  if (percentage < 0) return "text-red-600"
-  return "text-gray-600"
+export function validateRequired<T>(value: T, fieldName: string): T {
+  if (value === null || value === undefined || value === "") {
+    throw new Error(`${fieldName} is required`)
+  }
+  return value
 }
 
-export function formatBytes(bytes: number, decimals = 2): string {
-  if (bytes === 0) return "0 Bytes"
-
-  const k = 1024
-  const dm = decimals < 0 ? 0 : decimals
-  const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"]
-
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-
-  return Number.parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i]
+export function validateEmail(email: string): string {
+  if (!isValidEmail(email)) {
+    throw new Error("Invalid email format")
+  }
+  return email
 }
 
-export function createQueryString(params: Record<string, string | number | boolean>): string {
-  const searchParams = new URLSearchParams()
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
-      searchParams.set(key, String(value))
-    }
-  })
-
-  return searchParams.toString()
+export function validateUrl(url: string): string {
+  if (!isValidUrl(url)) {
+    throw new Error("Invalid URL format")
+  }
+  return url
 }
 
-export function parseQueryString(queryString: string): Record<string, string> {
-  const params = new URLSearchParams(queryString)
-  const result: Record<string, string> = {}
+export function validateMinLength(value: string, minLength: number, fieldName: string): string {
+  if (value.length < minLength) {
+    throw new Error(`${fieldName} must be at least ${minLength} characters long`)
+  }
+  return value
+}
 
-  params.forEach((value, key) => {
-    result[key] = value
-  })
+export function validateMaxLength(value: string, maxLength: number, fieldName: string): string {
+  if (value.length > maxLength) {
+    throw new Error(`${fieldName} must be no more than ${maxLength} characters long`)
+  }
+  return value
+}
 
-  return result
+export function validateRange(value: number, min: number, max: number, fieldName: string): number {
+  if (value < min || value > max) {
+    throw new Error(`${fieldName} must be between ${min} and ${max}`)
+  }
+  return value
+}
+
+export function sanitizeHtml(html: string): string {
+  // Basic HTML sanitization - in production, use a proper library like DOMPurify
+  return html
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, "")
+    .replace(/javascript:/gi, "")
+    .replace(/on\w+\s*=/gi, "")
+}
+
+export function escapeRegExp(string: string): string {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+export function createPagination(page: number, limit: number, total: number) {
+  const totalPages = Math.ceil(total / limit)
+  const hasNext = page < totalPages
+  const hasPrev = page > 1
+
+  return {
+    page,
+    limit,
+    total,
+    totalPages,
+    hasNext,
+    hasPrev,
+    nextPage: hasNext ? page + 1 : null,
+    prevPage: hasPrev ? page - 1 : null,
+  }
+}
+
+export function calculatePagination(page: number, limit: number) {
+  const offset = (page - 1) * limit
+  return { offset, limit }
 }
