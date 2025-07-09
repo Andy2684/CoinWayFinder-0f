@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Shield, Eye, EyeOff, Users, Bot, BarChart3, Settings } from "lucide-react"
+import { Shield, Eye, EyeOff, Users, Bot, BarChart3, Settings, Newspaper, FishIcon as Whale } from "lucide-react"
 import { useAdmin } from "@/hooks/use-admin"
 
 export function AdminDialog() {
@@ -17,7 +17,7 @@ export function AdminDialog() {
   const [credentials, setCredentials] = useState({ username: "", password: "" })
   const [isLoading, setIsLoading] = useState(false)
 
-  const { admin, signIn, signOut, isAdmin } = useAdmin()
+  const { admin, stats, signIn, signOut, isAdmin } = useAdmin()
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,11 +51,11 @@ export function AdminDialog() {
             </Badge>
           </Button>
         </DialogTrigger>
-        <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
+        <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center text-red-400">
               <Shield className="w-5 h-5 mr-2" />
-              Admin Control Panel
+              Admin Control Panel - CoinWayFinder
             </DialogTitle>
           </DialogHeader>
 
@@ -72,32 +72,50 @@ export function AdminDialog() {
                   <p className="text-white">{admin.username}</p>
                 </div>
                 <div>
+                  <p className="text-gray-400">Email</p>
+                  <p className="text-white">{admin.email}</p>
+                </div>
+                <div>
                   <p className="text-gray-400">Role</p>
-                  <p className="text-white">{admin.role}</p>
+                  <p className="text-white">{admin.role.toUpperCase()}</p>
+                </div>
+                <div>
+                  <p className="text-gray-400">Permissions</p>
+                  <p className="text-white">{admin.permissions.length} Active</p>
                 </div>
               </div>
             </div>
 
             {/* System Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="bg-gray-800/50 rounded-lg p-3 text-center">
                 <Users className="w-6 h-6 text-blue-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-white">1,247</p>
+                <p className="text-2xl font-bold text-white">{stats?.totalUsers || 0}</p>
                 <p className="text-xs text-gray-400">Total Users</p>
               </div>
               <div className="bg-gray-800/50 rounded-lg p-3 text-center">
                 <Bot className="w-6 h-6 text-[#30D5C8] mx-auto mb-2" />
-                <p className="text-2xl font-bold text-white">89</p>
+                <p className="text-2xl font-bold text-white">{stats?.activeBots || 0}</p>
                 <p className="text-xs text-gray-400">Active Bots</p>
               </div>
               <div className="bg-gray-800/50 rounded-lg p-3 text-center">
                 <BarChart3 className="w-6 h-6 text-green-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-white">15.6K</p>
+                <p className="text-2xl font-bold text-white">{stats?.totalTrades || 0}</p>
                 <p className="text-xs text-gray-400">Total Trades</p>
               </div>
               <div className="bg-gray-800/50 rounded-lg p-3 text-center">
+                <Newspaper className="w-6 h-6 text-purple-400 mx-auto mb-2" />
+                <p className="text-2xl font-bold text-white">{stats?.newsArticles || 0}</p>
+                <p className="text-xs text-gray-400">News Articles</p>
+              </div>
+              <div className="bg-gray-800/50 rounded-lg p-3 text-center">
+                <Whale className="w-6 h-6 text-orange-400 mx-auto mb-2" />
+                <p className="text-2xl font-bold text-white">{stats?.whaleTransactions || 0}</p>
+                <p className="text-xs text-gray-400">Whale Transactions</p>
+              </div>
+              <div className="bg-gray-800/50 rounded-lg p-3 text-center">
                 <Settings className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-green-400">ONLINE</p>
+                <p className="text-2xl font-bold text-green-400">{stats?.systemHealth?.toUpperCase() || "ONLINE"}</p>
                 <p className="text-xs text-gray-400">System Status</p>
               </div>
             </div>
@@ -130,7 +148,26 @@ export function AdminDialog() {
                   <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
                   User Management
                 </div>
+                <div className="flex items-center text-green-400">
+                  <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                  News Feeds
+                </div>
+                <div className="flex items-center text-green-400">
+                  <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                  System Admin
+                </div>
               </div>
+            </div>
+
+            {/* Contact Info */}
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+              <h3 className="font-semibold text-blue-400 mb-2">📧 Admin Contact</h3>
+              <p className="text-gray-300 text-sm">
+                Admin Email: <span className="text-blue-400">project.command.center@gmail.com</span>
+              </p>
+              <p className="text-gray-400 text-xs mt-1">
+                This admin session provides full system access and bypasses all subscription limitations.
+              </p>
             </div>
 
             {/* Actions */}
@@ -159,6 +196,7 @@ export function AdminDialog() {
           variant="ghost"
           size="sm"
           className="opacity-30 hover:opacity-100 transition-opacity text-gray-500 hover:text-gray-300"
+          title="Admin Access"
         >
           <Shield className="w-4 h-4" />
         </Button>
@@ -167,7 +205,7 @@ export function AdminDialog() {
         <DialogHeader>
           <DialogTitle className="flex items-center text-red-400">
             <Shield className="w-5 h-5 mr-2" />
-            Admin Access
+            Admin Access - CoinWayFinder
           </DialogTitle>
         </DialogHeader>
 
@@ -215,6 +253,13 @@ export function AdminDialog() {
 
           <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
             <p className="text-red-400 text-sm">⚠️ Admin access grants unlimited system privileges</p>
+            <p className="text-gray-400 text-xs mt-1">Contact: project.command.center@gmail.com</p>
+          </div>
+
+          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3">
+            <p className="text-gray-300 text-sm font-medium mb-2">Default Credentials:</p>
+            <p className="text-gray-400 text-xs">Username: admin</p>
+            <p className="text-gray-400 text-xs">Password: CoinWayFinder2024!</p>
           </div>
 
           <div className="flex justify-between">

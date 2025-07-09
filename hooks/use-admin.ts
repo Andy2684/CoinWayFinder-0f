@@ -16,6 +16,8 @@ export interface AdminStats {
   activeBots: number
   totalTrades: number
   systemHealth: string
+  newsArticles: number
+  whaleTransactions: number
 }
 
 export function useAdmin() {
@@ -68,6 +70,12 @@ export function useAdmin() {
 
         // Refresh stats
         await checkAdminSession()
+
+        // Reload page to update all components
+        setTimeout(() => {
+          window.location.reload()
+        }, 1000)
+
         return true
       } else {
         toast.error("Admin authentication failed", {
@@ -97,6 +105,11 @@ export function useAdmin() {
       toast.success("Admin session ended", {
         description: "You have been signed out of admin mode",
       })
+
+      // Reload page to update all components
+      setTimeout(() => {
+        window.location.reload()
+      }, 1000)
     } catch (error) {
       console.error("Admin sign out error:", error)
     }

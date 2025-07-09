@@ -13,10 +13,9 @@ export async function GET(request: NextRequest) {
     const adminToken = request.cookies.get("admin-token")?.value
     const adminSession = adminToken ? adminManager.verifyAdminToken(adminToken) : null
 
-    // For non-admin users, check subscription access
+    // For non-admin users, check subscription access (simplified for demo)
     if (!adminSession?.isAdmin) {
-      // You would need to get userId from regular auth token here
-      // For now, we'll allow limited access
+      // In production, you would check user subscription here
       const hasAccess = true // await subscriptionManager.hasFeatureAccess(userId, 'whaleTracking', adminSession)
 
       if (!hasAccess) {
@@ -39,6 +38,8 @@ export async function GET(request: NextRequest) {
         wallets: smartWallets,
         total: smartWallets.length,
         type: "smart_wallets",
+        timestamp: new Date().toISOString(),
+        isAdmin: !!adminSession?.isAdmin,
       })
     } else {
       const transactions = await whaleTracker.getRecentWhaleTransactions(limit)
@@ -53,6 +54,8 @@ export async function GET(request: NextRequest) {
           minValue,
           limit,
         },
+        timestamp: new Date().toISOString(),
+        isAdmin: !!adminSession?.isAdmin,
       })
     }
   } catch (error) {

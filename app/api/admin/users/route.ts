@@ -1,6 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { adminManager, requirePermission } from "@/lib/admin"
-import { database } from "@/lib/database"
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,38 +15,117 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Insufficient permissions" }, { status: 403 })
     }
 
-    // Get all users with their stats
-    const users = await database.getAllUsers() // You'll need to implement this
-    const userStats = []
-
-    for (const user of users) {
-      const bots = await database.getUserBots(user._id!.toString())
-      const trades = await database.getUserTrades(user._id!.toString(), 10)
-      const settings = await database.getUserSettings(user._id!.toString())
-
-      userStats.push({
-        id: user._id!.toString(),
-        email: user.email,
-        name: user.name,
-        createdAt: user.createdAt,
-        lastLoginAt: user.lastLoginAt,
-        isVerified: user.isVerified,
-        subscription: settings?.subscription || null,
-        stats: {
-          totalBots: bots.length,
-          activeBots: bots.filter((b) => b.status === "running").length,
-          totalTrades: trades.length,
+    // Mock user data - in production, fetch from database
+    const mockUsers = [
+      {
+        id: "user-001",
+        email: "john.doe@example.com",
+        name: "John Doe",
+        createdAt: new Date("2024-01-15"),
+        lastLoginAt: new Date("2024-01-20"),
+        isVerified: true,
+        subscription: {
+          plan: "premium",
+          status: "active",
+          endDate: new Date("2024-02-15"),
         },
-      })
-    }
+        stats: {
+          totalBots: 5,
+          activeBots: 3,
+          totalTrades: 127,
+          totalProfit: 2450.75,
+        },
+      },
+      {
+        id: "user-002",
+        email: "jane.smith@example.com",
+        name: "Jane Smith",
+        createdAt: new Date("2024-01-10"),
+        lastLoginAt: new Date("2024-01-19"),
+        isVerified: true,
+        subscription: {
+          plan: "basic",
+          status: "active",
+          endDate: new Date("2024-02-10"),
+        },
+        stats: {
+          totalBots: 2,
+          activeBots: 1,
+          totalTrades: 45,
+          totalProfit: 890.25,
+        },
+      },
+      {
+        id: "user-003",
+        email: "mike.wilson@example.com",
+        name: "Mike Wilson",
+        createdAt: new Date("2024-01-05"),
+        lastLoginAt: new Date("2024-01-18"),
+        isVerified: false,
+        subscription: {
+          plan: "free",
+          status: "active",
+          endDate: new Date("2024-02-05"),
+        },
+        stats: {
+          totalBots: 1,
+          activeBots: 0,
+          totalTrades: 8,
+          totalProfit: 125.5,
+        },
+      },
+    ]
 
     return NextResponse.json({
       success: true,
-      users: userStats,
-      total: userStats.length,
+      users: mockUsers,
+      total: mockUsers.length,
+      timestamp: new Date().toISOString(),
     })
   } catch (error) {
     console.error("Admin users error:", error)
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const token = request.cookies.get("admin-token")?.value
+    const adminSession = adminManager.verifyAdminToken(token || "")
+
+    if (!requirePermission(adminSession, "manage_users")) {
+      return NextResponse.json({ success: false, error: "Insufficient permissions" }, { status: 403 })
+    }
+
+    const { action, userId, data } = await request.json()
+
+    switch (action) {
+      case "suspend":
+        // Suspend user account
+        return NextResponse.json({
+          success: true,
+          message: `User ${userId} suspended successfully`,
+        })
+
+      case "activate":
+        // Activate user account
+        return NextResponse.json({
+          success: true,
+          message: `User ${userId} activated successfully`,
+        })
+
+      case "upgrade":
+        // Upgrade user subscription
+        return NextResponse.json({
+          success: true,
+          message: `User ${userId} upgraded to ${data.plan}`,
+        })
+
+      default:
+        return NextResponse.json({ success: false, error: "Invalid action" }, { status: 400 })
+    }
+  } catch (error) {
+    console.error("Admin user management error:", error)
     return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

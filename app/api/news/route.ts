@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
       total: articles.length,
       category,
       timestamp: new Date().toISOString(),
+      isAdmin: !!adminSession?.isAdmin,
     }
 
     // Include whale data if requested and user has access

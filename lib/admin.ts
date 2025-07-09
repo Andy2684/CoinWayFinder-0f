@@ -39,7 +39,7 @@ class AdminManager {
     // Default admin credentials from environment variables
     const adminUsername = process.env.ADMIN_USERNAME || "admin"
     const adminPassword = process.env.ADMIN_PASSWORD || "CoinWayFinder2024!"
-    const adminEmail = process.env.ADMIN_EMAIL || "admin@coinwayfinder.com"
+    const adminEmail = process.env.ADMIN_EMAIL || "project.command.center@gmail.com"
 
     if (username === adminUsername && password === adminPassword) {
       const admin: AdminUser = {
@@ -56,6 +56,10 @@ class AdminManager {
           "manage_subscriptions",
           "system_admin",
           "unlimited_access",
+          "whale_tracking",
+          "news_feeds",
+          "ai_analysis",
+          "premium_features",
         ],
         createdAt: new Date(),
         lastLoginAt: new Date(),
@@ -107,6 +111,8 @@ class AdminManager {
     activeBots: number
     totalTrades: number
     systemHealth: string
+    newsArticles: number
+    whaleTransactions: number
   } {
     // Mock stats - in real implementation, fetch from database
     return {
@@ -114,6 +120,8 @@ class AdminManager {
       activeBots: 89,
       totalTrades: 15634,
       systemHealth: "operational",
+      newsArticles: 342,
+      whaleTransactions: 156,
     }
   }
 }

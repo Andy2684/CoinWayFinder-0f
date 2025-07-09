@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
       success: true,
       admin: adminSession,
       stats,
+      timestamp: new Date().toISOString(),
     })
   } catch (error) {
     console.error("Admin me error:", error)

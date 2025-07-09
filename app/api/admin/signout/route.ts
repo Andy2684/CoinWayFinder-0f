@@ -2,7 +2,10 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
   try {
-    const response = NextResponse.json({ success: true })
+    const response = NextResponse.json({
+      success: true,
+      message: "Admin signed out successfully",
+    })
 
     // Clear admin token cookie
     response.cookies.set("admin-token", "", {
@@ -10,6 +13,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       maxAge: 0,
+      path: "/",
     })
 
     return response

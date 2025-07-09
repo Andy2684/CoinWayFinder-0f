@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({
       success: true,
+      message: "Admin authentication successful",
       admin: {
         id: admin.id,
         username: admin.username,
@@ -34,6 +35,7 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       maxAge: 24 * 60 * 60, // 24 hours
+      path: "/",
     })
 
     return response
