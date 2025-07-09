@@ -1,7 +1,5 @@
 "use client"
 
-import { Label } from "@/components/ui/label"
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -9,8 +7,51 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Code, Zap, Shield, TrendingUp, Activity } from "lucide-react"
 import Link from "next/link"
+import requests from "requests"
 
 export default function ApiDocsPage() {
+  const API_BASE = "https://coinwayfinder.com/api/v1"
+  const API_KEY = "your_key_id:your_secret_key"
+
+  const headers = {
+    Authorization: `Bearer ${API_KEY}`,
+    "Content-Type": "application/json",
+  }
+
+  const getWhaleTransactions = (token = "BTC", min_value = 1000000) => {
+    const url = `${API_BASE}/whales`
+    const params = {
+      token: token,
+      min_value: min_value,
+      limit: 10,
+    }
+
+    const response = requests.get(url, { headers: headers, params: params })
+
+    if (response.status_code === 200) {
+      const data = response.json()
+      data.data.forEach((whale) => {
+        console.log(`Whale moved ${whale.amount} ${whale.token} worth $${whale.usdValue.toLocaleString()}`)
+      })
+    } else {
+      console.error(`Error: ${response.status_code} - ${response.text}`)
+    }
+  }
+
+  const getMarketTrends = () => {
+    const url = `${API_BASE}/trends`
+    const response = requests.get(url, { headers: headers })
+
+    if (response.status_code === 200) {
+      const data = response.json()
+      data.data.forEach((trend) => {
+        console.log(`${trend.symbol}: ${trend.trend} (Sentiment: ${trend.sentiment})`)
+      })
+    } else {
+      console.error(`Error: ${response.status_code} - ${response.text}`)
+    }
+  }
+
   return (
     <div className="container mx-auto px-4 py-8 max-w-6xl">
       <div className="text-center mb-8">
@@ -193,11 +234,11 @@ export default function ApiDocsPage() {
                 </p>
                 <div className="space-y-2">
                   <div>
-                    <Label className="text-xs font-medium">Key ID:</Label>
+                    <span className="text-xs font-medium">Key ID:</span>
                     <code className="bg-muted px-2 py-1 rounded text-sm block">cwf_1234567890abcdef1234567890abcdef</code>
                   </div>
                   <div>
-                    <Label className="text-xs font-medium">Secret Key:</Label>
+                    <span className="text-xs font-medium">Secret Key:</span>
                     <code className="bg-muted px-2 py-1 rounded text-sm block">
                       abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab
                     </code>
@@ -348,4 +389,384 @@ export default function ApiDocsPage() {
               </CardContent>
             </Card>
 
-            <Card>\
+            <Card>
+              <CardHeader>
+                <CardTitle>Market Trends</CardTitle>
+                <CardDescription>Get comprehensive market analysis and trend data</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">GET</Badge>
+                  <code className="text-sm">/api/v1/trends</code>
+                </div>
+
+                <div>
+                  <h5 className="font-medium mb-2">Query Parameters</h5>
+                  <div className="space-y-1 text-sm">
+                    <div>
+                      <code>symbol</code> - Filter by cryptocurrency symbol
+                    </div>
+                    <div>
+                      <code>trend</code> - Filter by trend direction (bullish, bearish, neutral)
+                    </div>
+                    <div>
+                      <code>limit</code> - Number of trends to return (default: 50, max: 100)
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Trading Bots</CardTitle>
+                <CardDescription>Manage your automated trading bots programmatically</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">GET</Badge>
+                    <code className="text-sm">/api/v1/bots</code>
+                    <span className="text-xs text-muted-foreground">- List all bots</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">POST</Badge>
+                    <code className="text-sm">/api/v1/bots</code>
+                    <span className="text-xs text-muted-foreground">- Create new bot</span>
+                  </div>
+                </div>
+
+                <div>
+                  <h5 className="font-medium mb-2">Required Permissions</h5>
+                  <div className="flex gap-2">
+                    <Badge variant="secondary">bots:read</Badge>
+                    <Badge variant="secondary">bots:create</Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="examples" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Code Examples</CardTitle>
+              <CardDescription>Ready-to-use code snippets in popular programming languages</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <Tabs defaultValue="javascript" className="space-y-4">
+                <TabsList>
+                  <TabsTrigger value="javascript">JavaScript</TabsTrigger>
+                  <TabsTrigger value="python">Python</TabsTrigger>
+                  <TabsTrigger value="curl">cURL</TabsTrigger>
+                  <TabsTrigger value="php">PHP</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="javascript">
+                  <pre className="bg-muted p-4 rounded text-sm overflow-x-auto">
+                    {`// Get trading signals
+fetch('https://coinwayfinder.com/api/v1/signals?pair=BTC&limit=5', {
+  headers: {
+    'Authorization': 'Bearer your_key_id:your_secret_key',
+    'Content-Type': 'application/json'
+  }
+})
+.then(response => response.json())
+.then(data => {
+  if (data.success) {
+    data.data.forEach(signal => {
+      console.log(\`\${signal.pair}: \${signal.signal} (Confidence: \${signal.confidence}%)\`);
+    });
+  } else {
+    console.error('API Error:', data.error);
+  }
+})
+.catch(error => console.error('Error:', error));
+
+// Create a trading bot
+const botData = {
+  name: 'My BTC DCA Bot',
+  exchange: 'binance',
+  strategy: 'dca',
+  symbol: 'BTCUSDT',
+  config: {
+    investment: 100,
+    riskLevel: 5,
+    takeProfit: 2,
+    stopLoss: 1
+  }
+};
+
+fetch('https://coinwayfinder.com/api/v1/bots', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer your_key_id:your_secret_key',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify(botData)
+})
+.then(response => response.json())
+.then(bot => console.log('Bot created:', bot.data.id))
+.catch(error => console.error('Error:', error));`}
+                  </pre>
+                </TabsContent>
+
+                <TabsContent value="python">
+                  <pre className="bg-muted p-4 rounded text-sm overflow-x-auto">
+                    {`import requests
+
+# Configuration
+API_BASE = 'https://coinwayfinder.com/api/v1'
+API_KEY = 'your_key_id:your_secret_key'
+
+headers = {
+    'Authorization': f'Bearer {API_KEY}',
+    'Content-Type': 'application/json'
+}
+
+# Get whale transactions
+def get_whale_transactions(token='BTC', min_value=1000000):
+    url = f'{API_BASE}/whales'
+    params = {
+        'token': token,
+        'min_value': min_value,
+        'limit': 10
+    }
+    
+    response = requests.get(url, headers=headers, params=params)
+    
+    if response.status_code == 200:
+        data = response.json()
+        for whale in data['data']:
+            print(f"Whale moved {whale['amount']} {whale['token\']} worth ${whale['usdValue\']:,}")\
+    else:\
+        print(f"Error: {response.status_code} - {response.text}")
+\
+# Get market trends
+def get_market_trends():
+    url = f'{API_BASE}/trends'
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 200:
+        data = response.json()
+        for trend in data['data']:
+            print(f"{trend['symbol']}: {trend['trend']} (Sentiment: {trend['sentiment']})")
+    else:
+        print(f"Error: {response.status_code} - {response.text}")
+
+# Run examples
+get_whale_transactions()
+get_market_trends()`}
+                  </pre>
+                </TabsContent>
+
+                <TabsContent value="curl">
+                  <pre className="bg-muted p-4 rounded text-sm overflow-x-auto">
+                    {`# Get trading signals
+curl -X GET "https://coinwayfinder.com/api/v1/signals?pair=BTC&timeframe=1h" \\
+  -H "Authorization: Bearer your_key_id:your_secret_key" \\
+  -H "Content-Type: application/json"
+
+# Get whale transactions for Ethereum
+curl -X GET "https://coinwayfinder.com/api/v1/whales?token=ETH&min_value=5000000" \\
+  -H "Authorization: Bearer your_key_id:your_secret_key" \\
+  -H "Content-Type: application/json"
+
+# Create a new trading bot
+curl -X POST "https://coinwayfinder.com/api/v1/bots" \\
+  -H "Authorization: Bearer your_key_id:your_secret_key" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "name": "ETH Scalping Bot",
+    "exchange": "binance",
+    "strategy": "scalping",
+    "symbol": "ETHUSDT",
+    "config": {
+      "investment": 500,
+      "riskLevel": 7,
+      "takeProfit": 1.5,
+      "stopLoss": 0.8
+    }
+  }'
+
+# Get all your bots
+curl -X GET "https://coinwayfinder.com/api/v1/bots" \\
+  -H "Authorization: Bearer your_key_id:your_secret_key" \\
+  -H "Content-Type: application/json"`}
+                  </pre>
+                </TabsContent>
+
+                <TabsContent value="php">
+                  <pre className="bg-muted p-4 rounded text-sm overflow-x-auto">
+                    {`<?php
+
+class CoinWayFinderAPI {
+    private $baseUrl = 'https://coinwayfinder.com/api/v1';
+    private $apiKey;
+    
+    public function __construct($keyId, $secretKey) {
+        $this->apiKey = $keyId . ':' . $secretKey;
+    }
+    
+    private function makeRequest($endpoint, $method = 'GET', $data = null) {
+        $url = $this->baseUrl . $endpoint;
+        
+        $headers = [
+            'Authorization: Bearer ' . $this->apiKey,
+            'Content-Type: application/json'
+        ];
+        
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        
+        if ($method === 'POST' && $data) {
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        }
+        
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        
+        return [
+            'status' => $httpCode,
+            'data' => json_decode($response, true)
+        ];
+    }
+    
+    public function getSignals($pair = null, $timeframe = null, $limit = 10) {
+        $params = [];
+        if ($pair) $params['pair'] = $pair;
+        if ($timeframe) $params['timeframe'] = $timeframe;
+        if ($limit) $params['limit'] = $limit;
+        
+        $query = http_build_query($params);
+        $endpoint = '/signals' . ($query ? '?' . $query : '');
+        
+        return $this->makeRequest($endpoint);
+    }
+    
+    public function createBot($name, $exchange, $strategy, $symbol, $config) {
+        $data = [
+            'name' => $name,
+            'exchange' => $exchange,
+            'strategy' => $strategy,
+            'symbol' => $symbol,
+            'config' => $config
+        ];
+        
+        return $this->makeRequest('/bots', 'POST', $data);
+    }
+}
+
+// Usage example
+$api = new CoinWayFinderAPI('your_key_id', 'your_secret_key');
+
+// Get BTC signals
+$signals = $api->getSignals('BTC', '1h', 5);
+if ($signals['status'] === 200) {
+    foreach ($signals['data']['data'] as $signal) {
+        echo $signal['pair'] . ': ' . $signal['signal'] . ' (Confidence: ' . $signal['confidence'] . "%)\\n";
+    }
+}
+
+// Create a bot
+$botConfig = [
+    'investment' => 200,
+    'riskLevel' => 6,
+    'takeProfit' => 2.5,
+    'stopLoss' => 1.2
+];
+
+$result = $api->createBot('PHP Bot', 'binance', 'dca', 'BTCUSDT', $botConfig);
+if ($result['status'] === 200) {
+    echo "Bot created successfully: " . $result['data']['data']['id'] . "\\n";
+}
+
+?>`}
+                  </pre>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="pricing" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>API Pricing Plans</CardTitle>
+              <CardDescription>Choose the plan that fits your needs</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="border rounded-lg p-6 text-center">
+                  <h3 className="font-bold text-lg mb-2">Free</h3>
+                  <div className="text-3xl font-bold mb-4">$0</div>
+                  <div className="space-y-2 text-sm">
+                    <div>10 requests/minute</div>
+                    <div>100 requests/hour</div>
+                    <div>1,000 requests/day</div>
+                    <div>Basic signals only</div>
+                  </div>
+                  <Button className="w-full mt-4 bg-transparent" variant="outline">
+                    Current Plan
+                  </Button>
+                </div>
+
+                <div className="border rounded-lg p-6 text-center">
+                  <h3 className="font-bold text-lg mb-2">Starter</h3>
+                  <div className="text-3xl font-bold mb-4">$29</div>
+                  <div className="space-y-2 text-sm">
+                    <div>30 requests/minute</div>
+                    <div>500 requests/hour</div>
+                    <div>5,000 requests/day</div>
+                    <div>Signals + Whales + Trends</div>
+                  </div>
+                  <Button className="w-full mt-4">Upgrade</Button>
+                </div>
+
+                <div className="border-2 border-primary rounded-lg p-6 text-center relative">
+                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                    <Badge>Most Popular</Badge>
+                  </div>
+                  <h3 className="font-bold text-lg mb-2">Pro</h3>
+                  <div className="text-3xl font-bold mb-4">$99</div>
+                  <div className="space-y-2 text-sm">
+                    <div>100 requests/minute</div>
+                    <div>2,000 requests/hour</div>
+                    <div>20,000 requests/day</div>
+                    <div>All endpoints + Bot management</div>
+                  </div>
+                  <Button className="w-full mt-4">Upgrade</Button>
+                </div>
+
+                <div className="border rounded-lg p-6 text-center">
+                  <h3 className="font-bold text-lg mb-2">Enterprise</h3>
+                  <div className="text-3xl font-bold mb-4">$299</div>
+                  <div className="space-y-2 text-sm">
+                    <div>500 requests/minute</div>
+                    <div>10,000 requests/hour</div>
+                    <div>100,000 requests/day</div>
+                    <div>All features + Priority support</div>
+                  </div>
+                  <Button className="w-full mt-4">Contact Sales</Button>
+                </div>
+              </div>
+
+              <Alert className="mt-6">
+                <Shield className="h-4 w-4" />
+                <AlertDescription>
+                  All plans include SSL encryption, 99.9% uptime SLA, and comprehensive documentation. Enterprise
+                  customers get dedicated support and custom rate limits.
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}
