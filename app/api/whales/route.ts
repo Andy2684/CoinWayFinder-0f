@@ -1,71 +1,21 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { whaleTracker } from "@/lib/news-api"
-import { adminManager } from "@/lib/admin"
+import { newsAPI } from "@/lib/news-api"
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const limit = Number.parseInt(searchParams.get("limit") || "50")
-    const type = searchParams.get("type") || "transactions" // transactions | wallets
-    const minValue = Number.parseInt(searchParams.get("minValue") || "500000")
+    const limit = Number.parseInt(searchParams.get("limit") || "10")
 
-    // Check authentication
-    const adminToken = request.cookies.get("admin-token")?.value
-    const adminSession = adminToken ? adminManager.verifyAdminToken(adminToken) : null
+    const transactions = await newsAPI.getWhaleTransactions(limit)
 
-    // For non-admin users, check subscription access (simplified for demo)
-    if (!adminSession?.isAdmin) {
-      // In production, you would check user subscription here
-      const hasAccess = true // await subscriptionManager.hasFeatureAccess(userId, 'whaleTracking', adminSession)
-
-      if (!hasAccess) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Whale tracking requires premium subscription",
-            upgrade: true,
-          },
-          { status: 403 },
-        )
-      }
-    }
-
-    if (type === "wallets") {
-      const smartWallets = await whaleTracker.getSmartMoneyWallets(limit)
-
-      return NextResponse.json({
-        success: true,
-        wallets: smartWallets,
-        total: smartWallets.length,
-        type: "smart_wallets",
-        timestamp: new Date().toISOString(),
-        isAdmin: !!adminSession?.isAdmin,
-      })
-    } else {
-      const transactions = await whaleTracker.getRecentWhaleTransactions(limit)
-      const filteredTransactions = transactions.filter((tx) => tx.amountUSD >= minValue)
-
-      return NextResponse.json({
-        success: true,
-        transactions: filteredTransactions,
-        total: filteredTransactions.length,
-        type: "whale_transactions",
-        filters: {
-          minValue,
-          limit,
-        },
-        timestamp: new Date().toISOString(),
-        isAdmin: !!adminSession?.isAdmin,
-      })
-    }
+    return NextResponse.json({
+      success: true,
+      transactions,
+      total: transactions.length,
+      timestamp: new Date().toISOString(),
+    })
   } catch (error) {
-    console.error("Error fetching whale data:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch whale data",
-      },
-      { status: 500 },
-    )
+    console.error("Whale API error:", error)
+    return NextResponse.json({ error: "Failed to fetch whale transactions" }, { status: 500 })
   }
 }

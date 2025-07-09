@@ -5,11 +5,11 @@ import type React from "react"
 import { useState } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Shield, Eye, EyeOff, Users, Bot, BarChart3, Settings, Newspaper, FishIcon as Whale } from "lucide-react"
+import { Shield, Users, Activity, TrendingUp, Database } from "lucide-react"
 import { useAdmin } from "@/hooks/use-admin"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 export function AdminDialog() {
   const [isOpen, setIsOpen] = useState(false)
@@ -17,170 +17,143 @@ export function AdminDialog() {
   const [credentials, setCredentials] = useState({ username: "", password: "" })
   const [isLoading, setIsLoading] = useState(false)
 
-  const { admin, stats, signIn, signOut, isAdmin } = useAdmin()
+  const { admin, login, logout, systemStats, users } = useAdmin()
 
-  const handleSignIn = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
 
     try {
-      const success = await signIn(credentials.username, credentials.password)
-      if (success) {
-        setIsOpen(false)
-        setCredentials({ username: "", password: "" })
-      }
+      await login(credentials.username, credentials.password)
+      setCredentials({ username: "", password: "" })
+    } catch (error) {
+      console.error("Login failed:", error)
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleSignOut = async () => {
-    await signOut()
+  const handleLogout = async () => {
+    await logout()
     setIsOpen(false)
   }
 
-  if (isAdmin && admin) {
+  if (admin) {
     return (
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogTrigger asChild>
-          <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300 hover:bg-red-500/10">
-            <Shield className="w-4 h-4 mr-2" />
-            Admin Panel
-            <Badge variant="destructive" className="ml-2 text-xs">
-              ADMIN
-            </Badge>
+          <Button variant="ghost" size="sm" className="text-[#30D5C8] hover:text-[#30D5C8]/80">
+            <Shield className="w-4 h-4" />
           </Button>
         </DialogTrigger>
-        <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-3xl">
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center text-red-400">
-              <Shield className="w-5 h-5 mr-2" />
-              Admin Control Panel - CoinWayFinder
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="w-5 h-5 text-[#30D5C8]" />
+              Admin Dashboard
             </DialogTitle>
           </DialogHeader>
 
           <div className="space-y-6">
             {/* Admin Info */}
-            <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-red-400">Admin Session Active</h3>
-                <Badge variant="destructive">SUPER ADMIN</Badge>
-              </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-gray-400">Username</p>
-                  <p className="text-white">{admin.username}</p>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">Admin Access</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm font-medium">Username</Label>
+                    <p className="text-sm text-muted-foreground">{admin.username}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Email</Label>
+                    <p className="text-sm text-muted-foreground">{admin.email}</p>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Role</Label>
+                    <Badge variant="secondary">{admin.role}</Badge>
+                  </div>
+                  <div>
+                    <Label className="text-sm font-medium">Access Level</Label>
+                    <Badge className="bg-[#30D5C8] text-black">Unlimited</Badge>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-gray-400">Email</p>
-                  <p className="text-white">{admin.email}</p>
+                <div className="mt-4">
+                  <Label className="text-sm font-medium">Permissions</Label>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {admin.permissions.map((permission) => (
+                      <Badge key={permission} variant="outline" className="text-xs">
+                        {permission.replace("_", " ")}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-gray-400">Role</p>
-                  <p className="text-white">{admin.role.toUpperCase()}</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">Permissions</p>
-                  <p className="text-white">{admin.permissions.length} Active</p>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* System Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div className="bg-gray-800/50 rounded-lg p-3 text-center">
-                <Users className="w-6 h-6 text-blue-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-white">{stats?.totalUsers || 0}</p>
-                <p className="text-xs text-gray-400">Total Users</p>
-              </div>
-              <div className="bg-gray-800/50 rounded-lg p-3 text-center">
-                <Bot className="w-6 h-6 text-[#30D5C8] mx-auto mb-2" />
-                <p className="text-2xl font-bold text-white">{stats?.activeBots || 0}</p>
-                <p className="text-xs text-gray-400">Active Bots</p>
-              </div>
-              <div className="bg-gray-800/50 rounded-lg p-3 text-center">
-                <BarChart3 className="w-6 h-6 text-green-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-white">{stats?.totalTrades || 0}</p>
-                <p className="text-xs text-gray-400">Total Trades</p>
-              </div>
-              <div className="bg-gray-800/50 rounded-lg p-3 text-center">
-                <Newspaper className="w-6 h-6 text-purple-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-white">{stats?.newsArticles || 0}</p>
-                <p className="text-xs text-gray-400">News Articles</p>
-              </div>
-              <div className="bg-gray-800/50 rounded-lg p-3 text-center">
-                <Whale className="w-6 h-6 text-orange-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-white">{stats?.whaleTransactions || 0}</p>
-                <p className="text-xs text-gray-400">Whale Transactions</p>
-              </div>
-              <div className="bg-gray-800/50 rounded-lg p-3 text-center">
-                <Settings className="w-6 h-6 text-yellow-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-green-400">{stats?.systemHealth?.toUpperCase() || "ONLINE"}</p>
-                <p className="text-xs text-gray-400">System Status</p>
-              </div>
-            </div>
+            {systemStats && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">System Statistics</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center">
+                      <Users className="w-8 h-8 mx-auto mb-2 text-[#30D5C8]" />
+                      <p className="text-2xl font-bold">{systemStats.totalUsers}</p>
+                      <p className="text-sm text-muted-foreground">Total Users</p>
+                    </div>
+                    <div className="text-center">
+                      <Activity className="w-8 h-8 mx-auto mb-2 text-[#30D5C8]" />
+                      <p className="text-2xl font-bold">{systemStats.activeBots}</p>
+                      <p className="text-sm text-muted-foreground">Active Bots</p>
+                    </div>
+                    <div className="text-center">
+                      <TrendingUp className="w-8 h-8 mx-auto mb-2 text-[#30D5C8]" />
+                      <p className="text-2xl font-bold">{systemStats.totalTrades}</p>
+                      <p className="text-sm text-muted-foreground">Total Trades</p>
+                    </div>
+                    <div className="text-center">
+                      <Database className="w-8 h-8 mx-auto mb-2 text-[#30D5C8]" />
+                      <p className="text-2xl font-bold">{systemStats.systemUptime}</p>
+                      <p className="text-sm text-muted-foreground">Uptime</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-            {/* Admin Privileges */}
-            <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-              <h3 className="font-semibold text-yellow-400 mb-3">🔓 Admin Privileges Active</h3>
-              <div className="grid grid-cols-2 gap-2 text-sm">
-                <div className="flex items-center text-green-400">
-                  <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                  Unlimited Bots
-                </div>
-                <div className="flex items-center text-green-400">
-                  <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                  Unlimited Trades
-                </div>
-                <div className="flex items-center text-green-400">
-                  <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                  All Premium Features
-                </div>
-                <div className="flex items-center text-green-400">
-                  <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                  Whale Tracking
-                </div>
-                <div className="flex items-center text-green-400">
-                  <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                  AI Analysis
-                </div>
-                <div className="flex items-center text-green-400">
-                  <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                  User Management
-                </div>
-                <div className="flex items-center text-green-400">
-                  <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                  News Feeds
-                </div>
-                <div className="flex items-center text-green-400">
-                  <span className="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                  System Admin
-                </div>
-              </div>
-            </div>
+            {/* User Management */}
+            {users && users.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">User Management</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {users.slice(0, 5).map((user) => (
+                      <div key={user.id} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div>
+                          <p className="font-medium">{user.email}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {user.botsCount} bots • {user.tradesCount} trades
+                          </p>
+                        </div>
+                        <Badge variant={user.subscription === "admin" ? "default" : "secondary"}>
+                          {user.subscription}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
-            {/* Contact Info */}
-            <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-400 mb-2">📧 Admin Contact</h3>
-              <p className="text-gray-300 text-sm">
-                Admin Email: <span className="text-blue-400">project.command.center@gmail.com</span>
-              </p>
-              <p className="text-gray-400 text-xs mt-1">
-                This admin session provides full system access and bypasses all subscription limitations.
-              </p>
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-between">
-              <Button
-                variant="outline"
-                onClick={() => setIsOpen(false)}
-                className="border-gray-600 text-white hover:bg-gray-800"
-              >
-                Close Panel
-              </Button>
-              <Button variant="destructive" onClick={handleSignOut} className="bg-red-600 hover:bg-red-700">
-                Sign Out Admin
+            <div className="flex justify-end">
+              <Button onClick={handleLogout} variant="outline">
+                Logout
               </Button>
             </div>
           </div>
@@ -192,90 +165,9 @@ export function AdminDialog() {
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="opacity-30 hover:opacity-100 transition-opacity text-gray-500 hover:text-gray-300"
-          title="Admin Access"
-        >
+        <Button variant="ghost" size="sm" className="text-gray-400 hover:text-gray-300 opacity-50">
           <Shield className="w-4 h-4" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="bg-gray-900 border-gray-800 text-white">
-        <DialogHeader>
-          <DialogTitle className="flex items-center text-red-400">
-            <Shield className="w-5 h-5 mr-2" />
-            Admin Access - CoinWayFinder
-          </DialogTitle>
-        </DialogHeader>
-
-        <form onSubmit={handleSignIn} className="space-y-4">
-          <div>
-            <Label htmlFor="admin-username" className="text-gray-300">
-              Admin Username
-            </Label>
-            <Input
-              id="admin-username"
-              type="text"
-              value={credentials.username}
-              onChange={(e) => setCredentials((prev) => ({ ...prev, username: e.target.value }))}
-              className="bg-gray-800 border-gray-700 text-white"
-              placeholder="Enter admin username"
-              required
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="admin-password" className="text-gray-300">
-              Admin Password
-            </Label>
-            <div className="relative">
-              <Input
-                id="admin-password"
-                type={showPassword ? "text" : "password"}
-                value={credentials.password}
-                onChange={(e) => setCredentials((prev) => ({ ...prev, password: e.target.value }))}
-                className="bg-gray-800 border-gray-700 text-white pr-10"
-                placeholder="Enter admin password"
-                required
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 text-gray-400 hover:text-white"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              </Button>
-            </div>
-          </div>
-
-          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-3">
-            <p className="text-red-400 text-sm">⚠️ Admin access grants unlimited system privileges</p>
-            <p className="text-gray-400 text-xs mt-1">Contact: project.command.center@gmail.com</p>
-          </div>
-
-          <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-3">
-            <p className="text-gray-300 text-sm font-medium mb-2">Default Credentials:</p>
-            <p className="text-gray-400 text-xs">Username: admin</p>
-            <p className="text-gray-400 text-xs">Password: CoinWayFinder2024!</p>
-          </div>
-
-          <div className="flex justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsOpen(false)}
-              className="border-gray-600 text-white hover:bg-gray-800"
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading} className="bg-red-600 hover:bg-red-700">
-              {isLoading ? "Authenticating..." : "Sign In"}
-            </Button>
-          </div>
-        </form>
+        </DialogTrigger>
       </DialogContent>
     </Dialog>
   )

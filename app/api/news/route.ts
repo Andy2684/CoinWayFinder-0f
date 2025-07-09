@@ -1,79 +1,25 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { newsAPIManager, whaleTracker } from "@/lib/news-api"
-import { adminManager } from "@/lib/admin"
+import { newsAPI } from "@/lib/news-api"
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
+    const limit = Number.parseInt(searchParams.get("limit") || "10")
     const category = searchParams.get("category") || "all"
-    const limit = Number.parseInt(searchParams.get("limit") || "20")
-    const includeWhales = searchParams.get("whales") === "true"
 
-    // Check for admin session
-    const adminToken = request.cookies.get("admin-token")?.value
-    const adminSession = adminToken ? adminManager.verifyAdminToken(adminToken) : null
+    const articles = await newsAPI.getCryptoNews(limit)
 
-    let articles: any[] = []
+    // Filter by category if specified
+    const filteredArticles = category === "all" ? articles : articles.filter((article) => article.category === category)
 
-    // Fetch news based on category
-    if (category === "all" || category === "crypto") {
-      const cryptoNews = await newsAPIManager.fetchCryptoNews(Math.ceil(limit * 0.6))
-      articles = [...articles, ...cryptoNews]
-    }
-
-    if (category === "all" || category === "stocks") {
-      const stockNews = await newsAPIManager.fetchStockNews(Math.ceil(limit * 0.2))
-      articles = [...articles, ...stockNews]
-    }
-
-    if (category === "all" || category === "economy") {
-      const economyNews = await newsAPIManager.fetchEconomyNews(Math.ceil(limit * 0.2))
-      articles = [...articles, ...economyNews]
-    }
-
-    // Sort by published date (most recent first)
-    articles.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
-
-    // Limit results
-    articles = articles.slice(0, limit)
-
-    // Analyze sentiment with AI (optional)
-    if (process.env.OPENAI_API_KEY) {
-      articles = await newsAPIManager.analyzeNewsSentiment(articles)
-    }
-
-    const response: any = {
+    return NextResponse.json({
       success: true,
-      articles,
-      total: articles.length,
-      category,
+      articles: filteredArticles,
+      total: filteredArticles.length,
       timestamp: new Date().toISOString(),
-      isAdmin: !!adminSession?.isAdmin,
-    }
-
-    // Include whale data if requested and user has access
-    if (includeWhales && (adminSession?.isAdmin || category === "crypto")) {
-      const whaleTransactions = await whaleTracker.getRecentWhaleTransactions(10)
-      const smartWallets = await whaleTracker.getSmartMoneyWallets(5)
-
-      response.whaleData = {
-        recentTransactions: whaleTransactions,
-        smartWallets: smartWallets,
-        totalTransactions: whaleTransactions.length,
-      }
-    }
-
-    return NextResponse.json(response)
+    })
   } catch (error) {
-    console.error("Error fetching news:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch news",
-        articles: [],
-        total: 0,
-      },
-      { status: 500 },
-    )
+    console.error("News API error:", error)
+    return NextResponse.json({ error: "Failed to fetch news" }, { status: 500 })
   }
 }

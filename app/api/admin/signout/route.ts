@@ -1,24 +1,20 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const response = NextResponse.json({
-      success: true,
-      message: "Admin signed out successfully",
-    })
+    const response = NextResponse.json({ success: true })
 
-    // Clear admin token cookie
+    // Clear the admin token cookie
     response.cookies.set("admin-token", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "strict",
       maxAge: 0,
-      path: "/",
     })
 
     return response
   } catch (error) {
     console.error("Admin signout error:", error)
-    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

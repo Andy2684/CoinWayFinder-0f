@@ -31,8 +31,8 @@ const footerLinks = {
 const socialLinks = [
   { name: "Twitter", href: "#", icon: Twitter },
   { name: "GitHub", href: "#", icon: Github },
-  { name: "Telegram", href: "#", icon: MessageSquare },
-  { name: "Email", href: "mailto:hello@coinwayfinder.com", icon: Mail },
+  { name: "Telegram", href: "https://t.me/coinwayfinder_chat", icon: MessageSquare },
+  { name: "Email", href: "mailto:project.command.center@gmail.com", icon: Mail },
 ]
 
 export function Footer() {

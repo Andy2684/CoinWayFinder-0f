@@ -1,30 +1,31 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { adminManager } from "@/lib/admin"
+import { AdminAuth } from "@/lib/admin"
 
 export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get("admin-token")?.value
 
     if (!token) {
-      return NextResponse.json({ success: false, error: "No admin token" }, { status: 401 })
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
-    const adminSession = adminManager.verifyAdminToken(token)
+    const admin = AdminAuth.verifyToken(token)
 
-    if (!adminSession) {
-      return NextResponse.json({ success: false, error: "Invalid admin token" }, { status: 401 })
+    if (!admin) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
     }
-
-    const stats = adminManager.getAdminStats()
 
     return NextResponse.json({
-      success: true,
-      admin: adminSession,
-      stats,
-      timestamp: new Date().toISOString(),
+      admin: {
+        id: admin.id,
+        username: admin.username,
+        email: admin.email,
+        role: admin.role,
+        permissions: admin.permissions,
+      },
     })
   } catch (error) {
     console.error("Admin me error:", error)
-    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

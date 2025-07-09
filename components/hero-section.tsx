@@ -53,6 +53,19 @@ export function HeroSection() {
             >
               Watch Demo
             </Button>
+            <a
+              href="https://t.me/coinwayfinder_chat"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block"
+            >
+              <Button
+                size="lg"
+                className="bg-[#0088cc] hover:bg-[#0088cc]/90 text-white font-semibold px-8 py-4 text-lg"
+              >
+                💬 Join Telegram Community
+              </Button>
+            </a>
           </div>
 
           {/* Stats */}
