@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 /**
  * Subscription Checker Script
  * Implements graceful expiration system for CoinWayFinder
@@ -7,62 +5,97 @@
  * Key Features:
  * - Existing bots continue running after subscription expiry
  * - Only stops bots if autoStop flag is enabled
- * - Updates subscription status in database
  * - Sends notifications about expiration
+ * - Comprehensive logging and error handling
  */
+
+const fs = require("fs")
+const path = require("path")
 
 // Mock database for development
-const mockUsers = [
-  {
-    id: "user1",
-    email: "test@example.com",
-    subscriptionStatus: "expired",
-    subscriptionEndDate: new Date("2024-12-01"),
-    plan: "pro",
-    autoStop: false,
-  },
-  {
-    id: "user2",
-    email: "user2@example.com",
-    subscriptionStatus: "active",
-    subscriptionEndDate: new Date("2025-12-01"),
-    plan: "premium",
-    autoStop: true,
-  },
-]
+const mockDatabase = {
+  users: [
+    {
+      id: "user1",
+      email: "user1@example.com",
+      subscriptionStatus: "expired",
+      subscriptionEndDate: new Date("2025-01-01"),
+      autoStop: false,
+      notificationsSent: 0,
+    },
+    {
+      id: "user2",
+      email: "user2@example.com",
+      subscriptionStatus: "active",
+      subscriptionEndDate: new Date("2025-12-31"),
+      autoStop: false,
+      notificationsSent: 0,
+    },
+    {
+      id: "user3",
+      email: "user3@example.com",
+      subscriptionStatus: "expired",
+      subscriptionEndDate: new Date("2024-12-01"),
+      autoStop: true,
+      notificationsSent: 2,
+    },
+  ],
+  bots: [
+    {
+      id: "bot1",
+      userId: "user1",
+      status: "running",
+      strategy: "DCA",
+      autoStop: false,
+      startTime: new Date("2025-01-05"),
+      lastActivity: new Date(),
+    },
+    {
+      id: "bot2",
+      userId: "user2",
+      status: "running",
+      strategy: "Scalping",
+      autoStop: false,
+      startTime: new Date("2025-01-06"),
+      lastActivity: new Date(),
+    },
+    {
+      id: "bot3",
+      userId: "user3",
+      status: "running",
+      strategy: "Grid",
+      autoStop: true,
+      startTime: new Date("2024-11-15"),
+      lastActivity: new Date(),
+    },
+  ],
+}
 
-const mockBots = [
-  {
-    id: "bot1",
-    userId: "user1",
-    status: "running",
-    subscriptionStatus: "expired",
-    autoStop: false,
-    startTime: new Date("2024-11-15"),
-    strategy: "DCA",
-  },
-  {
-    id: "bot2",
-    userId: "user2",
-    status: "running",
-    subscriptionStatus: "active",
-    autoStop: true,
-    startTime: new Date("2024-12-01"),
-    strategy: "Scalping",
-  },
-]
+// Statistics tracking
+const stats = {
+  totalUsers: 0,
+  expiredUsers: 0,
+  activeUsers: 0,
+  botsProcessed: 0,
+  botsStopped: 0,
+  notificationsSent: 0,
+  errors: 0,
+}
 
 /**
- * Connect to database (MongoDB or mock for development)
+ * Initialize database connection (mock for development)
  */
-async function connectDatabase() {
+async function initializeDatabase() {
+  console.log("🔌 Initializing database connection...")
+
   try {
-    console.log("🔌 Connecting to database...")
+    // In production, this would connect to MongoDB/Supabase
+    // For now, we use mock data
     await new Promise((resolve) => setTimeout(resolve, 1000))
-    console.log("✅ Database connected successfully")
+    console.log("✅ Database connection established")
     return true
   } catch (error) {
-    console.error("❌ Database connection failed:", error)
+    console.error("❌ Database connection failed:", error.message)
     return false
   }
 }
@@ -71,66 +104,60 @@ async function connectDatabase() {
  * Get all users from database
  */
 async function getAllUsers() {
+  console.log("👥 Fetching all users...")
+
   try {
-    console.log("👥 Fetching users from database...")
+    // Simulate database query delay
     await new Promise((resolve) => setTimeout(resolve, 500))
-    return mockUsers
+
+    const users = mockDatabase.users
+    console.log(`📊 Found ${users.length} users`)
+    return users
   } catch (error) {
-    console.error("❌ Error fetching users:", error)
+    console.error("❌ Error fetching users:", error.message)
+    stats.errors++
     return []
   }
 }
 
 /**
- * Get bots for a specific user
+ * Get user's active bots
  */
 async function getUserBots(userId) {
   try {
-    await new Promise((resolve) => setTimeout(resolve, 200))
-    return mockBots.filter((bot) => bot.userId === userId)
+    const bots = mockDatabase.bots.filter((bot) => bot.userId === userId && bot.status === "running")
+    return bots
   } catch (error) {
-    console.error(`❌ Error fetching bots for user ${userId}:`, error)
+    console.error(`❌ Error fetching bots for user ${userId}:`, error.message)
+    stats.errors++
     return []
-  }
-}
-
-/**
- * Update user subscription status
- */
-async function updateUserSubscriptionStatus(userId, status) {
-  try {
-    console.log(`📝 Updating subscription status for user ${userId} to ${status}`)
-    await new Promise((resolve) => setTimeout(resolve, 300))
-
-    const user = mockUsers.find((u) => u.id === userId)
-    if (user) {
-      user.subscriptionStatus = status
-    }
-
-    return true
-  } catch (error) {
-    console.error(`❌ Error updating user ${userId}:`, error)
-    return false
   }
 }
 
 /**
  * Stop a bot (only if autoStop is enabled)
  */
-async function stopBot(botId, reason) {
+async function stopBot(botId, reason = "Subscription expired") {
   try {
     console.log(`🛑 Stopping bot ${botId} - Reason: ${reason}`)
-    await new Promise((resolve) => setTimeout(resolve, 400))
 
-    const bot = mockBots.find((b) => b.id === botId)
+    // Find and update bot status
+    const bot = mockDatabase.bots.find((b) => b.id === botId)
     if (bot) {
       bot.status = "stopped"
-      bot.endTime = new Date()
+      bot.stopReason = reason
+      bot.stopTime = new Date()
+      stats.botsStopped++
     }
 
+    // Simulate API call delay
+    await new Promise((resolve) => setTimeout(resolve, 200))
+
+    console.log(`✅ Bot ${botId} stopped successfully`)
     return true
   } catch (error) {
-    console.error(`❌ Error stopping bot ${botId}:`, error)
+    console.error(`❌ Error stopping bot ${botId}:`, error.message)
+    stats.errors++
     return false
   }
 }
@@ -141,190 +168,199 @@ async function stopBot(botId, reason) {
 async function sendExpirationNotification(user) {
   try {
     console.log(`📧 Sending expiration notification to ${user.email}`)
-    await new Promise((resolve) => setTimeout(resolve, 200))
 
-    console.log(
-      `✉️  Notification sent to ${user.email}: Your subscription has expired. Your active bots will continue running, but you cannot create new ones.`,
-    )
+    // In production, this would send actual email/SMS/push notification
+    // For now, we just log it
+    const message = `
+      🚫 Your CoinWayFinder subscription has expired.
+      
+      Your current bots will finish normally, but you cannot launch new ones.
+      
+      🔁 Renew now to continue trading: https://coinwayfinder.com/subscription
+      
+      Need help? Contact support: support@coinwayfinder.com
+    `
+
+    console.log(`📨 Notification sent to ${user.email}`)
+
+    // Update notification count
+    user.notificationsSent = (user.notificationsSent || 0) + 1
+    stats.notificationsSent++
+
+    // Simulate notification delay
+    await new Promise((resolve) => setTimeout(resolve, 300))
+
     return true
   } catch (error) {
-    console.error(`❌ Error sending notification to ${user.email}:`, error)
+    console.error(`❌ Error sending notification to ${user.email}:`, error.message)
+    stats.errors++
     return false
   }
 }
 
 /**
- * Check if subscription is expired
- */
-function isSubscriptionExpired(user) {
-  const now = new Date()
-  return user.subscriptionEndDate < now && user.subscriptionStatus !== "expired"
-}
-
-/**
- * Process a single user's subscription
+ * Process a single user's subscription status
  */
 async function processUser(user) {
-  const result = { botsAffected: 0, botsStopped: 0, errors: [] }
-
   try {
-    console.log(`\n👤 Processing user: ${user.email} (${user.plan})`)
+    console.log(`\n👤 Processing user: ${user.email}`)
+    console.log(`📅 Subscription status: ${user.subscriptionStatus}`)
 
-    // Check if subscription is expired
-    if (!isSubscriptionExpired(user)) {
-      console.log(`✅ Subscription active until ${user.subscriptionEndDate.toISOString()}`)
-      return result
+    stats.totalUsers++
+
+    if (user.subscriptionStatus === "active") {
+      stats.activeUsers++
+      console.log("✅ User has active subscription - no action needed")
+      return
     }
 
-    console.log(`⚠️  Subscription expired on ${user.subscriptionEndDate.toISOString()}`)
+    if (user.subscriptionStatus === "expired") {
+      stats.expiredUsers++
+      console.log("⚠️ User subscription expired")
 
-    // Update user subscription status
-    const statusUpdated = await updateUserSubscriptionStatus(user.id, "expired")
-    if (!statusUpdated) {
-      result.errors.push(`Failed to update subscription status for ${user.email}`)
-    }
+      // Get user's active bots
+      const bots = await getUserBots(user.id)
+      console.log(`🤖 Found ${bots.length} active bots`)
 
-    // Send expiration notification
-    await sendExpirationNotification(user)
+      // Process each bot
+      for (const bot of bots) {
+        stats.botsProcessed++
+        console.log(`🔍 Processing bot ${bot.id} (${bot.strategy})`)
 
-    // Get user's bots
-    const bots = await getUserBots(user.id)
-    console.log(`🤖 Found ${bots.length} bots for user`)
-
-    // Process each bot
-    for (const bot of bots) {
-      result.botsAffected++
-
-      if (bot.status === "running") {
-        if (bot.autoStop || user.autoStop) {
-          // Stop bot only if autoStop is enabled
-          const stopped = await stopBot(bot.id, "Subscription expired with autoStop enabled")
-          if (stopped) {
-            result.botsStopped++
-            console.log(`🛑 Bot ${bot.id} stopped due to expired subscription`)
-          } else {
-            result.errors.push(`Failed to stop bot ${bot.id}`)
-          }
+        // Only stop bot if autoStop is enabled for user OR bot
+        if (user.autoStop || bot.autoStop) {
+          console.log("🛑 AutoStop enabled - stopping bot")
+          await stopBot(bot.id, "Subscription expired - AutoStop enabled")
         } else {
-          // Let bot continue running (graceful expiration)
-          console.log(`🔄 Bot ${bot.id} continues running (graceful expiration)`)
+          console.log("✅ AutoStop disabled - bot continues running")
+          console.log("💡 Bot will finish naturally or user can stop manually")
         }
+
+        // Small delay between bot operations
+        await new Promise((resolve) => setTimeout(resolve, 100))
+      }
+
+      // Send notification if not sent too many times
+      if ((user.notificationsSent || 0) < 3) {
+        await sendExpirationNotification(user)
+      } else {
+        console.log("📧 Notification limit reached - skipping")
       }
     }
-  } catch (error) {
-    const errorMsg = `Error processing user ${user.email}: ${error}`
-    console.error(`❌ ${errorMsg}`)
-    result.errors.push(errorMsg)
-  }
 
-  return result
+    // Rate limiting between users
+    await new Promise((resolve) => setTimeout(resolve, 200))
+  } catch (error) {
+    console.error(`❌ Error processing user ${user.email}:`, error.message)
+    stats.errors++
+  }
 }
 
 /**
- * Main subscription checker function
+ * Generate and display final statistics
  */
-async function checkSubscriptions() {
-  const result = {
-    usersChecked: 0,
-    subscriptionsExpired: 0,
-    botsAffected: 0,
-    botsStopped: 0,
-    errors: [],
-  }
+function displayStatistics() {
+  console.log("\n📊 SUBSCRIPTION CHECK STATISTICS")
+  console.log("=====================================")
+  console.log(`👥 Total users processed: ${stats.totalUsers}`)
+  console.log(`✅ Active subscriptions: ${stats.activeUsers}`)
+  console.log(`⚠️ Expired subscriptions: ${stats.expiredUsers}`)
+  console.log(`🤖 Bots processed: ${stats.botsProcessed}`)
+  console.log(`🛑 Bots stopped: ${stats.botsStopped}`)
+  console.log(`📧 Notifications sent: ${stats.notificationsSent}`)
+  console.log(`❌ Errors encountered: ${stats.errors}`)
+  console.log("=====================================")
 
-  console.log("🚀 Starting subscription check...")
-  console.log(`📅 Current time: ${new Date().toISOString()}`)
+  // Calculate success rate
+  const successRate =
+    stats.totalUsers > 0 ? (((stats.totalUsers - stats.errors) / stats.totalUsers) * 100).toFixed(1) : 100
+
+  console.log(`📈 Success rate: ${successRate}%`)
+
+  if (stats.errors > 0) {
+    console.log("⚠️ Some errors occurred - check logs above")
+  } else {
+    console.log("✅ All operations completed successfully")
+  }
+}
+
+/**
+ * Main execution function
+ */
+async function main() {
+  console.log("🚀 Starting CoinWayFinder Subscription Checker")
+  console.log("===============================================")
+  console.log(`⏰ Started at: ${new Date().toISOString()}`)
+  console.log("")
 
   try {
-    // Connect to database
-    const connected = await connectDatabase()
-    if (!connected) {
-      throw new Error("Failed to connect to database")
+    // Initialize database connection
+    const dbConnected = await initializeDatabase()
+    if (!dbConnected) {
+      console.log("⚠️ Database connection failed - using mock data")
     }
 
     // Get all users
     const users = await getAllUsers()
-    console.log(`👥 Found ${users.length} users to check`)
+    if (users.length === 0) {
+      console.log("ℹ️ No users found - exiting")
+      process.exit(0)
+    }
+
+    console.log(`\n🔄 Processing ${users.length} users...`)
 
     // Process each user
     for (const user of users) {
-      result.usersChecked++
-
-      const userResult = await processUser(user)
-      result.botsAffected += userResult.botsAffected
-      result.botsStopped += userResult.botsStopped
-      result.errors.push(...userResult.errors)
-
-      if (isSubscriptionExpired(user)) {
-        result.subscriptionsExpired++
-      }
-
-      // Small delay to prevent overwhelming the database
-      await new Promise((resolve) => setTimeout(resolve, 100))
+      await processUser(user)
     }
+
+    // Display final statistics
+    displayStatistics()
+
+    console.log("\n✅ Subscription check completed successfully")
+    console.log(`⏰ Finished at: ${new Date().toISOString()}`)
+
+    // Exit with success code
+    process.exit(0)
   } catch (error) {
-    const errorMsg = `Fatal error in subscription checker: ${error}`
-    console.error(`💥 ${errorMsg}`)
-    result.errors.push(errorMsg)
-  }
+    console.error("\n❌ Fatal error during subscription check:", error.message)
+    console.error("Stack trace:", error.stack)
 
-  return result
-}
+    // Display partial statistics
+    displayStatistics()
 
-/**
- * Print final results
- */
-function printResults(result) {
-  console.log("\n📊 SUBSCRIPTION CHECK RESULTS")
-  console.log("================================")
-  console.log(`👥 Users checked: ${result.usersChecked}`)
-  console.log(`⚠️  Subscriptions expired: ${result.subscriptionsExpired}`)
-  console.log(`🤖 Bots affected: ${result.botsAffected}`)
-  console.log(`🛑 Bots stopped: ${result.botsStopped}`)
-  console.log(`🔄 Bots continuing: ${result.botsAffected - result.botsStopped}`)
-  console.log(`❌ Errors: ${result.errors.length}`)
-
-  if (result.errors.length > 0) {
-    console.log("\n🚨 ERRORS:")
-    result.errors.forEach((error, index) => {
-      console.log(`${index + 1}. ${error}`)
-    })
-  }
-
-  console.log("\n✅ Subscription check completed")
-}
-
-/**
- * Main execution
- */
-async function main() {
-  try {
-    const result = await checkSubscriptions()
-    printResults(result)
-
-    // Exit with appropriate code
-    const exitCode = result.errors.length > 0 ? 1 : 0
-    process.exit(exitCode)
-  } catch (error) {
-    console.error("💥 Fatal error:", error)
+    // Exit with error code
     process.exit(1)
   }
 }
 
+/**
+ * Handle process signals for graceful shutdown
+ */
+process.on("SIGINT", () => {
+  console.log("\n⚠️ Received SIGINT - shutting down gracefully...")
+  displayStatistics()
+  process.exit(0)
+})
+
+process.on("SIGTERM", () => {
+  console.log("\n⚠️ Received SIGTERM - shutting down gracefully...")
+  displayStatistics()
+  process.exit(0)
+})
+
 // Export functions for potential reuse
 module.exports = {
-  checkSubscriptions,
+  main,
   processUser,
-  isSubscriptionExpired,
-  connectDatabase,
-  getAllUsers,
-  getUserBots,
-  updateUserSubscriptionStatus,
   stopBot,
   sendExpirationNotification,
+  getAllUsers,
+  getUserBots,
+  initializeDatabase,
 }
 
-// Run if called directly
+// Run main function if script is executed directly
 if (require.main === module) {
   main()
 }
