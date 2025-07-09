@@ -1,4 +1,4 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env node
 
 /**
  * Subscription Checker Script
@@ -11,36 +11,8 @@
  * - Sends notifications about expiration
  */
 
-interface User {
-  id: string
-  email: string
-  subscriptionStatus: "active" | "expired" | "cancelled"
-  subscriptionEndDate: Date
-  plan: string
-  autoStop?: boolean
-}
-
-interface Bot {
-  id: string
-  userId: string
-  status: "running" | "completed" | "stopped"
-  subscriptionStatus: "active" | "expired"
-  autoStop: boolean
-  startTime: Date
-  endTime?: Date
-  strategy: string
-}
-
-interface CheckResult {
-  usersChecked: number
-  subscriptionsExpired: number
-  botsAffected: number
-  botsStopped: number
-  errors: string[]
-}
-
 // Mock database for development
-const mockUsers: User[] = [
+const mockUsers = [
   {
     id: "user1",
     email: "test@example.com",
@@ -59,7 +31,7 @@ const mockUsers: User[] = [
   },
 ]
 
-const mockBots: Bot[] = [
+const mockBots = [
   {
     id: "bot1",
     userId: "user1",
@@ -83,10 +55,8 @@ const mockBots: Bot[] = [
 /**
  * Connect to database (MongoDB or mock for development)
  */
-async function connectDatabase(): Promise<boolean> {
+async function connectDatabase() {
   try {
-    // In production, this would connect to MongoDB
-    // For now, using mock data
     console.log("🔌 Connecting to database...")
     await new Promise((resolve) => setTimeout(resolve, 1000))
     console.log("✅ Database connected successfully")
@@ -100,9 +70,8 @@ async function connectDatabase(): Promise<boolean> {
 /**
  * Get all users from database
  */
-async function getAllUsers(): Promise<User[]> {
+async function getAllUsers() {
   try {
-    // In production, this would query MongoDB
     console.log("👥 Fetching users from database...")
     await new Promise((resolve) => setTimeout(resolve, 500))
     return mockUsers
@@ -115,9 +84,8 @@ async function getAllUsers(): Promise<User[]> {
 /**
  * Get bots for a specific user
  */
-async function getUserBots(userId: string): Promise<Bot[]> {
+async function getUserBots(userId) {
   try {
-    // In production, this would query MongoDB
     await new Promise((resolve) => setTimeout(resolve, 200))
     return mockBots.filter((bot) => bot.userId === userId)
   } catch (error) {
@@ -129,15 +97,14 @@ async function getUserBots(userId: string): Promise<Bot[]> {
 /**
  * Update user subscription status
  */
-async function updateUserSubscriptionStatus(userId: string, status: string): Promise<boolean> {
+async function updateUserSubscriptionStatus(userId, status) {
   try {
     console.log(`📝 Updating subscription status for user ${userId} to ${status}`)
-    // In production, this would update MongoDB
     await new Promise((resolve) => setTimeout(resolve, 300))
 
     const user = mockUsers.find((u) => u.id === userId)
     if (user) {
-      user.subscriptionStatus = status as "active" | "expired" | "cancelled"
+      user.subscriptionStatus = status
     }
 
     return true
@@ -150,10 +117,9 @@ async function updateUserSubscriptionStatus(userId: string, status: string): Pro
 /**
  * Stop a bot (only if autoStop is enabled)
  */
-async function stopBot(botId: string, reason: string): Promise<boolean> {
+async function stopBot(botId, reason) {
   try {
     console.log(`🛑 Stopping bot ${botId} - Reason: ${reason}`)
-    // In production, this would update MongoDB and stop the actual bot
     await new Promise((resolve) => setTimeout(resolve, 400))
 
     const bot = mockBots.find((b) => b.id === botId)
@@ -172,10 +138,9 @@ async function stopBot(botId: string, reason: string): Promise<boolean> {
 /**
  * Send expiration notification to user
  */
-async function sendExpirationNotification(user: User): Promise<boolean> {
+async function sendExpirationNotification(user) {
   try {
     console.log(`📧 Sending expiration notification to ${user.email}`)
-    // In production, this would send actual email/notification
     await new Promise((resolve) => setTimeout(resolve, 200))
 
     console.log(
@@ -191,7 +156,7 @@ async function sendExpirationNotification(user: User): Promise<boolean> {
 /**
  * Check if subscription is expired
  */
-function isSubscriptionExpired(user: User): boolean {
+function isSubscriptionExpired(user) {
   const now = new Date()
   return user.subscriptionEndDate < now && user.subscriptionStatus !== "expired"
 }
@@ -199,7 +164,7 @@ function isSubscriptionExpired(user: User): boolean {
 /**
  * Process a single user's subscription
  */
-async function processUser(user: User): Promise<{ botsAffected: number; botsStopped: number; errors: string[] }> {
+async function processUser(user) {
   const result = { botsAffected: 0, botsStopped: 0, errors: [] }
 
   try {
@@ -258,8 +223,8 @@ async function processUser(user: User): Promise<{ botsAffected: number; botsStop
 /**
  * Main subscription checker function
  */
-async function checkSubscriptions(): Promise<CheckResult> {
-  const result: CheckResult = {
+async function checkSubscriptions() {
+  const result = {
     usersChecked: 0,
     subscriptionsExpired: 0,
     botsAffected: 0,
@@ -309,7 +274,7 @@ async function checkSubscriptions(): Promise<CheckResult> {
 /**
  * Print final results
  */
-function printResults(result: CheckResult): void {
+function printResults(result) {
   console.log("\n📊 SUBSCRIPTION CHECK RESULTS")
   console.log("================================")
   console.log(`👥 Users checked: ${result.usersChecked}`)
@@ -332,7 +297,7 @@ function printResults(result: CheckResult): void {
 /**
  * Main execution
  */
-async function main(): Promise<void> {
+async function main() {
   try {
     const result = await checkSubscriptions()
     printResults(result)
@@ -347,7 +312,7 @@ async function main(): Promise<void> {
 }
 
 // Export functions for potential reuse
-export {
+module.exports = {
   checkSubscriptions,
   processUser,
   isSubscriptionExpired,
