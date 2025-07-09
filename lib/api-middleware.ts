@@ -1,208 +1,202 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { AuthService } from "./auth"
 import { AdminService } from "./admin"
-import { database } from "./database"
 
-export interface APIAuthContext {
-  user?: {
-    id: string
-    email: string
-    name: string
-    subscription?: {
-      plan: string
-      status: string
-      endDate?: Date
-    }
-  }
-  admin?: {
-    userId: string
-    username: string
-    email: string
-    isAdmin: boolean
-  }
-  isAuthenticated: boolean
-  isAdmin: boolean
+interface APIResponse {
+  success: boolean
+  data?: any
+  error?: string
+  message?: string
 }
 
-export function withAPIAuth(handler: (req: NextRequest, context: APIAuthContext) => Promise<NextResponse>) {
-  return async (req: NextRequest): Promise<NextResponse> => {
-    try {
-      const context: APIAuthContext = {
-        isAuthenticated: false,
-        isAdmin: false,
-      }
-
-      // Check for admin authentication first
-      const adminToken = req.cookies.get("admin-token")?.value
-      if (adminToken) {
-        const admin = AdminService.verifyAdminToken(adminToken)
-        if (admin) {
-          context.admin = admin
-          context.isAdmin = true
-          context.isAuthenticated = true
-        }
-      }
-
-      // If not admin, check for user authentication
-      if (!context.isAuthenticated) {
-        const userToken = req.cookies.get("auth-token")?.value
-        if (userToken) {
-          const user = AuthService.verifyToken(userToken)
-          if (user) {
-            // Get user settings for subscription info
-            const userSettings = await database.getUserSettings(user.id)
-            context.user = {
-              ...user,
-              subscription: userSettings?.subscription,
-            }
-            context.isAuthenticated = true
-          }
-        }
-      }
-
-      return await handler(req, context)
-    } catch (error) {
-      console.error("API Auth middleware error:", error)
-      return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-    }
-  }
+interface RateLimitConfig {
+  windowMs: number
+  maxRequests: number
 }
 
-export function withGracefulExpiration(handler: (req: NextRequest, context: APIAuthContext) => Promise<NextResponse>) {
-  return withAPIAuth(async (req: NextRequest, context: APIAuthContext) => {
-    try {
-      // If user is authenticated, check if their subscription is expired
-      if (context.user?.subscription) {
-        const { subscription } = context.user
+interface AuthConfig {
+  required?: boolean
+  adminRequired?: boolean
+  rateLimiting?: RateLimitConfig
+}
 
-        // Check if subscription is expired
-        if (subscription.status === "active" && subscription.plan !== "free") {
-          const settings = await database.getUserSettings(context.user.id)
-          if (settings?.subscription?.endDate && new Date() > settings.subscription.endDate) {
-            // Gracefully downgrade to free plan
-            await database.updateUserSettings(context.user.id, {
-              subscription: {
-                plan: "free",
-                status: "active",
-                startDate: new Date(),
+// Simple in-memory rate limiting store
+const rateLimitStore = new Map<string, { count: number; resetTime: number }>()
+
+function getRateLimitKey(request: NextRequest): string {
+  const forwarded = request.headers.get("x-forwarded-for")
+  const ip = forwarded ? forwarded.split(",")[0] : request.ip || "unknown"
+  return `${ip}:${request.nextUrl.pathname}`
+}
+
+function checkRateLimit(key: string, config: RateLimitConfig): boolean {
+  const now = Date.now()
+  const record = rateLimitStore.get(key)
+
+  if (!record || now > record.resetTime) {
+    rateLimitStore.set(key, {
+      count: 1,
+      resetTime: now + config.windowMs,
+    })
+    return true
+  }
+
+  if (record.count >= config.maxRequests) {
+    return false
+  }
+
+  record.count++
+  return true
+}
+
+export function withAPIAuth(config: AuthConfig = {}) {
+  return (handler: (request: NextRequest, context?: any) => Promise<NextResponse>) =>
+    async (request: NextRequest, context?: any): Promise<NextResponse> => {
+      try {
+        // CORS handling
+        if (request.method === "OPTIONS") {
+          return new NextResponse(null, {
+            status: 200,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+              "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+              "Access-Control-Allow-Headers": "Content-Type, Authorization",
+            },
+          })
+        }
+
+        // Rate limiting
+        if (config.rateLimiting) {
+          const rateLimitKey = getRateLimitKey(request)
+          if (!checkRateLimit(rateLimitKey, config.rateLimiting)) {
+            return NextResponse.json(
+              { success: false, error: "Rate limit exceeded" },
+              {
+                status: 429,
+                headers: {
+                  "Access-Control-Allow-Origin": "*",
+                  "Retry-After": Math.ceil(config.rateLimiting.windowMs / 1000).toString(),
+                },
               },
-            })
-
-            // Update context
-            context.user.subscription = {
-              plan: "free",
-              status: "active",
-            }
+            )
           }
         }
-      }
 
-      return await handler(req, context)
-    } catch (error) {
-      console.error("Graceful expiration middleware error:", error)
-      return await handler(req, context)
-    }
-  })
-}
+        // Authentication check
+        if (config.required || config.adminRequired) {
+          const authHeader = request.headers.get("authorization")
+          const token = authHeader?.replace("Bearer ", "")
 
-export function requireAuth(handler: (req: NextRequest, context: APIAuthContext) => Promise<NextResponse>) {
-  return withAPIAuth(async (req: NextRequest, context: APIAuthContext) => {
-    if (!context.isAuthenticated) {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 })
-    }
-    return await handler(req, context)
-  })
-}
+          if (!token) {
+            return NextResponse.json(
+              { success: false, error: "Authentication token required" },
+              {
+                status: 401,
+                headers: { "Access-Control-Allow-Origin": "*" },
+              },
+            )
+          }
 
-export function requireAdmin(handler: (req: NextRequest, context: APIAuthContext) => Promise<NextResponse>) {
-  return withAPIAuth(async (req: NextRequest, context: APIAuthContext) => {
-    if (!context.isAdmin) {
-      return NextResponse.json({ error: "Admin access required" }, { status: 403 })
-    }
-    return await handler(req, context)
-  })
-}
+          if (config.adminRequired) {
+            const adminSession = AdminService.verifyAdminToken(token)
+            if (!adminSession) {
+              return NextResponse.json(
+                { success: false, error: "Admin authentication required" },
+                {
+                  status: 403,
+                  headers: { "Access-Control-Allow-Origin": "*" },
+                },
+              )
+            }
+            // Add admin session to request context
+            ;(request as any).adminSession = adminSession
+          } else {
+            const userSession = AuthService.verifyToken(token)
+            if (!userSession) {
+              return NextResponse.json(
+                { success: false, error: "Invalid or expired token" },
+                {
+                  status: 401,
+                  headers: { "Access-Control-Allow-Origin": "*" },
+                },
+              )
+            }
+            // Add user session to request context
+            ;(request as any).userSession = userSession
+          }
+        }
 
-export function requireSubscription(plans: string[]) {
-  return (handler: (req: NextRequest, context: APIAuthContext) => Promise<NextResponse>) =>
-    requireAuth(async (req: NextRequest, context: APIAuthContext) => {
-      // Admin always has access
-      if (context.isAdmin) {
-        return await handler(req, context)
-      }
+        // Call the actual handler
+        const response = await handler(request, context)
 
-      // Check user subscription
-      if (!context.user?.subscription) {
-        return NextResponse.json({ error: "Subscription required" }, { status: 403 })
-      }
+        // Add CORS headers to response
+        response.headers.set("Access-Control-Allow-Origin", "*")
+        response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+        response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-      const userPlan = context.user.subscription.plan
-      if (!plans.includes(userPlan) && userPlan !== "admin") {
+        return response
+      } catch (error) {
+        console.error("API middleware error:", error)
         return NextResponse.json(
+          { success: false, error: "Internal server error" },
           {
-            error: "Subscription upgrade required",
-            requiredPlans: plans,
-            currentPlan: userPlan,
+            status: 500,
+            headers: { "Access-Control-Allow-Origin": "*" },
           },
-          { status: 403 },
         )
       }
-
-      return await handler(req, context)
-    })
+    }
 }
 
-export function withRateLimit(maxRequests: number, windowMs: number) {
-  const requests = new Map<string, { count: number; resetTime: number }>()
+export function withGracefulExpiration(handler: (request: NextRequest) => Promise<NextResponse>) {
+  return withAPIAuth({ required: true })(async (request: NextRequest) => {
+    try {
+      const userSession = (request as any).userSession
 
-  return (handler: (req: NextRequest, context: APIAuthContext) => Promise<NextResponse>) =>
-    withAPIAuth(async (req: NextRequest, context: APIAuthContext) => {
-      const identifier = context.user?.id || context.admin?.userId || req.ip || "anonymous"
-      const now = Date.now()
+      // Check if token is expiring soon (within 24 hours)
+      const timeUntilExpiry = userSession.expiresAt - Date.now()
+      const twentyFourHours = 24 * 60 * 60 * 1000
 
-      const userRequests = requests.get(identifier)
+      const response = await handler(request)
 
-      if (!userRequests || now > userRequests.resetTime) {
-        requests.set(identifier, { count: 1, resetTime: now + windowMs })
-      } else {
-        userRequests.count++
-
-        if (userRequests.count > maxRequests) {
-          return NextResponse.json(
-            {
-              error: "Rate limit exceeded",
-              retryAfter: Math.ceil((userRequests.resetTime - now) / 1000),
-            },
-            { status: 429 },
-          )
-        }
+      if (timeUntilExpiry < twentyFourHours) {
+        // Add header to indicate token is expiring soon
+        response.headers.set("X-Token-Expiring", "true")
+        response.headers.set("X-Token-Expires-At", userSession.expiresAt.toString())
       }
 
-      return await handler(req, context)
-    })
+      return response
+    } catch (error) {
+      console.error("Graceful expiration middleware error:", error)
+      return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
+    }
+  })
 }
 
-export function withCORS(handler: (req: NextRequest, context: APIAuthContext) => Promise<NextResponse>) {
-  return withAPIAuth(async (req: NextRequest, context: APIAuthContext) => {
-    // Handle preflight requests
-    if (req.method === "OPTIONS") {
-      return new NextResponse(null, {
-        status: 200,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        },
-      })
-    }
+// Helper function to create standardized API responses
+export function createAPIResponse(success: boolean, data?: any, error?: string, status = 200): NextResponse {
+  const response: APIResponse = { success }
 
-    const response = await handler(req, context)
+  if (success && data !== undefined) {
+    response.data = data
+  }
 
-    // Add CORS headers to response
-    response.headers.set("Access-Control-Allow-Origin", "*")
-    response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+  if (!success && error) {
+    response.error = error
+  }
 
-    return response
+  return NextResponse.json(response, {
+    status,
+    headers: { "Access-Control-Allow-Origin": "*" },
   })
+}
+
+// Helper to extract user session from request
+export function getUserSession(request: NextRequest) {
+  return (request as any).userSession
+}
+
+// Helper to extract admin session from request
+export function getAdminSession(request: NextRequest) {
+  return (request as any).adminSession
 }
