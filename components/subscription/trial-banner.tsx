@@ -4,23 +4,19 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Clock, Sparkles, Zap } from "lucide-react"
+import { Clock, Sparkles, Zap, AlertTriangle } from "lucide-react"
 
 interface TrialStatus {
-  isEligible: boolean
-  isActive: boolean
-  daysRemaining: number
-  startDate?: Date
-  endDate?: Date
+  hasTrialAvailable: boolean
+  isInTrial: boolean
+  trialDaysLeft: number
+  trialEndDate?: Date
 }
 
-interface TrialBannerProps {
-  onStartTrial?: () => void
-}
-
-export function TrialBanner({ onStartTrial }: TrialBannerProps) {
+export function TrialBanner() {
   const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null)
   const [loading, setLoading] = useState(true)
+  const [startingTrial, setStartingTrial] = useState(false)
 
   useEffect(() => {
     fetchTrialStatus()
@@ -31,27 +27,36 @@ export function TrialBanner({ onStartTrial }: TrialBannerProps) {
       const response = await fetch("/api/subscription/trial-status")
       if (response.ok) {
         const data = await response.json()
-        setTrialStatus(data.trialStatus)
+        setTrialStatus(data)
       }
     } catch (error) {
-      console.error("Failed to fetch trial status:", error)
+      console.error("Error fetching trial status:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleStartTrial = async () => {
+  const startTrial = async () => {
+    setStartingTrial(true)
     try {
       const response = await fetch("/api/subscription/start-trial", {
         method: "POST",
       })
 
       if (response.ok) {
+        const data = await response.json()
+        // Refresh trial status
         await fetchTrialStatus()
-        onStartTrial?.()
+        // Show success message or redirect
+        console.log("Trial started:", data)
+      } else {
+        const error = await response.json()
+        console.error("Error starting trial:", error)
       }
     } catch (error) {
-      console.error("Failed to start trial:", error)
+      console.error("Error starting trial:", error)
+    } finally {
+      setStartingTrial(false)
     }
   }
 
@@ -59,80 +64,91 @@ export function TrialBanner({ onStartTrial }: TrialBannerProps) {
     return null
   }
 
-  // Show trial available banner
-  if (trialStatus.isEligible) {
+  // Don't show banner if user has no trial available and is not in trial
+  if (!trialStatus.hasTrialAvailable && !trialStatus.isInTrial) {
+    return null
+  }
+
+  // Trial available banner
+  if (trialStatus.hasTrialAvailable && !trialStatus.isInTrial) {
     return (
       <Card className="border-2 border-gradient-to-r from-blue-500 to-purple-600 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20">
         <CardContent className="p-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full">
-                <Sparkles className="h-6 w-6 text-white" />
+              <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-blue-500 to-purple-600">
+                <Sparkles className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Start Your 3-Day Free Trial
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Get full access to Pro features including AI analysis, whale tracking, and advanced strategies
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Start Your 3-Day Free Trial</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Get full access to premium features including AI analysis, whale tracking, and more!
                 </p>
               </div>
             </div>
-            <Button
-              onClick={handleStartTrial}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-            >
-              Start Free Trial
-            </Button>
+            <div className="flex items-center space-x-3">
+              <Badge variant="secondary" className="bg-gradient-to-r from-blue-500 to-purple-600 text-white">
+                <Zap className="w-3 h-3 mr-1" />3 Days Free
+              </Badge>
+              <Button
+                onClick={startTrial}
+                disabled={startingTrial}
+                className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white"
+              >
+                {startingTrial ? "Starting..." : "Start Free Trial"}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
     )
   }
 
-  // Show active trial banner
-  if (trialStatus.isActive) {
-    const isExpiringSoon = trialStatus.daysRemaining <= 1
+  // Active trial banner
+  if (trialStatus.isInTrial) {
+    const isExpiringSoon = trialStatus.trialDaysLeft <= 1
+    const bannerColor = isExpiringSoon ? "from-orange-500 to-red-600" : "from-green-500 to-blue-600"
+    const bgColor = isExpiringSoon
+      ? "from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20"
+      : "from-green-50 to-blue-50 dark:from-green-950/20 dark:to-blue-950/20"
 
     return (
-      <Card
-        className={`border-2 ${
-          isExpiringSoon
-            ? "border-orange-500 bg-orange-50 dark:bg-orange-950/20"
-            : "border-green-500 bg-green-50 dark:bg-green-950/20"
-        }`}
-      >
-        <CardContent className="p-4">
+      <Card className={`border-2 border-gradient-to-r ${bannerColor} bg-gradient-to-r ${bgColor}`}>
+        <CardContent className="p-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <div className={`p-2 rounded-full ${isExpiringSoon ? "bg-orange-500" : "bg-green-500"}`}>
-                {isExpiringSoon ? <Clock className="h-5 w-5 text-white" /> : <Zap className="h-5 w-5 text-white" />}
+            <div className="flex items-center space-x-4">
+              <div
+                className={`flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r ${bannerColor}`}
+              >
+                {isExpiringSoon ? (
+                  <AlertTriangle className="w-6 h-6 text-white" />
+                ) : (
+                  <Clock className="w-6 h-6 text-white" />
+                )}
               </div>
               <div>
-                <div className="flex items-center space-x-2">
-                  <h3
-                    className={`font-semibold ${
-                      isExpiringSoon ? "text-orange-700 dark:text-orange-300" : "text-green-700 dark:text-green-300"
-                    }`}
-                  >
-                    {isExpiringSoon ? "Trial Expiring Soon!" : "Free Trial Active"}
-                  </h3>
-                  <Badge variant={isExpiringSoon ? "destructive" : "default"}>
-                    {trialStatus.daysRemaining} day{trialStatus.daysRemaining !== 1 ? "s" : ""} left
-                  </Badge>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  {isExpiringSoon
-                    ? "Upgrade now to continue enjoying premium features"
-                    : "Enjoying full access to all Pro features"}
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                  {isExpiringSoon ? "Trial Ending Soon!" : "Free Trial Active"}
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {trialStatus.trialDaysLeft === 0
+                    ? "Your trial expires today"
+                    : `${trialStatus.trialDaysLeft} day${trialStatus.trialDaysLeft === 1 ? "" : "s"} remaining`}
                 </p>
               </div>
             </div>
-            {isExpiringSoon && (
-              <Button variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50 bg-transparent">
-                Upgrade Now
+            <div className="flex items-center space-x-3">
+              <Badge variant="secondary" className={`bg-gradient-to-r ${bannerColor} text-white`}>
+                <Clock className="w-3 h-3 mr-1" />
+                {trialStatus.trialDaysLeft} day{trialStatus.trialDaysLeft === 1 ? "" : "s"} left
+              </Badge>
+              <Button
+                onClick={() => (window.location.href = "/subscription")}
+                className={`bg-gradient-to-r ${bannerColor} hover:opacity-90 text-white`}
+              >
+                {isExpiringSoon ? "Upgrade Now" : "View Plans"}
               </Button>
-            )}
+            </div>
           </div>
         </CardContent>
       </Card>

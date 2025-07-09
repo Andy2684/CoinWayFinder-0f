@@ -1,25 +1,50 @@
 import bcrypt from "bcryptjs"
 
-export type SubscriptionPlan = "free" | "trial" | "basic" | "pro" | "enterprise"
-export type SubscriptionStatus = "active" | "canceled" | "past_due" | "trialing"
+export type SubscriptionPlan = "free" | "trial" | "basic" | "premium" | "enterprise"
+export type SubscriptionStatus = "active" | "cancelled" | "expired" | "trial"
 
 export interface UserSettings {
-  notifications: boolean
-  darkMode: boolean
-  riskLevel: "low" | "medium" | "high"
-  trialUsed: boolean
-  trialStartDate?: string
-  trialEndDate?: string
-}
-
-export interface Subscription {
-  id: string
-  plan: SubscriptionPlan
-  status: SubscriptionStatus
-  currentPeriodStart: string
-  currentPeriodEnd: string
+  userId: string
+  subscription: {
+    plan: SubscriptionPlan
+    status: SubscriptionStatus
+    startDate: Date
+    endDate: Date
+    trialUsed: boolean
+    trialStartDate?: Date
+    trialEndDate?: Date
+  }
+  preferences: {
+    notifications: boolean
+    theme: "light" | "dark"
+    language: string
+  }
+  apiKeys: Array<{
+    id: string
+    name: string
+    exchange: string
+    publicKey: string
+    encryptedPrivateKey: string
+    createdAt: Date
+    lastUsed?: Date
+  }>
+  paymentStatus?: {
+    lastPayment: Date
+    stripeCustomerId?: string
+    stripeSubscriptionId?: string
+    stripeSessionId?: string
+    stripeInvoiceId?: string
+    amount: number
+    currency: string
+  }
   stripeCustomerId?: string
   stripeSubscriptionId?: string
+  usage?: {
+    botsCreated: number
+    tradesExecuted: number
+    aiAnalysisUsed: number
+    lastReset: Date
+  }
 }
 
 export interface User {
@@ -27,10 +52,12 @@ export interface User {
   email: string
   password: string
   name: string
-  createdAt: string
-  subscription?: Subscription
-  settings: UserSettings
-  isAdmin?: boolean
+  subscription: SubscriptionPlan
+  subscriptionExpiry: Date | null
+  isAdmin: boolean
+  createdAt: Date
+  updatedAt: Date
+  autoStop?: boolean
 }
 
 export interface Bot {
@@ -39,317 +66,645 @@ export interface Bot {
   name: string
   strategy: string
   status: "active" | "paused" | "stopped"
-  balance: number
-  pnl: number
-  createdAt: string
-  settings: {
-    symbol: string
-    amount: number
-    riskLevel: "low" | "medium" | "high"
-  }
+  exchange: string
+  pair: string
+  investment: number
+  profit: number
+  createdAt: Date
+  updatedAt: Date
+  settings: Record<string, any>
 }
 
 export interface Trade {
   id: string
   botId: string
   userId: string
-  symbol: string
-  side: "buy" | "sell"
+  type: "buy" | "sell"
   amount: number
   price: number
-  timestamp: string
-  status: "pending" | "completed" | "failed"
-  pnl?: number
+  profit: number
+  timestamp: Date
+  pair: string
 }
 
 export interface ApiKey {
   id: string
   userId: string
-  name: string
   exchange: string
+  keyName: string
   publicKey: string
   encryptedPrivateKey: string
-  permissions: string[]
-  createdAt: string
-  lastUsed?: string
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
 }
 
-// Mock database
-class Database {
-  private users: User[] = [
-    {
-      id: "1",
-      email: "admin@coinwayfinder.com",
-      password: bcrypt.hashSync("admin123", 10),
+// Mock Database Class
+class DatabaseManager {
+  private users: Map<string, User> = new Map()
+  private bots: Map<string, Bot> = new Map()
+  private trades: Map<string, Trade> = new Map()
+  private userSettings: Map<string, UserSettings> = new Map()
+  private apiKeys: Map<string, ApiKey> = new Map()
+
+  constructor() {
+    this.initializeMockData()
+  }
+
+  private async initializeMockData() {
+    // Create admin user
+    const adminPassword = await bcrypt.hash("admin123", 10)
+    const adminUser: User = {
+      id: "admin-1",
+      email: "project.command.center@gmail.com",
+      password: adminPassword,
       name: "Admin User",
-      createdAt: new Date().toISOString(),
+      subscription: "enterprise",
+      subscriptionExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
       isAdmin: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    this.users.set(adminUser.id, adminUser)
+
+    // Create admin user settings
+    const adminSettings: UserSettings = {
+      userId: adminUser.id,
       subscription: {
-        id: "sub_admin",
         plan: "enterprise",
         status: "active",
-        currentPeriodStart: new Date().toISOString(),
-        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      settings: {
-        notifications: true,
-        darkMode: false,
-        riskLevel: "medium",
-        trialUsed: true,
-      },
-    },
-    {
-      id: "2",
-      email: "user@example.com",
-      password: bcrypt.hashSync("password123", 10),
-      name: "John Doe",
-      createdAt: new Date().toISOString(),
-      subscription: {
-        id: "sub_2",
-        plan: "pro",
-        status: "active",
-        currentPeriodStart: new Date().toISOString(),
-        currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      },
-      settings: {
-        notifications: true,
-        darkMode: true,
-        riskLevel: "high",
-        trialUsed: true,
-      },
-    },
-    {
-      id: "3",
-      email: "trial@example.com",
-      password: bcrypt.hashSync("trial123", 10),
-      name: "Trial User",
-      createdAt: new Date().toISOString(),
-      settings: {
-        notifications: true,
-        darkMode: false,
-        riskLevel: "medium",
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
         trialUsed: false,
-        trialStartDate: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // Started 1 day ago
-        trialEndDate: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // Ends in 2 days
       },
-    },
-    {
-      id: "4",
-      email: "newuser@example.com",
-      password: bcrypt.hashSync("newuser123", 10),
-      name: "New User",
-      createdAt: new Date().toISOString(),
-      settings: {
+      preferences: {
         notifications: true,
-        darkMode: false,
-        riskLevel: "low",
-        trialUsed: false, // Eligible for trial
+        theme: "dark",
+        language: "en",
       },
-    },
-  ]
-
-  private bots: Bot[] = [
-    {
-      id: "1",
-      userId: "2",
-      name: "BTC Scalper",
-      strategy: "scalping",
-      status: "active",
-      balance: 1000,
-      pnl: 150.5,
-      createdAt: new Date().toISOString(),
-      settings: {
-        symbol: "BTC/USDT",
-        amount: 100,
-        riskLevel: "medium",
-      },
-    },
-    {
-      id: "2",
-      userId: "2",
-      name: "ETH DCA",
-      strategy: "dca",
-      status: "paused",
-      balance: 500,
-      pnl: -25.3,
-      createdAt: new Date().toISOString(),
-      settings: {
-        symbol: "ETH/USDT",
-        amount: 50,
-        riskLevel: "low",
-      },
-    },
-  ]
-
-  private trades: Trade[] = [
-    {
-      id: "1",
-      botId: "1",
-      userId: "2",
-      symbol: "BTC/USDT",
-      side: "buy",
-      amount: 0.001,
-      price: 45000,
-      timestamp: new Date().toISOString(),
-      status: "completed",
-      pnl: 15.5,
-    },
-    {
-      id: "2",
-      botId: "1",
-      userId: "2",
-      symbol: "BTC/USDT",
-      side: "sell",
-      amount: 0.001,
-      price: 45500,
-      timestamp: new Date().toISOString(),
-      status: "completed",
-      pnl: 25.0,
-    },
-  ]
-
-  private apiKeys: ApiKey[] = []
-
-  // User methods
-  async createUser(userData: Omit<User, "id" | "createdAt">): Promise<User> {
-    const user: User = {
-      ...userData,
-      id: (this.users.length + 1).toString(),
-      createdAt: new Date().toISOString(),
-      settings: {
-        notifications: true,
-        darkMode: false,
-        riskLevel: "medium",
-        trialUsed: false,
-        ...userData.settings,
+      apiKeys: [],
+      usage: {
+        botsCreated: 0,
+        tradesExecuted: 0,
+        aiAnalysisUsed: 0,
+        lastReset: new Date(),
       },
     }
-    this.users.push(user)
+    this.userSettings.set(adminUser.id, adminSettings)
+
+    // Create expired user with graceful expiration
+    const expiredPassword = await bcrypt.hash("expired123", 10)
+    const expiredUser: User = {
+      id: "user-expired",
+      email: "expired@example.com",
+      password: expiredPassword,
+      name: "Expired User",
+      subscription: "premium",
+      subscriptionExpiry: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // 30 days ago
+      isAdmin: false,
+      createdAt: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+      updatedAt: new Date(),
+      autoStop: false, // Graceful expiration - existing bots keep running
+    }
+    this.users.set(expiredUser.id, expiredUser)
+
+    // Create expired user settings
+    const expiredSettings: UserSettings = {
+      userId: expiredUser.id,
+      subscription: {
+        plan: "premium",
+        status: "expired",
+        startDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+        endDate: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+        trialUsed: true,
+      },
+      preferences: {
+        notifications: true,
+        theme: "light",
+        language: "en",
+      },
+      apiKeys: [],
+      usage: {
+        botsCreated: 2,
+        tradesExecuted: 45,
+        aiAnalysisUsed: 20,
+        lastReset: new Date(),
+      },
+    }
+    this.userSettings.set(expiredUser.id, expiredSettings)
+
+    // Create active user
+    const activePassword = await bcrypt.hash("user123", 10)
+    const activeUser: User = {
+      id: "user-1",
+      email: "user@example.com",
+      password: activePassword,
+      name: "Active User",
+      subscription: "premium",
+      subscriptionExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      isAdmin: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    this.users.set(activeUser.id, activeUser)
+
+    // Create active user settings
+    const activeSettings: UserSettings = {
+      userId: activeUser.id,
+      subscription: {
+        plan: "premium",
+        status: "active",
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        trialUsed: true,
+      },
+      preferences: {
+        notifications: true,
+        theme: "dark",
+        language: "en",
+      },
+      apiKeys: [
+        {
+          id: "key-1",
+          name: "Binance Main",
+          exchange: "binance",
+          publicKey: "mock-public-key",
+          encryptedPrivateKey: "mock-encrypted-private-key",
+          createdAt: new Date(),
+        },
+      ],
+      stripeCustomerId: "cus_mock123",
+      stripeSubscriptionId: "sub_mock123",
+      usage: {
+        botsCreated: 5,
+        tradesExecuted: 234,
+        aiAnalysisUsed: 67,
+        lastReset: new Date(),
+      },
+    }
+    this.userSettings.set(activeUser.id, activeSettings)
+
+    // Create trial user
+    const trialPassword = await bcrypt.hash("trial123", 10)
+    const trialUser: User = {
+      id: "user-trial",
+      email: "trial@example.com",
+      password: trialPassword,
+      name: "Trial User",
+      subscription: "free",
+      subscriptionExpiry: null,
+      isAdmin: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    this.users.set(trialUser.id, trialUser)
+
+    // Create trial user settings with active trial
+    const trialEndDate = new Date()
+    trialEndDate.setDate(trialEndDate.getDate() + 2) // 2 days left
+
+    const trialSettings: UserSettings = {
+      userId: trialUser.id,
+      subscription: {
+        plan: "trial",
+        status: "trial",
+        startDate: new Date(),
+        endDate: trialEndDate,
+        trialUsed: true,
+        trialStartDate: new Date(),
+        trialEndDate: trialEndDate,
+      },
+      preferences: {
+        notifications: true,
+        theme: "light",
+        language: "en",
+      },
+      apiKeys: [],
+      usage: {
+        botsCreated: 2,
+        tradesExecuted: 15,
+        aiAnalysisUsed: 8,
+        lastReset: new Date(),
+      },
+    }
+    this.userSettings.set(trialUser.id, trialSettings)
+
+    // Create new user eligible for trial
+    const newPassword = await bcrypt.hash("new123", 10)
+    const newUser: User = {
+      id: "user-new",
+      email: "new@example.com",
+      password: newPassword,
+      name: "New User",
+      subscription: "free",
+      subscriptionExpiry: null,
+      isAdmin: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    this.users.set(newUser.id, newUser)
+
+    // Create new user settings with trial available
+    const newSettings: UserSettings = {
+      userId: newUser.id,
+      subscription: {
+        plan: "free",
+        status: "active",
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        trialUsed: false, // Trial available
+      },
+      preferences: {
+        notifications: true,
+        theme: "light",
+        language: "en",
+      },
+      apiKeys: [],
+      usage: {
+        botsCreated: 0,
+        tradesExecuted: 0,
+        aiAnalysisUsed: 0,
+        lastReset: new Date(),
+      },
+    }
+    this.userSettings.set(newUser.id, newSettings)
+
+    // Create sample bots
+    const bot1: Bot = {
+      id: "bot-1",
+      userId: "user-1",
+      name: "BTC Scalping Bot",
+      strategy: "scalping",
+      status: "active",
+      exchange: "binance",
+      pair: "BTC/USDT",
+      investment: 1000,
+      profit: 125.5,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      settings: { stopLoss: 2, takeProfit: 3 },
+    }
+    this.bots.set(bot1.id, bot1)
+
+    const bot2: Bot = {
+      id: "bot-2",
+      userId: "user-expired",
+      name: "ETH DCA Bot",
+      strategy: "dca",
+      status: "active", // Still running despite expired subscription
+      exchange: "coinbase",
+      pair: "ETH/USD",
+      investment: 500,
+      profit: 45.25,
+      createdAt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
+      updatedAt: new Date(),
+      settings: { interval: "1h", amount: 50 },
+    }
+    this.bots.set(bot2.id, bot2)
+
+    const bot3: Bot = {
+      id: "bot-3",
+      userId: "user-trial",
+      name: "Trial Bot",
+      strategy: "dca",
+      status: "active",
+      exchange: "binance",
+      pair: "ETH/USDT",
+      investment: 200,
+      profit: 12.5,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      settings: { interval: "4h", amount: 25 },
+    }
+    this.bots.set(bot3.id, bot3)
+
+    // Create sample trades
+    const trade1: Trade = {
+      id: "trade-1",
+      botId: "bot-1",
+      userId: "user-1",
+      type: "buy",
+      amount: 0.01,
+      price: 45000,
+      profit: 25.5,
+      timestamp: new Date(),
+      pair: "BTC/USDT",
+    }
+    this.trades.set(trade1.id, trade1)
+
+    const trade2: Trade = {
+      id: "trade-2",
+      botId: "bot-3",
+      userId: "user-trial",
+      type: "buy",
+      amount: 0.1,
+      price: 2500,
+      profit: 12.5,
+      timestamp: new Date(),
+      pair: "ETH/USDT",
+    }
+    this.trades.set(trade2.id, trade2)
+  }
+
+  // User operations
+  async createUser(userData: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
+    const id = `user-${Date.now()}`
+    const user: User = {
+      ...userData,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    this.users.set(id, user)
+
+    // Create default user settings
+    const userSettings: UserSettings = {
+      userId: id,
+      subscription: {
+        plan: "free",
+        status: "active",
+        startDate: new Date(),
+        endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+        trialUsed: false, // New users get trial available
+      },
+      preferences: {
+        notifications: true,
+        theme: "light",
+        language: "en",
+      },
+      apiKeys: [],
+      usage: {
+        botsCreated: 0,
+        tradesExecuted: 0,
+        aiAnalysisUsed: 0,
+        lastReset: new Date(),
+      },
+    }
+    this.userSettings.set(id, userSettings)
+
     return user
   }
 
-  async getUserByEmail(email: string): Promise<User | null> {
-    return this.users.find((user) => user.email === email) || null
+  async getUserById(id: string): Promise<User | null> {
+    return this.users.get(id) || null
   }
 
-  async getUserById(id: string): Promise<User | null> {
-    return this.users.find((user) => user.id === id) || null
+  async getUserByEmail(email: string): Promise<User | null> {
+    for (const user of this.users.values()) {
+      if (user.email === email) {
+        return user
+      }
+    }
+    return null
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User | null> {
-    const userIndex = this.users.findIndex((user) => user.id === id)
-    if (userIndex === -1) return null
+    const user = this.users.get(id)
+    if (!user) return null
 
-    this.users[userIndex] = { ...this.users[userIndex], ...updates }
-    return this.users[userIndex]
+    const updatedUser = { ...user, ...updates, updatedAt: new Date() }
+    this.users.set(id, updatedUser)
+    return updatedUser
   }
 
   async getAllUsers(): Promise<User[]> {
-    return this.users
+    return Array.from(this.users.values())
   }
 
-  // Bot methods
-  async createBot(botData: Omit<Bot, "id" | "createdAt">): Promise<Bot> {
+  // Bot operations
+  async createBot(botData: Omit<Bot, "id" | "createdAt" | "updatedAt">): Promise<Bot> {
+    const id = `bot-${Date.now()}`
     const bot: Bot = {
       ...botData,
-      id: (this.bots.length + 1).toString(),
-      createdAt: new Date().toISOString(),
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     }
-    this.bots.push(bot)
+    this.bots.set(id, bot)
     return bot
   }
 
-  async getBotsByUserId(userId: string): Promise<Bot[]> {
-    return this.bots.filter((bot) => bot.userId === userId)
+  async getBotById(id: string): Promise<Bot | null> {
+    return this.bots.get(id) || null
   }
 
-  async getBotById(id: string): Promise<Bot | null> {
-    return this.bots.find((bot) => bot.id === id) || null
+  async getBotsByUserId(userId: string): Promise<Bot[]> {
+    return Array.from(this.bots.values()).filter((bot) => bot.userId === userId)
+  }
+
+  async getUserBots(userId: string): Promise<Bot[]> {
+    return this.getBotsByUserId(userId)
   }
 
   async updateBot(id: string, updates: Partial<Bot>): Promise<Bot | null> {
-    const botIndex = this.bots.findIndex((bot) => bot.id === id)
-    if (botIndex === -1) return null
+    const bot = this.bots.get(id)
+    if (!bot) return null
 
-    this.bots[botIndex] = { ...this.bots[botIndex], ...updates }
-    return this.bots[botIndex]
+    const updatedBot = { ...bot, ...updates, updatedAt: new Date() }
+    this.bots.set(id, updatedBot)
+    return updatedBot
   }
 
   async deleteBot(id: string): Promise<boolean> {
-    const botIndex = this.bots.findIndex((bot) => bot.id === id)
-    if (botIndex === -1) return false
-
-    this.bots.splice(botIndex, 1)
-    return true
+    return this.bots.delete(id)
   }
 
-  // Trade methods
+  async getAllBots(): Promise<Bot[]> {
+    return Array.from(this.bots.values())
+  }
+
+  // Trade operations
   async createTrade(tradeData: Omit<Trade, "id">): Promise<Trade> {
-    const trade: Trade = {
-      ...tradeData,
-      id: (this.trades.length + 1).toString(),
-    }
-    this.trades.push(trade)
+    const id = `trade-${Date.now()}`
+    const trade: Trade = { ...tradeData, id }
+    this.trades.set(id, trade)
     return trade
   }
 
-  async getTradesByUserId(userId: string): Promise<Trade[]> {
-    return this.trades.filter((trade) => trade.userId === userId)
-  }
-
   async getTradesByBotId(botId: string): Promise<Trade[]> {
-    return this.trades.filter((trade) => trade.botId === botId)
+    return Array.from(this.trades.values()).filter((trade) => trade.botId === botId)
   }
 
-  // API Key methods
-  async createApiKey(keyData: Omit<ApiKey, "id" | "createdAt">): Promise<ApiKey> {
+  async getTradesByUserId(userId: string): Promise<Trade[]> {
+    return Array.from(this.trades.values()).filter((trade) => trade.userId === userId)
+  }
+
+  async getUserTrades(userId: string, limit?: number): Promise<Trade[]> {
+    const trades = this.getTradesByUserId(userId)
+    return limit ? trades.slice(0, limit) : trades
+  }
+
+  // User settings operations
+  async getUserSettings(userId: string): Promise<UserSettings | null> {
+    return this.userSettings.get(userId) || null
+  }
+
+  async saveUserSettings(settings: UserSettings): Promise<UserSettings> {
+    this.userSettings.set(settings.userId, settings)
+    return settings
+  }
+
+  async updateUserSettings(userId: string, updates: Partial<UserSettings>): Promise<UserSettings> {
+    let settings = await this.getUserSettings(userId)
+
+    if (!settings) {
+      settings = {
+        userId,
+        subscription: {
+          plan: "free",
+          status: "active",
+          startDate: new Date(),
+          endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+          trialUsed: false,
+        },
+        preferences: {
+          notifications: true,
+          theme: "light",
+          language: "en",
+        },
+        apiKeys: [],
+        usage: {
+          botsCreated: 0,
+          tradesExecuted: 0,
+          aiAnalysisUsed: 0,
+          lastReset: new Date(),
+        },
+      }
+    }
+
+    const updatedSettings = { ...settings, ...updates }
+    this.userSettings.set(userId, updatedSettings)
+    return updatedSettings
+  }
+
+  async updateSubscriptionStatus(userId: string, status: SubscriptionStatus): Promise<void> {
+    const settings = this.userSettings.get(userId)
+    if (settings) {
+      settings.subscription.status = status
+      this.userSettings.set(userId, settings)
+    }
+  }
+
+  async getExpiredSubscriptions(): Promise<UserSettings[]> {
+    const expired: UserSettings[] = []
+    const now = new Date()
+
+    for (const settings of this.userSettings.values()) {
+      // Check for expired subscriptions
+      if (settings.subscription.endDate < now && settings.subscription.status === "active") {
+        expired.push(settings)
+      }
+      // Check for expired trials
+      if (
+        settings.subscription.status === "trial" &&
+        settings.subscription.trialEndDate &&
+        settings.subscription.trialEndDate < now
+      ) {
+        expired.push(settings)
+      }
+    }
+
+    return expired
+  }
+
+  // API Key operations
+  async createApiKey(keyData: Omit<ApiKey, "id" | "createdAt" | "updatedAt">): Promise<ApiKey> {
+    const id = `key-${Date.now()}`
     const apiKey: ApiKey = {
       ...keyData,
-      id: (this.apiKeys.length + 1).toString(),
-      createdAt: new Date().toISOString(),
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     }
-    this.apiKeys.push(apiKey)
+    this.apiKeys.set(id, apiKey)
     return apiKey
   }
 
   async getApiKeysByUserId(userId: string): Promise<ApiKey[]> {
-    return this.apiKeys.filter((key) => key.userId === userId)
+    return Array.from(this.apiKeys.values()).filter((key) => key.userId === userId)
   }
 
   async deleteApiKey(id: string): Promise<boolean> {
-    const keyIndex = this.apiKeys.findIndex((key) => key.id === id)
-    if (keyIndex === -1) return false
-
-    this.apiKeys.splice(keyIndex, 1)
-    return true
+    return this.apiKeys.delete(id)
   }
 
-  // Subscription methods
-  async updateUserSubscription(userId: string, subscription: Subscription): Promise<User | null> {
-    const userIndex = this.users.findIndex((user) => user.id === userId)
-    if (userIndex === -1) return null
+  // Utility methods
+  async getUserStats(userId: string): Promise<{
+    totalBots: number
+    activeBots: number
+    totalProfit: number
+    totalTrades: number
+  }> {
+    const bots = await this.getBotsByUserId(userId)
+    const trades = await this.getTradesByUserId(userId)
 
-    this.users[userIndex].subscription = subscription
-    return this.users[userIndex]
+    return {
+      totalBots: bots.length,
+      activeBots: bots.filter((bot) => bot.status === "active").length,
+      totalProfit: bots.reduce((sum, bot) => sum + bot.profit, 0),
+      totalTrades: trades.length,
+    }
   }
 
-  async getExpiredSubscriptions(): Promise<User[]> {
-    const now = new Date()
-    return this.users.filter((user) => {
-      if (!user.subscription) return false
+  async checkSubscriptionLimits(userId: string): Promise<{
+    canCreateBot: boolean
+    maxBots: number
+    currentBots: number
+    reason?: string
+  }> {
+    const user = await this.getUserById(userId)
+    if (!user) {
+      return { canCreateBot: false, maxBots: 0, currentBots: 0, reason: "User not found" }
+    }
 
-      const endDate = new Date(user.subscription.currentPeriodEnd)
-      const isExpired = now > endDate
+    const bots = await this.getBotsByUserId(userId)
+    const currentBots = bots.length
 
-      // Also check for expired trials
-      if (user.settings.trialEndDate) {
-        const trialEndDate = new Date(user.settings.trialEndDate)
-        return isExpired || (now > trialEndDate && user.settings.trialStartDate)
+    // Check if subscription is expired
+    if (user.subscriptionExpiry && user.subscriptionExpiry < new Date()) {
+      return {
+        canCreateBot: false,
+        maxBots: 0,
+        currentBots,
+        reason: "Subscription expired. Existing bots will continue running.",
       }
+    }
 
-      return isExpired
-    })
+    let maxBots = 0
+    switch (user.subscription) {
+      case "free":
+        maxBots = 1
+        break
+      case "trial":
+        maxBots = 3
+        break
+      case "basic":
+        maxBots = 3
+        break
+      case "premium":
+        maxBots = 10
+        break
+      case "enterprise":
+        maxBots = 50
+        break
+    }
+
+    return {
+      canCreateBot: currentBots < maxBots,
+      maxBots,
+      currentBots,
+      reason: currentBots >= maxBots ? "Bot limit reached for your subscription" : undefined,
+    }
   }
 }
 
-export const db = new Database()
+// Create and export database instance
+export const database = new DatabaseManager()
+
+// Export connection function for compatibility
+export async function connectToDatabase(): Promise<DatabaseManager> {
+  return database
+}
+
+// Export default
+export default database
