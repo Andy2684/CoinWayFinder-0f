@@ -1,139 +1,194 @@
-// Mock Stripe implementation for development
+// Mock Stripe Implementation for CoinWayFinder
+
+// Stripe Plans Configuration
+export const STRIPE_PLANS = {
+  pro: {
+    priceId: "price_pro_monthly",
+    name: "Pro Plan",
+    price: 29.99,
+    interval: "month",
+    features: ["Up to 5 bots", "Advanced strategies", "Email support"],
+  },
+  enterprise: {
+    priceId: "price_enterprise_monthly",
+    name: "Enterprise Plan",
+    price: 99.99,
+    interval: "month",
+    features: ["Up to 50 bots", "All strategies", "Priority support", "Custom integrations"],
+  },
+}
+
+export const ADD_ONS = {
+  extra_bots: {
+    priceId: "price_extra_bots",
+    name: "Extra Bot Slots",
+    price: 9.99,
+    description: "Add 5 more bot slots to your plan",
+  },
+  premium_support: {
+    priceId: "price_premium_support",
+    name: "Premium Support",
+    price: 19.99,
+    description: "24/7 priority support with dedicated account manager",
+  },
+}
+
+// Mock Stripe Types
 interface StripeSession {
   id: string
   url: string
-  payment_status: string
+  payment_status: "paid" | "unpaid" | "no_payment_required"
   customer_email?: string
-  amount_total: number
-  currency: string
-  metadata: Record<string, string>
+  metadata?: Record<string, string>
 }
 
-interface StripePrice {
+interface StripeCustomer {
   id: string
-  nickname: string
-  unit_amount: number
-  currency: string
-  recurring?: {
-    interval: string
-    interval_count: number
+  email: string
+  name?: string
+  metadata?: Record<string, string>
+}
+
+interface StripeSubscription {
+  id: string
+  customer: string
+  status: "active" | "canceled" | "incomplete" | "past_due"
+  current_period_end: number
+  items: {
+    data: Array<{
+      price: {
+        id: string
+        nickname?: string
+      }
+    }>
   }
 }
 
-interface StripeProduct {
-  id: string
-  name: string
-  description: string
-  metadata: Record<string, string>
-}
-
-// Mock Stripe class
+// Mock Stripe Class
 class MockStripe {
   checkout = {
     sessions: {
-      create: async (params: any): Promise<StripeSession> => {
+      create: async (params: {
+        payment_method_types: string[]
+        line_items: Array<{
+          price: string
+          quantity: number
+        }>
+        mode: "payment" | "subscription"
+        success_url: string
+        cancel_url: string
+        customer_email?: string
+        metadata?: Record<string, string>
+      }): Promise<StripeSession> => {
         // Mock session creation
         const sessionId = `cs_mock_${Date.now()}`
         return {
           id: sessionId,
           url: `https://checkout.stripe.com/pay/${sessionId}`,
           payment_status: "unpaid",
-          amount_total: params.line_items[0]?.price_data?.unit_amount || 2999,
-          currency: "usd",
-          metadata: params.metadata || {},
+          customer_email: params.customer_email,
+          metadata: params.metadata,
         }
       },
+
       retrieve: async (sessionId: string): Promise<StripeSession> => {
+        // Mock session retrieval
         return {
           id: sessionId,
           url: `https://checkout.stripe.com/pay/${sessionId}`,
           payment_status: "paid",
-          customer_email: "customer@example.com",
-          amount_total: 2999,
-          currency: "usd",
-          metadata: {},
+          customer_email: "user@example.com",
         }
       },
     },
   }
 
-  prices = {
-    list: async (): Promise<{ data: StripePrice[] }> => {
+  customers = {
+    create: async (params: {
+      email: string
+      name?: string
+      metadata?: Record<string, string>
+    }): Promise<StripeCustomer> => {
       return {
-        data: [
-          {
-            id: "price_basic_monthly",
-            nickname: "Basic Monthly",
-            unit_amount: 2999,
-            currency: "usd",
-            recurring: {
-              interval: "month",
-              interval_count: 1,
-            },
-          },
-          {
-            id: "price_pro_monthly",
-            nickname: "Pro Monthly",
-            unit_amount: 9999,
-            currency: "usd",
-            recurring: {
-              interval: "month",
-              interval_count: 1,
-            },
-          },
-          {
-            id: "price_enterprise_monthly",
-            nickname: "Enterprise Monthly",
-            unit_amount: 29999,
-            currency: "usd",
-            recurring: {
-              interval: "month",
-              interval_count: 1,
-            },
-          },
-        ],
+        id: `cus_mock_${Date.now()}`,
+        email: params.email,
+        name: params.name,
+        metadata: params.metadata,
+      }
+    },
+
+    retrieve: async (customerId: string): Promise<StripeCustomer> => {
+      return {
+        id: customerId,
+        email: "user@example.com",
+        name: "Mock Customer",
       }
     },
   }
 
-  products = {
-    list: async (): Promise<{ data: StripeProduct[] }> => {
+  subscriptions = {
+    create: async (params: {
+      customer: string
+      items: Array<{ price: string }>
+      metadata?: Record<string, string>
+    }): Promise<StripeSubscription> => {
       return {
-        data: [
-          {
-            id: "prod_basic",
-            name: "Basic Plan",
-            description: "Perfect for beginners",
-            metadata: {
-              maxBots: "3",
-              maxTrades: "1000",
+        id: `sub_mock_${Date.now()}`,
+        customer: params.customer,
+        status: "active",
+        current_period_end: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60, // 30 days from now
+        items: {
+          data: params.items.map((item) => ({
+            price: {
+              id: item.price,
+              nickname: STRIPE_PLANS.pro.name,
             },
-          },
-          {
-            id: "prod_pro",
-            name: "Pro Plan",
-            description: "For serious traders",
-            metadata: {
-              maxBots: "10",
-              maxTrades: "10000",
+          })),
+        },
+      }
+    },
+
+    retrieve: async (subscriptionId: string): Promise<StripeSubscription> => {
+      return {
+        id: subscriptionId,
+        customer: "cus_mock_customer",
+        status: "active",
+        current_period_end: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
+        items: {
+          data: [
+            {
+              price: {
+                id: STRIPE_PLANS.pro.priceId,
+                nickname: STRIPE_PLANS.pro.name,
+              },
             },
-          },
-          {
-            id: "prod_enterprise",
-            name: "Enterprise Plan",
-            description: "Unlimited trading power",
-            metadata: {
-              maxBots: "unlimited",
-              maxTrades: "unlimited",
+          ],
+        },
+      }
+    },
+
+    cancel: async (subscriptionId: string): Promise<StripeSubscription> => {
+      return {
+        id: subscriptionId,
+        customer: "cus_mock_customer",
+        status: "canceled",
+        current_period_end: Math.floor(Date.now() / 1000) + 30 * 24 * 60 * 60,
+        items: {
+          data: [
+            {
+              price: {
+                id: STRIPE_PLANS.pro.priceId,
+                nickname: STRIPE_PLANS.pro.name,
+              },
             },
-          },
-        ],
+          ],
+        },
       }
     },
   }
 
   webhooks = {
-    constructEvent: (payload: any, signature: string, secret: string) => {
+    constructEvent: (payload: string | Buffer, signature: string, secret: string) => {
       // Mock webhook event construction
       return {
         id: `evt_mock_${Date.now()}`,
@@ -142,7 +197,7 @@ class MockStripe {
           object: {
             id: "cs_mock_session",
             payment_status: "paid",
-            customer_email: "customer@example.com",
+            customer_email: "user@example.com",
             metadata: {},
           },
         },
@@ -154,78 +209,7 @@ class MockStripe {
 // Create mock Stripe instance
 export const stripe = new MockStripe()
 
-// Stripe plans configuration
-export const STRIPE_PLANS = {
-  basic: {
-    priceId: "price_basic_monthly",
-    name: "Basic",
-    price: 29.99,
-    currency: "USD",
-    interval: "month",
-    features: ["Up to 3 trading bots", "1,000 trades per month", "Basic strategies", "Email support"],
-    limits: {
-      maxBots: 3,
-      maxTrades: 1000,
-    },
-  },
-  pro: {
-    priceId: "price_pro_monthly",
-    name: "Pro",
-    price: 99.99,
-    currency: "USD",
-    interval: "month",
-    features: [
-      "Up to 10 trading bots",
-      "10,000 trades per month",
-      "Advanced strategies",
-      "Priority support",
-      "Risk management tools",
-    ],
-    limits: {
-      maxBots: 10,
-      maxTrades: 10000,
-    },
-  },
-  enterprise: {
-    priceId: "price_enterprise_monthly",
-    name: "Enterprise",
-    price: 299.99,
-    currency: "USD",
-    interval: "month",
-    features: [
-      "Unlimited trading bots",
-      "Unlimited trades",
-      "All strategies",
-      "24/7 support",
-      "Custom integrations",
-      "Dedicated account manager",
-    ],
-    limits: {
-      maxBots: -1, // -1 means unlimited
-      maxTrades: -1,
-    },
-  },
-}
-
-// Add-ons configuration
-export const ADD_ONS = {
-  extra_bots: {
-    priceId: "price_extra_bots",
-    name: "Extra Bot Slots",
-    price: 9.99,
-    currency: "USD",
-    description: "Add 5 more bot slots to your plan",
-  },
-  priority_support: {
-    priceId: "price_priority_support",
-    name: "Priority Support",
-    price: 19.99,
-    currency: "USD",
-    description: "24/7 priority customer support",
-  },
-}
-
-// Main function to create checkout session
+// Checkout Session Creation Function
 export async function createCheckoutSession(params: {
   priceId: string
   successUrl: string
@@ -246,12 +230,7 @@ export async function createCheckoutSession(params: {
       success_url: params.successUrl,
       cancel_url: params.cancelUrl,
       customer_email: params.customerEmail,
-      metadata: params.metadata || {},
-      allow_promotion_codes: true,
-      billing_address_collection: "required",
-      subscription_data: {
-        metadata: params.metadata || {},
-      },
+      metadata: params.metadata,
     })
 
     return session
@@ -261,26 +240,28 @@ export async function createCheckoutSession(params: {
   }
 }
 
-// Utility functions
+// Utility Functions
+export function formatPrice(amount: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+  }).format(amount)
+}
+
 export function getPlanByPriceId(priceId: string) {
   return Object.values(STRIPE_PLANS).find((plan) => plan.priceId === priceId)
 }
 
-export function formatPrice(amount: number, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: currency.toUpperCase(),
-  }).format(amount)
+export function getAddOnByPriceId(priceId: string) {
+  return Object.values(ADD_ONS).find((addon) => addon.priceId === priceId)
 }
 
-export function validateWebhookSignature(payload: string, signature: string): boolean {
-  // Mock validation - always return true for development
+// Webhook signature verification (mock)
+export function verifyWebhookSignature(payload: string | Buffer, signature: string, secret: string): boolean {
+  // In a real implementation, this would verify the Stripe webhook signature
+  // For mock purposes, we'll always return true
   return true
 }
 
-export async function retrieveSession(sessionId: string): Promise<StripeSession> {
-  return await stripe.checkout.sessions.retrieve(sessionId)
-}
-
-// Export types
-export type { StripeSession, StripePrice, StripeProduct }
+// Export default stripe instance
+export default stripe

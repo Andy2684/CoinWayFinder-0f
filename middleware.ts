@@ -7,8 +7,8 @@ interface JWTPayload {
   userId: string
   email: string
   isAdmin?: boolean
-  subscriptionStatus?: string
-  subscriptionPlan?: string
+  subscription?: string
+  subscriptionExpiry?: string
   iat?: number
   exp?: number
 }
@@ -22,15 +22,26 @@ const protectedRoutes = [
   "/subscription",
   "/api/bots",
   "/api/trades",
-  "/api/portfolio",
   "/api/user",
+  "/api/subscription",
 ]
 
 // Admin-only routes
 const adminRoutes = ["/api/admin"]
 
-// API routes that require subscription check
-const subscriptionRoutes = ["/api/bots", "/api/trades", "/api/ai"]
+// Public API routes that don't require authentication
+const publicApiRoutes = [
+  "/api/auth/signin",
+  "/api/auth/signup",
+  "/api/auth/signout",
+  "/api/crypto/prices",
+  "/api/crypto/news",
+  "/api/crypto/trends",
+  "/api/crypto/whales",
+  "/api/news",
+  "/api/whales",
+  "/api/v1",
+]
 
 // Routes that allow expired subscriptions (read-only)
 const gracefulExpirationRoutes = [
@@ -40,33 +51,78 @@ const gracefulExpirationRoutes = [
   "/api/user/profile", // GET requests only
 ]
 
+function isProtectedRoute(pathname: string): boolean {
+  return protectedRoutes.some((route) => pathname.startsWith(route))
+}
+
+function isAdminRoute(pathname: string): boolean {
+  return adminRoutes.some((route) => pathname.startsWith(route))
+}
+
+function isPublicApiRoute(pathname: string): boolean {
+  return publicApiRoutes.some((route) => pathname.startsWith(route))
+}
+
+function getTokenFromRequest(request: NextRequest): string | null {
+  // Try to get token from Authorization header
+  const authHeader = request.headers.get("authorization")
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    return authHeader.substring(7)
+  }
+
+  // Try to get token from cookie
+  const tokenCookie = request.cookies.get("auth-token")
+  if (tokenCookie) {
+    return tokenCookie.value
+  }
+
+  return null
+}
+
+function verifyToken(token: string): JWTPayload | null {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload
+    return decoded
+  } catch (error) {
+    console.error("Token verification failed:", error)
+    return null
+  }
+}
+
+function isSubscriptionExpired(subscriptionExpiry?: string): boolean {
+  if (!subscriptionExpiry) return false
+  return new Date(subscriptionExpiry) < new Date()
+}
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const method = request.method
 
-  // Skip middleware for public routes
+  // Skip middleware for static files and Next.js internals
   if (
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/api/auth") ||
-    pathname.startsWith("/api/stripe/webhook") ||
-    pathname.startsWith("/api/coinbase/webhook") ||
-    pathname === "/" ||
-    pathname === "/api/health" ||
-    pathname.startsWith("/public")
+    pathname.startsWith("/static") ||
+    pathname.includes(".") ||
+    pathname === "/favicon.ico"
   ) {
     return NextResponse.next()
   }
 
-  // Get token from cookie or Authorization header
-  const token = request.cookies.get("auth-token")?.value || request.headers.get("Authorization")?.replace("Bearer ", "")
+  // Allow public API routes
+  if (isPublicApiRoute(pathname)) {
+    return NextResponse.next()
+  }
 
   // Check if route requires authentication
-  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
-  const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route))
-  const isSubscriptionRoute = subscriptionRoutes.some((route) => pathname.startsWith(route))
-  const isGracefulRoute = gracefulExpirationRoutes.some((route) => pathname.startsWith(route))
+  const isProtectedRouteFlag = isProtectedRoute(pathname)
+  const isAdminRouteFlag = isAdminRoute(pathname)
+  const isSubscriptionRouteFlag =
+    pathname.startsWith("/api/bots") || pathname.startsWith("/api/trades") || pathname.startsWith("/api/ai")
+  const isGracefulRouteFlag = gracefulExpirationRoutes.some((route) => pathname.startsWith(route))
 
-  if (isProtectedRoute || isAdminRoute || isSubscriptionRoute) {
+  if (isProtectedRouteFlag || isAdminRouteFlag || isSubscriptionRouteFlag) {
+    const token = getTokenFromRequest(request)
+
     if (!token) {
       // Redirect to login for web pages, return 401 for API routes
       if (pathname.startsWith("/api/")) {
@@ -83,13 +139,13 @@ export function middleware(request: NextRequest) {
       const payload = jwt.verify(token, JWT_SECRET) as JWTPayload
 
       // Check admin access
-      if (isAdminRoute && !payload.isAdmin) {
+      if (isAdminRouteFlag && !payload.isAdmin) {
         return NextResponse.json({ error: "Admin access required" }, { status: 403 })
       }
 
       // Check subscription status for write operations
-      if (isSubscriptionRoute && method !== "GET") {
-        if (payload.subscriptionStatus === "expired") {
+      if (isSubscriptionRouteFlag && method !== "GET") {
+        if (payload.subscription === "expired") {
           return NextResponse.json(
             {
               error: "Your subscription has expired. Please renew to continue.",
@@ -108,7 +164,7 @@ export function middleware(request: NextRequest) {
       }
 
       // Allow graceful expiration for read operations
-      if (isGracefulRoute && method === "GET" && payload.subscriptionStatus === "expired") {
+      if (isGracefulRouteFlag && method === "GET" && payload.subscription === "expired") {
         const response = NextResponse.next()
         response.headers.set("X-Subscription-Status", "expired")
         response.headers.set("X-Subscription-Warning", "Subscription expired - read-only access")
@@ -121,8 +177,8 @@ export function middleware(request: NextRequest) {
       const response = NextResponse.next()
       response.headers.set("X-User-Id", payload.userId)
       response.headers.set("X-User-Email", payload.email)
-      response.headers.set("X-Subscription-Status", payload.subscriptionStatus || "active")
-      response.headers.set("X-Subscription-Plan", payload.subscriptionPlan || "free")
+      response.headers.set("X-Subscription-Status", payload.subscription || "active")
+      response.headers.set("X-Subscription-Plan", payload.subscriptionExpiry || "free")
 
       if (payload.isAdmin) {
         response.headers.set("X-User-Role", "admin")
@@ -153,9 +209,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public (public files)
+     * - public folder
      */
-    "/((?!_next/static|_next/image|favicon.ico|public).*)",
+    "/((?!_next/static|_next/image|favicon.ico|public/).*)",
   ],
 }
 
@@ -190,12 +246,12 @@ export const requireAdmin = (request: NextRequest): JWTPayload => {
 
 export const checkSubscription = (user: JWTPayload, method: string): boolean => {
   // Allow read operations for expired subscriptions (graceful expiration)
-  if (method === "GET" && user.subscriptionStatus === "expired") {
+  if (method === "GET" && user.subscription === "expired") {
     return true
   }
 
   // Require active subscription for write operations
-  return user.subscriptionStatus === "active"
+  return user.subscription === "active"
 }
 
 export const createAuthToken = (payload: Omit<JWTPayload, "iat" | "exp">): string => {
