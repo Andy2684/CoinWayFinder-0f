@@ -140,6 +140,7 @@ export interface User {
   subscriptionExpiry: Date
   createdAt: Date
   updatedAt: Date
+  isAdmin?: boolean
 }
 
 export interface ArbitrageOpportunity {
@@ -181,12 +182,20 @@ export interface Bot {
   userId: string
   name: string
   strategy: string
-  status: "running" | "stopped" | "paused"
+  exchange: string
+  status: "running" | "stopped" | "paused" | "completed"
   subscriptionStatus: "active" | "expired"
   autoStop: boolean
+  startTime: Date
+  endTime: Date | null
+  config: Record<string, any>
+  performance: {
+    totalTrades: number
+    profitLoss: number
+    winRate: number
+  }
   createdAt: Date
   updatedAt: Date
-  config: any
 }
 
 class DatabaseManager {
@@ -769,28 +778,133 @@ class DatabaseManager {
 }
 
 // Mock database implementation for development
-const users: Map<string, User> = new Map()
-const bots: Map<string, Bot> = new Map()
+class MockDatabase {
+  private users: Map<string, User> = new Map()
+  private bots: Map<string, Bot> = new Map()
+  private trades: Map<string, TradeRecord> = new Map()
 
-// Initialize with some mock data
-const mockUser: User = {
-  id: "user_1",
-  email: "project.command.center@gmail.com",
-  username: "admin",
-  passwordHash: "$2a$10$mockhashedpassword",
-  subscriptionStatus: "active",
-  subscriptionPlan: "pro",
-  subscriptionExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
-  createdAt: new Date(),
-  updatedAt: new Date(),
-}
+  constructor() {
+    this.initializeMockData()
+  }
 
-users.set(mockUser.id, mockUser)
+  private initializeMockData() {
+    // Create admin user
+    const adminUser: User = {
+      id: "admin_001",
+      email: "project.command.center@gmail.com",
+      passwordHash: "$2a$10$hashedPasswordForAdmin", // bcrypt hash of "CoinWayFinder2024!"
+      username: "Admin User",
+      subscriptionStatus: "active",
+      subscriptionPlan: "enterprise",
+      subscriptionExpiry: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      isAdmin: true,
+    }
 
-export class Database {
+    // Create sample users
+    const sampleUsers: User[] = [
+      {
+        id: "user_001",
+        email: "john@example.com",
+        passwordHash: "$2a$10$hashedPasswordForJohn",
+        username: "John Doe",
+        subscriptionStatus: "active",
+        subscriptionPlan: "pro",
+        subscriptionExpiry: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: "user_002",
+        email: "jane@example.com",
+        passwordHash: "$2a$10$hashedPasswordForJane",
+        username: "Jane Smith",
+        subscriptionStatus: "expired",
+        subscriptionPlan: "starter",
+        subscriptionExpiry: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // 7 days ago
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]
+
+    // Add users to database
+    this.users.set(adminUser.id, adminUser)
+    sampleUsers.forEach((user) => this.users.set(user.id, user))
+
+    // Create sample bots
+    const sampleBots: Bot[] = [
+      {
+        id: "bot_001",
+        userId: "user_001",
+        name: "BTC DCA Bot",
+        strategy: "dca",
+        exchange: "binance",
+        status: "running",
+        subscriptionStatus: "active",
+        autoStop: false,
+        startTime: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
+        endTime: null,
+        config: {
+          symbol: "BTCUSDT",
+          amount: 100,
+          interval: "1h",
+        },
+        performance: {
+          totalTrades: 24,
+          profitLoss: 150.75,
+          winRate: 0.67,
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+      {
+        id: "bot_002",
+        userId: "user_002",
+        name: "ETH Scalping Bot",
+        strategy: "scalping",
+        exchange: "bybit",
+        status: "running",
+        subscriptionStatus: "expired", // User's subscription expired but bot continues
+        autoStop: false, // Graceful expiration - bot continues running
+        startTime: new Date(Date.now() - 48 * 60 * 60 * 1000), // 2 days ago
+        endTime: null,
+        config: {
+          symbol: "ETHUSDT",
+          amount: 50,
+          interval: "5m",
+        },
+        performance: {
+          totalTrades: 96,
+          profitLoss: -25.3,
+          winRate: 0.45,
+        },
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]
+
+    sampleBots.forEach((bot) => this.bots.set(bot.id, bot))
+  }
+
   // User operations
-  static async findUserByEmail(email: string): Promise<User | null> {
-    for (const user of users.values()) {
+  async createUser(userData: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
+    const user: User = {
+      ...userData,
+      id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    this.users.set(user.id, user)
+    return user
+  }
+
+  async getUserById(id: string): Promise<User | null> {
+    return this.users.get(id) || null
+  }
+
+  async getUserByEmail(email: string): Promise<User | null> {
+    for (const user of this.users.values()) {
       if (user.email === email) {
         return user
       }
@@ -798,79 +912,158 @@ export class Database {
     return null
   }
 
-  static async findUserById(id: string): Promise<User | null> {
-    return users.get(id) || null
-  }
-
-  static async createUser(userData: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
-    const user: User = {
-      ...userData,
-      id: `user_${Date.now()}`,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-    users.set(user.id, user)
-    return user
-  }
-
-  static async updateUser(id: string, updates: Partial<User>): Promise<User | null> {
-    const user = users.get(id)
+  async updateUser(id: string, updates: Partial<User>): Promise<User | null> {
+    const user = this.users.get(id)
     if (!user) return null
 
-    const updatedUser = { ...user, ...updates, updatedAt: new Date() }
-    users.set(id, updatedUser)
+    const updatedUser = {
+      ...user,
+      ...updates,
+      updatedAt: new Date(),
+    }
+    this.users.set(id, updatedUser)
     return updatedUser
   }
 
+  async deleteUser(id: string): Promise<boolean> {
+    return this.users.delete(id)
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values())
+  }
+
   // Bot operations
-  static async findBotsByUserId(userId: string): Promise<Bot[]> {
-    return Array.from(bots.values()).filter((bot) => bot.userId === userId)
-  }
-
-  static async findBotById(id: string): Promise<Bot | null> {
-    return bots.get(id) || null
-  }
-
-  static async createBot(botData: Omit<Bot, "id" | "createdAt" | "updatedAt">): Promise<Bot> {
+  async createBot(botData: Omit<Bot, "id" | "createdAt" | "updatedAt">): Promise<Bot> {
     const bot: Bot = {
       ...botData,
-      id: `bot_${Date.now()}`,
+      id: `bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       createdAt: new Date(),
       updatedAt: new Date(),
     }
-    bots.set(bot.id, bot)
+    this.bots.set(bot.id, bot)
     return bot
   }
 
-  static async updateBot(id: string, updates: Partial<Bot>): Promise<Bot | null> {
-    const bot = bots.get(id)
+  async getBotById(id: string): Promise<Bot | null> {
+    return this.bots.get(id) || null
+  }
+
+  async getBotsByUserId(userId: string): Promise<Bot[]> {
+    return Array.from(this.bots.values()).filter((bot) => bot.userId === userId)
+  }
+
+  async updateBot(id: string, updates: Partial<Bot>): Promise<Bot | null> {
+    const bot = this.bots.get(id)
     if (!bot) return null
 
-    const updatedBot = { ...bot, ...updates, updatedAt: new Date() }
-    bots.set(id, updatedBot)
+    const updatedBot = {
+      ...bot,
+      ...updates,
+      updatedAt: new Date(),
+    }
+    this.bots.set(id, updatedBot)
     return updatedBot
   }
 
-  static async deleteBot(id: string): Promise<boolean> {
-    return bots.delete(id)
+  async deleteBot(id: string): Promise<boolean> {
+    return this.bots.delete(id)
   }
 
-  // Subscription operations
-  static async findExpiredUsers(): Promise<User[]> {
+  async getAllBots(): Promise<Bot[]> {
+    return Array.from(this.bots.values())
+  }
+
+  // Trade operations
+  async createTrade(tradeData: Omit<TradeRecord, "id">): Promise<TradeRecord> {
+    const trade: TradeRecord = {
+      ...tradeData,
+      id: `trade_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    }
+    this.trades.set(trade.id, trade)
+    return trade
+  }
+
+  async getTradesByBotId(botId: string): Promise<TradeRecord[]> {
+    return Array.from(this.trades.values()).filter((trade) => trade.botId === botId)
+  }
+
+  async getTradesByUserId(userId: string): Promise<TradeRecord[]> {
+    return Array.from(this.trades.values()).filter((trade) => trade.userId === userId)
+  }
+
+  // Subscription management
+  async updateUserSubscription(
+    userId: string,
+    subscriptionData: {
+      status: "active" | "expired" | "cancelled"
+      plan: string
+      expiry: Date
+    },
+  ): Promise<User | null> {
+    const user = this.users.get(userId)
+    if (!user) return null
+
+    const updatedUser = {
+      ...user,
+      subscriptionStatus: subscriptionData.status,
+      subscriptionPlan: subscriptionData.plan,
+      subscriptionExpiry: subscriptionData.expiry,
+      updatedAt: new Date(),
+    }
+    this.users.set(userId, updatedUser)
+
+    // Update bot subscription status for graceful expiration
+    const userBots = await this.getBotsByUserId(userId)
+    for (const bot of userBots) {
+      await this.updateBot(bot.id, {
+        subscriptionStatus: subscriptionData.status,
+      })
+    }
+
+    return updatedUser
+  }
+
+  async getExpiredUsers(): Promise<User[]> {
     const now = new Date()
-    return Array.from(users.values()).filter(
-      (user) => user.subscriptionExpiry < now && user.subscriptionStatus === "active",
+    return Array.from(this.users.values()).filter((user) => user.subscriptionExpiry && user.subscriptionExpiry < now)
+  }
+
+  async getRunningBotsForExpiredUsers(): Promise<Bot[]> {
+    const expiredUsers = await this.getExpiredUsers()
+    const expiredUserIds = expiredUsers.map((user) => user.id)
+
+    return Array.from(this.bots.values()).filter(
+      (bot) => expiredUserIds.includes(bot.userId) && bot.status === "running" && bot.subscriptionStatus === "expired",
     )
   }
 
-  static async findRunningBotsByUserId(userId: string): Promise<Bot[]> {
-    return Array.from(bots.values()).filter((bot) => bot.userId === userId && bot.status === "running")
+  // Statistics
+  async getStats(): Promise<{
+    totalUsers: number
+    activeUsers: number
+    expiredUsers: number
+    totalBots: number
+    runningBots: number
+    totalTrades: number
+  }> {
+    const users = Array.from(this.users.values())
+    const bots = Array.from(this.bots.values())
+    const trades = Array.from(this.trades.values())
+
+    return {
+      totalUsers: users.length,
+      activeUsers: users.filter((u) => u.subscriptionStatus === "active").length,
+      expiredUsers: users.filter((u) => u.subscriptionStatus === "expired").length,
+      totalBots: bots.length,
+      runningBots: bots.filter((b) => b.status === "running").length,
+      totalTrades: trades.length,
+    }
   }
 }
 
-export const database = new DatabaseManager()
+// Create singleton instance
+export const Database = new MockDatabase()
 
-export const connectToDatabase = async () => {
-  await database.connect()
-  return database
-}
+// Export default for compatibility
+export default Database

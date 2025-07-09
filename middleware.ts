@@ -1,55 +1,85 @@
 import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-here"
 
-export function middleware(request: NextRequest) {
-  // Get the pathname of the request (e.g. /, /dashboard, /api/bots)
+interface JWTPayload {
+  userId: string
+  email: string
+  isAdmin?: boolean
+  iat?: number
+  exp?: number
+}
+
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Skip middleware for static files and API routes that don't need auth
-  const publicRoutes = ["/", "/api/auth/signin", "/api/auth/signup"]
-  if (publicRoutes.includes(pathname)) {
+  // Skip middleware for public routes
+  const publicRoutes = [
+    "/",
+    "/api/auth/signin",
+    "/api/auth/signup",
+    "/api/stripe/webhook",
+    "/api/coinbase/webhook",
+    "/api/telegram-webhook",
+  ]
+
+  // Skip middleware for static files and Next.js internals
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/favicon") ||
+    pathname.includes(".") ||
+    publicRoutes.includes(pathname)
+  ) {
     return NextResponse.next()
   }
 
-  // Check for authentication token
-  const token = request.cookies.get("auth-token")?.value
+  // Get token from cookie or Authorization header
+  const token = request.cookies.get("auth-token")?.value || request.headers.get("Authorization")?.replace("Bearer ", "")
 
-  if (!token) {
-    // Redirect to home page if not authenticated
-    if (pathname.startsWith("/dashboard") || pathname.startsWith("/bots") || pathname.startsWith("/profile")) {
-      return NextResponse.redirect(new URL("/", request.url))
-    }
-
-    // For API routes that need authentication
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+  // Redirect to home if no token for protected routes
+  if (
+    !token &&
+    (pathname.startsWith("/dashboard") || pathname.startsWith("/bots") || pathname.startsWith("/profile"))
+  ) {
+    return NextResponse.redirect(new URL("/", request.url))
   }
 
-  try {
-    // Verify JWT token
-    const decoded = jwt.verify(token!, JWT_SECRET) as any
+  // Verify token if present
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload
 
-    // Add user info to request headers
-    const requestHeaders = new Headers(request.headers)
-    requestHeaders.set("x-user-id", decoded.userId)
-    requestHeaders.set("x-user-email", decoded.email)
+      // Add user info to request headers for API routes
+      const requestHeaders = new Headers(request.headers)
+      requestHeaders.set("x-user-id", decoded.userId)
+      requestHeaders.set("x-user-email", decoded.email)
+      if (decoded.isAdmin) {
+        requestHeaders.set("x-user-admin", "true")
+      }
 
-    return NextResponse.next({
-      request: {
-        headers: requestHeaders,
-      },
-    })
-  } catch (error) {
-    // Invalid token - redirect or return error
-    if (pathname.startsWith("/dashboard") || pathname.startsWith("/bots") || pathname.startsWith("/profile")) {
-      return NextResponse.redirect(new URL("/", request.url))
-    }
+      // Check admin routes
+      if (pathname.startsWith("/api/admin") && !decoded.isAdmin) {
+        return NextResponse.json({ error: "Admin access required" }, { status: 403 })
+      }
 
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
+      return NextResponse.next({
+        request: {
+          headers: requestHeaders,
+        },
+      })
+    } catch (error) {
+      // Invalid token - clear cookie and redirect for protected routes
+      if (pathname.startsWith("/dashboard") || pathname.startsWith("/bots") || pathname.startsWith("/profile")) {
+        const response = NextResponse.redirect(new URL("/", request.url))
+        response.cookies.delete("auth-token")
+        return response
+      }
+
+      // For API routes, return 401
+      if (pathname.startsWith("/api/")) {
+        return NextResponse.json({ error: "Invalid token" }, { status: 401 })
+      }
     }
   }
 
@@ -63,8 +93,8 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
-     * - public (public routes)
+     * - public folder
      */
-    "/((?!_next/static|_next/image|favicon.ico|public).*)",
+    "/((?!_next/static|_next/image|favicon.ico|public/).*)",
   ],
 }

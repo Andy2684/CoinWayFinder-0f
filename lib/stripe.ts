@@ -21,6 +21,14 @@ export interface StripeAddOn {
   type: "monthly" | "one_time"
 }
 
+export interface StripeSession {
+  id: string
+  url: string
+  payment_status: string
+  customer_email?: string
+  metadata?: Record<string, string>
+}
+
 export const STRIPE_PLANS: StripePlan[] = [
   {
     id: "starter",
@@ -103,18 +111,46 @@ export const ADD_ONS: StripeAddOn[] = [
 class MockStripe {
   checkout = {
     sessions: {
-      create: async (params: any) => {
+      create: async (params: {
+        payment_method_types: string[]
+        line_items: Array<{
+          price_data: {
+            currency: string
+            unit_amount: number
+            product_data: {
+              name: string
+              description?: string
+            }
+            recurring?: {
+              interval: "month" | "year"
+            }
+          }
+          quantity: number
+        }>
+        mode: "payment" | "subscription"
+        success_url: string
+        cancel_url: string
+        customer_email?: string
+        metadata?: Record<string, string>
+        subscription_data?: {
+          metadata?: Record<string, string>
+        }
+      }): Promise<StripeSession> => {
+        const sessionId = `cs_mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
         return {
-          id: `cs_mock_${Date.now()}`,
-          url: `https://checkout.stripe.com/pay/cs_mock_${Date.now()}`,
+          id: sessionId,
+          url: `https://checkout.stripe.com/pay/${sessionId}`,
           payment_status: "unpaid",
           customer_email: params.customer_email,
           metadata: params.metadata || {},
         }
       },
-      retrieve: async (sessionId: string) => {
+
+      retrieve: async (sessionId: string): Promise<StripeSession> => {
         return {
           id: sessionId,
+          url: `https://checkout.stripe.com/pay/${sessionId}`,
           payment_status: "paid",
           customer_email: "user@example.com",
           metadata: {
@@ -127,7 +163,7 @@ class MockStripe {
   }
 
   webhooks = {
-    constructEvent: (payload: any, signature: string, secret: string) => {
+    constructEvent: (payload: string, signature: string, secret: string) => {
       return {
         type: "checkout.session.completed",
         data: {
@@ -147,3 +183,115 @@ class MockStripe {
 }
 
 export const stripe = new MockStripe()
+
+// Create Checkout Session Function - REQUIRED EXPORT
+export async function createCheckoutSession({
+  planId,
+  userId,
+  successUrl,
+  cancelUrl,
+  addOns = [],
+}: {
+  planId: string
+  userId: string
+  successUrl: string
+  cancelUrl: string
+  addOns?: string[]
+}): Promise<StripeSession> {
+  const plan = STRIPE_PLANS.find((p) => p.id === planId)
+
+  if (!plan) {
+    throw new Error(`Invalid plan ID: ${planId}`)
+  }
+
+  const lineItems = [
+    {
+      price_data: {
+        currency: "usd",
+        product_data: {
+          name: plan.name,
+          description: `CoinWayFinder ${plan.name} Plan - ${plan.features.slice(0, 2).join(", ")}`,
+        },
+        unit_amount: plan.price * 100, // Convert to cents
+        recurring: {
+          interval: plan.interval,
+        },
+      },
+      quantity: 1,
+    },
+  ]
+
+  // Add selected add-ons
+  for (const addOnId of addOns) {
+    const addOn = ADD_ONS.find((a) => a.id === addOnId)
+    if (addOn) {
+      lineItems.push({
+        price_data: {
+          currency: "usd",
+          product_data: {
+            name: addOn.name,
+            description: addOn.description,
+          },
+          unit_amount: addOn.price * 100, // Convert to cents
+          recurring:
+            addOn.type === "monthly"
+              ? {
+                  interval: "month",
+                }
+              : undefined,
+        },
+        quantity: 1,
+      })
+    }
+  }
+
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ["card"],
+    line_items: lineItems,
+    mode: "subscription",
+    success_url: successUrl,
+    cancel_url: cancelUrl,
+    metadata: {
+      userId,
+      planId,
+      addOns: addOns.join(","),
+    },
+    subscription_data: {
+      metadata: {
+        userId,
+        planId,
+        addOns: addOns.join(","),
+      },
+    },
+  })
+
+  return session
+}
+
+// Additional utility functions
+export function getPlanById(planId: string): StripePlan | undefined {
+  return STRIPE_PLANS.find((plan) => plan.id === planId)
+}
+
+export function getAddOnById(addOnId: string): StripeAddOn | undefined {
+  return ADD_ONS.find((addOn) => addOn.id === addOnId)
+}
+
+export function calculateTotalPrice(planId: string, addOnIds: string[] = []): number {
+  const plan = getPlanById(planId)
+  if (!plan) return 0
+
+  let total = plan.price
+
+  for (const addOnId of addOnIds) {
+    const addOn = getAddOnById(addOnId)
+    if (addOn) {
+      total += addOn.price
+    }
+  }
+
+  return total
+}
+
+// Export default for compatibility
+export default stripe
