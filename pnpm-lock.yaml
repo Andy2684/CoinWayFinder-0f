@@ -186,6 +186,9 @@ importers:
       '@types/bcryptjs':
         specifier: ^2.4.4
         version: 2.4.6
+      '@types/jsonwebtoken':
+        specifier: ^9.0.5
+        version: 9.0.5
       '@types/node':
         specifier: ^22
         version: 22.0.0
@@ -1160,6 +1163,9 @@ packages:
 
   '@types/json5@0.0.29':
     resolution: {integrity: sha512-dRLjCWHYg4oaA77cxO64oO+7JwCwnIzkZPdrrC71jQmQtlhM556pwKo5bUzqvZndkVbeFLIIi+9TC40JNF5hNQ==}
+
+  '@types/jsonwebtoken@9.0.5':
+    resolution: {integrity: sha512-VRLSGzik+Unrup6BsouBeHsf4d1hOEgYWTm/7Nmw1sXoN1+tRly/Gy/po3yeahnP4jfnQWWAhQAqcNfH7ngOkA==}
 
   '@types/node@22.0.0':
     resolution: {integrity: sha512-VT7KSYudcPOzP5Q0wfbowyNLaVR8QWUdw+088uFWwfvpY6uCWaXpqV6ieLAu9WBcnTa7H4Z5RLK8I5t2FuOcqw==}
@@ -4149,6 +4155,10 @@ snapshots:
   '@types/diff-match-patch@1.0.36': {}
 
   '@types/json5@0.0.29': {}
+
+  '@types/jsonwebtoken@9.0.5':
+    dependencies:
+      '@types/node': 22.0.0
 
   '@types/node@22.0.0':
     dependencies:

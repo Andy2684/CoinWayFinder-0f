@@ -1,221 +1,241 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { Check, Sparkles, Zap, Crown, Building } from "lucide-react"
+import { Label } from "@/components/ui/label"
+import { Check, Sparkles } from "lucide-react"
 import { TrialBanner } from "./trial-banner"
 
-interface SubscriptionPlansProps {
-  currentPlan: string
-  userId?: string
+interface Plan {
+  id: string
+  name: string
+  price: number
+  yearlyPrice: number
+  features: string[]
+  popular?: boolean
+  current?: boolean
 }
 
-const plans = [
+interface TrialStatus {
+  isEligible: boolean
+  isActive: boolean
+  daysRemaining: number
+}
+
+const plans: Plan[] = [
   {
     id: "basic",
     name: "Basic",
-    icon: Zap,
-    description: "Perfect for getting started with automated trading",
-    monthlyPrice: 29,
+    price: 29,
     yearlyPrice: 290,
-    features: [
-      "Up to 3 trading bots",
-      "100 trades per month",
-      "AI market analysis",
-      "Basic strategies",
-      "Email support",
-      "Mobile notifications",
-    ],
-    popular: false,
-    trialDays: 3,
+    features: ["3 Trading Bots", "100 Trades/Month", "AI Market Analysis", "Basic Strategies", "Email Support"],
   },
   {
-    id: "premium",
-    name: "Premium",
-    icon: Crown,
-    description: "Advanced features for serious traders",
-    monthlyPrice: 99,
+    id: "pro",
+    name: "Pro",
+    price: 99,
     yearlyPrice: 990,
-    features: [
-      "Up to 10 trading bots",
-      "1,000 trades per month",
-      "Advanced AI analysis",
-      "Whale movement tracking",
-      "Premium strategies",
-      "Priority support",
-      "API access",
-      "Custom indicators",
-    ],
     popular: true,
-    trialDays: 3,
+    features: [
+      "10 Trading Bots",
+      "1,000 Trades/Month",
+      "Advanced AI Analysis",
+      "Whale Tracking",
+      "All Strategies",
+      "Priority Support",
+    ],
   },
   {
     id: "enterprise",
     name: "Enterprise",
-    icon: Building,
-    description: "Unlimited power for professional traders",
-    monthlyPrice: 299,
+    price: 299,
     yearlyPrice: 2990,
     features: [
-      "Unlimited trading bots",
-      "Unlimited trades",
-      "All AI features",
-      "Custom strategies",
-      "24/7 dedicated support",
-      "Full API access",
-      "White-label options",
-      "Custom integrations",
+      "Unlimited Bots",
+      "Unlimited Trades",
+      "Custom AI Models",
+      "Advanced Analytics",
+      "White-label Options",
+      "Dedicated Support",
     ],
-    popular: false,
-    trialDays: 3,
   },
 ]
 
-export function SubscriptionPlans({ currentPlan, userId }: SubscriptionPlansProps) {
+export function SubscriptionPlans() {
   const [isYearly, setIsYearly] = useState(false)
-  const [loading, setLoading] = useState<string | null>(null)
+  const [trialStatus, setTrialStatus] = useState<TrialStatus | null>(null)
+  const [currentPlan, setCurrentPlan] = useState<string>("free")
+  const [loading, setLoading] = useState(false)
 
-  const handleUpgrade = async (planId: string) => {
-    if (!userId) return
+  useEffect(() => {
+    fetchSubscriptionStatus()
+  }, [])
 
-    setLoading(planId)
+  const fetchSubscriptionStatus = async () => {
     try {
-      const response = await fetch("/api/subscription/upgrade", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId,
-          plan: planId,
-          billing: isYearly ? "yearly" : "monthly",
-        }),
-      })
-
-      const data = await response.json()
-
-      if (data.success && data.checkoutUrl) {
-        window.location.href = data.checkoutUrl
-      } else if (data.success) {
-        window.location.reload()
+      const response = await fetch("/api/subscription/trial-status")
+      if (response.ok) {
+        const data = await response.json()
+        setTrialStatus(data.trialStatus)
+        setCurrentPlan(data.currentPlan)
       }
     } catch (error) {
-      console.error("Upgrade error:", error)
-    } finally {
-      setLoading(null)
+      console.error("Failed to fetch subscription status:", error)
     }
   }
 
-  const calculateSavings = (monthlyPrice: number, yearlyPrice: number) => {
-    const monthlyCost = monthlyPrice * 12
-    const savings = monthlyCost - yearlyPrice
+  const handleSubscribe = async (planId: string) => {
+    setLoading(true)
+    try {
+      const priceId = isYearly ? `price_${planId}_yearly` : `price_${planId}_monthly`
+
+      const response = await fetch("/api/stripe/create-checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          priceId,
+          successUrl: `${window.location.origin}/subscription/success`,
+          cancelUrl: `${window.location.origin}/subscription`,
+        }),
+      })
+
+      if (response.ok) {
+        const { url } = await response.json()
+        window.location.href = url
+      }
+    } catch (error) {
+      console.error("Subscription error:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleStartTrial = async (planId: string) => {
+    setLoading(true)
+    try {
+      const response = await fetch("/api/subscription/start-trial", {
+        method: "POST",
+      })
+
+      if (response.ok) {
+        await fetchSubscriptionStatus()
+      }
+    } catch (error) {
+      console.error("Failed to start trial:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getButtonText = (planId: string) => {
+    if (currentPlan === planId) return "Current Plan"
+    if (trialStatus?.isActive) return "Upgrade"
+    if (trialStatus?.isEligible) return "Start 3-Day Free Trial"
+    return "Subscribe"
+  }
+
+  const getButtonAction = (planId: string) => {
+    if (currentPlan === planId) return () => {}
+    if (trialStatus?.isEligible) return () => handleStartTrial(planId)
+    return () => handleSubscribe(planId)
+  }
+
+  const getSavings = (plan: Plan) => {
+    const monthlyCost = plan.price * 12
+    const savings = monthlyCost - plan.yearlyPrice
     const percentage = Math.round((savings / monthlyCost) * 100)
-    return { savings, percentage }
+    return { amount: savings, percentage }
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-4">Choose Your Trading Plan</h1>
-        <p className="text-xl text-muted-foreground mb-8">
-          Start with a 3-day free trial, then upgrade to unlock advanced features
-        </p>
+    <div className="space-y-8">
+      {/* Trial Banner */}
+      {(trialStatus?.isEligible || trialStatus?.isActive) && <TrialBanner onStartTrial={fetchSubscriptionStatus} />}
 
-        {/* Trial Banner */}
-        <div className="mb-8">
-          <TrialBanner />
-        </div>
-
-        {/* Billing Toggle */}
-        <div className="flex items-center justify-center gap-4 mb-8">
-          <span className={`text-sm ${!isYearly ? "font-semibold" : "text-muted-foreground"}`}>Monthly</span>
-          <Switch checked={isYearly} onCheckedChange={setIsYearly} className="data-[state=checked]:bg-green-600" />
-          <span className={`text-sm ${isYearly ? "font-semibold" : "text-muted-foreground"}`}>Yearly</span>
-          {isYearly && (
-            <Badge variant="secondary" className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-              Save up to 20%
-            </Badge>
-          )}
-        </div>
+      {/* Billing Toggle */}
+      <div className="flex items-center justify-center space-x-4">
+        <Label htmlFor="billing-toggle" className={!isYearly ? "font-semibold" : ""}>
+          Monthly
+        </Label>
+        <Switch id="billing-toggle" checked={isYearly} onCheckedChange={setIsYearly} />
+        <Label htmlFor="billing-toggle" className={isYearly ? "font-semibold" : ""}>
+          Yearly
+        </Label>
+        {isYearly && (
+          <Badge variant="secondary" className="bg-green-100 text-green-800">
+            Save up to 17%
+          </Badge>
+        )}
       </div>
 
-      <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+      {/* Plans Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {plans.map((plan) => {
-          const Icon = plan.icon
-          const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice
-          const savings = isYearly ? calculateSavings(plan.monthlyPrice, plan.yearlyPrice) : null
-          const isCurrentPlan = currentPlan === plan.id
-          const isTrialPlan = currentPlan === "trial"
+          const savings = getSavings(plan)
+          const price = isYearly ? plan.yearlyPrice : plan.price
+          const isCurrent = currentPlan === plan.id
 
           return (
             <Card
               key={plan.id}
               className={`relative ${
-                plan.popular ? "border-2 border-blue-500 shadow-lg scale-105" : "border border-border"
-              } ${isCurrentPlan ? "ring-2 ring-green-500" : ""}`}
+                plan.popular ? "border-2 border-blue-500 shadow-lg" : isCurrent ? "border-2 border-green-500" : ""
+              }`}
             >
               {plan.popular && (
                 <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  <Badge className="bg-blue-500 text-white px-4 py-1">Most Popular</Badge>
+                  <Badge className="bg-blue-500 text-white px-3 py-1">
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    Most Popular
+                  </Badge>
                 </div>
               )}
 
-              <CardHeader className="text-center pb-4">
-                <div className="flex justify-center mb-4">
-                  <div
-                    className={`p-3 rounded-full ${
-                      plan.popular ? "bg-blue-100 text-blue-600" : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    <Icon className="h-8 w-8" />
-                  </div>
+              {isCurrent && (
+                <div className="absolute -top-3 right-4">
+                  <Badge className="bg-green-500 text-white">Current</Badge>
                 </div>
-                <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
-                <CardDescription className="text-sm">{plan.description}</CardDescription>
+              )}
 
-                <div className="mt-4">
-                  <div className="flex items-baseline justify-center gap-1">
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                <CardDescription>
+                  <div className="mt-4">
                     <span className="text-4xl font-bold">${price}</span>
                     <span className="text-muted-foreground">/{isYearly ? "year" : "month"}</span>
                   </div>
-                  {isYearly && savings && (
-                    <div className="text-sm text-green-600 font-medium mt-1">
-                      Save ${savings.savings} ({savings.percentage}%)
+                  {isYearly && (
+                    <div className="text-sm text-green-600 mt-1">
+                      Save ${savings.amount} ({savings.percentage}% off)
                     </div>
                   )}
-                  {!isCurrentPlan && !isTrialPlan && (
-                    <div className="text-sm text-blue-600 font-medium mt-2">
-                      <Sparkles className="h-4 w-4 inline mr-1" />
-                      {plan.trialDays}-day free trial
-                    </div>
-                  )}
-                </div>
+                </CardDescription>
               </CardHeader>
 
-              <CardContent className="space-y-3">
-                {plan.features.map((feature, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    <span className="text-sm">{feature}</span>
-                  </div>
-                ))}
+              <CardContent>
+                <ul className="space-y-3">
+                  {plan.features.map((feature, index) => (
+                    <li key={index} className="flex items-center">
+                      <Check className="h-4 w-4 text-green-500 mr-3 flex-shrink-0" />
+                      <span className="text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
               </CardContent>
 
               <CardFooter>
                 <Button
                   className="w-full"
                   variant={plan.popular ? "default" : "outline"}
-                  onClick={() => handleUpgrade(plan.id)}
-                  disabled={loading === plan.id || isCurrentPlan}
+                  disabled={loading || isCurrent}
+                  onClick={getButtonAction(plan.id)}
                 >
-                  {loading === plan.id
-                    ? "Processing..."
-                    : isCurrentPlan
-                      ? "Current Plan"
-                      : isTrialPlan
-                        ? "Upgrade from Trial"
-                        : `Start ${plan.trialDays}-Day Free Trial`}
+                  {loading ? "Processing..." : getButtonText(plan.id)}
                 </Button>
               </CardFooter>
             </Card>
@@ -223,15 +243,16 @@ export function SubscriptionPlans({ currentPlan, userId }: SubscriptionPlansProp
         })}
       </div>
 
-      <div className="text-center mt-12">
-        <p className="text-muted-foreground mb-4">All plans include our core trading features and mobile app access</p>
-        <div className="flex justify-center gap-8 text-sm text-muted-foreground">
-          <span>✓ Real-time market data</span>
-          <span>✓ Secure API connections</span>
-          <span>✓ 24/7 bot monitoring</span>
-          <span>✓ Risk management tools</span>
+      {/* Trial Info */}
+      {trialStatus?.isEligible && (
+        <div className="text-center text-sm text-muted-foreground">
+          <p>
+            Start your 3-day free trial with any plan. No credit card required.
+            <br />
+            Cancel anytime during the trial period.
+          </p>
         </div>
-      </div>
+      )}
     </div>
   )
 }

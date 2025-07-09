@@ -1,23 +1,38 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { subscriptionManager } from "@/lib/subscription-manager"
+import { SubscriptionManager } from "@/lib/subscription-manager"
+import { db } from "@/lib/database"
+import jwt from "jsonwebtoken"
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get("userId")
+    const token = request.cookies.get("auth-token")?.value
 
-    if (!userId) {
-      return NextResponse.json({ error: "User ID required" }, { status: 400 })
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const trialStatus = await subscriptionManager.getTrialStatus(userId)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string }
+    const user = await db.getUserById(decoded.userId)
+
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    const subscriptionManager = SubscriptionManager.getInstance()
+    const trialStatus = subscriptionManager.getTrialStatus(user.settings)
 
     return NextResponse.json({
-      success: true,
-      ...trialStatus,
+      trialStatus,
+      currentPlan: subscriptionManager.getUserEffectivePlan(user),
+      limits: subscriptionManager.getSubscriptionLimits(subscriptionManager.getUserEffectivePlan(user)),
     })
   } catch (error) {
-    console.error("Failed to get trial status:", error)
-    return NextResponse.json({ error: "Failed to get trial status" }, { status: 500 })
+    console.error("Trial status error:", error)
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+      },
+      { status: 500 },
+    )
   }
 }

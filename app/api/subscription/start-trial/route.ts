@@ -1,36 +1,62 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { subscriptionManager } from "@/lib/subscription-manager"
-import { database } from "@/lib/database"
+import { SubscriptionManager } from "@/lib/subscription-manager"
+import { db } from "@/lib/database"
+import jwt from "jsonwebtoken"
 
 export async function POST(request: NextRequest) {
   try {
-    const { userId } = await request.json()
+    const token = request.cookies.get("auth-token")?.value
 
-    if (!userId) {
-      return NextResponse.json({ error: "User ID required" }, { status: 400 })
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // Check if user exists
-    const user = await database.getUserById(userId)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { userId: string }
+    const user = await db.getUserById(decoded.userId)
+
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Start the free trial
-    const result = await subscriptionManager.startFreeTrial(userId)
+    const subscriptionManager = SubscriptionManager.getInstance()
+    const trialStatus = subscriptionManager.getTrialStatus(user.settings)
+
+    if (!trialStatus.isEligible) {
+      return NextResponse.json(
+        {
+          error: "Trial not available",
+          message: "You have already used your free trial or have an active trial",
+        },
+        { status: 400 },
+      )
+    }
+
+    const result = await subscriptionManager.startFreeTrial(user.id)
 
     if (result.success) {
-      return NextResponse.json({
-        success: true,
-        message: result.message,
-        trialEndDate: result.trialEndDate,
-        plan: "trial",
+      // Update user settings to mark trial as started
+      const trialStartDate = new Date()
+      const trialEndDate = new Date()
+      trialEndDate.setDate(trialStartDate.getDate() + 3)
+
+      await db.updateUser(user.id, {
+        settings: {
+          ...user.settings,
+          trialStartDate: trialStartDate.toISOString(),
+          trialEndDate: trialEndDate.toISOString(),
+        },
       })
-    } else {
-      return NextResponse.json({ error: result.message }, { status: 400 })
     }
+
+    return NextResponse.json(result)
   } catch (error) {
-    console.error("Failed to start trial:", error)
-    return NextResponse.json({ error: "Failed to start trial" }, { status: 500 })
+    console.error("Start trial error:", error)
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        message: "Failed to start trial",
+      },
+      { status: 500 },
+    )
   }
 }
