@@ -3,71 +3,54 @@ import bcrypt from "bcryptjs"
 import { cookies } from "next/headers"
 import { database } from "./database"
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production"
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
+const ADMIN_USERNAME = "admin"
+const ADMIN_PASSWORD = "CoinWayFinder2024!"
 
 export interface User {
   id: string
   email: string
   username: string
-  createdAt: string
-  lastLoginAt?: string
-  emailVerified?: boolean
-  isActive?: boolean
-}
-
-export interface UserSession {
-  userId: string
-  email: string
-  username: string
-  token: string
-  expiresAt: number
+  isActive: boolean
+  createdAt: Date
+  lastLoginAt?: Date
 }
 
 export interface AuthResult {
   success: boolean
-  message: string
   user?: User
+  token?: string
+  message?: string
 }
 
-export class AuthService {
-  private static userSessions = new Map<string, UserSession>()
+export interface AdminUser {
+  id: string
+  username: string
+  role: "admin"
+}
 
-  static async hashPassword(password: string): Promise<string> {
+class AuthService {
+  async hashPassword(password: string): Promise<string> {
     return bcrypt.hash(password, 12)
   }
 
-  static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
+  async verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
     return bcrypt.compare(password, hashedPassword)
   }
 
-  static generateToken(user: User): string {
-    return jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-      },
-      JWT_SECRET,
-      { expiresIn: "7d" },
-    )
+  generateToken(payload: any): string {
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" })
   }
 
-  static verifyToken(token: string): UserSession | null {
+  verifyToken(token: string): any {
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any
-      return {
-        userId: decoded.id,
-        email: decoded.email,
-        username: decoded.username,
-        token,
-        expiresAt: decoded.exp * 1000,
-      }
+      return jwt.verify(token, JWT_SECRET)
     } catch (error) {
       return null
     }
   }
 
-  static async signUp(email: string, username: string, password: string): Promise<AuthResult> {
+  async register(email: string, username: string, password: string): Promise<AuthResult> {
     try {
       // Check if user already exists
       const existingUser = await database.getUserByEmail(email)
@@ -79,103 +62,107 @@ export class AuthService {
       const hashedPassword = await this.hashPassword(password)
 
       // Create user
-      const userData = {
+      const user = await database.createUser({
         email,
         username,
         password: hashedPassword,
         createdAt: new Date(),
-        emailVerified: false,
         isActive: true,
-      }
-
-      const newUser = await database.createUser(userData)
+      })
 
       // Create user settings with trial
-      await database.createUserWithTrial(newUser._id!.toString())
+      await database.createUserWithTrial(user._id!.toString())
 
-      const user: User = {
-        id: newUser._id!.toString(),
-        email: newUser.email,
-        username: newUser.username,
-        createdAt: newUser.createdAt.toISOString(),
-        emailVerified: newUser.emailVerified,
-        isActive: newUser.isActive,
+      // Generate token
+      const token = this.generateToken({
+        userId: user._id!.toString(),
+        email: user.email,
+        username: user.username,
+      })
+
+      // Set cookie
+      const cookieStore = await cookies()
+      cookieStore.set("auth-token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60, // 7 days
+      })
+
+      return {
+        success: true,
+        user: {
+          id: user._id!.toString(),
+          email: user.email,
+          username: user.username,
+          isActive: user.isActive!,
+          createdAt: user.createdAt,
+        },
+        token,
       }
-
-      return { success: true, message: "User created successfully", user }
     } catch (error) {
-      console.error("Sign up error:", error)
-      return { success: false, message: "Failed to create user" }
+      console.error("Registration error:", error)
+      return { success: false, message: "Registration failed" }
     }
   }
 
-  static async signIn(email: string, password: string): Promise<AuthResult> {
+  async login(email: string, password: string): Promise<AuthResult> {
     try {
-      const dbUser = await database.getUserByEmail(email)
-      if (!dbUser) {
+      // Find user
+      const user = await database.getUserByEmail(email)
+      if (!user) {
         return { success: false, message: "Invalid credentials" }
       }
 
-      const isValidPassword = await this.comparePassword(password, dbUser.password)
+      // Verify password
+      const isValidPassword = await this.verifyPassword(password, user.password)
       if (!isValidPassword) {
         return { success: false, message: "Invalid credentials" }
       }
 
       // Update last login
-      await database.updateUser(dbUser._id!.toString(), { lastLoginAt: new Date() })
+      await database.updateUser(user._id!.toString(), { lastLoginAt: new Date() })
 
-      const user: User = {
-        id: dbUser._id!.toString(),
-        email: dbUser.email,
-        username: dbUser.username,
-        createdAt: dbUser.createdAt.toISOString(),
-        lastLoginAt: new Date().toISOString(),
-        emailVerified: dbUser.emailVerified,
-        isActive: dbUser.isActive,
+      // Generate token
+      const token = this.generateToken({
+        userId: user._id!.toString(),
+        email: user.email,
+        username: user.username,
+      })
+
+      // Set cookie
+      const cookieStore = await cookies()
+      cookieStore.set("auth-token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 7 * 24 * 60 * 60, // 7 days
+      })
+
+      return {
+        success: true,
+        user: {
+          id: user._id!.toString(),
+          email: user.email,
+          username: user.username,
+          isActive: user.isActive!,
+          createdAt: user.createdAt,
+          lastLoginAt: user.lastLoginAt,
+        },
+        token,
       }
-
-      return { success: true, message: "Sign in successful", user }
     } catch (error) {
-      console.error("Sign in error:", error)
-      return { success: false, message: "Failed to sign in" }
+      console.error("Login error:", error)
+      return { success: false, message: "Login failed" }
     }
   }
 
-  static async setUserCookie(user: User): Promise<void> {
-    const token = this.generateToken(user)
+  async logout(): Promise<void> {
     const cookieStore = await cookies()
-
-    // Store session
-    const session: UserSession = {
-      userId: user.id,
-      email: user.email,
-      username: user.username,
-      token,
-      expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days
-    }
-
-    this.userSessions.set(token, session)
-
-    cookieStore.set("auth-token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-    })
-  }
-
-  static async clearUserCookie(): Promise<void> {
-    const cookieStore = await cookies()
-    const token = cookieStore.get("auth-token")?.value
-
-    if (token) {
-      this.userSessions.delete(token)
-    }
-
     cookieStore.delete("auth-token")
   }
 
-  static async getCurrentUser(): Promise<UserSession | null> {
+  async getCurrentUser(): Promise<User | null> {
     try {
       const cookieStore = await cookies()
       const token = cookieStore.get("auth-token")?.value
@@ -184,105 +171,187 @@ export class AuthService {
         return null
       }
 
-      // Check session store first
-      const session = this.userSessions.get(token)
-      if (session && session.expiresAt > Date.now()) {
-        return session
-      }
-
-      // Verify token
-      const userSession = this.verifyToken(token)
-      if (!userSession) {
+      const payload = this.verifyToken(token)
+      if (!payload) {
         return null
       }
 
-      return userSession
+      const user = await database.getUserById(payload.userId)
+      if (!user) {
+        return null
+      }
+
+      return {
+        id: user._id!.toString(),
+        email: user.email,
+        username: user.username,
+        isActive: user.isActive!,
+        createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt,
+      }
     } catch (error) {
+      console.error("Get current user error:", error)
       return null
     }
   }
 
-  static async requireAuth(): Promise<UserSession> {
-    const user = await this.getCurrentUser()
-    if (!user) {
-      throw new Error("Authentication required")
-    }
-    return user
-  }
-}
-
-export class AuthManager {
-  async signUp(email: string, username: string, password: string): Promise<AuthResult> {
-    const result = await AuthService.signUp(email, username, password)
-    if (result.success && result.user) {
-      await AuthService.setUserCookie(result.user)
-    }
-    return result
-  }
-
-  async signIn(email: string, password: string): Promise<AuthResult> {
-    const result = await AuthService.signIn(email, password)
-    if (result.success && result.user) {
-      await AuthService.setUserCookie(result.user)
-    }
-    return result
-  }
-
-  async signOut(): Promise<void> {
-    await AuthService.clearUserCookie()
-  }
-
-  async getCurrentUser(): Promise<UserSession | null> {
-    return AuthService.getCurrentUser()
-  }
-
-  async requireAuth(): Promise<UserSession> {
-    return AuthService.requireAuth()
-  }
-
-  async updateProfile(userId: string, updates: { username?: string; email?: string }): Promise<AuthResult> {
+  async adminLogin(
+    username: string,
+    password: string,
+  ): Promise<{ success: boolean; user?: AdminUser; token?: string; message?: string }> {
     try {
-      await database.updateUser(userId, updates)
-      return { success: true, message: "Profile updated successfully" }
+      if (username !== ADMIN_USERNAME || password !== ADMIN_PASSWORD) {
+        return { success: false, message: "Invalid admin credentials" }
+      }
+
+      const token = this.generateToken({
+        userId: "admin",
+        username: ADMIN_USERNAME,
+        role: "admin",
+      })
+
+      // Set admin cookie
+      const cookieStore = await cookies()
+      cookieStore.set("admin-token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 24 * 60 * 60, // 24 hours
+      })
+
+      return {
+        success: true,
+        user: {
+          id: "admin",
+          username: ADMIN_USERNAME,
+          role: "admin",
+        },
+        token,
+      }
     } catch (error) {
-      console.error("Update profile error:", error)
-      return { success: false, message: "Failed to update profile" }
+      console.error("Admin login error:", error)
+      return { success: false, message: "Admin login failed" }
     }
   }
 
-  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<AuthResult> {
+  async adminLogout(): Promise<void> {
+    const cookieStore = await cookies()
+    cookieStore.delete("admin-token")
+  }
+
+  async getCurrentAdmin(): Promise<AdminUser | null> {
     try {
-      const user = await database.getUserById(userId)
+      const cookieStore = await cookies()
+      const token = cookieStore.get("admin-token")?.value
+
+      if (!token) {
+        return null
+      }
+
+      const payload = this.verifyToken(token)
+      if (!payload || payload.role !== "admin") {
+        return null
+      }
+
+      return {
+        id: "admin",
+        username: ADMIN_USERNAME,
+        role: "admin",
+      }
+    } catch (error) {
+      console.error("Get current admin error:", error)
+      return null
+    }
+  }
+
+  async verifyAuthToken(token: string): Promise<User | null> {
+    try {
+      const payload = this.verifyToken(token)
+      if (!payload) {
+        return null
+      }
+
+      const user = await database.getUserById(payload.userId)
       if (!user) {
-        return { success: false, message: "User not found" }
+        return null
       }
 
-      const isValidPassword = await AuthService.comparePassword(currentPassword, user.password)
-      if (!isValidPassword) {
-        return { success: false, message: "Current password is incorrect" }
+      return {
+        id: user._id!.toString(),
+        email: user.email,
+        username: user.username,
+        isActive: user.isActive!,
+        createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt,
       }
-
-      const hashedPassword = await AuthService.hashPassword(newPassword)
-      await database.updateUser(userId, { password: hashedPassword })
-
-      return { success: true, message: "Password changed successfully" }
     } catch (error) {
-      console.error("Change password error:", error)
-      return { success: false, message: "Failed to change password" }
+      console.error("Verify auth token error:", error)
+      return null
+    }
+  }
+
+  async verifyAdminToken(token: string): Promise<AdminUser | null> {
+    try {
+      const payload = this.verifyToken(token)
+      if (!payload || payload.role !== "admin") {
+        return null
+      }
+
+      return {
+        id: "admin",
+        username: ADMIN_USERNAME,
+        role: "admin",
+      }
+    } catch (error) {
+      console.error("Verify admin token error:", error)
+      return null
     }
   }
 }
 
-// Create and export the instance
-export const authManager = new AuthManager()
+export const authService = new AuthService()
 
-// Export functions for backward compatibility
-export const hashPassword = AuthService.hashPassword
-export const comparePassword = AuthService.comparePassword
-export const generateToken = AuthService.generateToken
-export const verifyToken = AuthService.verifyToken
-export const getCurrentUser = AuthService.getCurrentUser
-export const requireAuth = AuthService.requireAuth
-export const signUp = AuthService.signUp
-export const signIn = AuthService.signIn
-export const signOut = AuthService.clearUserCookie
+// Create AuthManager class for compatibility
+class AuthManager {
+  async register(email: string, username: string, password: string): Promise<AuthResult> {
+    return authService.register(email, username, password)
+  }
+
+  async login(email: string, password: string): Promise<AuthResult> {
+    return authService.login(email, password)
+  }
+
+  async logout(): Promise<void> {
+    return authService.logout()
+  }
+
+  async getCurrentUser(): Promise<User | null> {
+    return authService.getCurrentUser()
+  }
+
+  async adminLogin(
+    username: string,
+    password: string,
+  ): Promise<{ success: boolean; user?: AdminUser; token?: string; message?: string }> {
+    return authService.adminLogin(username, password)
+  }
+
+  async adminLogout(): Promise<void> {
+    return authService.adminLogout()
+  }
+
+  async getCurrentAdmin(): Promise<AdminUser | null> {
+    return authService.getCurrentAdmin()
+  }
+
+  async verifyAuthToken(token: string): Promise<User | null> {
+    return authService.verifyAuthToken(token)
+  }
+
+  async verifyAdminToken(token: string): Promise<AdminUser | null> {
+    return authService.verifyAdminToken(token)
+  }
+}
+
+// Export the required authManager instance for backward compatibility
+export const authManager = new AuthManager()

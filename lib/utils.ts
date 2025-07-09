@@ -9,8 +9,6 @@ export function formatCurrency(amount: number, currency = "USD"): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
   }).format(amount)
 }
 
@@ -25,18 +23,18 @@ export function formatPercentage(value: number, decimals = 2): string {
   return `${(value * 100).toFixed(decimals)}%`
 }
 
-export function formatDate(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date
-  return d.toLocaleDateString("en-US", {
+export function formatDate(date: Date | string, options?: Intl.DateTimeFormatOptions): string {
+  const dateObj = typeof date === "string" ? new Date(date) : date
+  return new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
-  })
+    ...options,
+  }).format(dateObj)
 }
 
 export function formatDateTime(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date
-  return d.toLocaleString("en-US", {
+  return formatDate(date, {
     year: "numeric",
     month: "short",
     day: "numeric",
@@ -45,36 +43,30 @@ export function formatDateTime(date: Date | string): string {
   })
 }
 
-export function formatTimeAgo(date: Date | string): string {
-  const d = typeof date === "string" ? new Date(date) : date
+export function formatRelativeTime(date: Date | string): string {
+  const dateObj = typeof date === "string" ? new Date(date) : date
   const now = new Date()
-  const diffInSeconds = Math.floor((now.getTime() - d.getTime()) / 1000)
+  const diffInSeconds = Math.floor((now.getTime() - dateObj.getTime()) / 1000)
 
   if (diffInSeconds < 60) {
     return "just now"
+  } else if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60)
+    return `${minutes} minute${minutes > 1 ? "s" : ""} ago`
+  } else if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600)
+    return `${hours} hour${hours > 1 ? "s" : ""} ago`
+  } else if (diffInSeconds < 2592000) {
+    const days = Math.floor(diffInSeconds / 86400)
+    return `${days} day${days > 1 ? "s" : ""} ago`
+  } else {
+    return formatDate(dateObj)
   }
-
-  const diffInMinutes = Math.floor(diffInSeconds / 60)
-  if (diffInMinutes < 60) {
-    return `${diffInMinutes}m ago`
-  }
-
-  const diffInHours = Math.floor(diffInMinutes / 60)
-  if (diffInHours < 24) {
-    return `${diffInHours}h ago`
-  }
-
-  const diffInDays = Math.floor(diffInHours / 24)
-  if (diffInDays < 7) {
-    return `${diffInDays}d ago`
-  }
-
-  return formatDate(d)
 }
 
-export function truncateString(str: string, length: number): string {
-  if (str.length <= length) return str
-  return str.substring(0, length) + "..."
+export function truncateString(str: string, maxLength: number): string {
+  if (str.length <= maxLength) return str
+  return str.substring(0, maxLength - 3) + "..."
 }
 
 export function capitalizeFirst(str: string): string {
@@ -103,14 +95,13 @@ export function isValidEmail(email: string): boolean {
   return emailRegex.test(email)
 }
 
-export function isValidPassword(password: string): boolean {
-  // At least 8 characters, 1 uppercase, 1 lowercase, 1 number
-  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d@$!%*?&]{8,}$/
-  return passwordRegex.test(password)
-}
-
-export function sanitizeInput(input: string): string {
-  return input.replace(/[<>]/g, "")
+export function isValidUrl(url: string): boolean {
+  try {
+    new URL(url)
+    return true
+  } catch {
+    return false
+  }
 }
 
 export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
@@ -140,38 +131,30 @@ export function randomBetween(min: number, max: number): number {
   return Math.random() * (max - min) + min
 }
 
-export function roundToDecimals(num: number, decimals: number): number {
-  return Math.round(num * Math.pow(10, decimals)) / Math.pow(10, decimals)
+export function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
 }
 
-export function calculatePercentageChange(oldValue: number, newValue: number): number {
-  if (oldValue === 0) return 0
-  return ((newValue - oldValue) / oldValue) * 100
+export function roundTo(value: number, decimals: number): number {
+  return Number(Math.round(Number(value + "e" + decimals)) + "e-" + decimals)
 }
 
-export function formatLargeNumber(num: number): string {
-  if (num >= 1e9) {
-    return (num / 1e9).toFixed(1) + "B"
-  }
-  if (num >= 1e6) {
-    return (num / 1e6).toFixed(1) + "M"
-  }
-  if (num >= 1e3) {
-    return (num / 1e3).toFixed(1) + "K"
-  }
-  return num.toString()
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  return String(error)
 }
 
-export function getColorForPercentage(percentage: number): string {
-  if (percentage > 0) return "text-green-600"
-  if (percentage < 0) return "text-red-600"
-  return "text-gray-600"
+export function isClient(): boolean {
+  return typeof window !== "undefined"
 }
 
-export function getBgColorForPercentage(percentage: number): string {
-  if (percentage > 0) return "bg-green-100"
-  if (percentage < 0) return "bg-red-100"
-  return "bg-gray-100"
+export function isServer(): boolean {
+  return typeof window === "undefined"
+}
+
+export function getBaseUrl(): string {
+  if (isClient()) return window.location.origin
+  return process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000"
 }
 
 export function parseJSON<T>(str: string, fallback: T): T {
@@ -182,66 +165,57 @@ export function parseJSON<T>(str: string, fallback: T): T {
   }
 }
 
-export function safeStringify(obj: any): string {
-  try {
-    return JSON.stringify(obj)
-  } catch {
-    return "{}"
-  }
+export function omit<T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
+  const result = { ...obj }
+  keys.forEach((key) => delete result[key])
+  return result
 }
 
-export function createQueryString(params: Record<string, string | number | boolean>): string {
-  const searchParams = new URLSearchParams()
-
-  Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
-      searchParams.set(key, String(value))
+export function pick<T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
+  const result = {} as Pick<T, K>
+  keys.forEach((key) => {
+    if (key in obj) {
+      result[key] = obj[key]
     }
   })
-
-  return searchParams.toString()
+  return result
 }
 
-export function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((word) => word.charAt(0))
-    .join("")
-    .toUpperCase()
-    .slice(0, 2)
+export function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
+  return array.reduce(
+    (groups, item) => {
+      const group = String(item[key])
+      groups[group] = groups[group] || []
+      groups[group].push(item)
+      return groups
+    },
+    {} as Record<string, T[]>,
+  )
 }
 
-export function copyToClipboard(text: string): Promise<void> {
-  if (navigator.clipboard) {
-    return navigator.clipboard.writeText(text)
+export function unique<T>(array: T[]): T[] {
+  return [...new Set(array)]
+}
+
+export function chunk<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size))
   }
-
-  // Fallback for older browsers
-  const textArea = document.createElement("textarea")
-  textArea.value = text
-  document.body.appendChild(textArea)
-  textArea.select()
-  document.execCommand("copy")
-  document.body.removeChild(textArea)
-  return Promise.resolve()
+  return chunks
 }
 
-export function downloadAsJSON(data: any, filename: string): void {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement("a")
-  a.href = url
-  a.download = filename
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+export function flatten<T>(array: T[][]): T[] {
+  return array.reduce((acc, val) => acc.concat(val), [])
 }
 
-export function isClient(): boolean {
-  return typeof window !== "undefined"
-}
+export function sortBy<T>(array: T[], key: keyof T, direction: "asc" | "desc" = "asc"): T[] {
+  return [...array].sort((a, b) => {
+    const aVal = a[key]
+    const bVal = b[key]
 
-export function isServer(): boolean {
-  return typeof window === "undefined"
+    if (aVal < bVal) return direction === "asc" ? -1 : 1
+    if (aVal > bVal) return direction === "asc" ? 1 : -1
+    return 0
+  })
 }

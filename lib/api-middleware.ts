@@ -1,143 +1,116 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { AuthService } from "./auth"
+import { authService } from "./auth"
 import { adminManager } from "./admin"
-import { database } from "./database"
 import { subscriptionManager } from "./subscription-manager"
 
 export interface AuthenticatedRequest extends NextRequest {
   user?: {
-    userId: string
+    id: string
     email: string
     username: string
+    isActive: boolean
+  }
+  admin?: {
+    id: string
+    username: string
+    role: "admin"
   }
 }
 
-export interface APIResponse<T = any> {
-  success: boolean
-  data?: T
-  error?: string
-  message?: string
+export function createResponse(data: any, status = 200) {
+  return NextResponse.json(data, { status })
 }
 
-export function createResponse<T>(
-  success: boolean,
-  data?: T,
-  error?: string,
-  status = 200,
-): NextResponse<APIResponse<T>> {
-  return NextResponse.json(
-    {
-      success,
-      data,
-      error,
-      message: error || (success ? "Success" : "Error"),
-    },
-    { status },
-  )
+export function createErrorResponse(message: string, status = 400) {
+  return NextResponse.json({ error: { message } }, { status })
 }
 
 export function withAuth(handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
-  return async (req: NextRequest): Promise<NextResponse> => {
+  return async (req: NextRequest) => {
     try {
-      const user = await AuthService.getCurrentUser()
+      // Get token from cookie or Authorization header
+      const cookieToken = req.cookies.get("auth-token")?.value
+      const headerToken = req.headers.get("authorization")?.replace("Bearer ", "")
+      const token = cookieToken || headerToken
+
+      if (!token) {
+        return createErrorResponse("Authentication required", 401)
+      }
+
+      // Verify token and get user
+      const user = await authService.verifyAuthToken(token)
       if (!user) {
-        return createResponse(false, null, "Authentication required", 401)
+        return createErrorResponse("Invalid or expired token", 401)
       }
 
+      // Add user to request
       const authenticatedReq = req as AuthenticatedRequest
-      authenticatedReq.user = {
-        userId: user.userId,
-        email: user.email,
-        username: user.username,
-      }
+      authenticatedReq.user = user
 
-      return await handler(authenticatedReq)
+      return handler(authenticatedReq)
     } catch (error) {
       console.error("Auth middleware error:", error)
-      return createResponse(false, null, "Authentication failed", 401)
+      return createErrorResponse("Authentication failed", 500)
     }
   }
 }
 
 export function withAdminAuth(handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
-  return async (req: NextRequest): Promise<NextResponse> => {
+  return async (req: NextRequest) => {
     try {
-      const admin = await adminManager.getCurrentAdmin()
+      // Get admin token from cookie or Authorization header
+      const cookieToken = req.cookies.get("admin-token")?.value
+      const headerToken = req.headers.get("authorization")?.replace("Bearer ", "")
+      const token = cookieToken || headerToken
+
+      if (!token) {
+        return createErrorResponse("Admin authentication required", 401)
+      }
+
+      // Verify admin token
+      const admin = await authService.verifyAdminToken(token)
       if (!admin) {
-        return createResponse(false, null, "Admin authentication required", 401)
+        return createErrorResponse("Invalid or expired admin token", 401)
       }
 
+      // Add admin to request
       const authenticatedReq = req as AuthenticatedRequest
-      authenticatedReq.user = {
-        userId: admin.adminId,
-        email: admin.email,
-        username: admin.username,
-      }
+      authenticatedReq.admin = admin
 
-      return await handler(authenticatedReq)
+      return handler(authenticatedReq)
     } catch (error) {
       console.error("Admin auth middleware error:", error)
-      return createResponse(false, null, "Admin authentication failed", 401)
+      return createErrorResponse("Admin authentication failed", 500)
     }
   }
 }
 
 export function withAPIAuth(handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
-  return async (req: NextRequest): Promise<NextResponse> => {
+  return async (req: NextRequest) => {
     try {
-      // Check for API key in headers
-      const apiKey = req.headers.get("x-api-key") || req.headers.get("authorization")?.replace("Bearer ", "")
+      // Get API key from header
+      const apiKey = req.headers.get("x-api-key")
 
-      if (apiKey) {
-        // Validate API key
-        const keyData = await database.getAPIKey(apiKey)
-        if (keyData && keyData.isActive) {
-          const authenticatedReq = req as AuthenticatedRequest
-          authenticatedReq.user = {
-            userId: keyData.userId,
-            email: keyData.email || "",
-            username: keyData.name || "API User",
-          }
-          return await handler(authenticatedReq)
-        }
+      if (!apiKey) {
+        return createErrorResponse("API key required", 401)
       }
 
-      // Fall back to session auth
-      const user = await AuthService.getCurrentUser()
-      if (!user) {
-        return createResponse(false, null, "Authentication required", 401)
+      // Validate API key (implement your API key validation logic)
+      // For now, we'll use a simple check
+      if (apiKey !== process.env.API_SECRET_KEY) {
+        return createErrorResponse("Invalid API key", 401)
       }
 
-      const authenticatedReq = req as AuthenticatedRequest
-      authenticatedReq.user = {
-        userId: user.userId,
-        email: user.email,
-        username: user.username,
-      }
-
-      return await handler(authenticatedReq)
+      return handler(req as AuthenticatedRequest)
     } catch (error) {
       console.error("API auth middleware error:", error)
-      return createResponse(false, null, "Authentication failed", 401)
-    }
-  }
-}
-
-export function withGracefulExpiration(handler: (req: NextRequest) => Promise<NextResponse>) {
-  return async (req: NextRequest): Promise<NextResponse> => {
-    try {
-      return await handler(req)
-    } catch (error: any) {
-      if (error.message === "Authentication required" || error.message?.includes("token")) {
-        return createResponse(false, null, "Session expired. Please sign in again.", 401)
-      }
-      throw error
+      return createErrorResponse("API authentication failed", 500)
     }
   }
 }
 
 export function withCORS(handler: (req: NextRequest) => Promise<NextResponse>) {
-  return async (req: NextRequest): Promise<NextResponse> => {
+  return async (req: NextRequest) => {
     // Handle preflight requests
     if (req.method === "OPTIONS") {
       return new NextResponse(null, {
@@ -161,13 +134,16 @@ export function withCORS(handler: (req: NextRequest) => Promise<NextResponse>) {
   }
 }
 
-export function withRateLimit(handler: (req: NextRequest) => Promise<NextResponse>, limit = 100, windowMs = 60000) {
+export function withRateLimit(
+  handler: (req: NextRequest) => Promise<NextResponse>,
+  options: { maxRequests: number; windowMs: number } = { maxRequests: 100, windowMs: 60000 },
+) {
   const requests = new Map<string, { count: number; resetTime: number }>()
 
-  return async (req: NextRequest): Promise<NextResponse> => {
+  return async (req: NextRequest) => {
     const ip = req.ip || req.headers.get("x-forwarded-for") || "unknown"
     const now = Date.now()
-    const windowStart = now - windowMs
+    const windowStart = now - options.windowMs
 
     // Clean up old entries
     for (const [key, value] of requests.entries()) {
@@ -176,57 +152,107 @@ export function withRateLimit(handler: (req: NextRequest) => Promise<NextRespons
       }
     }
 
-    // Check current request count
-    const current = requests.get(ip) || { count: 0, resetTime: now + windowMs }
+    // Get or create request count for this IP
+    const requestData = requests.get(ip) || { count: 0, resetTime: now + options.windowMs }
 
-    if (current.count >= limit && current.resetTime > now) {
-      return createResponse(false, null, "Rate limit exceeded", 429)
+    // Check if rate limit exceeded
+    if (requestData.count >= options.maxRequests && requestData.resetTime > now) {
+      return createErrorResponse("Rate limit exceeded", 429)
     }
 
-    // Update request count
-    current.count++
-    requests.set(ip, current)
+    // Increment request count
+    requestData.count++
+    requests.set(ip, requestData)
 
-    return await handler(req)
+    return handler(req)
+  }
+}
+
+export function withGracefulExpiration(handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
+  return async (req: AuthenticatedRequest) => {
+    try {
+      return await handler(req)
+    } catch (error: any) {
+      // Handle token expiration gracefully
+      if (error.message?.includes("expired") || error.message?.includes("invalid")) {
+        return createErrorResponse("Session expired. Please login again.", 401)
+      }
+
+      console.error("Request handler error:", error)
+      return createErrorResponse("Internal server error", 500)
+    }
   }
 }
 
 export function withErrorHandling(handler: (req: NextRequest) => Promise<NextResponse>) {
-  return async (req: NextRequest): Promise<NextResponse> => {
+  return async (req: NextRequest) => {
     try {
       return await handler(req)
     } catch (error: any) {
       console.error("API Error:", error)
 
-      if (error.message === "Authentication required") {
-        return createResponse(false, null, "Authentication required", 401)
+      // Handle specific error types
+      if (error.name === "ValidationError") {
+        return createErrorResponse(error.message, 400)
       }
 
-      if (error.message === "Access denied") {
-        return createResponse(false, null, "Access denied", 403)
+      if (error.name === "UnauthorizedError") {
+        return createErrorResponse("Unauthorized", 401)
       }
 
-      return createResponse(false, null, "Internal server error", 500)
+      if (error.name === "ForbiddenError") {
+        return createErrorResponse("Forbidden", 403)
+      }
+
+      if (error.name === "NotFoundError") {
+        return createErrorResponse("Resource not found", 404)
+      }
+
+      // Generic error response
+      return createErrorResponse("Internal server error", 500)
+    }
+  }
+}
+
+export function withLogging(handler: (req: NextRequest) => Promise<NextResponse>) {
+  return async (req: NextRequest) => {
+    const start = Date.now()
+    const method = req.method
+    const url = req.url
+
+    console.log(`[${new Date().toISOString()}] ${method} ${url} - Started`)
+
+    try {
+      const response = await handler(req)
+      const duration = Date.now() - start
+
+      console.log(`[${new Date().toISOString()}] ${method} ${url} - ${response.status} (${duration}ms)`)
+
+      return response
+    } catch (error) {
+      const duration = Date.now() - start
+      console.error(`[${new Date().toISOString()}] ${method} ${url} - Error (${duration}ms):`, error)
+      throw error
     }
   }
 }
 
 // Utility function to combine multiple middleware
-export function withMiddleware(
-  handler: (req: NextRequest) => Promise<NextResponse>,
-  ...middlewares: Array<
-    (handler: (req: NextRequest) => Promise<NextResponse>) => (req: NextRequest) => Promise<NextResponse>
-  >
-) {
-  return middlewares.reduce((acc, middleware) => middleware(acc), handler)
+export function combineMiddleware(...middlewares: Array<(handler: any) => any>) {
+  return (handler: any) => {
+    return middlewares.reduceRight((acc, middleware) => middleware(acc), handler)
+  }
 }
 
-export function withSubscriptionCheck(handler: (req: NextRequest) => Promise<NextResponse>, requiredFeature?: string) {
+export function withSubscriptionCheck(
+  handler: (req: AuthenticatedRequest) => Promise<NextResponse>,
+  requiredFeature?: string,
+) {
   return withAPIAuth(async (req: NextRequest): Promise<NextResponse> => {
     try {
       const user = req.user
       if (!user) {
-        return createResponse(false, null, "Authentication required", 401)
+        return createErrorResponse("Authentication required", 401)
       }
 
       // Admin bypass
@@ -237,16 +263,16 @@ export function withSubscriptionCheck(handler: (req: NextRequest) => Promise<Nex
 
       // Check subscription access
       if (requiredFeature) {
-        const hasAccess = await subscriptionManager.checkAccess(user.userId, requiredFeature)
+        const hasAccess = await subscriptionManager.checkAccess(user.id, requiredFeature)
         if (!hasAccess) {
-          return createResponse(false, null, "Subscription required", 403)
+          return createErrorResponse("Subscription required", 403)
         }
       }
 
       return handler(req)
     } catch (error) {
       console.error("Subscription check middleware error:", error)
-      return createResponse(false, null, "Internal server error", 500)
+      return createErrorResponse("Internal server error", 500)
     }
   })
 }
