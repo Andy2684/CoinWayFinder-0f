@@ -2,6 +2,7 @@ import jwt from "jsonwebtoken"
 import bcrypt from "bcryptjs"
 import { cookies } from "next/headers"
 import { database } from "./database"
+import { AdminService } from "./admin"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production"
 const JWT_EXPIRES_IN = "7d"
@@ -10,6 +11,11 @@ export interface AuthUser {
   id: string
   email: string
   name: string
+  subscription?: {
+    plan: string
+    status: string
+    endDate: Date
+  }
 }
 
 export class AuthService {
@@ -65,6 +71,21 @@ export class AuthService {
 
   static async getCurrentUser(): Promise<AuthUser | null> {
     try {
+      // Check if admin is logged in first
+      const admin = await AdminService.getCurrentAdmin()
+      if (admin) {
+        return {
+          id: admin.id,
+          email: admin.email,
+          name: admin.username,
+          subscription: {
+            plan: "admin",
+            status: "active",
+            endDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year from now
+          },
+        }
+      }
+
       const cookieStore = await cookies()
       const token = cookieStore.get("auth-token")?.value
 
@@ -72,7 +93,18 @@ export class AuthService {
         return null
       }
 
-      return this.verifyToken(token)
+      const user = this.verifyToken(token)
+      if (!user) {
+        return null
+      }
+
+      // Get user settings to include subscription info
+      const userSettings = await database.getUserSettings(user.id)
+      if (userSettings) {
+        user.subscription = userSettings.subscription
+      }
+
+      return user
     } catch (error) {
       return null
     }
@@ -102,9 +134,14 @@ export class AuthService {
       })
 
       // Create user settings with trial
-      await database.createUserWithTrial(userId)
+      const userSettings = await database.createUserWithTrial(userId)
 
-      const user: AuthUser = { id: userId, email, name }
+      const user: AuthUser = {
+        id: userId,
+        email,
+        name,
+        subscription: userSettings.subscription,
+      }
       await this.setAuthCookie(user)
 
       return { success: true, message: "Account created successfully", user }
@@ -134,10 +171,14 @@ export class AuthService {
       // Update last login
       await database.updateUser(user._id!.toString(), { lastLoginAt: new Date() })
 
+      // Get user settings
+      const userSettings = await database.getUserSettings(user._id!.toString())
+
       const authUser: AuthUser = {
         id: user._id!.toString(),
         email: user.email,
         name: user.name,
+        subscription: userSettings?.subscription,
       }
 
       await this.setAuthCookie(authUser)

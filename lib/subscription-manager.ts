@@ -1,4 +1,5 @@
 import { database } from "./database"
+import { AdminService } from "./admin"
 import Stripe from "stripe"
 
 export interface SubscriptionPlan {
@@ -108,6 +109,28 @@ export const SUBSCRIPTION_PLANS: Record<string, SubscriptionPlan> = {
       maxLeverage: 20,
     },
   },
+  // Admin plan with unlimited everything
+  admin: {
+    id: "admin",
+    name: "Admin Access",
+    price: 0,
+    interval: "month",
+    features: {
+      maxBots: -1, // Unlimited
+      strategies: ["dca", "grid", "scalping", "long-short", "trend-following", "arbitrage", "custom"],
+      exchanges: ["binance", "bybit", "kucoin", "okx", "coinbase", "bitget", "gateio", "all"],
+      aiRiskAnalysis: true,
+      prioritySupport: true,
+      advancedAnalytics: true,
+      customStrategies: true,
+      apiAccess: true,
+    },
+    limits: {
+      maxInvestmentPerBot: -1, // Unlimited
+      maxDailyTrades: -1, // Unlimited
+      maxLeverage: 100, // Max leverage
+    },
+  },
 }
 
 export class SubscriptionManager {
@@ -128,6 +151,12 @@ export class SubscriptionManager {
   }
 
   async getUserPlan(userId: string): Promise<SubscriptionPlan> {
+    // Check if current user is admin
+    const isAdmin = await AdminService.hasAdminPrivileges()
+    if (isAdmin) {
+      return SUBSCRIPTION_PLANS.admin
+    }
+
     const settings = await database.getUserSettings(userId)
 
     if (!settings) {
@@ -139,6 +168,12 @@ export class SubscriptionManager {
   }
 
   async canCreateBot(userId: string): Promise<{ allowed: boolean; reason?: string }> {
+    // Admin bypass
+    const isAdmin = await AdminService.hasAdminPrivileges()
+    if (isAdmin) {
+      return { allowed: true }
+    }
+
     const plan = await this.getUserPlan(userId)
     const userBots = await database.getUserBots(userId)
 
@@ -153,6 +188,12 @@ export class SubscriptionManager {
   }
 
   async canUseStrategy(userId: string, strategy: string): Promise<{ allowed: boolean; reason?: string }> {
+    // Admin bypass
+    const isAdmin = await AdminService.hasAdminPrivileges()
+    if (isAdmin) {
+      return { allowed: true }
+    }
+
     const plan = await this.getUserPlan(userId)
 
     if (!plan.features.strategies.includes(strategy)) {
@@ -166,9 +207,15 @@ export class SubscriptionManager {
   }
 
   async canUseExchange(userId: string, exchange: string): Promise<{ allowed: boolean; reason?: string }> {
+    // Admin bypass
+    const isAdmin = await AdminService.hasAdminPrivileges()
+    if (isAdmin) {
+      return { allowed: true }
+    }
+
     const plan = await this.getUserPlan(userId)
 
-    if (!plan.features.exchanges.includes(exchange)) {
+    if (!plan.features.exchanges.includes(exchange) && !plan.features.exchanges.includes("all")) {
       return {
         allowed: false,
         reason: `The ${exchange} exchange is not available in your ${plan.name} plan`,
@@ -187,6 +234,12 @@ export class SubscriptionManager {
       exchange: string
     },
   ): Promise<{ valid: boolean; errors: string[] }> {
+    // Admin bypass
+    const isAdmin = await AdminService.hasAdminPrivileges()
+    if (isAdmin) {
+      return { valid: true, errors: [] }
+    }
+
     const plan = await this.getUserPlan(userId)
     const errors: string[] = []
 
@@ -219,6 +272,12 @@ export class SubscriptionManager {
   }
 
   async isTrialExpired(userId: string): Promise<boolean> {
+    // Admin never expires
+    const isAdmin = await AdminService.hasAdminPrivileges()
+    if (isAdmin) {
+      return false
+    }
+
     const settings = await database.getUserSettings(userId)
 
     if (!settings || !settings.subscription.trialEndDate) {
