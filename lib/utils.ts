@@ -12,15 +12,15 @@ export function formatCurrency(amount: number, currency = "USD"): string {
   }).format(amount)
 }
 
-export function formatNumber(num: number, decimals = 2): string {
+export function formatPercentage(value: number, decimals = 2): string {
+  return `${(value * 100).toFixed(decimals)}%`
+}
+
+export function formatNumber(value: number, decimals = 2): string {
   return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: decimals,
     maximumFractionDigits: decimals,
-  }).format(num)
-}
-
-export function formatPercentage(value: number, decimals = 2): string {
-  return `${value >= 0 ? "+" : ""}${value.toFixed(decimals)}%`
+  }).format(value)
 }
 
 export function formatDate(date: Date | string): string {
@@ -63,17 +63,17 @@ export function formatTimeAgo(date: Date | string): string {
   }
 
   const diffInDays = Math.floor(diffInHours / 24)
-  if (diffInDays < 7) {
+  if (diffInDays < 30) {
     return `${diffInDays}d ago`
   }
 
-  const diffInWeeks = Math.floor(diffInDays / 7)
-  if (diffInWeeks < 4) {
-    return `${diffInWeeks}w ago`
+  const diffInMonths = Math.floor(diffInDays / 30)
+  if (diffInMonths < 12) {
+    return `${diffInMonths}mo ago`
   }
 
-  const diffInMonths = Math.floor(diffInDays / 30)
-  return `${diffInMonths}mo ago`
+  const diffInYears = Math.floor(diffInMonths / 12)
+  return `${diffInYears}y ago`
 }
 
 export function generateId(length = 8): string {
@@ -95,26 +95,11 @@ export function slugify(text: string): string {
 
 export function truncate(text: string, length: number): string {
   if (text.length <= length) return text
-  return text.substring(0, length) + "..."
+  return text.slice(0, length) + "..."
 }
 
-export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): T {
-  let timeout: NodeJS.Timeout
-  return ((...args: any[]) => {
-    clearTimeout(timeout)
-    timeout = setTimeout(() => func.apply(this, args), wait)
-  }) as T
-}
-
-export function throttle<T extends (...args: any[]) => any>(func: T, limit: number): T {
-  let inThrottle: boolean
-  return ((...args: any[]) => {
-    if (!inThrottle) {
-      func.apply(this, args)
-      inThrottle = true
-      setTimeout(() => (inThrottle = false), limit)
-    }
-  }) as T
+export function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1).toLowerCase()
 }
 
 export function isValidEmail(email: string): boolean {
@@ -128,98 +113,52 @@ export function isValidPassword(password: string): boolean {
   return passwordRegex.test(password)
 }
 
-export function getPasswordStrength(password: string): {
-  score: number
-  feedback: string[]
-} {
-  const feedback: string[] = []
-  let score = 0
-
-  if (password.length >= 8) {
-    score += 1
-  } else {
-    feedback.push("Use at least 8 characters")
-  }
-
-  if (/[a-z]/.test(password)) {
-    score += 1
-  } else {
-    feedback.push("Add lowercase letters")
-  }
-
-  if (/[A-Z]/.test(password)) {
-    score += 1
-  } else {
-    feedback.push("Add uppercase letters")
-  }
-
-  if (/\d/.test(password)) {
-    score += 1
-  } else {
-    feedback.push("Add numbers")
-  }
-
-  if (/[^a-zA-Z\d]/.test(password)) {
-    score += 1
-  } else {
-    feedback.push("Add special characters")
-  }
-
-  return { score, feedback }
-}
-
-export function calculatePnL(entryPrice: number, currentPrice: number, quantity: number, side: "buy" | "sell"): number {
-  if (side === "buy") {
-    return (currentPrice - entryPrice) * quantity
-  } else {
-    return (entryPrice - currentPrice) * quantity
+export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout)
+    timeout = setTimeout(() => func(...args), wait)
   }
 }
 
-export function calculatePercentageChange(oldValue: number, newValue: number): number {
-  if (oldValue === 0) return 0
-  return ((newValue - oldValue) / oldValue) * 100
-}
-
-export function formatLargeNumber(num: number): string {
-  if (num >= 1e9) {
-    return (num / 1e9).toFixed(1) + "B"
+export function throttle<T extends (...args: any[]) => any>(func: T, limit: number): (...args: Parameters<T>) => void {
+  let inThrottle: boolean
+  return (...args: Parameters<T>) => {
+    if (!inThrottle) {
+      func(...args)
+      inThrottle = true
+      setTimeout(() => (inThrottle = false), limit)
+    }
   }
-  if (num >= 1e6) {
-    return (num / 1e6).toFixed(1) + "M"
-  }
-  if (num >= 1e3) {
-    return (num / 1e3).toFixed(1) + "K"
-  }
-  return num.toString()
-}
-
-export function getColorForPnL(pnl: number): string {
-  if (pnl > 0) return "text-green-600"
-  if (pnl < 0) return "text-red-600"
-  return "text-gray-600"
-}
-
-export function getColorForPercentage(percentage: number): string {
-  if (percentage > 0) return "text-green-600"
-  if (percentage < 0) return "text-red-600"
-  return "text-gray-600"
 }
 
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
-export function retry<T>(fn: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
-  return fn().catch((error) => {
-    if (retries > 0) {
-      return sleep(delay).then(() => retry(fn, retries - 1, delay * 2))
-    }
-    throw error
-  })
+export function randomBetween(min: number, max: number): number {
+  return Math.random() * (max - min) + min
 }
 
-export function safeJsonParse<T>(json: string, fallback: T): T {
+export function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
+}
+
+export function roundTo(value: number, decimals: number): number {
+  return Math.round(value * Math.pow(10, decimals)) / Math.pow(10, decimals)
+}
+
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message
+  }
+  if (typeof error === "string") {
+    return error
+  }
+  return "An unknown error occurred"
+}
+
+export function safeParseJSON<T>(json: string, fallback: T): T {
   try {
     return JSON.parse(json)
   } catch {
@@ -227,25 +166,31 @@ export function safeJsonParse<T>(json: string, fallback: T): T {
   }
 }
 
-export function removeUndefined<T extends Record<string, any>>(obj: T): T {
-  const result = {} as T
-  for (const [key, value] of Object.entries(obj)) {
-    if (value !== undefined) {
-      result[key as keyof T] = value
-    }
-  }
+export function omit<T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
+  const result = { ...obj }
+  keys.forEach((key) => delete result[key])
   return result
 }
 
-export function groupBy<T, K extends keyof any>(array: T[], key: (item: T) => K): Record<K, T[]> {
+export function pick<T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
+  const result = {} as Pick<T, K>
+  keys.forEach((key) => {
+    if (key in obj) {
+      result[key] = obj[key]
+    }
+  })
+  return result
+}
+
+export function groupBy<T>(array: T[], key: keyof T): Record<string, T[]> {
   return array.reduce(
     (groups, item) => {
-      const group = key(item)
+      const group = String(item[key])
       groups[group] = groups[group] || []
       groups[group].push(item)
       return groups
     },
-    {} as Record<K, T[]>,
+    {} as Record<string, T[]>,
   )
 }
 
