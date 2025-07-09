@@ -221,3 +221,6 @@ export class AuthManager {
     return AuthService.verifyToken(token)
   }
 }
+
+// Export authManager instance for backward compatibility
+export const authManager = AuthManager

@@ -1,513 +1,340 @@
 import { database } from "./database"
-import { adminManager, type AdminSession } from "./admin"
-
-export interface SubscriptionLimits {
-  maxBots: number
-  maxTrades: number
-  aiAnalysis: boolean
-  whaleTracking: boolean
-  newsAlerts: boolean
-  premiumStrategies: boolean
-  apiAccess: boolean
-  prioritySupport: boolean
-}
-
-export const SUBSCRIPTION_LIMITS: Record<string, SubscriptionLimits> = {
-  free: {
-    maxBots: 1,
-    maxTrades: 10,
-    aiAnalysis: false,
-    whaleTracking: false,
-    newsAlerts: false,
-    premiumStrategies: false,
-    apiAccess: false,
-    prioritySupport: false,
-  },
-  trial: {
-    maxBots: 3,
-    maxTrades: 50,
-    aiAnalysis: true,
-    whaleTracking: true,
-    newsAlerts: true,
-    premiumStrategies: false,
-    apiAccess: false,
-    prioritySupport: false,
-  },
-  basic: {
-    maxBots: 3,
-    maxTrades: 100,
-    aiAnalysis: true,
-    whaleTracking: false,
-    newsAlerts: true,
-    premiumStrategies: false,
-    apiAccess: false,
-    prioritySupport: false,
-  },
-  premium: {
-    maxBots: 10,
-    maxTrades: 1000,
-    aiAnalysis: true,
-    whaleTracking: true,
-    newsAlerts: true,
-    premiumStrategies: true,
-    apiAccess: true,
-    prioritySupport: true,
-  },
-  enterprise: {
-    maxBots: -1, // unlimited
-    maxTrades: -1, // unlimited
-    aiAnalysis: true,
-    whaleTracking: true,
-    newsAlerts: true,
-    premiumStrategies: true,
-    apiAccess: true,
-    prioritySupport: true,
-  },
-}
+import { stripe } from "./stripe"
 
 export const SUBSCRIPTION_PLANS = {
   free: {
     name: "Free",
     price: 0,
-    interval: "month",
-    features: ["1 Trading Bot", "10 Trades per month", "Basic Support", "Community Access"],
-    limits: SUBSCRIPTION_LIMITS.free,
-    trialDays: 0,
+    priceId: null,
+    features: ["1 Trading Bot", "Basic Strategies", "Email Support", "Limited API Calls (100/day)"],
+    limits: {
+      bots: 1,
+      apiCalls: 100,
+      strategies: ["basic"],
+    },
   },
   trial: {
     name: "3-Day Free Trial",
     price: 0,
-    interval: "trial",
-    features: ["3 Trading Bots", "50 Trades", "AI Analysis", "Whale Tracking", "News Alerts", "3 Days Free"],
-    limits: SUBSCRIPTION_LIMITS.trial,
-    trialDays: 3,
-  },
-  basic: {
-    name: "Basic",
-    price: 29,
-    interval: "month",
-    features: ["3 Trading Bots", "100 Trades per month", "AI Analysis", "News Alerts", "Email Support"],
-    limits: SUBSCRIPTION_LIMITS.basic,
-    trialDays: 3,
-  },
-  premium: {
-    name: "Premium",
-    price: 99,
-    interval: "month",
+    priceId: null,
     features: [
-      "10 Trading Bots",
-      "1,000 Trades per month",
-      "AI Analysis",
-      "Whale Tracking",
-      "Premium Strategies",
-      "API Access",
+      "Unlimited Trading Bots",
+      "All Advanced Strategies",
       "Priority Support",
+      "Unlimited API Calls",
+      "Real-time Alerts",
+      "Advanced Analytics",
     ],
-    limits: SUBSCRIPTION_LIMITS.premium,
-    trialDays: 3,
+    limits: {
+      bots: -1, // unlimited
+      apiCalls: -1, // unlimited
+      strategies: ["all"],
+    },
+  },
+  starter: {
+    name: "Starter",
+    price: 29,
+    priceId: process.env.STRIPE_STARTER_PRICE_ID,
+    features: ["5 Trading Bots", "Advanced Strategies", "Priority Support", "Unlimited API Calls", "Real-time Alerts"],
+    limits: {
+      bots: 5,
+      apiCalls: -1, // unlimited
+      strategies: ["basic", "advanced"],
+    },
+  },
+  pro: {
+    name: "Pro",
+    price: 79,
+    priceId: process.env.STRIPE_PRO_PRICE_ID,
+    features: [
+      "Unlimited Trading Bots",
+      "All Strategies",
+      "Priority Support",
+      "Unlimited API Calls",
+      "Real-time Alerts",
+      "Advanced Analytics",
+      "Custom Strategies",
+    ],
+    limits: {
+      bots: -1, // unlimited
+      apiCalls: -1, // unlimited
+      strategies: ["all"],
+    },
   },
   enterprise: {
     name: "Enterprise",
-    price: 299,
-    interval: "month",
+    price: 199,
+    priceId: process.env.STRIPE_ENTERPRISE_PRICE_ID,
     features: [
-      "Unlimited Trading Bots",
-      "Unlimited Trades",
-      "All AI Features",
-      "Custom Strategies",
-      "Full API Access",
+      "Everything in Pro",
       "Dedicated Support",
+      "Custom Integrations",
       "White-label Options",
+      "API Access",
+      "Advanced Risk Management",
     ],
-    limits: SUBSCRIPTION_LIMITS.enterprise,
-    trialDays: 3,
+    limits: {
+      bots: -1, // unlimited
+      apiCalls: -1, // unlimited
+      strategies: ["all"],
+    },
   },
 }
 
+export interface SubscriptionStatus {
+  plan: string
+  status: "active" | "inactive" | "cancelled" | "past_due"
+  endDate: Date
+  isTrialActive: boolean
+  trialEndDate?: Date
+  canUpgrade: boolean
+  features: string[]
+  limits: {
+    bots: number
+    apiCalls: number
+    strategies: string[]
+  }
+}
+
 class SubscriptionManager {
-  private static instance: SubscriptionManager
+  async getSubscriptionStatus(userId: string): Promise<SubscriptionStatus> {
+    const userSettings = await database.getUserSettings(userId)
 
-  static getInstance(): SubscriptionManager {
-    if (!SubscriptionManager.instance) {
-      SubscriptionManager.instance = new SubscriptionManager()
-    }
-    return SubscriptionManager.instance
-  }
-
-  async getUserLimits(userId: string, adminSession?: AdminSession | null): Promise<SubscriptionLimits> {
-    // Admin bypass - unlimited access
-    if (adminSession?.isAdmin && adminManager.bypassSubscriptionCheck(adminSession)) {
+    if (!userSettings) {
+      // Default to free plan
       return {
-        maxBots: -1,
-        maxTrades: -1,
-        aiAnalysis: true,
-        whaleTracking: true,
-        newsAlerts: true,
-        premiumStrategies: true,
-        apiAccess: true,
-        prioritySupport: true,
+        plan: "free",
+        status: "inactive",
+        endDate: new Date(),
+        isTrialActive: false,
+        canUpgrade: true,
+        features: SUBSCRIPTION_PLANS.free.features,
+        limits: SUBSCRIPTION_PLANS.free.limits,
       }
     }
 
-    try {
-      const userSettings = await database.getUserSettings(userId)
+    const { subscription, trial } = userSettings
+    const now = new Date()
 
-      if (!userSettings) {
-        return SUBSCRIPTION_LIMITS.free
-      }
+    // Check if trial is active and not expired
+    const isTrialActive = trial.isActive && trial.endDate > now
 
-      const plan = userSettings.subscription.plan
-      const status = userSettings.subscription.status
-
-      // Check if user is in trial period
-      if (status === "trial" && !this.isTrialExpired(userSettings)) {
-        return SUBSCRIPTION_LIMITS.trial
-      }
-
-      // If subscription is expired or cancelled, downgrade to free
-      if (status !== "active") {
-        return SUBSCRIPTION_LIMITS.free
-      }
-
-      return SUBSCRIPTION_LIMITS[plan] || SUBSCRIPTION_LIMITS.free
-    } catch (error) {
-      console.error("Error getting user limits:", error)
-      return SUBSCRIPTION_LIMITS.free
-    }
-  }
-
-  async getUserPlan(userId: string): Promise<string> {
-    try {
-      const userSettings = await database.getUserSettings(userId)
-
-      if (!userSettings) {
-        return "free"
-      }
-
-      // Check if user is in trial period
-      if (userSettings.subscription.status === "trial" && !this.isTrialExpired(userSettings)) {
-        return "trial"
-      }
-
-      // If subscription is expired, return free
-      if (userSettings.subscription.status !== "active") {
-        return "free"
-      }
-
-      return userSettings.subscription.plan
-    } catch (error) {
-      console.error("Error getting user plan:", error)
-      return "free"
-    }
-  }
-
-  async getUsageStats(userId: string): Promise<any> {
-    try {
-      const userSettings = await database.getUserSettings(userId)
-      const limits = await this.getUserLimits(userId)
-
-      if (!userSettings) {
-        return {
-          botsCreated: 0,
-          maxBots: limits.maxBots,
-          tradesExecuted: 0,
-          maxTrades: limits.maxTrades,
-          aiAnalysisUsed: 0,
-          maxAiAnalysis: limits.aiAnalysis ? 100 : 0,
-        }
-      }
-
-      const userBots = await database.getUserBots(userId)
-      const userTrades = await database.getUserTrades(userId, 1000)
-
+    // If trial is active, use trial plan
+    if (isTrialActive) {
       return {
-        botsCreated: userBots.length,
-        maxBots: limits.maxBots,
-        tradesExecuted: userTrades.length,
-        maxTrades: limits.maxTrades,
-        aiAnalysisUsed: userSettings.usage?.aiAnalysisUsed || 0,
-        maxAiAnalysis: limits.aiAnalysis ? 100 : 0,
-      }
-    } catch (error) {
-      console.error("Error getting usage stats:", error)
-      return {
-        botsCreated: 0,
-        maxBots: 1,
-        tradesExecuted: 0,
-        maxTrades: 10,
-        aiAnalysisUsed: 0,
-        maxAiAnalysis: 0,
-      }
-    }
-  }
-
-  async isTrialExpired(userSettings: any): Promise<boolean> {
-    if (!userSettings.subscription.trialEndDate) {
-      return false
-    }
-
-    return new Date() > new Date(userSettings.subscription.trialEndDate)
-  }
-
-  async startFreeTrial(userId: string): Promise<{ success: boolean; message: string; trialEndDate?: Date }> {
-    try {
-      const userSettings = await database.getUserSettings(userId)
-
-      if (!userSettings) {
-        return { success: false, message: "User not found" }
-      }
-
-      // Check if user has already used their trial
-      if (userSettings.subscription.trialUsed) {
-        return { success: false, message: "Free trial already used" }
-      }
-
-      // Calculate trial end date (3 days from now)
-      const trialEndDate = new Date()
-      trialEndDate.setDate(trialEndDate.getDate() + 3)
-
-      // Update user subscription to trial
-      userSettings.subscription = {
-        ...userSettings.subscription,
         plan: "trial",
-        status: "trial",
-        startDate: new Date(),
-        trialStartDate: new Date(),
-        trialEndDate,
-        trialUsed: true,
+        status: "active",
+        endDate: trial.endDate,
+        isTrialActive: true,
+        trialEndDate: trial.endDate,
+        canUpgrade: true,
+        features: SUBSCRIPTION_PLANS.trial.features,
+        limits: SUBSCRIPTION_PLANS.trial.limits,
       }
+    }
 
-      await database.saveUserSettings(userSettings)
+    // Check if paid subscription is active
+    const isPaidActive = subscription.status === "active" && subscription.endDate > now
 
+    if (isPaidActive && subscription.plan !== "free" && subscription.plan !== "trial") {
+      const planConfig = SUBSCRIPTION_PLANS[subscription.plan as keyof typeof SUBSCRIPTION_PLANS]
       return {
-        success: true,
-        message: "Free trial started successfully",
-        trialEndDate,
+        plan: subscription.plan,
+        status: "active",
+        endDate: subscription.endDate,
+        isTrialActive: false,
+        canUpgrade: subscription.plan !== "enterprise",
+        features: planConfig?.features || [],
+        limits: planConfig?.limits || SUBSCRIPTION_PLANS.free.limits,
+      }
+    }
+
+    // Default to free plan
+    return {
+      plan: "free",
+      status: "inactive",
+      endDate: new Date(),
+      isTrialActive: false,
+      canUpgrade: true,
+      features: SUBSCRIPTION_PLANS.free.features,
+      limits: SUBSCRIPTION_PLANS.free.limits,
+    }
+  }
+
+  async canStartTrial(userId: string): Promise<boolean> {
+    const userSettings = await database.getUserSettings(userId)
+
+    if (!userSettings) {
+      return true // New user can start trial
+    }
+
+    // Check if user has already used their trial
+    return !userSettings.trial.hasUsed
+  }
+
+  async startTrial(userId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const canStart = await this.canStartTrial(userId)
+
+      if (!canStart) {
+        return { success: false, message: "Trial has already been used" }
+      }
+
+      const success = await database.startTrial(userId)
+
+      if (success) {
+        return { success: true, message: "Trial started successfully" }
+      } else {
+        return { success: false, message: "Failed to start trial" }
       }
     } catch (error) {
-      console.error("Error starting free trial:", error)
-      return { success: false, message: "Failed to start free trial" }
+      console.error("Start trial error:", error)
+      return { success: false, message: "Failed to start trial" }
     }
   }
 
-  async canCreateBot(userId: string, adminSession?: AdminSession | null): Promise<boolean> {
-    // Admin bypass
-    if (adminSession?.isAdmin && adminManager.bypassSubscriptionCheck(adminSession)) {
-      return true
-    }
-
-    const limits = await this.getUserLimits(userId, adminSession)
-    if (limits.maxBots === -1) return true // unlimited
-
-    const userBots = await database.getUserBots(userId)
-    return userBots.length < limits.maxBots
-  }
-
-  async canExecuteTrade(userId: string, adminSession?: AdminSession | null): Promise<boolean> {
-    // Admin bypass
-    if (adminSession?.isAdmin && adminManager.bypassSubscriptionCheck(adminSession)) {
-      return true
-    }
-
-    const limits = await this.getUserLimits(userId, adminSession)
-    if (limits.maxTrades === -1) return true // unlimited
-
-    const userTrades = await database.getUserTrades(userId, limits.maxTrades + 1)
-    return userTrades.length < limits.maxTrades
-  }
-
-  async hasFeatureAccess(
-    userId: string,
-    feature: keyof SubscriptionLimits,
-    adminSession?: AdminSession | null,
-  ): Promise<boolean> {
-    // Admin bypass
-    if (adminSession?.isAdmin && adminManager.bypassSubscriptionCheck(adminSession)) {
-      return true
-    }
-
-    const limits = await this.getUserLimits(userId, adminSession)
-    return limits[feature] === true
-  }
-
-  async checkSubscriptionExpiry(): Promise<void> {
+  async checkAndExpireTrials(): Promise<void> {
     try {
-      const expiredSubscriptions = await database.getExpiredSubscriptions()
-
-      for (const userSettings of expiredSubscriptions) {
-        // Check if it's a trial that expired
-        if (userSettings.subscription.status === "trial" && this.isTrialExpired(userSettings)) {
-          // Convert trial to free plan
-          await database.updateSubscriptionStatus(userSettings.userId, "expired")
-          console.log(`Trial expired for user: ${userSettings.userId} - converted to free plan`)
-        } else {
-          // Update subscription status
-          await database.updateSubscriptionStatus(userSettings.userId, "expired")
-          console.log(`Subscription expired for user: ${userSettings.userId} - graceful expiration applied`)
-        }
-      }
+      // This would typically be run as a cron job
+      // For now, we'll check when getting subscription status
+      console.log("Checking for expired trials...")
     } catch (error) {
-      console.error("Error checking subscription expiry:", error)
+      console.error("Error checking expired trials:", error)
     }
   }
 
-  async upgradePlan(
+  async upgradeSubscription(
     userId: string,
-    newPlan: string,
-    paymentMethodId?: string,
-  ): Promise<{ success: boolean; message: string; checkoutUrl?: string }> {
+    planId: string,
+    stripeCustomerId?: string,
+    stripeSubscriptionId?: string,
+  ): Promise<{ success: boolean; message: string }> {
     try {
-      const userSettings = await database.getUserSettings(userId)
-      if (!userSettings) {
-        return { success: false, message: "User not found" }
-      }
+      const plan = SUBSCRIPTION_PLANS[planId as keyof typeof SUBSCRIPTION_PLANS]
 
-      // If upgrading from trial, mark trial as used
-      if (userSettings.subscription.status === "trial") {
-        userSettings.subscription.trialUsed = true
+      if (!plan) {
+        return { success: false, message: "Invalid plan selected" }
       }
 
       const endDate = new Date()
-      endDate.setMonth(endDate.getMonth() + 1)
+      endDate.setMonth(endDate.getMonth() + 1) // 1 month from now
 
-      userSettings.subscription = {
-        ...userSettings.subscription,
-        plan: newPlan as any,
-        status: "active",
+      const subscription = {
+        plan: planId,
+        status: "active" as const,
         endDate,
+        stripeCustomerId,
+        stripeSubscriptionId,
       }
 
-      await database.saveUserSettings(userSettings)
+      const success = await database.updateSubscription(userId, subscription)
 
-      return {
-        success: true,
-        message: "Plan upgraded successfully",
+      if (success) {
+        // End trial if active
+        await database.endTrial(userId)
+        return { success: true, message: "Subscription upgraded successfully" }
+      } else {
+        return { success: false, message: "Failed to upgrade subscription" }
       }
     } catch (error) {
-      console.error("Error upgrading subscription:", error)
-      return { success: false, message: "Failed to upgrade plan" }
+      console.error("Upgrade subscription error:", error)
+      return { success: false, message: "Failed to upgrade subscription" }
     }
   }
 
   async cancelSubscription(userId: string): Promise<{ success: boolean; message: string }> {
     try {
       const userSettings = await database.getUserSettings(userId)
+
       if (!userSettings) {
-        return { success: false, message: "User not found" }
+        return { success: false, message: "User settings not found" }
       }
 
-      userSettings.subscription.status = "cancelled"
-      await database.saveUserSettings(userSettings)
+      // Cancel with Stripe if there's a subscription ID
+      if (userSettings.subscription.stripeSubscriptionId) {
+        try {
+          await stripe.subscriptions.cancel(userSettings.subscription.stripeSubscriptionId)
+        } catch (stripeError) {
+          console.error("Stripe cancellation error:", stripeError)
+          // Continue with local cancellation even if Stripe fails
+        }
+      }
 
-      return { success: true, message: "Subscription cancelled successfully" }
+      const subscription = {
+        plan: "free",
+        status: "cancelled" as const,
+        endDate: new Date(),
+      }
+
+      const success = await database.updateSubscription(userId, subscription)
+
+      if (success) {
+        return { success: true, message: "Subscription cancelled successfully" }
+      } else {
+        return { success: false, message: "Failed to cancel subscription" }
+      }
     } catch (error) {
-      console.error("Error cancelling subscription:", error)
+      console.error("Cancel subscription error:", error)
       return { success: false, message: "Failed to cancel subscription" }
     }
   }
 
-  async processReferral(userId: string, referralCode: string): Promise<{ success: boolean; message: string }> {
-    try {
-      // Mock referral processing
-      return { success: true, message: "Referral processed successfully" }
-    } catch (error) {
-      console.error("Error processing referral:", error)
-      return { success: false, message: "Failed to process referral" }
-    }
-  }
+  async checkAccess(userId: string, feature: string): Promise<boolean> {
+    const status = await this.getSubscriptionStatus(userId)
 
-  async upgradeSubscription(userId: string, newPlan: string, durationMonths = 1): Promise<boolean> {
-    try {
-      const userSettings = await database.getUserSettings(userId)
-      if (!userSettings) return false
-
-      const endDate = new Date()
-      endDate.setMonth(endDate.getMonth() + durationMonths)
-
-      userSettings.subscription = {
-        ...userSettings.subscription,
-        plan: newPlan as any,
-        status: "active",
-        endDate,
-      }
-
-      await database.saveUserSettings(userSettings)
-      return true
-    } catch (error) {
-      console.error("Error upgrading subscription:", error)
-      return false
-    }
-  }
-
-  // Graceful expiration check - allows existing operations to continue
-  async isGracefullyExpired(userId: string): Promise<boolean> {
-    try {
-      const userSettings = await database.getUserSettings(userId)
-      return userSettings?.subscription.status === "expired"
-    } catch (error) {
-      return false
-    }
-  }
-
-  // Check if user can perform write operations (create/modify)
-  async canPerformWriteOperations(userId: string, adminSession?: AdminSession | null): Promise<boolean> {
-    // Admin bypass
-    if (adminSession?.isAdmin && adminManager.bypassSubscriptionCheck(adminSession)) {
+    // Admin always has access
+    if (status.plan === "admin") {
       return true
     }
 
-    const isExpired = await this.isGracefullyExpired(userId)
-    return !isExpired
+    // Check specific feature access based on plan
+    switch (feature) {
+      case "unlimited_bots":
+        return status.limits.bots === -1
+      case "advanced_strategies":
+        return status.limits.strategies.includes("advanced") || status.limits.strategies.includes("all")
+      case "api_access":
+        return status.plan !== "free"
+      case "priority_support":
+        return ["starter", "pro", "enterprise", "trial"].includes(status.plan)
+      case "custom_strategies":
+        return ["pro", "enterprise", "trial"].includes(status.plan)
+      default:
+        return status.status === "active"
+    }
   }
 
-  // Get trial status for a user
-  async getTrialStatus(userId: string): Promise<{
-    hasTrialAvailable: boolean
-    isInTrial: boolean
-    trialDaysLeft: number
-    trialEndDate?: Date
+  async getRemainingLimits(userId: string): Promise<{
+    bots: { used: number; limit: number; remaining: number }
+    apiCalls: { used: number; limit: number; remaining: number }
   }> {
-    try {
-      const userSettings = await database.getUserSettings(userId)
+    const [status, userSettings, userBots] = await Promise.all([
+      this.getSubscriptionStatus(userId),
+      database.getUserSettings(userId),
+      database.getUserBots(userId),
+    ])
 
-      if (!userSettings) {
-        return {
-          hasTrialAvailable: true,
-          isInTrial: false,
-          trialDaysLeft: 3,
-        }
-      }
+    const botsUsed = userBots.length
+    const botsLimit = status.limits.bots
+    const botsRemaining = botsLimit === -1 ? -1 : Math.max(0, botsLimit - botsUsed)
 
-      const hasTrialAvailable = !userSettings.subscription.trialUsed
-      const isInTrial = userSettings.subscription.status === "trial" && !this.isTrialExpired(userSettings)
+    const apiCallsUsed = userSettings?.usage.apiCalls || 0
+    const apiCallsLimit = status.limits.apiCalls
+    const apiCallsRemaining = apiCallsLimit === -1 ? -1 : Math.max(0, apiCallsLimit - apiCallsUsed)
 
-      let trialDaysLeft = 0
-      let trialEndDate: Date | undefined
-
-      if (isInTrial && userSettings.subscription.trialEndDate) {
-        trialEndDate = new Date(userSettings.subscription.trialEndDate)
-        const now = new Date()
-        const timeDiff = trialEndDate.getTime() - now.getTime()
-        trialDaysLeft = Math.max(0, Math.ceil(timeDiff / (1000 * 60 * 60 * 24)))
-      } else if (hasTrialAvailable) {
-        trialDaysLeft = 3
-      }
-
-      return {
-        hasTrialAvailable,
-        isInTrial,
-        trialDaysLeft,
-        trialEndDate,
-      }
-    } catch (error) {
-      console.error("Error getting trial status:", error)
-      return {
-        hasTrialAvailable: true,
-        isInTrial: false,
-        trialDaysLeft: 3,
-      }
+    return {
+      bots: {
+        used: botsUsed,
+        limit: botsLimit,
+        remaining: botsRemaining,
+      },
+      apiCalls: {
+        used: apiCallsUsed,
+        limit: apiCallsLimit,
+        remaining: apiCallsRemaining,
+      },
     }
   }
 }
 
-export const subscriptionManager = SubscriptionManager.getInstance()
+export const subscriptionManager = new SubscriptionManager()
