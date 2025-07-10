@@ -1,39 +1,51 @@
-import { withSentryConfig } from "@sentry/nextjs"
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ["@sentry/nextjs"],
+    serverComponentsExternalPackages: ['@sentry/nextjs']
   },
   images: {
-    domains: ["placeholder.com", "via.placeholder.com"],
+    domains: ['images.unsplash.com', 'via.placeholder.com'],
     remotePatterns: [
       {
-        protocol: "https",
-        hostname: "**",
+        protocol: 'https',
+        hostname: '**',
       },
     ],
-    unoptimized: true, // Added from updates
+    unoptimized: true,
   },
   env: {
-    NEXT_PUBLIC_APP_VERSION: process.env.npm_package_version || "1.0.0",
+    CUSTOM_KEY: process.env.CUSTOM_KEY,
+  },
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Credentials', value: 'true' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'GET,OPTIONS,PATCH,DELETE,POST,PUT' },
+          { key: 'Access-Control-Allow-Headers', value: 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version' },
+        ]
+      }
+    ]
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      }
+    }
+    return config
   },
   eslint: {
-    ignoreDuringBuilds: true, // Added from updates
+    ignoreDuringBuilds: true,
   },
   typescript: {
-    ignoreBuildErrors: true, // Added from updates
+    ignoreBuildErrors: true,
   },
 }
 
-export default withSentryConfig(nextConfig, {
-  silent: true,
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  widenClientFileUpload: true,
-  transpileClientSDK: true,
-  tunnelRoute: "/monitoring",
-  hideSourceMaps: true,
-  disableLogger: true,
-  automaticVercelMonitors: true,
-})
+export default nextConfig
