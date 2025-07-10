@@ -1,59 +1,56 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 
-interface ErrorHandlerOptions {
+export interface ErrorHandlerOptions {
   showToast?: boolean
-  logToConsole?: boolean
-  reportToService?: boolean
-  severity?: "low" | "medium" | "high" | "critical"
+  toastMessage?: string
+  logError?: boolean
+  retryCount?: number
 }
 
-export function useErrorHandler() {
-  const [isLoading, setIsLoading] = useState(false)
+export interface UseErrorHandlerReturn {
+  error: Error | null
+  isLoading: boolean
+  handleAsyncOperation: <T>(operation: () => Promise<T>, options?: ErrorHandlerOptions) => Promise<T | null>
+  clearError: () => void
+  setError: (error: Error | null) => void
+}
+
+export function useErrorHandler(): UseErrorHandlerReturn {
   const [error, setError] = useState<Error | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleError = useCallback((error: Error, options: ErrorHandlerOptions = {}) => {
-    const { showToast = true, logToConsole = true, reportToService = true, severity = "medium" } = options
-
-    setError(error)
-
-    if (logToConsole) {
-      console.error("Error handled:", error)
-    }
-
-    if (reportToService) {
-      console.log("Would report error to service:", { error: error.message, severity })
-    }
-
-    if (showToast) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      })
-    }
-  }, [])
-
-  const handleAsyncOperation = useCallback(\
-    async <T>(operation: () => Promise<T>, options: ErrorHandlerOptions = {}): Promise<T | null> => {\
+  const handleAsyncOperation = useCallback(async <T>(\
+    operation: () => Promise<T>,\
+    options: ErrorHandlerOptions = {}\
+  ): Promise<T | null> => {\
   try {
     setIsLoading(true)
     setError(null)
+
     const result = await operation()
     return result
-  } catch (error) {
-    handleError(error as Error, options)
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error("An unknown error occurred")
+    setError(error)
+
+    if (options.logError !== false) {
+      console.error("Error in async operation:", error)
+    }
+
+    if (options.showToast !== false) {
+      toast.error(options.toastMessage || error.message)
+    }
+
     return null
   } finally {
     setIsLoading(false)
   }
   \
 }
-,
-    [handleError],
-  )
+, [])
 
 const clearError = useCallback(() => {
   setError(null)
@@ -62,9 +59,9 @@ const clearError = useCallback(() => {
 return {
     error,
     isLoading,
-    handleError,
     handleAsyncOperation,
     clearError,
+    setError
   }
 \
 }

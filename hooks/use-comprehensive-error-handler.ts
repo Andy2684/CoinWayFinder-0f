@@ -1,132 +1,112 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import { toast } from "sonner"
+import * as Sentry from "@sentry/nextjs"
 
-interface ErrorContext {
+export interface ErrorContext {
   userId?: string
   action?: string
   component?: string
   metadata?: Record<string, any>
 }
 
-interface ErrorHandlerOptions {
-  maxRetries?: number
-  retryDelay?: number
+export interface ErrorHandlerOptions {
   showToast?: boolean
-  logToConsole?: boolean
-  reportToService?: boolean
+  toastMessage?: string
+  logError?: boolean
+  retryCount?: number
+  context?: ErrorContext
+  reportToSentry?: boolean
 }
 
-interface ErrorInfo {
-  message: string
-  stack?: string
-  context: ErrorContext
-  timestamp: number
+export interface UseComprehensiveErrorHandlerReturn {
+  error: Error | null
+  isLoading: boolean
   retryCount: number
+  handleAsyncOperation: <T>(operation: () => Promise<T>, options?: ErrorHandlerOptions) => Promise<T | null>
+  handleError: (error: Error, options?: ErrorHandlerOptions) => void
+  clearError: () => void
+  retry: () => void
 }
 
-export function useComprehensiveErrorHandler() {
-  const [errors, setErrors] = useState<ErrorInfo[]>([])
+export function useComprehensiveErrorHandler(): UseComprehensiveErrorHandlerReturn {
+  const [error, setError] = useState<Error | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [retryCount, setRetryCount] = useState(0)
+  const [lastOperation, setLastOperation] = useState<(() => Promise<any>) | null>(null)
+  const [lastOptions, setLastOptions] = useState<ErrorHandlerOptions>({})
 
-  const logError = useCallback((error: Error, context: ErrorContext = {}) => {
-    const errorInfo: ErrorInfo = {
-      message: error.message,
-      stack: error.stack,
-      context,
-      timestamp: Date.now(),
-      retryCount: 0,
-    }
+  const handleError = useCallback(
+    (error: Error, options: ErrorHandlerOptions = {}) => {
+      setError(error)
 
-    setErrors((prev) => [...prev, errorInfo])
-
-    if (process.env.NODE_ENV === "development") {
-      console.error("Error logged:", errorInfo)
-    }
-  }, [])
-
-  const handleAsyncError = useCallback(
-    async (
-      asyncFn: () => Promise<any>,
-      context: ErrorContext = {},
-      options: ErrorHandlerOptions = {},
-    ): Promise<any | null> => {
-      const {
-        maxRetries = 3,
-        retryDelay = 1000,
-        showToast = true,
-        logToConsole = true,
-        reportToService = false,
-      } = options
-
-      let lastError: Error | null = null
-
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        try {
-          setIsLoading(true)
-          const result = await asyncFn()
-          setIsLoading(false)
-          return result
-        } catch (error) {
-          lastError = error as Error
-
-          if (attempt < maxRetries) {
-            await new Promise((resolve) => setTimeout(resolve, retryDelay * Math.pow(2, attempt)))
-          }
-        }
+      if (options.logError !== false) {
+        console.error("Error occurred:", error, options.context)
       }
 
-      setIsLoading(false)
-
-      if (lastError) {
-        const errorInfo: ErrorInfo = {
-          message: lastError.message,
-          stack: lastError.stack,
-          context,
-          timestamp: Date.now(),
-          retryCount: maxRetries,
-        }
-
-        setErrors((prev) => [...prev, errorInfo])
-
-        if (logToConsole) {
-          console.error("Async operation failed after retries:", errorInfo)
-        }
-
-        if (reportToService) {
-          try {
-            await fetch("/api/error-report", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(errorInfo),
-            })
-          } catch (reportError) {
-            console.error("Failed to report error:", reportError)
-          }
-        }
+      if (options.reportToSentry !== false) {
+        Sentry.captureException(error, {
+          contexts: {
+            errorHandler: {
+              context: options.context,
+              retryCount,
+            },
+          },
+        })
       }
 
-      return null
+      if (options.showToast !== false) {
+        toast.error(options.toastMessage || error.message)
+      }
     },
-    [],
+    [retryCount],
   )
 
-  const clearErrors = useCallback(() => {
-    setErrors([])
-  }, [])
+  const handleAsyncOperation = useCallback(async <T>(\
+    operation: () => Promise<T>,\
+    options: ErrorHandlerOptions = {}\
+  ): Promise<T | null> => {\
+  try {
+    setIsLoading(true)
+    setError(null)
+    setLastOperation(() => operation)
+    setLastOptions(options)
 
-  const removeError = useCallback((timestamp: number) => {
-    setErrors((prev) => prev.filter((error) => error.timestamp !== timestamp))
-  }, [])
-
-  return {
-    errors,
-    isLoading,
-    logError,
-    handleAsyncError,
-    clearErrors,
-    removeError,
+    const result = await operation()
+    setRetryCount(0)
+    return result
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error("An unknown error occurred")
+    setRetryCount((prev) => prev + 1)
+    handleError(error, options)
+    return null
+  } finally {
+    setIsLoading(false)
   }
+  \
 }
+, [handleError])
 
-export default useComprehensiveErrorHandler
+const retry = useCallback(() => {
+  if (lastOperation && retryCount < (lastOptions.retryCount || 3)) {
+    handleAsyncOperation(lastOperation, lastOptions)
+  }
+}, [lastOperation, lastOptions, retryCount, handleAsyncOperation])
+
+const clearError = useCallback(() => {
+  setError(null)
+  setRetryCount(0)
+}, [])
+
+return {
+    error,
+    isLoading,
+    retryCount,
+    handleAsyncOperation,
+    handleError,
+    clearError,
+    retry
+  }
+\
+}
