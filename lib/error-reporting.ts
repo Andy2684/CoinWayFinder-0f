@@ -1,215 +1,194 @@
-import { Sentry } from "./sentry"
+import { captureError as sentryCaptureError, addBreadcrumb } from "./sentry"
 
-interface ErrorReport {
-  errorId: string
-  message: string
-  stack?: string
-  componentStack?: string
-  timestamp: string
+export interface ErrorReport {
+  id: string
+  error: Error
+  context: Record<string, any>
+  timestamp: Date
+  severity: "low" | "medium" | "high" | "critical"
+  userId?: string
+  sessionId: string
   userAgent: string
   url: string
-  context?: string
-  userId?: string
-  severity: "low" | "medium" | "high" | "critical"
-  metadata?: Record<string, any>
+  stackTrace?: string
 }
 
-interface ErrorReportingConfig {
+export interface ErrorReportingConfig {
   enableConsoleLogging: boolean
   enableSentryReporting: boolean
   enableLocalStorage: boolean
-  maxLocalStorageEntries: number
   enableNetworkReporting: boolean
+  maxLocalStorageEntries: number
   reportingEndpoint?: string
 }
 
 class ErrorReportingService {
   private config: ErrorReportingConfig
-  private localStorageKey = "coinwayfinder_error_reports"
+  private sessionId: string
   private reportQueue: ErrorReport[] = []
-  private isProcessingQueue = false
+  private isOnline = true
 
   constructor(config: Partial<ErrorReportingConfig> = {}) {
     this.config = {
-      enableConsoleLogging: process.env.NODE_ENV === "development",
+      enableConsoleLogging: true,
       enableSentryReporting: true,
       enableLocalStorage: true,
-      maxLocalStorageEntries: 50,
-      enableNetworkReporting: true,
-      reportingEndpoint: "/api/error-report",
+      enableNetworkReporting: false,
+      maxLocalStorageEntries: 100,
       ...config,
     }
 
-    // Process any queued reports on initialization
-    this.processReportQueue()
+    this.sessionId = this.generateSessionId()
+    this.setupNetworkListeners()
+    this.processQueuedReports()
   }
 
-  async reportError(error: Error | ErrorReport, context?: Record<string, any>): Promise<string> {
-    const errorReport: ErrorReport = this.normalizeError(error, context)
-
-    // Log to console if enabled
-    if (this.config.enableConsoleLogging) {
-      this.logToConsole(errorReport)
-    }
-
-    // Store locally if enabled
-    if (this.config.enableLocalStorage) {
-      this.storeLocally(errorReport)
-    }
-
-    // Report to Sentry if enabled
-    if (this.config.enableSentryReporting) {
-      this.reportToSentry(errorReport)
-    }
-
-    // Queue for network reporting if enabled
-    if (this.config.enableNetworkReporting) {
-      this.queueForNetworkReporting(errorReport)
-    }
-
-    return errorReport.errorId
+  private generateSessionId(): string {
+    return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
   }
 
-  private normalizeError(error: Error | ErrorReport, context?: Record<string, any>): ErrorReport {
-    if (this.isErrorReport(error)) {
-      return error
-    }
-
-    return {
-      errorId: `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      message: error.message,
-      stack: error.stack,
-      timestamp: new Date().toISOString(),
-      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "server",
-      url: typeof window !== "undefined" ? window.location.href : "server",
-      severity: "medium",
-      metadata: context,
-    }
-  }
-
-  private isErrorReport(obj: any): obj is ErrorReport {
-    return obj && typeof obj === "object" && "errorId" in obj && "message" in obj
-  }
-
-  private logToConsole(errorReport: ErrorReport): void {
-    const logLevel = this.getSeverityLogLevel(errorReport.severity)
-    console[logLevel]("Error Report:", {
-      id: errorReport.errorId,
-      message: errorReport.message,
-      severity: errorReport.severity,
-      timestamp: errorReport.timestamp,
-      context: errorReport.context,
-      metadata: errorReport.metadata,
-    })
-
-    if (errorReport.stack) {
-      console[logLevel]("Stack trace:", errorReport.stack)
-    }
-  }
-
-  private getSeverityLogLevel(severity: string): "log" | "warn" | "error" {
-    switch (severity) {
-      case "low":
-        return "log"
-      case "medium":
-        return "warn"
-      case "high":
-      case "critical":
-        return "error"
-      default:
-        return "warn"
-    }
-  }
-
-  private storeLocally(errorReport: ErrorReport): void {
-    try {
-      if (typeof localStorage === "undefined") return
-
-      const existingReports = this.getLocalReports()
-      const updatedReports = [errorReport, ...existingReports].slice(0, this.config.maxLocalStorageEntries)
-
-      localStorage.setItem(this.localStorageKey, JSON.stringify(updatedReports))
-    } catch (error) {
-      console.warn("Failed to store error report locally:", error)
-    }
-  }
-
-  private reportToSentry(errorReport: ErrorReport): string | null {
-    try {
-      const sentryError = new Error(errorReport.message)
-      if (errorReport.stack) {
-        sentryError.stack = errorReport.stack
-      }
-
-      return Sentry.captureException(sentryError, {
-        tags: {
-          errorId: errorReport.errorId,
-          severity: errorReport.severity,
-          context: errorReport.context || "unknown",
-          source: "error-reporting-service",
-        },
-        extra: {
-          ...errorReport.metadata,
-          originalErrorId: errorReport.errorId,
-          userAgent: errorReport.userAgent,
-          url: errorReport.url,
-          timestamp: errorReport.timestamp,
-        },
-        user: errorReport.userId ? { id: errorReport.userId } : undefined,
-        level: this.getSentryLevel(errorReport.severity),
+  private setupNetworkListeners(): void {
+    if (typeof window !== "undefined") {
+      this.isOnline = navigator.onLine
+      window.addEventListener("online", () => {
+        this.isOnline = true
+        this.processQueuedReports()
       })
-    } catch (error) {
-      console.warn("Failed to report error to Sentry:", error)
-      return null
+      window.addEventListener("offline", () => {
+        this.isOnline = false
+      })
     }
   }
 
-  private getSentryLevel(severity: string): "info" | "warning" | "error" | "fatal" {
-    switch (severity) {
-      case "low":
-        return "info"
-      case "medium":
-        return "warning"
-      case "high":
-        return "error"
-      case "critical":
-        return "fatal"
-      default:
-        return "warning"
-    }
-  }
+  private async processQueuedReports(): Promise<void> {
+    if (!this.isOnline || this.reportQueue.length === 0) return
 
-  private queueForNetworkReporting(errorReport: ErrorReport): void {
-    this.reportQueue.push(errorReport)
-    this.processReportQueue()
-  }
+    const reportsToProcess = [...this.reportQueue]
+    this.reportQueue = []
 
-  private async processReportQueue(): Promise<void> {
-    if (this.isProcessingQueue || this.reportQueue.length === 0) {
-      return
-    }
-
-    this.isProcessingQueue = true
-
-    while (this.reportQueue.length > 0) {
-      const report = this.reportQueue.shift()!
-
+    for (const report of reportsToProcess) {
       try {
         await this.sendNetworkReport(report)
       } catch (error) {
-        console.warn("Failed to send error report:", error)
-        // Re-queue the report for later retry
-        this.reportQueue.unshift(report)
-        break
+        // Re-queue failed reports
+        this.reportQueue.push(report)
+        console.warn("Failed to send queued error report:", error)
       }
     }
-
-    this.isProcessingQueue = false
   }
 
-  private async sendNetworkReport(errorReport: ErrorReport): Promise<void> {
-    if (!this.config.reportingEndpoint) {
-      throw new Error("No reporting endpoint configured")
+  private normalizeError(error: unknown): Error {
+    if (error instanceof Error) {
+      return error
+    }
+
+    if (typeof error === "string") {
+      return new Error(error)
+    }
+
+    if (typeof error === "object" && error !== null) {
+      return new Error(JSON.stringify(error))
+    }
+
+    return new Error("Unknown error occurred")
+  }
+
+  private createErrorReport(
+    error: Error,
+    context: Record<string, any> = {},
+    severity: "low" | "medium" | "high" | "critical" = "medium",
+  ): ErrorReport {
+    return {
+      id: `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      error,
+      context,
+      timestamp: new Date(),
+      severity,
+      userId: context.userId,
+      sessionId: this.sessionId,
+      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
+      url: typeof window !== "undefined" ? window.location.href : "unknown",
+      stackTrace: error.stack,
+    }
+  }
+
+  private logToConsole(report: ErrorReport): void {
+    if (!this.config.enableConsoleLogging) return
+
+    const logMethod = {
+      low: console.info,
+      medium: console.warn,
+      high: console.error,
+      critical: console.error,
+    }[report.severity]
+
+    logMethod(`[${report.severity.toUpperCase()}] Error Report:`, {
+      id: report.id,
+      message: report.error.message,
+      context: report.context,
+      timestamp: report.timestamp.toISOString(),
+      url: report.url,
+      stackTrace: report.stackTrace,
+    })
+  }
+
+  private reportToSentry(report: ErrorReport): void {
+    if (!this.config.enableSentryReporting) return
+
+    try {
+      addBreadcrumb(
+        `Error reported: ${report.error.message}`,
+        "error",
+        report.severity === "critical" ? "fatal" : "error",
+      )
+
+      sentryCaptureError(report.error, {
+        ...report.context,
+        errorId: report.id,
+        sessionId: report.sessionId,
+        severity: report.severity,
+        timestamp: report.timestamp.toISOString(),
+      })
+    } catch (error) {
+      console.warn("Failed to report error to Sentry:", error)
+    }
+  }
+
+  private saveToLocalStorage(report: ErrorReport): void {
+    if (!this.config.enableLocalStorage || typeof window === "undefined") return
+
+    try {
+      const key = "error_reports"
+      const existingReports = JSON.parse(localStorage.getItem(key) || "[]")
+
+      const updatedReports = [
+        ...existingReports.slice(-(this.config.maxLocalStorageEntries - 1)),
+        {
+          ...report,
+          error: {
+            name: report.error.name,
+            message: report.error.message,
+            stack: report.error.stack,
+          },
+        },
+      ]
+
+      localStorage.setItem(key, JSON.stringify(updatedReports))
+    } catch (error) {
+      console.warn("Failed to save error report to localStorage:", error)
+    }
+  }
+
+  private async sendNetworkReport(report: ErrorReport): Promise<void> {
+    if (!this.config.enableNetworkReporting || !this.config.reportingEndpoint) return
+
+    const payload = {
+      ...report,
+      error: {
+        name: report.error.name,
+        message: report.error.message,
+        stack: report.error.stack,
+      },
     }
 
     const response = await fetch(this.config.reportingEndpoint, {
@@ -217,7 +196,7 @@ class ErrorReportingService {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(errorReport),
+      body: JSON.stringify(payload),
     })
 
     if (!response.ok) {
@@ -225,65 +204,84 @@ class ErrorReportingService {
     }
   }
 
-  getLocalReports(): ErrorReport[] {
-    try {
-      if (typeof localStorage === "undefined") return []
+  public async reportError(
+    error: unknown,
+    context: Record<string, any> = {},
+    severity: "low" | "medium" | "high" | "critical" = "medium",
+  ): Promise<string> {
+    const normalizedError = this.normalizeError(error)
+    const report = this.createErrorReport(normalizedError, context, severity)
 
-      const stored = localStorage.getItem(this.localStorageKey)
-      return stored ? JSON.parse(stored) : []
+    // Log to console
+    this.logToConsole(report)
+
+    // Report to Sentry
+    this.reportToSentry(report)
+
+    // Save to localStorage
+    this.saveToLocalStorage(report)
+
+    // Send network report or queue it
+    if (this.config.enableNetworkReporting) {
+      if (this.isOnline) {
+        try {
+          await this.sendNetworkReport(report)
+        } catch (error) {
+          this.reportQueue.push(report)
+          console.warn("Queued error report for later transmission:", error)
+        }
+      } else {
+        this.reportQueue.push(report)
+      }
+    }
+
+    return report.id
+  }
+
+  public getStoredReports(): ErrorReport[] {
+    if (typeof window === "undefined") return []
+
+    try {
+      const reports = JSON.parse(localStorage.getItem("error_reports") || "[]")
+      return reports.map((report: any) => ({
+        ...report,
+        timestamp: new Date(report.timestamp),
+        error: new Error(report.error.message),
+      }))
     } catch (error) {
-      console.warn("Failed to retrieve local error reports:", error)
+      console.warn("Failed to retrieve stored error reports:", error)
       return []
     }
   }
 
-  clearLocalReports(): void {
+  public clearStoredReports(): void {
+    if (typeof window === "undefined") return
+
     try {
-      if (typeof localStorage !== "undefined") {
-        localStorage.removeItem(this.localStorageKey)
-      }
+      localStorage.removeItem("error_reports")
     } catch (error) {
-      console.warn("Failed to clear local error reports:", error)
+      console.warn("Failed to clear stored error reports:", error)
     }
   }
 
-  getReportStats(): {
-    total: number
-    bySeverity: Record<string, number>
-    byContext: Record<string, number>
-    recent: ErrorReport[]
-  } {
-    const reports = this.getLocalReports()
+  public getQueuedReportsCount(): number {
+    return this.reportQueue.length
+  }
 
-    const bySeverity = reports.reduce(
-      (acc, report) => {
-        acc[report.severity] = (acc[report.severity] || 0) + 1
-        return acc
-      },
-      {} as Record<string, number>,
-    )
-
-    const byContext = reports.reduce(
-      (acc, report) => {
-        const context = report.context || "unknown"
-        acc[context] = (acc[context] || 0) + 1
-        return acc
-      },
-      {} as Record<string, number>,
-    )
-
-    return {
-      total: reports.length,
-      bySeverity,
-      byContext,
-      recent: reports.slice(0, 10),
-    }
+  public updateConfig(newConfig: Partial<ErrorReportingConfig>): void {
+    this.config = { ...this.config, ...newConfig }
   }
 }
 
-// Create singleton instance
+// Export singleton instance
 export const errorReportingService = new ErrorReportingService()
 
-// Export types and service
-export type { ErrorReport, ErrorReportingConfig }
-export { ErrorReportingService }
+// Export convenience functions
+export const reportError = (
+  error: unknown,
+  context?: Record<string, any>,
+  severity?: "low" | "medium" | "high" | "critical",
+) => errorReportingService.reportError(error, context, severity)
+
+export const getStoredErrorReports = () => errorReportingService.getStoredReports()
+export const clearStoredErrorReports = () => errorReportingService.clearStoredReports()

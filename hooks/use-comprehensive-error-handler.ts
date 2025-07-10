@@ -28,179 +28,176 @@ interface RetryableOperation<T> {
 }
 
 export const useComprehensiveErrorHandler = () => {
-    const [errorHistory, setErrorHistory] = useState<
-      Array<{
-        id: string
-        error: Error
-        context: ErrorContext
-        timestamp: Date
-        resolved: boolean
-      }>
-    >([])
+  const [errorHistory, setErrorHistory] = useState<
+    Array<{
+      id: string
+      error: Error
+      context: ErrorContext
+      timestamp: Date
+      resolved: boolean
+    }>
+  >([])
 
-    const retryAttempts = useRef<Map<string, number>>(new Map())
+  const retryAttempts = useRef<Map<string, number>>(new Map())
 
-    const generateErrorId = useCallback(() => {
-      return `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    }, [])
+  const generateErrorId = useCallback(() => {
+    return `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  }, [])
 
-    const logErrorToHistory = useCallback((error: Error, context: ErrorContext, errorId: string) => {
-      setErrorHistory((prev) => [
-        ...prev.slice(-9),
-        {
-          id: errorId,
-          error,
-          context,
-          timestamp: new Date(),
-          resolved: false,
-        },
-      ])
-    }, [])
-
-    const markErrorAsResolved = useCallback((errorId: string) => {
-      setErrorHistory((prev) => prev.map((item) => (item.id === errorId ? { ...item, resolved: true } : item)))
-    }, [])
-
-    const handleError = useCallback(
-      async (error: Error, context: ErrorContext = {}, options: ErrorHandlerOptions = {}) => {
-        const {
-          showToast = true,
-          logError = true,
-          reportError = true,
-          severity = "medium",
-          retryable = false,
-          maxRetries = 3,
-          retryDelay = 1000,
-        } = options
-
-        const errorId = generateErrorId()
-
-        // Set user context if provided
-        if (context.userId) {
-          setUserContext({ id: context.userId })
-        }
-
-        // Add breadcrumb for context
-        addBreadcrumb(
-          `Error in ${context.component || "unknown"}: ${error.message}`,
-          "error",
-          severity === "critical" ? "fatal" : "error",
-        )
-
-        // Log error to console
-        if (logError) {
-          console.error(`Error in ${context.component || "Unknown"}:`, {
-            error,
-            context,
-            errorId,
-            severity,
-            timestamp: new Date().toISOString(),
-          })
-        }
-
-        // Log to error history
-        logErrorToHistory(error, context, errorId)
-
-        // Show toast notification based on severity
-        if (showToast) {
-          const toastConfigs = {
-            low: {
-              title: "Minor issue",
-              description: "A small issue was detected but shouldn't affect your experience.",
-              variant: "default" as const,
-            },
-            medium: {
-              title: "Something went wrong",
-              description: context.component
-                ? `Error in ${context.component}. Please try again.`
-                : "An unexpected error occurred. Please try again.",
-              variant: "destructive" as const,
-            },
-            high: {
-              title: "Error occurred",
-              description: context.component
-                ? `Critical error in ${context.component}. Please refresh the page.`
-                : "A critical error occurred. Please refresh the page.",
-              variant: "destructive" as const,
-            },
-            critical: {
-              title: "System Error",
-              description: "A critical system error occurred. Please contact support if this persists.",
-              variant: "destructive" as const,
-            },
-          }
-
-          const config = toastConfigs[severity]
-          toast({
-            ...config,
-            action: retryable
-              ? {
-                  altText: "Retry",
-                  onClick: () => {
-                    // This would be handled by the retry mechanism
-                    console.log("Retry requested for error:", errorId)
-                  },
-                }
-              : undefined,
-          })
-        }
-
-        // Report error to Sentry with comprehensive context
-        if (reportError) {
-          captureError(error, {
-            ...context,
-            errorId,
-            severity,
-            timestamp: new Date().toISOString(),
-            userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
-            url: typeof window !== "undefined" ? window.location.href : "unknown",
-            retryable,
-            maxRetries,
-            currentRetries: retryAttempts.current.get(errorId) || 0,
-          })
-        }
-
-        return errorId
+  const logErrorToHistory = useCallback((error: Error, context: ErrorContext, errorId: string) => {
+    setErrorHistory((prev) => [
+      ...prev.slice(-9),
+      {
+        id: errorId,
+        error,
+        context,
+        timestamp: new Date(),
+        resolved: false,
       },
-      [generateErrorId, logErrorToHistory],
-    )
+    ])
+  }, [])
 
-    const handleAsyncError = useCallback(async <T>(\
-    asyncOperation: () => Promise<T>,\
-    context: ErrorContext = {},\
-    options: ErrorHandlerOptions = {}\
-  ): Promise<T> => {\
-    const operationId = `${context.component || "unknown"}_${context.action || "operation"}`
+  const markErrorAsResolved = useCallback((errorId: string) => {
+    setErrorHistory((prev) => prev.map((item) => (item.id === errorId ? { ...item, resolved: true } : item)))
+  }, [])
 
-    try {
-      addBreadcrumb(`Starting async operation: ${operationId}`, "operation", "info")
-      const result = await asyncOperation()
-      addBreadcrumb(`Completed async operation: ${operationId}`, "operation", "info")
-      return result
-    } catch (error) {
-      const errorToHandle = error instanceof Error ? error : new Error(String(error))
-      const errorId = await handleError(errorToHandle, context, {
-        ...options,
-        severity: options.severity || "high",
-      })
+  const handleError = useCallback(
+    async (error: Error, context: ErrorContext = {}, options: ErrorHandlerOptions = {}) => {
+      const {
+        showToast = true,
+        logError = true,
+        reportError = true,
+        severity = "medium",
+        retryable = false,
+        maxRetries = 3,
+        retryDelay = 1000,
+      } = options
 
-      // Mark as resolved if operation eventually succeeds after retry
-      if (options.retryable) {
-        setTimeout(() => markErrorAsResolved(errorId), 5000)
+      const errorId = generateErrorId()
+
+      // Set user context if provided
+      if (context.userId) {
+        setUserContext({ id: context.userId })
       }
 
-      throw error
-    }
-    \
-  },
-  [handleError, markErrorAsResolved]
+      // Add breadcrumb for context
+      addBreadcrumb(
+        `Error in ${context.component || "unknown"}: ${error.message}`,
+        "error",
+        severity === "critical" ? "fatal" : "error",
+      )
+
+      // Log error to console
+      if (logError) {
+        console.error(`Error in ${context.component || "Unknown"}:`, {
+          error,
+          context,
+          errorId,
+          severity,
+          timestamp: new Date().toISOString(),
+        })
+      }
+
+      // Log to error history
+      logErrorToHistory(error, context, errorId)
+
+      // Show toast notification based on severity
+      if (showToast) {
+        const toastConfigs = {
+          low: {
+            title: "Minor issue",
+            description: "A small issue was detected but shouldn't affect your experience.",
+            variant: "default" as const,
+          },
+          medium: {
+            title: "Something went wrong",
+            description: context.component
+              ? `Error in ${context.component}. Please try again.`
+              : "An unexpected error occurred. Please try again.",
+            variant: "destructive" as const,
+          },
+          high: {
+            title: "Error occurred",
+            description: context.component
+              ? `Critical error in ${context.component}. Please refresh the page.`
+              : "A critical error occurred. Please refresh the page.",
+            variant: "destructive" as const,
+          },
+          critical: {
+            title: "System Error",
+            description: "A critical system error occurred. Please contact support if this persists.",
+            variant: "destructive" as const,
+          },
+        }
+
+        const config = toastConfigs[severity]
+        toast({
+          ...config,
+          action: retryable
+            ? {
+                altText: "Retry",
+                onClick: () => {
+                  // This would be handled by the retry mechanism
+                  console.log("Retry requested for error:", errorId)
+                },
+              }
+            : undefined,
+        })
+      }
+
+      // Report error to Sentry with comprehensive context
+      if (reportError) {
+        captureError(error, {
+          ...context,
+          errorId,
+          severity,
+          timestamp: new Date().toISOString(),
+          userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
+          url: typeof window !== "undefined" ? window.location.href : "unknown",
+          retryable,
+          maxRetries,
+          currentRetries: retryAttempts.current.get(errorId) || 0,
+        })
+      }
+
+      return errorId
+    },
+    [generateErrorId, logErrorToHistory],
+  )
+
+  const handleAsyncError = useCallback(
+    async <T>(\
+      asyncOperation: () => Promise<T>,\
+      context: ErrorContext = {},\
+      options: ErrorHandlerOptions = {}\
+    ): Promise<T> => {\
+      const operationId = `${context.component || "unknown"}_${context.action || "operation"}`
+
+      try {
+        addBreadcrumb(`Starting async operation: ${operationId}`, "operation", "info")
+        const result = await asyncOperation()
+        addBreadcrumb(`Completed async operation: ${operationId}`, "operation", "info")
+        return result
+      } catch (error) {
+        const errorToHandle = error instanceof Error ? error : new Error(String(error))
+        const errorId = await handleError(errorToHandle, context, {
+          ...options,
+          severity: options.severity || "high",
+        })
+
+        // Mark as resolved if operation eventually succeeds after retry
+        if (options.retryable) {
+          setTimeout(() => markErrorAsResolved(errorId), 5000)
+        }
+
+        throw error
+      }
+    },
+    [handleError, markErrorAsResolved],\
 )
 
-const handleRetryableOperation = useCallback(async <T>({
-    operation,
-    context,
-    options = {}\
-  }: RetryableOperation<T>): Promise<T> => {\
+const handleRetryableOperation = useCallback(\
+    async <T>({ operation, context, options = {} }: RetryableOperation<T>): Promise<T> => {\
 const { maxRetries = 3, retryDelay = 1000 } = options
 const operationKey = `${context.component}_${context.action}`
 let lastError: Error
@@ -248,7 +245,9 @@ for (let attempt = 0; attempt <= maxRetries; attempt++) {
 
 throw lastError!
 \
-  }, [handleError])
+    },
+    [handleError],
+  )
 
 const handleNetworkError = useCallback(
   async (error: Error, endpoint?: string, options: ErrorHandlerOptions = {}) => {
