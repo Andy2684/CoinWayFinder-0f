@@ -1,36 +1,59 @@
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { toast } from "sonner"
 
-export interface ComprehensiveErrorOptions {
-  showToast?: boolean
-  toastMessage?: string
-  logError?: boolean
-  reportError?: boolean
-  retryable?: boolean
-  maxRetries?: number
-  onError?: (error: Error) => void
-  onRetry?: (attempt: number) => void
+export interface ErrorContext {
+  component?: string
+  action?: string
+  userId?: string
+  timestamp?: Date
+  metadata?: Record<string, any>
 }
 
-export interface ComprehensiveErrorState {
+export interface ErrorHandlerConfig {
+  enableLogging?: boolean
+  enableToasts?: boolean
+  enableRetry?: boolean
+  maxRetries?: number
+  retryDelay?: number
+  onError?: (error: Error, context?: ErrorContext) => void
+}
+
+export interface UseComprehensiveErrorHandlerReturn {
   error: Error | null
   isLoading: boolean
   retryCount: number
   clearError: () => void
-  handleAsyncOperation: <T>(operation: () => Promise<T>, options?: ComprehensiveErrorOptions) => Promise<T | null>
-  retry: () => Promise<void>
+  handleError: (error: Error, context?: ErrorContext) => void
+  executeWithErrorHandling: <T>(
+    operation: () => Promise<T>,
+    context?: ErrorContext,
+    config?: ErrorHandlerConfig,
+  ) => Promise<T | null>
+  retryLastOperation: () => Promise<void>
 }
 
-export function useComprehensiveErrorHandler(): ComprehensiveErrorState {
+export function useComprehensiveErrorHandler(
+  defaultConfig: ErrorHandlerConfig = {},
+): UseComprehensiveErrorHandlerReturn {
   const [error, setError] = useState<Error | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [retryCount, setRetryCount] = useState(0)
   const [lastOperation, setLastOperation] = useState<{
     operation: () => Promise<any>
-    options: ComprehensiveErrorOptions
+    context?: ErrorContext
+    config?: ErrorHandlerConfig
   } | null>(null)
+
+  const config = {
+    enableLogging: true,
+    enableToasts: true,
+    enableRetry: false,
+    maxRetries: 3,
+    retryDelay: 1000,
+    ...defaultConfig,
+  }
 
   const clearError = useCallback(() => {
     setError(null)
@@ -38,99 +61,100 @@ export function useComprehensiveErrorHandler(): ComprehensiveErrorState {
     setLastOperation(null)
   }, [])
 
-  const reportError = useCallback(async (error: Error) => {
-    try {
-      await fetch("/api/error-report", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+  const handleError = useCallback(
+    (error: Error, context?: ErrorContext) => {
+      const errorWithContext = {
+        ...error,
+        context: {
+          ...context,
+          timestamp: new Date(),
+          retryCount: retryCount,
         },
-        body: JSON.stringify({
-          message: error.message,
-          stack: error.stack,
-          timestamp: new Date().toISOString(),
-          userAgent: navigator.userAgent,
-          url: window.location.href,
-        }),
-      })
-    } catch (reportingError) {
-      console.error("Failed to report error:", reportingError)
-    }
-  }, [])
+      }
 
-  const handleAsyncOperation = useCallback(async <T>(\
+      setError(errorWithContext)
+
+      if (config.enableLogging) {
+        console.error("Comprehensive Error Handler:", errorWithContext)
+      }
+
+      if (config.enableToasts) {
+        toast.error(error.message || "An unexpected error occurred")
+      }
+
+      if (config.onError) {
+        config.onError(error, context)
+      }
+    },
+    [config, retryCount],
+  )
+
+  const executeWithErrorHandling = useCallback(async <T>(\
     operation: () => Promise<T>,\
-    options: ComprehensiveErrorOptions = {}\
+    context?: ErrorContext,\
+    operationConfig?: ErrorHandlerConfig\
   ): Promise<T | null> => {\
-  const maxRetries = options.maxRetries || 3
+  const mergedConfig = { ...config, ...operationConfig }
 
-  setLastOperation({ operation, options })
+  setIsLoading(true)
+  setError(null)
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      setIsLoading(true)
-      setError(null)
+  // Store operation for potential retry
+  setLastOperation({ operation, context, config: operationConfig })
 
-      if (attempt > 0 && options.onRetry) {
-        options.onRetry(attempt)
+  try {
+    const result = await operation()
+    setRetryCount(0) // Reset retry count on success
+    return result
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error("An unknown error occurred")
+
+    if (mergedConfig.enableRetry && retryCount < (mergedConfig.maxRetries || 3)) {
+      setRetryCount((prev) => prev + 1)
+
+      // Wait before retry
+      if (mergedConfig.retryDelay) {
+        await new Promise(resolve => setTimeout(resolve, mergedConfig.retryDelay))
       }
 
-      const result = await operation()
-      setRetryCount(0)
-      return result
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error("An unknown error occurred")
-      setError(error)
-      setRetryCount(attempt + 1)
-
-      if (options.logError !== false) {
-        console.error(`Error in async operation (attempt ${attempt + 1}):`, error)
-      }
-
-      if (options.reportError && attempt === 0) {
-        await reportError(error)
-      }
-
-      if (attempt === maxRetries) {
-        if (options.showToast !== false) {
-          toast.error(options.toastMessage || error.message)
-        }
-
-        if (options.onError) {
-          options.onError(error)
-        }
-
-        return null
-      }
-
-      if (options.retryable !== false && attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000))
-      } else {
-        break
-      }
-    } finally {
-      setIsLoading(false)
+      // Retry the operation
+      return executeWithErrorHandling(operation, context, operationConfig)
+    } else {
+      handleError(error, context)
+      return null
     }
+  } finally {
+    setIsLoading(false)
   }
-
-  return null
   \
 }
-, [reportError])
+, [config, retryCount, handleError])
 
-const retry = useCallback(async () => {
+const retryLastOperation = useCallback(async () => {
   if (lastOperation) {
-    await handleAsyncOperation(lastOperation.operation, lastOperation.options)
+    await executeWithErrorHandling(lastOperation.operation, lastOperation.context, lastOperation.config)
   }
-}, [lastOperation, handleAsyncOperation])
+}, [lastOperation, executeWithErrorHandling])
+
+// Auto-clear errors after a certain time
+useEffect(() => {
+  if (error) {
+    const timer = setTimeout(() => {
+      clearError()
+    }, 10000) // Clear error after 10 seconds
+
+    return () => clearTimeout(timer)
+  }
+}, [error, clearError])
 
 return {
     error,
     isLoading,
     retryCount,
     clearError,
-    handleAsyncOperation,
-    retry
+    handleError,
+    executeWithErrorHandling,
+    retryLastOperation
   }
 \
 }

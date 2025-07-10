@@ -10,14 +10,14 @@ export interface ErrorHandlerOptions {
   onError?: (error: Error) => void
 }
 
-export interface ErrorHandlerState {
+export interface UseErrorHandlerReturn {
   error: Error | null
   isLoading: boolean
   clearError: () => void
   handleAsyncOperation: <T>(operation: () => Promise<T>, options?: ErrorHandlerOptions) => Promise<T | null>
 }
 
-export function useErrorHandler(): ErrorHandlerState {
+export function useErrorHandler(): UseErrorHandlerReturn {
   const [error, setError] = useState<Error | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
