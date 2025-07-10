@@ -1,4 +1,3 @@
-// Simple in-memory database implementation for browser compatibility
 export interface User {
   id: string
   email: string
@@ -24,6 +23,11 @@ export interface Bot {
   config: Record<string, any>
   createdAt: Date
   updatedAt: Date
+  performance?: {
+    totalTrades: number
+    winRate: number
+    totalPnL: number
+  }
 }
 
 export interface Trade {
@@ -31,11 +35,12 @@ export interface Trade {
   botId: string
   userId: string
   symbol: string
-  type: "buy" | "sell"
+  side: "buy" | "sell"
   amount: number
   price: number
-  status: "pending" | "completed" | "failed"
+  status: "pending" | "filled" | "cancelled"
   createdAt: Date
+  filledAt?: Date
 }
 
 export interface Session {
@@ -44,6 +49,18 @@ export interface Session {
   token: string
   expiresAt: Date
   createdAt: Date
+  isActive: boolean
+}
+
+export interface APIKey {
+  id: string
+  userId: string
+  name: string
+  key: string
+  permissions: string[]
+  createdAt: Date
+  lastUsed?: Date
+  isActive: boolean
 }
 
 class InMemoryDatabase {
@@ -51,19 +68,22 @@ class InMemoryDatabase {
   private bots: Map<string, Bot> = new Map()
   private trades: Map<string, Trade> = new Map()
   private sessions: Map<string, Session> = new Map()
-  private usersByEmail: Map<string, User> = new Map()
+  private apiKeys: Map<string, APIKey> = new Map()
+
+  // Utility function to generate IDs
+  private generateId(): string {
+    return Math.random().toString(36).substr(2, 9) + Date.now().toString(36)
+  }
 
   // User operations
   async createUser(userData: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
     const user: User = {
-      id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: this.generateId(),
       createdAt: new Date(),
       updatedAt: new Date(),
       ...userData,
     }
-
     this.users.set(user.id, user)
-    this.usersByEmail.set(user.email, user)
     return user
   }
 
@@ -72,7 +92,21 @@ class InMemoryDatabase {
   }
 
   async getUserByEmail(email: string): Promise<User | null> {
-    return this.usersByEmail.get(email) || null
+    for (const user of this.users.values()) {
+      if (user.email === email) {
+        return user
+      }
+    }
+    return null
+  }
+
+  async getUserByUsername(username: string): Promise<User | null> {
+    for (const user of this.users.values()) {
+      if (user.username === username) {
+        return user
+      }
+    }
+    return null
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User | null> {
@@ -84,23 +118,12 @@ class InMemoryDatabase {
       ...updates,
       updatedAt: new Date(),
     }
-
     this.users.set(id, updatedUser)
-    if (updatedUser.email !== user.email) {
-      this.usersByEmail.delete(user.email)
-      this.usersByEmail.set(updatedUser.email, updatedUser)
-    }
-
     return updatedUser
   }
 
   async deleteUser(id: string): Promise<boolean> {
-    const user = this.users.get(id)
-    if (!user) return false
-
-    this.users.delete(id)
-    this.usersByEmail.delete(user.email)
-    return true
+    return this.users.delete(id)
   }
 
   async getAllUsers(): Promise<User[]> {
@@ -110,12 +133,11 @@ class InMemoryDatabase {
   // Bot operations
   async createBot(botData: Omit<Bot, "id" | "createdAt" | "updatedAt">): Promise<Bot> {
     const bot: Bot = {
-      id: `bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: this.generateId(),
       createdAt: new Date(),
       updatedAt: new Date(),
       ...botData,
     }
-
     this.bots.set(bot.id, bot)
     return bot
   }
@@ -137,7 +159,6 @@ class InMemoryDatabase {
       ...updates,
       updatedAt: new Date(),
     }
-
     this.bots.set(id, updatedBot)
     return updatedBot
   }
@@ -153,11 +174,10 @@ class InMemoryDatabase {
   // Trade operations
   async createTrade(tradeData: Omit<Trade, "id" | "createdAt">): Promise<Trade> {
     const trade: Trade = {
-      id: `trade_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: this.generateId(),
       createdAt: new Date(),
       ...tradeData,
     }
-
     this.trades.set(trade.id, trade)
     return trade
   }
@@ -182,7 +202,6 @@ class InMemoryDatabase {
       ...trade,
       ...updates,
     }
-
     this.trades.set(id, updatedTrade)
     return updatedTrade
   }
@@ -198,40 +217,41 @@ class InMemoryDatabase {
   // Session operations
   async createSession(sessionData: Omit<Session, "id" | "createdAt">): Promise<Session> {
     const session: Session = {
-      id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      id: this.generateId(),
       createdAt: new Date(),
       ...sessionData,
     }
-
     this.sessions.set(session.id, session)
     return session
   }
 
   async getSessionById(id: string): Promise<Session | null> {
-    const session = this.sessions.get(id)
-    if (!session) return null
-
-    // Check if session is expired
-    if (session.expiresAt < new Date()) {
-      this.sessions.delete(id)
-      return null
-    }
-
-    return session
+    return this.sessions.get(id) || null
   }
 
   async getSessionByToken(token: string): Promise<Session | null> {
     for (const session of this.sessions.values()) {
-      if (session.token === token) {
-        // Check if session is expired
-        if (session.expiresAt < new Date()) {
-          this.sessions.delete(session.id)
-          return null
-        }
+      if (session.token === token && session.isActive && session.expiresAt > new Date()) {
         return session
       }
     }
     return null
+  }
+
+  async getSessionsByUserId(userId: string): Promise<Session[]> {
+    return Array.from(this.sessions.values()).filter((session) => session.userId === userId)
+  }
+
+  async updateSession(id: string, updates: Partial<Session>): Promise<Session | null> {
+    const session = this.sessions.get(id)
+    if (!session) return null
+
+    const updatedSession = {
+      ...session,
+      ...updates,
+    }
+    this.sessions.set(id, updatedSession)
+    return updatedSession
   }
 
   async deleteSession(id: string): Promise<boolean> {
@@ -249,53 +269,110 @@ class InMemoryDatabase {
     return deletedCount
   }
 
-  async cleanupExpiredSessions(): Promise<number> {
-    let cleanedCount = 0
-    const now = new Date()
+  // API Key operations
+  async createAPIKey(keyData: Omit<APIKey, "id" | "createdAt">): Promise<APIKey> {
+    const apiKey: APIKey = {
+      id: this.generateId(),
+      createdAt: new Date(),
+      ...keyData,
+    }
+    this.apiKeys.set(apiKey.id, apiKey)
+    return apiKey
+  }
 
+  async getAPIKeyById(id: string): Promise<APIKey | null> {
+    return this.apiKeys.get(id) || null
+  }
+
+  async getAPIKeyByKey(key: string): Promise<APIKey | null> {
+    for (const apiKey of this.apiKeys.values()) {
+      if (apiKey.key === key && apiKey.isActive) {
+        return apiKey
+      }
+    }
+    return null
+  }
+
+  async getAPIKeysByUserId(userId: string): Promise<APIKey[]> {
+    return Array.from(this.apiKeys.values()).filter((key) => key.userId === userId)
+  }
+
+  async updateAPIKey(id: string, updates: Partial<APIKey>): Promise<APIKey | null> {
+    const apiKey = this.apiKeys.get(id)
+    if (!apiKey) return null
+
+    const updatedKey = {
+      ...apiKey,
+      ...updates,
+    }
+    this.apiKeys.set(id, updatedKey)
+    return updatedKey
+  }
+
+  async deleteAPIKey(id: string): Promise<boolean> {
+    return this.apiKeys.delete(id)
+  }
+
+  // Utility methods
+  async cleanup(): Promise<void> {
+    // Clean up expired sessions
+    const now = new Date()
     for (const [id, session] of this.sessions.entries()) {
       if (session.expiresAt < now) {
         this.sessions.delete(id)
-        cleanedCount++
       }
     }
-
-    return cleanedCount
   }
 
-  // Health check
-  async getHealth(): Promise<{
-    status: "healthy" | "degraded" | "unhealthy"
+  async getStats(): Promise<{
     users: number
     bots: number
     trades: number
     sessions: number
-    uptime: number
+    apiKeys: number
   }> {
     return {
-      status: "healthy",
       users: this.users.size,
       bots: this.bots.size,
       trades: this.trades.size,
       sessions: this.sessions.size,
-      uptime: Date.now(),
+      apiKeys: this.apiKeys.size,
     }
   }
 
-  // Cleanup old data
-  async cleanup(): Promise<void> {
-    await this.cleanupExpiredSessions()
-    console.log("Database cleanup completed")
+  // Initialize with sample data
+  async initialize(): Promise<void> {
+    // Create sample admin user
+    await this.createUser({
+      email: "admin@coinwayfinder.com",
+      username: "admin",
+      password: "hashed_admin_password",
+      isActive: true,
+      subscription: {
+        plan: "enterprise",
+        status: "active",
+      },
+    })
+
+    // Create sample regular user
+    await this.createUser({
+      email: "user@example.com",
+      username: "testuser",
+      password: "hashed_user_password",
+      isActive: true,
+      subscription: {
+        plan: "pro",
+        status: "active",
+        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    })
+
+    console.log("✅ Database initialized with sample data")
   }
 }
 
-// Create singleton instance
-const database = new InMemoryDatabase()
+// Export singleton instance
+export const database = new InMemoryDatabase()
 
-// Export both the class and instance
-export { InMemoryDatabase, database }
-
-// For backward compatibility
-export async function connectToDatabase() {
-  return database
-}
+// Initialize on module load
+database.initialize().catch(console.error)
