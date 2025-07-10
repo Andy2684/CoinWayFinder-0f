@@ -1,32 +1,31 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { authService } from "@/lib/auth"
-import { database } from "@/lib/database"
+import { cookies } from "next/headers"
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await authService.getCurrentUser()
+    const cookieStore = await cookies()
+    const token = cookieStore.get("auth-token")?.value
 
-    if (!user) {
-      return NextResponse.json({ success: false, message: "Not authenticated" }, { status: 401 })
+    if (!token) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
-    // Get additional user data
-    const userSettings = await database.getUserSettings(user.userId)
+    const user = await authService.verifyAuthToken(token)
+    if (!user) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
+    }
 
     return NextResponse.json({
       success: true,
       user: {
-        id: user.userId,
+        id: user.id,
         email: user.email,
         username: user.username,
-        subscription: userSettings?.subscription || {
-          plan: "free",
-          status: "inactive",
-        },
+        subscription: user.subscription,
       },
     })
-  } catch (error) {
-    console.error("Get current user error:", error)
-    return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Authentication failed" }, { status: 500 })
   }
 }

@@ -1,32 +1,38 @@
-import { NextResponse } from "next/server"
-import { sql } from "@vercel/postgres"
-import { simpleHash, generateRandomString } from "../../../lib/security"
+import { type NextRequest, NextResponse } from "next/server"
+import { authService } from "@/lib/auth"
+import { cookies } from "next/headers"
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json()
+    const body = await request.json()
+    const { email, username, password } = body
 
-    if (!email || !password) {
-      return new NextResponse("Missing email or password", { status: 400 })
+    if (!email || !username || !password) {
+      return NextResponse.json({ error: "Email, username, and password are required" }, { status: 400 })
     }
 
-    const existingUser = await sql`SELECT * FROM users WHERE email = ${email}`
+    const { user, token } = await authService.signUp(email, username, password)
 
-    if (existingUser.rows.length) {
-      return new NextResponse("Email already in use", { status: 400 })
-    }
+    // Set HTTP-only cookie
+    const cookieStore = await cookies()
+    cookieStore.set("auth-token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+    })
 
-    const salt = generateRandomString(16)
-    const hashedPassword = await simpleHash(password, salt)
-
-    await sql`
-      INSERT INTO users (email, password, salt)
-      VALUES (${email}, ${hashedPassword}, ${salt})
-    `
-
-    return new NextResponse("User created successfully", { status: 201 })
+    return NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        subscription: user.subscription,
+      },
+      token,
+    })
   } catch (error: any) {
-    console.error("Signup error", error)
-    return new NextResponse(error.message, { status: 500 })
+    return NextResponse.json({ error: error.message || "Sign up failed" }, { status: 400 })
   }
 }

@@ -1,27 +1,100 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { simpleHash, generateRandomString } from "./lib/security"
+import { authService } from "./lib/auth"
 
-// This function can be marked `async` if using `await` inside
-export function middleware(request: NextRequest) {
-  // Example of using the browser-compatible replacements
-  const randomString = generateRandomString(32)
-  const hashedString = simpleHash(randomString)
+// Define protected routes
+const protectedRoutes = [
+  "/dashboard",
+  "/bots",
+  "/integrations",
+  "/profile",
+  "/subscription",
+  "/api/bots",
+  "/api/trades",
+  "/api/user",
+  "/api/subscription",
+]
 
-  // You can perform other middleware logic here, such as authentication,
-  // redirection, or setting headers.
+const adminRoutes = ["/admin", "/api/admin"]
 
-  // For example, to redirect to a different page:
-  // return NextResponse.redirect(new URL('/new-page', request.url))
+const publicRoutes = [
+  "/",
+  "/api/auth",
+  "/api/stripe/webhook",
+  "/api/v1", // Public API routes
+]
 
-  // Or to set a header:
-  const response = NextResponse.next()
-  response.headers.set("x-middleware-custom", "value")
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl
 
-  return response
+  // Skip middleware for static files and Next.js internals
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/static") ||
+    pathname.includes(".") ||
+    pathname === "/favicon.ico"
+  ) {
+    return NextResponse.next()
+  }
+
+  // Check if route is public
+  const isPublicRoute = publicRoutes.some((route) => pathname.startsWith(route))
+  if (isPublicRoute) {
+    return NextResponse.next()
+  }
+
+  // Check if route is admin
+  const isAdminRoute = adminRoutes.some((route) => pathname.startsWith(route))
+
+  // Check if route is protected
+  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
+
+  if (isAdminRoute) {
+    // Check admin authentication
+    const adminToken = request.cookies.get("admin-token")?.value
+
+    if (!adminToken) {
+      return NextResponse.redirect(new URL("/", request.url))
+    }
+
+    try {
+      const admin = await authService.verifyAdminToken(adminToken)
+      if (!admin) {
+        return NextResponse.redirect(new URL("/", request.url))
+      }
+    } catch (error) {
+      return NextResponse.redirect(new URL("/", request.url))
+    }
+  } else if (isProtectedRoute) {
+    // Check user authentication
+    const authToken = request.cookies.get("auth-token")?.value
+
+    if (!authToken) {
+      return NextResponse.redirect(new URL("/", request.url))
+    }
+
+    try {
+      const user = await authService.verifyAuthToken(authToken)
+      if (!user) {
+        return NextResponse.redirect(new URL("/", request.url))
+      }
+    } catch (error) {
+      return NextResponse.redirect(new URL("/", request.url))
+    }
+  }
+
+  return NextResponse.next()
 }
 
-// See "Matching Paths" below to learn more
 export const config = {
-  matcher: "/about/:path*",
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    "/((?!_next/static|_next/image|favicon.ico).*)",
+  ],
 }

@@ -1,208 +1,343 @@
-import jwt from "jsonwebtoken"
-import bcrypt from "bcryptjs"
-import { cookies } from "next/headers"
+import { connectToDatabase } from "./database"
+import { authService } from "./auth"
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key-change-in-production"
+export interface AdminStats {
+  totalUsers: number
+  activeUsers: number
+  totalBots: number
+  activeBots: number
+  totalTrades: number
+  totalRevenue: number
+  subscriptionBreakdown: {
+    free: number
+    starter: number
+    pro: number
+    enterprise: number
+  }
+}
 
-export interface Admin {
+export interface AdminUser {
   id: string
   username: string
-  email: string
-  role: string
-  createdAt: string
-}
-
-export interface AdminSession {
-  adminId: string
-  username: string
-  email: string
-  role: string
-  token: string
-  expiresAt: number
-}
-
-export interface AdminCredentials {
-  username: string
-  password: string
-}
-
-// Mock admin data - in production, this would be in a database
-const ADMIN_USERS = [
-  {
-    id: "admin-1",
-    username: "admin",
-    email: "admin@coinwayfinder.com",
-    password: "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj3QJK9fHPyG", // CoinWayFinder2024!
-    role: "admin",
-    createdAt: new Date().toISOString(),
-  },
-]
-
-export class AdminService {
-  private static adminSessions = new Map<string, AdminSession>()
-
-  static async hashPassword(password: string): Promise<string> {
-    return bcrypt.hash(password, 12)
-  }
-
-  static async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compare(password, hashedPassword)
-  }
-
-  static generateAdminToken(admin: Admin): string {
-    return jwt.sign(
-      {
-        id: admin.id,
-        username: admin.username,
-        email: admin.email,
-        role: admin.role,
-      },
-      JWT_SECRET,
-      { expiresIn: "24h" },
-    )
-  }
-
-  static verifyAdminToken(token: string): AdminSession | null {
-    try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any
-      return {
-        adminId: decoded.id,
-        username: decoded.username,
-        email: decoded.email,
-        role: decoded.role,
-        token,
-        expiresAt: decoded.exp * 1000,
-      }
-    } catch (error) {
-      return null
-    }
-  }
-
-  static async validateAdminCredentials(username: string, password: string): Promise<Admin | null> {
-    const admin = ADMIN_USERS.find((a) => a.username === username)
-    if (!admin) {
-      return null
-    }
-
-    const isValidPassword = await this.comparePassword(password, admin.password)
-    if (!isValidPassword) {
-      return null
-    }
-
-    return {
-      id: admin.id,
-      username: admin.username,
-      email: admin.email,
-      role: admin.role,
-      createdAt: admin.createdAt,
-    }
-  }
-
-  static async setAdminCookie(admin: Admin): Promise<void> {
-    const token = this.generateAdminToken(admin)
-    const cookieStore = await cookies()
-
-    // Store session
-    const session: AdminSession = {
-      adminId: admin.id,
-      username: admin.username,
-      email: admin.email,
-      role: admin.role,
-      token,
-      expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
-    }
-
-    this.adminSessions.set(token, session)
-
-    cookieStore.set("admin-token", token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 24 * 60 * 60, // 24 hours
-    })
-  }
-
-  static async clearAdminCookie(): Promise<void> {
-    const cookieStore = await cookies()
-    const token = cookieStore.get("admin-token")?.value
-
-    if (token) {
-      this.adminSessions.delete(token)
-    }
-
-    cookieStore.delete("admin-token")
-  }
-
-  static async getCurrentAdmin(): Promise<AdminSession | null> {
-    try {
-      const cookieStore = await cookies()
-      const token = cookieStore.get("admin-token")?.value
-
-      if (!token) {
-        return null
-      }
-
-      // Check session store first
-      const session = this.adminSessions.get(token)
-      if (session && session.expiresAt > Date.now()) {
-        return session
-      }
-
-      // Verify token
-      const adminSession = this.verifyAdminToken(token)
-      if (!adminSession) {
-        return null
-      }
-
-      return adminSession
-    } catch (error) {
-      return null
-    }
-  }
-
-  static async requireAdmin(): Promise<AdminSession> {
-    const admin = await this.getCurrentAdmin()
-    if (!admin) {
-      throw new Error("Admin authentication required")
-    }
-    return admin
-  }
+  role: "admin"
+  createdAt: Date
+  lastLogin?: Date
 }
 
 export class AdminManager {
-  async signIn(username: string, password: string): Promise<{ success: boolean; message: string; admin?: Admin }> {
-    try {
-      const admin = await AdminService.validateAdminCredentials(username, password)
-      if (!admin) {
-        return { success: false, message: "Invalid credentials" }
-      }
+  private db: any
 
-      await AdminService.setAdminCookie(admin)
-      return { success: true, message: "Admin signed in successfully", admin }
+  constructor() {
+    this.initializeDatabase()
+  }
+
+  private async initializeDatabase() {
+    this.db = await connectToDatabase()
+  }
+
+  async getCurrentAdmin(): Promise<AdminUser | null> {
+    try {
+      // This would typically check the current session/token
+      // For now, we'll return a mock admin if authenticated
+      const admin = await authService.getCurrentAdmin()
+      return admin
     } catch (error) {
-      console.error("Admin sign in error:", error)
-      return { success: false, message: "Failed to sign in" }
+      console.error("Error getting current admin:", error)
+      return null
     }
   }
 
-  async signOut(): Promise<void> {
-    await AdminService.clearAdminCookie()
+  async getSystemStats(): Promise<AdminStats> {
+    if (!this.db) {
+      await this.initializeDatabase()
+    }
+
+    try {
+      const [users, bots, trades] = await Promise.all([
+        this.db.collection("users").find({ isActive: true }).toArray(),
+        this.db.collection("bots").find({}).toArray(),
+        this.db.collection("trades").find({}).toArray(),
+      ])
+
+      const activeUsers = users.filter(
+        (user: any) =>
+          user.stats?.lastActiveAt && new Date(user.stats.lastActiveAt) > new Date(Date.now() - 24 * 60 * 60 * 1000),
+      ).length
+
+      const activeBots = bots.filter((bot: any) => bot.status === "active").length
+
+      const subscriptionBreakdown = users.reduce(
+        (acc: any, user: any) => {
+          const plan = user.subscription?.plan || "free"
+          acc[plan] = (acc[plan] || 0) + 1
+          return acc
+        },
+        { free: 0, starter: 0, pro: 0, enterprise: 0 },
+      )
+
+      // Calculate revenue (mock calculation)
+      const totalRevenue = users.reduce((acc: number, user: any) => {
+        const plan = user.subscription?.plan
+        const prices = { starter: 29, pro: 99, enterprise: 299 }
+        return acc + (prices[plan as keyof typeof prices] || 0)
+      }, 0)
+
+      return {
+        totalUsers: users.length,
+        activeUsers,
+        totalBots: bots.length,
+        activeBots,
+        totalTrades: trades.length,
+        totalRevenue,
+        subscriptionBreakdown,
+      }
+    } catch (error) {
+      console.error("Error getting system stats:", error)
+      return {
+        totalUsers: 0,
+        activeUsers: 0,
+        totalBots: 0,
+        activeBots: 0,
+        totalTrades: 0,
+        totalRevenue: 0,
+        subscriptionBreakdown: { free: 0, starter: 0, pro: 0, enterprise: 0 },
+      }
+    }
   }
 
-  async getCurrentAdmin(): Promise<AdminSession | null> {
-    return AdminService.getCurrentAdmin()
+  async getAllUsers(page = 1, limit = 50): Promise<{ users: any[]; total: number; pages: number }> {
+    if (!this.db) {
+      await this.initializeDatabase()
+    }
+
+    try {
+      const skip = (page - 1) * limit
+      const [users, total] = await Promise.all([
+        this.db.collection("users").find({ isActive: true }).sort({ createdAt: -1 }).skip(skip).limit(limit).toArray(),
+        this.db.collection("users").countDocuments({ isActive: true }),
+      ])
+
+      // Remove sensitive data
+      const sanitizedUsers = users.map((user: any) => ({
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin,
+        subscription: user.subscription,
+        stats: user.stats,
+      }))
+
+      return {
+        users: sanitizedUsers,
+        total,
+        pages: Math.ceil(total / limit),
+      }
+    } catch (error) {
+      console.error("Error getting all users:", error)
+      return { users: [], total: 0, pages: 0 }
+    }
   }
 
-  async requireAdmin(): Promise<AdminSession> {
-    return AdminService.requireAdmin()
+  async getUserDetails(userId: string): Promise<any> {
+    if (!this.db) {
+      await this.initializeDatabase()
+    }
+
+    try {
+      const [user, bots, trades] = await Promise.all([
+        this.db.collection("users").findOne({ _id: userId, isActive: true }),
+        this.db.collection("bots").find({ userId }).toArray(),
+        this.db.collection("trades").find({ userId }).sort({ timestamp: -1 }).limit(10).toArray(),
+      ])
+
+      if (!user) {
+        return null
+      }
+
+      return {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin,
+        subscription: user.subscription,
+        stats: user.stats,
+        bots: bots.map((bot: any) => ({
+          id: bot._id,
+          name: bot.name,
+          strategy: bot.strategy,
+          status: bot.status,
+          performance: bot.performance,
+        })),
+        recentTrades: trades.map((trade: any) => ({
+          id: trade._id,
+          symbol: trade.symbol,
+          type: trade.type,
+          amount: trade.amount,
+          price: trade.price,
+          timestamp: trade.timestamp,
+          status: trade.status,
+        })),
+      }
+    } catch (error) {
+      console.error("Error getting user details:", error)
+      return null
+    }
+  }
+
+  async updateUserSubscription(userId: string, subscription: any): Promise<boolean> {
+    if (!this.db) {
+      await this.initializeDatabase()
+    }
+
+    try {
+      const result = await this.db.collection("users").updateOne(
+        { _id: userId },
+        {
+          $set: {
+            subscription,
+            updatedAt: new Date(),
+          },
+        },
+      )
+
+      return result.modifiedCount > 0
+    } catch (error) {
+      console.error("Error updating user subscription:", error)
+      return false
+    }
+  }
+
+  async deactivateUser(userId: string): Promise<boolean> {
+    if (!this.db) {
+      await this.initializeDatabase()
+    }
+
+    try {
+      const result = await this.db.collection("users").updateOne(
+        { _id: userId },
+        {
+          $set: {
+            isActive: false,
+            updatedAt: new Date(),
+          },
+        },
+      )
+
+      return result.modifiedCount > 0
+    } catch (error) {
+      console.error("Error deactivating user:", error)
+      return false
+    }
+  }
+
+  async reactivateUser(userId: string): Promise<boolean> {
+    if (!this.db) {
+      await this.initializeDatabase()
+    }
+
+    try {
+      const result = await this.db.collection("users").updateOne(
+        { _id: userId },
+        {
+          $set: {
+            isActive: true,
+            updatedAt: new Date(),
+          },
+        },
+      )
+
+      return result.modifiedCount > 0
+    } catch (error) {
+      console.error("Error reactivating user:", error)
+      return false
+    }
+  }
+
+  async getSystemLogs(page = 1, limit = 100): Promise<{ logs: any[]; total: number; pages: number }> {
+    if (!this.db) {
+      await this.initializeDatabase()
+    }
+
+    try {
+      const skip = (page - 1) * limit
+      const [logs, total] = await Promise.all([
+        this.db.collection("systemLogs").find({}).sort({ timestamp: -1 }).skip(skip).limit(limit).toArray(),
+        this.db.collection("systemLogs").countDocuments(),
+      ])
+
+      return {
+        logs,
+        total,
+        pages: Math.ceil(total / limit),
+      }
+    } catch (error) {
+      console.error("Error getting system logs:", error)
+      return { logs: [], total: 0, pages: 0 }
+    }
+  }
+
+  async createSystemLog(level: string, message: string, metadata?: any): Promise<void> {
+    if (!this.db) {
+      await this.initializeDatabase()
+    }
+
+    try {
+      await this.db.collection("systemLogs").insertOne({
+        level,
+        message,
+        metadata,
+        timestamp: new Date(),
+      })
+    } catch (error) {
+      console.error("Error creating system log:", error)
+    }
+  }
+
+  async getPerformanceMetrics(): Promise<any> {
+    if (!this.db) {
+      await this.initializeDatabase()
+    }
+
+    try {
+      const [avgResponseTime, errorRate, uptime] = await Promise.all([
+        this.calculateAverageResponseTime(),
+        this.calculateErrorRate(),
+        this.calculateUptime(),
+      ])
+
+      return {
+        avgResponseTime,
+        errorRate,
+        uptime,
+        lastUpdated: new Date(),
+      }
+    } catch (error) {
+      console.error("Error getting performance metrics:", error)
+      return {
+        avgResponseTime: 0,
+        errorRate: 0,
+        uptime: 100,
+        lastUpdated: new Date(),
+      }
+    }
+  }
+
+  private async calculateAverageResponseTime(): Promise<number> {
+    // Mock implementation - in real app, this would calculate from actual metrics
+    return Math.random() * 100 + 50 // 50-150ms
+  }
+
+  private async calculateErrorRate(): Promise<number> {
+    // Mock implementation - in real app, this would calculate from actual error logs
+    return Math.random() * 5 // 0-5% error rate
+  }
+
+  private async calculateUptime(): Promise<number> {
+    // Mock implementation - in real app, this would calculate actual uptime
+    return 99.9 - Math.random() * 0.5 // 99.4-99.9% uptime
   }
 }
 
 export const adminManager = new AdminManager()
-
-// Export functions for backward compatibility
-export const validateAdminCredentials = AdminService.validateAdminCredentials
-export const generateAdminToken = AdminService.generateAdminToken
-export const verifyAdminToken = AdminService.verifyAdminToken
-export const getCurrentAdmin = AdminService.getCurrentAdmin
-export const requireAdmin = AdminService.requireAdmin

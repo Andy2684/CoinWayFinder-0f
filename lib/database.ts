@@ -1,343 +1,491 @@
-import { generateRandomString } from "./security"
+import { MongoClient, type Db } from "mongodb"
 
-export interface User {
-  id: string
+const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017"
+const DB_NAME = process.env.DB_NAME || "coinwayfinder"
+
+let client: MongoClient
+let db: Db
+
+export async function connectToDatabase(): Promise<Db> {
+  if (db) {
+    return db
+  }
+
+  try {
+    client = new MongoClient(MONGODB_URI)
+    await client.connect()
+    db = client.db(DB_NAME)
+
+    console.log("Connected to MongoDB")
+
+    // Create indexes for better performance
+    await createIndexes()
+
+    return db
+  } catch (error) {
+    console.error("Failed to connect to MongoDB:", error)
+    throw error
+  }
+}
+
+async function createIndexes() {
+  try {
+    // Users collection indexes
+    await db.collection("users").createIndex({ email: 1 }, { unique: true })
+    await db.collection("users").createIndex({ username: 1 }, { unique: true })
+    await db.collection("users").createIndex({ isActive: 1 })
+    await db.collection("users").createIndex({ "subscription.status": 1 })
+
+    // Admins collection indexes
+    await db.collection("admins").createIndex({ username: 1 }, { unique: true })
+
+    // Bots collection indexes
+    await db.collection("bots").createIndex({ userId: 1 })
+    await db.collection("bots").createIndex({ status: 1 })
+    await db.collection("bots").createIndex({ strategy: 1 })
+
+    // Trades collection indexes
+    await db.collection("trades").createIndex({ userId: 1 })
+    await db.collection("trades").createIndex({ botId: 1 })
+    await db.collection("trades").createIndex({ timestamp: -1 })
+    await db.collection("trades").createIndex({ symbol: 1 })
+
+    // API Keys collection indexes
+    await db.collection("apiKeys").createIndex({ userId: 1 })
+    await db.collection("apiKeys").createIndex({ keyHash: 1 }, { unique: true })
+    await db.collection("apiKeys").createIndex({ isActive: 1 })
+
+    console.log("Database indexes created successfully")
+  } catch (error) {
+    console.error("Error creating indexes:", error)
+  }
+}
+
+export interface UserDocument {
+  _id: string
   email: string
   username: string
   password: string
   isActive: boolean
   createdAt: Date
   updatedAt: Date
-  subscription?: {
-    plan: string
-    status: string
+  lastLogin?: Date
+  subscription: {
+    plan: "free" | "starter" | "pro" | "enterprise"
+    status: "active" | "inactive" | "cancelled" | "past_due"
     trialEndsAt?: Date
     currentPeriodEnd?: Date
+    stripeCustomerId?: string
+    stripeSubscriptionId?: string
+  }
+  profile: {
+    firstName?: string
+    lastName?: string
+    avatar?: string
+    timezone?: string
+    notifications: {
+      email: boolean
+      telegram: boolean
+      push: boolean
+    }
+  }
+  settings: {
+    theme: "light" | "dark" | "system"
+    language: string
+    currency: string
+    riskTolerance: "low" | "medium" | "high"
+  }
+  stats: {
+    totalTrades: number
+    totalProfit: number
+    totalLoss: number
+    winRate: number
+    lastActiveAt: Date
   }
 }
 
-export interface Bot {
-  id: string
+export interface BotDocument {
+  _id: string
   userId: string
   name: string
+  description?: string
   strategy: string
-  status: "active" | "paused" | "stopped"
-  config: Record<string, any>
+  status: "active" | "paused" | "stopped" | "error"
+  config: {
+    symbol: string
+    exchange: string
+    amount: number
+    stopLoss?: number
+    takeProfit?: number
+    maxTrades?: number
+    riskPerTrade?: number
+    [key: string]: any
+  }
+  performance: {
+    totalTrades: number
+    winningTrades: number
+    losingTrades: number
+    totalProfit: number
+    totalLoss: number
+    winRate: number
+    maxDrawdown: number
+    sharpeRatio?: number
+  }
   createdAt: Date
   updatedAt: Date
-  performance?: {
-    totalTrades: number
-    winRate: number
-    totalPnL: number
-  }
+  lastRunAt?: Date
+  nextRunAt?: Date
+  errorMessage?: string
 }
 
-export interface Trade {
-  id: string
-  botId: string
+export interface TradeDocument {
+  _id: string
   userId: string
+  botId: string
   symbol: string
-  side: "buy" | "sell"
+  exchange: string
+  type: "buy" | "sell"
+  side: "long" | "short"
   amount: number
   price: number
-  status: "pending" | "filled" | "cancelled"
-  createdAt: Date
-  filledAt?: Date
+  fee: number
+  status: "pending" | "filled" | "cancelled" | "failed"
+  timestamp: Date
+  orderId?: string
+  profit?: number
+  loss?: number
+  metadata: {
+    strategy: string
+    signal: string
+    confidence: number
+    [key: string]: any
+  }
 }
 
-export interface Session {
-  id: string
-  userId: string
-  token: string
-  expiresAt: Date
-  createdAt: Date
-}
-
-export interface ApiKey {
-  id: string
+export interface ApiKeyDocument {
+  _id: string
   userId: string
   name: string
-  key: string
+  keyHash: string
   permissions: string[]
+  isActive: boolean
+  lastUsedAt?: Date
+  expiresAt?: Date
   createdAt: Date
-  lastUsed?: Date
+  rateLimit: {
+    requestsPerMinute: number
+    requestsPerHour: number
+    requestsPerDay: number
+  }
+  usage: {
+    totalRequests: number
+    lastRequestAt?: Date
+    requestsToday: number
+    requestsThisHour: number
+    requestsThisMinute: number
+  }
 }
 
-class Database {
-  public users: User[] = []
-  public bots: Bot[] = []
-  public trades: Trade[] = []
-  public sessions: Session[] = []
-  public apiKeys: ApiKey[] = []
+export interface UserSettingsDocument {
+  _id: string
+  userId: string
+  exchanges: {
+    [exchange: string]: {
+      apiKey: string
+      apiSecret: string
+      passphrase?: string
+      sandbox: boolean
+      isActive: boolean
+    }
+  }
+  notifications: {
+    email: {
+      enabled: boolean
+      tradeAlerts: boolean
+      profitLoss: boolean
+      systemUpdates: boolean
+    }
+    telegram: {
+      enabled: boolean
+      chatId?: string
+      botToken?: string
+      tradeAlerts: boolean
+      profitLoss: boolean
+    }
+    webhook: {
+      enabled: boolean
+      url?: string
+      secret?: string
+      events: string[]
+    }
+  }
+  trading: {
+    defaultRiskPerTrade: number
+    maxConcurrentTrades: number
+    allowedSymbols: string[]
+    blockedSymbols: string[]
+    tradingHours: {
+      enabled: boolean
+      start: string
+      end: string
+      timezone: string
+    }
+  }
+  createdAt: Date
+  updatedAt: Date
+}
+
+export class Database {
+  private db: Db
 
   constructor() {
-    this.initializeDefaultData()
+    this.initialize()
   }
 
-  private initializeDefaultData() {
-    // Create a default user for testing
-    const defaultUser: User = {
-      id: "user_1",
-      email: "demo@coinwayfinder.com",
-      username: "demo",
-      password: "hashed_password_demo123", // This would be properly hashed
+  private async initialize() {
+    this.db = await connectToDatabase()
+  }
+
+  // User operations
+  async createUser(userData: Partial<UserDocument>): Promise<UserDocument> {
+    const collection = this.db.collection<UserDocument>("users")
+    const userId = new Date().getTime().toString()
+
+    const user: UserDocument = {
+      _id: userId,
+      email: userData.email!,
+      username: userData.username!,
+      password: userData.password!,
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
       subscription: {
-        plan: "pro",
+        plan: "free",
         status: "active",
-        trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
-    }
-
-    this.users.push(defaultUser)
-
-    // Create a sample bot
-    const sampleBot: Bot = {
-      id: "bot_1",
-      userId: "user_1",
-      name: "BTC Scalping Bot",
-      strategy: "scalping",
-      status: "active",
-      config: {
-        symbol: "BTC/USDT",
-        amount: 0.01,
-        stopLoss: 0.02,
-        takeProfit: 0.03,
+      profile: {
+        notifications: {
+          email: true,
+          telegram: false,
+          push: true,
+        },
       },
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      performance: {
-        totalTrades: 45,
-        winRate: 0.67,
-        totalPnL: 234.56,
+      settings: {
+        theme: "system",
+        language: "en",
+        currency: "USD",
+        riskTolerance: "medium",
       },
-    }
-
-    this.bots.push(sampleBot)
-  }
-
-  // User operations
-  async createUser(userData: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
-    const user: User = {
+      stats: {
+        totalTrades: 0,
+        totalProfit: 0,
+        totalLoss: 0,
+        winRate: 0,
+        lastActiveAt: new Date(),
+      },
       ...userData,
-      id: generateRandomString(16),
-      createdAt: new Date(),
-      updatedAt: new Date(),
     }
 
-    this.users.push(user)
+    await collection.insertOne(user)
     return user
   }
 
-  async getUserById(id: string): Promise<User | null> {
-    return this.users.find((user) => user.id === id) || null
+  async getUserById(userId: string): Promise<UserDocument | null> {
+    const collection = this.db.collection<UserDocument>("users")
+    return collection.findOne({ _id: userId, isActive: true })
   }
 
-  async getUserByEmail(email: string): Promise<User | null> {
-    return this.users.find((user) => user.email === email) || null
+  async getUserByEmail(email: string): Promise<UserDocument | null> {
+    const collection = this.db.collection<UserDocument>("users")
+    return collection.findOne({ email, isActive: true })
   }
 
-  async updateUser(id: string, updates: Partial<User>): Promise<User | null> {
-    const userIndex = this.users.findIndex((user) => user.id === id)
-    if (userIndex === -1) return null
-
-    this.users[userIndex] = {
-      ...this.users[userIndex],
-      ...updates,
-      updatedAt: new Date(),
-    }
-
-    return this.users[userIndex]
+  async getUserByUsername(username: string): Promise<UserDocument | null> {
+    const collection = this.db.collection<UserDocument>("users")
+    return collection.findOne({ username, isActive: true })
   }
 
-  async deleteUser(id: string): Promise<boolean> {
-    const userIndex = this.users.findIndex((user) => user.id === id)
-    if (userIndex === -1) return false
+  async updateUser(userId: string, updates: Partial<UserDocument>): Promise<boolean> {
+    const collection = this.db.collection<UserDocument>("users")
+    const result = await collection.updateOne({ _id: userId }, { $set: { ...updates, updatedAt: new Date() } })
+    return result.modifiedCount > 0
+  }
 
-    this.users.splice(userIndex, 1)
-    return true
+  async deleteUser(userId: string): Promise<boolean> {
+    const collection = this.db.collection<UserDocument>("users")
+    const result = await collection.updateOne({ _id: userId }, { $set: { isActive: false, updatedAt: new Date() } })
+    return result.modifiedCount > 0
   }
 
   // Bot operations
-  async createBot(botData: Omit<Bot, "id" | "createdAt" | "updatedAt">): Promise<Bot> {
-    const bot: Bot = {
-      ...botData,
-      id: generateRandomString(16),
+  async createBot(botData: Partial<BotDocument>): Promise<BotDocument> {
+    const collection = this.db.collection<BotDocument>("bots")
+    const botId = new Date().getTime().toString()
+
+    const bot: BotDocument = {
+      _id: botId,
+      userId: botData.userId!,
+      name: botData.name!,
+      description: botData.description,
+      strategy: botData.strategy!,
+      status: "stopped",
+      config: botData.config!,
+      performance: {
+        totalTrades: 0,
+        winningTrades: 0,
+        losingTrades: 0,
+        totalProfit: 0,
+        totalLoss: 0,
+        winRate: 0,
+        maxDrawdown: 0,
+      },
       createdAt: new Date(),
       updatedAt: new Date(),
+      ...botData,
     }
 
-    this.bots.push(bot)
+    await collection.insertOne(bot)
     return bot
   }
 
-  async getBotById(id: string): Promise<Bot | null> {
-    return this.bots.find((bot) => bot.id === id) || null
+  async getBotById(botId: string): Promise<BotDocument | null> {
+    const collection = this.db.collection<BotDocument>("bots")
+    return collection.findOne({ _id: botId })
   }
 
-  async getBotsByUserId(userId: string): Promise<Bot[]> {
-    return this.bots.filter((bot) => bot.userId === userId)
+  async getBotsByUserId(userId: string): Promise<BotDocument[]> {
+    const collection = this.db.collection<BotDocument>("bots")
+    return collection.find({ userId }).toArray()
   }
 
-  async updateBot(id: string, updates: Partial<Bot>): Promise<Bot | null> {
-    const botIndex = this.bots.findIndex((bot) => bot.id === id)
-    if (botIndex === -1) return null
-
-    this.bots[botIndex] = {
-      ...this.bots[botIndex],
-      ...updates,
-      updatedAt: new Date(),
-    }
-
-    return this.bots[botIndex]
+  async updateBot(botId: string, updates: Partial<BotDocument>): Promise<boolean> {
+    const collection = this.db.collection<BotDocument>("bots")
+    const result = await collection.updateOne({ _id: botId }, { $set: { ...updates, updatedAt: new Date() } })
+    return result.modifiedCount > 0
   }
 
-  async deleteBot(id: string): Promise<boolean> {
-    const botIndex = this.bots.findIndex((bot) => bot.id === id)
-    if (botIndex === -1) return false
-
-    this.bots.splice(botIndex, 1)
-    return true
+  async deleteBot(botId: string): Promise<boolean> {
+    const collection = this.db.collection<BotDocument>("bots")
+    const result = await collection.deleteOne({ _id: botId })
+    return result.deletedCount > 0
   }
 
   // Trade operations
-  async createTrade(tradeData: Omit<Trade, "id" | "createdAt">): Promise<Trade> {
-    const trade: Trade = {
+  async createTrade(tradeData: Partial<TradeDocument>): Promise<TradeDocument> {
+    const collection = this.db.collection<TradeDocument>("trades")
+    const tradeId = new Date().getTime().toString()
+
+    const trade: TradeDocument = {
+      _id: tradeId,
+      userId: tradeData.userId!,
+      botId: tradeData.botId!,
+      symbol: tradeData.symbol!,
+      exchange: tradeData.exchange!,
+      type: tradeData.type!,
+      side: tradeData.side!,
+      amount: tradeData.amount!,
+      price: tradeData.price!,
+      fee: tradeData.fee || 0,
+      status: "pending",
+      timestamp: new Date(),
+      metadata: tradeData.metadata || {
+        strategy: "",
+        signal: "",
+        confidence: 0,
+      },
       ...tradeData,
-      id: generateRandomString(16),
-      createdAt: new Date(),
     }
 
-    this.trades.push(trade)
+    await collection.insertOne(trade)
     return trade
   }
 
-  async getTradeById(id: string): Promise<Trade | null> {
-    return this.trades.find((trade) => trade.id === id) || null
+  async getTradeById(tradeId: string): Promise<TradeDocument | null> {
+    const collection = this.db.collection<TradeDocument>("trades")
+    return collection.findOne({ _id: tradeId })
   }
 
-  async getTradesByUserId(userId: string): Promise<Trade[]> {
-    return this.trades.filter((trade) => trade.userId === userId)
+  async getTradesByUserId(userId: string, limit = 100): Promise<TradeDocument[]> {
+    const collection = this.db.collection<TradeDocument>("trades")
+    return collection.find({ userId }).sort({ timestamp: -1 }).limit(limit).toArray()
   }
 
-  async getTradesByBotId(botId: string): Promise<Trade[]> {
-    return this.trades.filter((trade) => trade.botId === botId)
+  async getTradesByBotId(botId: string, limit = 100): Promise<TradeDocument[]> {
+    const collection = this.db.collection<TradeDocument>("trades")
+    return collection.find({ botId }).sort({ timestamp: -1 }).limit(limit).toArray()
   }
 
-  async updateTrade(id: string, updates: Partial<Trade>): Promise<Trade | null> {
-    const tradeIndex = this.trades.findIndex((trade) => trade.id === id)
-    if (tradeIndex === -1) return null
-
-    this.trades[tradeIndex] = {
-      ...this.trades[tradeIndex],
-      ...updates,
-    }
-
-    return this.trades[tradeIndex]
+  async updateTrade(tradeId: string, updates: Partial<TradeDocument>): Promise<boolean> {
+    const collection = this.db.collection<TradeDocument>("trades")
+    const result = await collection.updateOne({ _id: tradeId }, { $set: updates })
+    return result.modifiedCount > 0
   }
 
-  // Session operations
-  async createSession(sessionData: Omit<Session, "id" | "createdAt">): Promise<Session> {
-    const session: Session = {
-      ...sessionData,
-      id: generateRandomString(16),
-      createdAt: new Date(),
-    }
+  // Analytics and statistics
+  async getUserStats(userId: string): Promise<any> {
+    const tradesCollection = this.db.collection<TradeDocument>("trades")
+    const botsCollection = this.db.collection<BotDocument>("bots")
 
-    this.sessions.push(session)
-    return session
-  }
+    const [trades, bots] = await Promise.all([
+      tradesCollection.find({ userId }).toArray(),
+      botsCollection.find({ userId }).toArray(),
+    ])
 
-  async getSessionById(id: string): Promise<Session | null> {
-    return this.sessions.find((session) => session.id === id) || null
-  }
+    const totalTrades = trades.length
+    const filledTrades = trades.filter((t) => t.status === "filled")
+    const profitableTrades = filledTrades.filter((t) => (t.profit || 0) > 0)
 
-  async getSessionByToken(token: string): Promise<Session | null> {
-    return this.sessions.find((session) => session.token === token) || null
-  }
+    const totalProfit = filledTrades.reduce((sum, t) => sum + (t.profit || 0), 0)
+    const totalLoss = filledTrades.reduce((sum, t) => sum + (t.loss || 0), 0)
+    const winRate = filledTrades.length > 0 ? (profitableTrades.length / filledTrades.length) * 100 : 0
 
-  async deleteSession(id: string): Promise<boolean> {
-    const sessionIndex = this.sessions.findIndex((session) => session.id === id)
-    if (sessionIndex === -1) return false
-
-    this.sessions.splice(sessionIndex, 1)
-    return true
-  }
-
-  // API Key operations
-  async createApiKey(keyData: Omit<ApiKey, "id" | "createdAt">): Promise<ApiKey> {
-    const apiKey: ApiKey = {
-      ...keyData,
-      id: generateRandomString(16),
-      createdAt: new Date(),
-    }
-
-    this.apiKeys.push(apiKey)
-    return apiKey
-  }
-
-  async getApiKeyById(id: string): Promise<ApiKey | null> {
-    return this.apiKeys.find((key) => key.id === id) || null
-  }
-
-  async getApiKeysByUserId(userId: string): Promise<ApiKey[]> {
-    return this.apiKeys.filter((key) => key.userId === userId)
-  }
-
-  async updateApiKey(id: string, updates: Partial<ApiKey>): Promise<ApiKey | null> {
-    const keyIndex = this.apiKeys.findIndex((key) => key.id === id)
-    if (keyIndex === -1) return null
-
-    this.apiKeys[keyIndex] = {
-      ...this.apiKeys[keyIndex],
-      ...updates,
-    }
-
-    return this.apiKeys[keyIndex]
-  }
-
-  async deleteApiKey(id: string): Promise<boolean> {
-    const keyIndex = this.apiKeys.findIndex((key) => key.id === id)
-    if (keyIndex === -1) return false
-
-    this.apiKeys.splice(keyIndex, 1)
-    return true
-  }
-
-  // Utility methods
-  async getAllUsers(): Promise<User[]> {
-    return this.users
-  }
-
-  async getAllBots(): Promise<Bot[]> {
-    return this.bots
-  }
-
-  async getAllTrades(): Promise<Trade[]> {
-    return this.trades
-  }
-
-  async getStats(): Promise<{
-    totalUsers: number
-    totalBots: number
-    totalTrades: number
-    activeBots: number
-  }> {
     return {
-      totalUsers: this.users.length,
-      totalBots: this.bots.length,
-      totalTrades: this.trades.length,
-      activeBots: this.bots.filter((bot) => bot.status === "active").length,
+      totalTrades,
+      totalBots: bots.length,
+      activeBots: bots.filter((b) => b.status === "active").length,
+      totalProfit,
+      totalLoss,
+      netProfit: totalProfit - totalLoss,
+      winRate,
+      avgTradeSize:
+        filledTrades.length > 0 ? filledTrades.reduce((sum, t) => sum + t.amount, 0) / filledTrades.length : 0,
+    }
+  }
+
+  async getSystemStats(): Promise<any> {
+    const usersCollection = this.db.collection<UserDocument>("users")
+    const botsCollection = this.db.collection<BotDocument>("bots")
+    const tradesCollection = this.db.collection<TradeDocument>("trades")
+
+    const [totalUsers, totalBots, totalTrades] = await Promise.all([
+      usersCollection.countDocuments({ isActive: true }),
+      botsCollection.countDocuments(),
+      tradesCollection.countDocuments(),
+    ])
+
+    const activeUsers = await usersCollection.countDocuments({
+      isActive: true,
+      "stats.lastActiveAt": { $gte: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    })
+
+    const activeBots = await botsCollection.countDocuments({ status: "active" })
+
+    return {
+      totalUsers,
+      activeUsers,
+      totalBots,
+      activeBots,
+      totalTrades,
+    }
+  }
+
+  // Cleanup operations
+  async cleanup(): Promise<void> {
+    if (client) {
+      await client.close()
     }
   }
 }
 
-// Create and export database instance
 export const database = new Database()
-
-// Export connection function for compatibility
-export async function connectToDatabase(): Promise<Database> {
-  return database
-}

@@ -1,6 +1,6 @@
-import { simpleHash, generateRandomString } from "./security"
-import { database } from "./database"
-import { cookies } from "next/headers"
+import jwt from "jsonwebtoken"
+import bcrypt from "bcryptjs"
+import { connectToDatabase } from "./database"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 const JWT_EXPIRES_IN = "7d"
@@ -31,60 +31,34 @@ export interface Admin {
   lastLogin?: Date
 }
 
-function createJWT(payload: any, secret: string, expiresIn: string): string {
-  const header = { alg: "HS256", typ: "JWT" }
-  const now = Math.floor(Date.now() / 1000)
-  const exp = now + (expiresIn === "7d" ? 7 * 24 * 60 * 60 : 24 * 60 * 60)
-
-  const jwtPayload = { ...payload, iat: now, exp }
-
-  const encodedHeader = btoa(JSON.stringify(header))
-  const encodedPayload = btoa(JSON.stringify(jwtPayload))
-  const signature = simpleHash(`${encodedHeader}.${encodedPayload}.${secret}`)
-
-  return `${encodedHeader}.${encodedPayload}.${signature}`
-}
-
-function verifyJWT(token: string, secret: string): any {
-  try {
-    const [encodedHeader, encodedPayload, signature] = token.split(".")
-    const expectedSignature = simpleHash(`${encodedHeader}.${encodedPayload}.${secret}`)
-
-    if (signature !== expectedSignature) {
-      throw new Error("Invalid signature")
-    }
-
-    const payload = JSON.parse(atob(encodedPayload))
-
-    if (payload.exp < Math.floor(Date.now() / 1000)) {
-      throw new Error("Token expired")
-    }
-
-    return payload
-  } catch (error) {
-    throw new Error("Invalid token")
-  }
-}
-
 export class AuthService {
+  private db: any
+
+  constructor() {
+    this.initializeDatabase()
+  }
+
+  private async initializeDatabase() {
+    this.db = await connectToDatabase()
+  }
+
   async hashPassword(password: string): Promise<string> {
-    return simpleHash(password + "salt")
+    const saltRounds = 12
+    return bcrypt.hash(password, saltRounds)
   }
 
   async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
-    const hashedInput = await this.hashPassword(password)
-    return hashedInput === hashedPassword
+    return bcrypt.compare(password, hashedPassword)
   }
 
   generateAuthToken(user: User): string {
     const payload = {
-      userId: user.id,
       id: user.id,
       email: user.email,
       username: user.username,
       isActive: user.isActive,
     }
-    return createJWT(payload, JWT_SECRET, JWT_EXPIRES_IN)
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
   }
 
   generateAdminToken(admin: Admin): string {
@@ -93,19 +67,35 @@ export class AuthService {
       username: admin.username,
       role: admin.role,
     }
-    return createJWT(payload, JWT_SECRET, ADMIN_JWT_EXPIRES_IN)
+    return jwt.sign(payload, JWT_SECRET, { expiresIn: ADMIN_JWT_EXPIRES_IN })
   }
 
   async verifyAuthToken(token: string): Promise<User | null> {
     try {
-      const decoded = verifyJWT(token, JWT_SECRET)
-      const user = await database.getUserById(decoded.id || decoded.userId)
+      const decoded = jwt.verify(token, JWT_SECRET) as any
 
-      if (!user || !user.isActive) {
+      if (!this.db) {
+        await this.initializeDatabase()
+      }
+
+      const user = await this.db.collection("users").findOne({
+        _id: decoded.id,
+        isActive: true,
+      })
+
+      if (!user) {
         return null
       }
 
-      return user
+      return {
+        id: user._id,
+        email: user.email,
+        username: user.username,
+        isActive: user.isActive,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt,
+        subscription: user.subscription,
+      }
     } catch (error) {
       console.error("Token verification error:", error)
       return null
@@ -114,146 +104,269 @@ export class AuthService {
 
   async verifyAdminToken(token: string): Promise<Admin | null> {
     try {
-      const decoded = verifyJWT(token, JWT_SECRET)
+      const decoded = jwt.verify(token, JWT_SECRET) as any
 
-      if (decoded.role === "admin") {
-        return {
-          id: decoded.id,
-          username: decoded.username,
-          role: decoded.role,
-          createdAt: new Date(),
-        }
+      if (!this.db) {
+        await this.initializeDatabase()
       }
 
-      return null
+      const admin = await this.db.collection("admins").findOne({
+        _id: decoded.id,
+        role: "admin",
+      })
+
+      if (!admin) {
+        return null
+      }
+
+      return {
+        id: admin._id,
+        username: admin.username,
+        role: admin.role,
+        createdAt: admin.createdAt,
+        lastLogin: admin.lastLogin,
+      }
     } catch (error) {
       console.error("Admin token verification error:", error)
       return null
     }
   }
 
-  async getCurrentUser(): Promise<{ userId: string; email: string; username: string } | null> {
-    try {
-      const cookieStore = cookies()
-      const token = cookieStore.get("auth-token")?.value
-
-      if (!token) {
-        return null
-      }
-
-      const decoded = verifyJWT(token, JWT_SECRET)
-      const user = await database.getUserById(decoded.id || decoded.userId)
-
-      if (!user || !user.isActive) {
-        return null
-      }
-
-      return {
-        userId: user.id,
-        email: user.email,
-        username: user.username,
-      }
-    } catch (error) {
-      console.error("Get current user error:", error)
-      return null
-    }
-  }
-
   async signUp(email: string, username: string, password: string): Promise<{ user: User; token: string }> {
-    const existingUser = await database.getUserByEmail(email)
+    if (!this.db) {
+      await this.initializeDatabase()
+    }
+
+    // Check if user already exists
+    const existingUser = await this.db.collection("users").findOne({
+      $or: [{ email }, { username }],
+    })
 
     if (existingUser) {
       throw new Error("User already exists with this email or username")
     }
 
+    // Hash password
     const hashedPassword = await this.hashPassword(password)
 
-    const newUser = await database.createUser({
+    // Create user
+    const userId = new Date().getTime().toString()
+    const newUser = {
+      _id: userId,
       email,
       username,
       password: hashedPassword,
       isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
       subscription: {
         plan: "free",
         status: "active",
-        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days trial
       },
-    })
-
-    const token = this.generateAuthToken(newUser)
-
-    return { user: newUser, token }
-  }
-
-  async signIn(emailOrUsername: string, password: string): Promise<{ user: User; token: string }> {
-    const user = await database.getUserByEmail(emailOrUsername)
-
-    if (!user || !user.isActive) {
-      throw new Error("Invalid credentials")
     }
 
-    const isValidPassword = await this.comparePassword(password, user.password!)
-    if (!isValidPassword) {
-      throw new Error("Invalid credentials")
-    }
+    await this.db.collection("users").insertOne(newUser)
 
-    await database.updateUser(user.id, { updatedAt: new Date() })
+    const user: User = {
+      id: newUser._id,
+      email: newUser.email,
+      username: newUser.username,
+      isActive: newUser.isActive,
+      createdAt: newUser.createdAt,
+      updatedAt: newUser.updatedAt,
+      subscription: newUser.subscription,
+    }
 
     const token = this.generateAuthToken(user)
 
     return { user, token }
   }
 
-  async adminSignIn(username: string, password: string): Promise<{ admin: Admin; token: string }> {
-    if (username === "admin" && password === "CoinWayFinder2024!") {
-      const admin: Admin = {
-        id: "admin_1",
-        username: "admin",
-        role: "admin",
-        createdAt: new Date(),
-        lastLogin: new Date(),
-      }
-
-      const token = this.generateAdminToken(admin)
-      return { admin, token }
+  async signIn(emailOrUsername: string, password: string): Promise<{ user: User; token: string }> {
+    if (!this.db) {
+      await this.initializeDatabase()
     }
 
-    throw new Error("Invalid admin credentials")
+    // Find user by email or username
+    const user = await this.db.collection("users").findOne({
+      $or: [{ email: emailOrUsername }, { username: emailOrUsername }],
+      isActive: true,
+    })
+
+    if (!user) {
+      throw new Error("Invalid credentials")
+    }
+
+    // Verify password
+    const isValidPassword = await this.comparePassword(password, user.password)
+    if (!isValidPassword) {
+      throw new Error("Invalid credentials")
+    }
+
+    // Update last login
+    await this.db
+      .collection("users")
+      .updateOne({ _id: user._id }, { $set: { lastLogin: new Date(), updatedAt: new Date() } })
+
+    const userResponse: User = {
+      id: user._id,
+      email: user.email,
+      username: user.username,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      subscription: user.subscription,
+    }
+
+    const token = this.generateAuthToken(userResponse)
+
+    return { user: userResponse, token }
+  }
+
+  async adminSignIn(username: string, password: string): Promise<{ admin: Admin; token: string }> {
+    if (!this.db) {
+      await this.initializeDatabase()
+    }
+
+    // Find admin
+    const admin = await this.db.collection("admins").findOne({
+      username,
+      role: "admin",
+    })
+
+    if (!admin) {
+      throw new Error("Invalid admin credentials")
+    }
+
+    // Verify password
+    const isValidPassword = await this.comparePassword(password, admin.password)
+    if (!isValidPassword) {
+      throw new Error("Invalid admin credentials")
+    }
+
+    // Update last login
+    await this.db.collection("admins").updateOne({ _id: admin._id }, { $set: { lastLogin: new Date() } })
+
+    const adminResponse: Admin = {
+      id: admin._id,
+      username: admin.username,
+      role: admin.role,
+      createdAt: admin.createdAt,
+      lastLogin: new Date(),
+    }
+
+    const token = this.generateAdminToken(adminResponse)
+
+    return { admin: adminResponse, token }
   }
 
   async getUserById(userId: string): Promise<User | null> {
-    return await database.getUserById(userId)
+    if (!this.db) {
+      await this.initializeDatabase()
+    }
+
+    const user = await this.db.collection("users").findOne({
+      _id: userId,
+      isActive: true,
+    })
+
+    if (!user) {
+      return null
+    }
+
+    return {
+      id: user._id,
+      email: user.email,
+      username: user.username,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+      subscription: user.subscription,
+    }
   }
 
   async updateUser(userId: string, updates: Partial<User>): Promise<User | null> {
-    return await database.updateUser(userId, updates)
+    if (!this.db) {
+      await this.initializeDatabase()
+    }
+
+    const updateData = {
+      ...updates,
+      updatedAt: new Date(),
+    }
+
+    // Remove sensitive fields
+    delete updateData.id
+    delete updateData.password
+
+    await this.db.collection("users").updateOne({ _id: userId }, { $set: updateData })
+
+    return this.getUserById(userId)
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<boolean> {
-    const user = await database.getUserById(userId)
+    if (!this.db) {
+      await this.initializeDatabase()
+    }
+
+    const user = await this.db.collection("users").findOne({ _id: userId })
     if (!user) {
       throw new Error("User not found")
     }
 
-    const isValidPassword = await this.comparePassword(currentPassword, user.password!)
+    // Verify current password
+    const isValidPassword = await this.comparePassword(currentPassword, user.password)
     if (!isValidPassword) {
       throw new Error("Current password is incorrect")
     }
 
+    // Hash new password
     const hashedNewPassword = await this.hashPassword(newPassword)
 
-    await database.updateUser(userId, { password: hashedNewPassword })
+    // Update password
+    await this.db
+      .collection("users")
+      .updateOne({ _id: userId }, { $set: { password: hashedNewPassword, updatedAt: new Date() } })
 
     return true
   }
 
   async deactivateUser(userId: string): Promise<boolean> {
-    await database.updateUser(userId, { isActive: false })
+    if (!this.db) {
+      await this.initializeDatabase()
+    }
+
+    await this.db.collection("users").updateOne({ _id: userId }, { $set: { isActive: false, updatedAt: new Date() } })
+
     return true
   }
 
   async createDefaultAdmin(): Promise<void> {
-    console.log("Default admin available: admin / CoinWayFinder2024!")
+    if (!this.db) {
+      await this.initializeDatabase()
+    }
+
+    // Check if admin already exists
+    const existingAdmin = await this.db.collection("admins").findOne({ username: "admin" })
+    if (existingAdmin) {
+      return
+    }
+
+    // Create default admin
+    const hashedPassword = await this.hashPassword("CoinWayFinder2024!")
+    const adminId = new Date().getTime().toString()
+
+    const defaultAdmin = {
+      _id: adminId,
+      username: "admin",
+      password: hashedPassword,
+      role: "admin",
+      createdAt: new Date(),
+    }
+
+    await this.db.collection("admins").insertOne(defaultAdmin)
+    console.log("Default admin created: admin / CoinWayFinder2024!")
   }
 }
 
@@ -293,27 +406,9 @@ export class AuthManager {
   }
 }
 
-// Mock lucia export for compatibility
-export const lucia = {
-  validateSession: async (sessionId: string) => {
-    return { user: null, session: null }
-  },
-  createSession: async (userId: string, attributes: any) => {
-    return { id: generateRandomString(16) }
-  },
-  invalidateSession: async (sessionId: string) => {
-    return true
-  },
-}
-
 // Export instances
 export const authService = new AuthService()
 export const authManager = new AuthManager()
-
-// Static method for getCurrentUser
-export const getCurrentUser = async () => {
-  return authService.getCurrentUser()
-}
 
 // Initialize on module load
 authManager.initialize().catch(console.error)

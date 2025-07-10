@@ -1,414 +1,530 @@
-import { database } from "./database"
-import { subscriptionManager } from "./subscription-manager"
-import { generateRandomString } from "./security"
+import { marketDataIngestion, type MarketDataPoint } from "./market-data-ingestion"
+import { TradeExecutionEngine, type RiskLimits } from "./trade-execution-engine"
 
-export interface TradingSignal {
+export interface TradingBot {
   id: string
-  symbol: string
-  action: "buy" | "sell" | "hold"
-  price: number
-  confidence: number
-  timestamp: Date
+  name: string
   strategy: string
-  metadata?: Record<string, any>
-}
-
-export interface MarketData {
-  symbol: string
-  price: number
-  volume: number
-  change24h: number
-  timestamp: Date
-  high24h: number
-  low24h: number
+  pair: string
+  status: "running" | "paused" | "stopped" | "error"
+  config: BotConfig
+  stats: BotStats
+  createdAt: Date
+  lastUpdate: Date
 }
 
 export interface BotConfig {
-  symbol: string
+  investment: number
+  riskLevel: number
+  stopLoss: number
+  takeProfit: number
+  maxTrades: number
   strategy: string
-  amount: number
-  stopLoss?: number
-  takeProfit?: number
-  maxTrades?: number
-  riskLevel: "low" | "medium" | "high"
   parameters: Record<string, any>
 }
 
-export interface BotPerformance {
+export interface BotStats {
   totalTrades: number
   winningTrades: number
   losingTrades: number
+  totalProfit: number
+  totalLoss: number
   winRate: number
-  totalPnL: number
-  averagePnL: number
+  currentDrawdown: number
   maxDrawdown: number
   sharpeRatio: number
-  lastUpdated: Date
+  lastTradeTime?: Date
 }
 
-class TradingBotEngine {
-  private marketData: Map<string, MarketData> = new Map()
-  private activeSignals: TradingSignal[] = []
-  private isRunning = false
+export interface Trade {
+  id: string
+  botId: string
+  symbol: string
+  side: "buy" | "sell"
+  amount: number
+  price: number
+  timestamp: Date
+  profit?: number
+  status: "pending" | "filled" | "cancelled" | "failed"
+}
+
+export abstract class TradingStrategy {
+  protected bot: TradingBot
+  protected marketData: Map<string, MarketDataPoint> = new Map()
+  protected trades: Trade[] = []
+  protected positions: Map<string, number> = new Map()
+
+  constructor(bot: TradingBot) {
+    this.bot = bot
+  }
+
+  abstract shouldBuy(marketData: MarketDataPoint): boolean
+  abstract shouldSell(marketData: MarketDataPoint): boolean
+  abstract calculateOrderSize(marketData: MarketDataPoint): number
+  abstract getName(): string
+
+  onMarketData(data: MarketDataPoint): void {
+    this.marketData.set(data.symbol, data)
+    this.evaluateSignals(data)
+  }
+
+  private evaluateSignals(data: MarketDataPoint): void {
+    if (this.bot.status !== "running") return
+
+    try {
+      if (this.shouldBuy(data)) {
+        this.executeBuyOrder(data)
+      } else if (this.shouldSell(data)) {
+        this.executeSellOrder(data)
+      }
+    } catch (error) {
+      console.error(`Strategy error for bot ${this.bot.id}:`, error)
+      this.bot.status = "error"
+    }
+  }
+
+  private async executeBuyOrder(data: MarketDataPoint): Promise<void> {
+    const orderSize = this.calculateOrderSize(data)
+    if (orderSize <= 0) return
+
+    const trade: Trade = {
+      id: `trade_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      botId: this.bot.id,
+      symbol: data.symbol,
+      side: "buy",
+      amount: orderSize,
+      price: data.price,
+      timestamp: new Date(),
+      status: "pending",
+    }
+
+    this.trades.push(trade)
+    this.updateBotStats()
+  }
+
+  private async executeSellOrder(data: MarketDataPoint): Promise<void> {
+    const position = this.positions.get(data.symbol) || 0
+    if (position <= 0) return
+
+    const trade: Trade = {
+      id: `trade_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      botId: this.bot.id,
+      symbol: data.symbol,
+      side: "sell",
+      amount: position,
+      price: data.price,
+      timestamp: new Date(),
+      status: "pending",
+    }
+
+    this.trades.push(trade)
+    this.positions.set(data.symbol, 0)
+    this.updateBotStats()
+  }
+
+  private updateBotStats(): void {
+    const stats = this.calculateStats()
+    this.bot.stats = stats
+    this.bot.lastUpdate = new Date()
+  }
+
+  private calculateStats(): BotStats {
+    const filledTrades = this.trades.filter((t) => t.status === "filled")
+    const winningTrades = filledTrades.filter((t) => (t.profit || 0) > 0)
+    const losingTrades = filledTrades.filter((t) => (t.profit || 0) < 0)
+
+    const totalProfit = filledTrades.reduce((sum, t) => sum + Math.max(t.profit || 0, 0), 0)
+    const totalLoss = filledTrades.reduce((sum, t) => sum + Math.min(t.profit || 0, 0), 0)
+
+    return {
+      totalTrades: filledTrades.length,
+      winningTrades: winningTrades.length,
+      losingTrades: losingTrades.length,
+      totalProfit,
+      totalLoss,
+      winRate: filledTrades.length > 0 ? (winningTrades.length / filledTrades.length) * 100 : 0,
+      currentDrawdown: 0,
+      maxDrawdown: 0,
+      sharpeRatio: 0,
+      lastTradeTime: filledTrades[filledTrades.length - 1]?.timestamp,
+    }
+  }
+
+  getTrades(): Trade[] {
+    return this.trades
+  }
+
+  getPositions(): Map<string, number> {
+    return this.positions
+  }
+}
+
+export class DCAStrategy extends TradingStrategy {
+  private lastBuyTime: Date = new Date(0)
+  private buyInterval: number
+  private buyAmount: number
+  private priceDeviation: number
+
+  constructor(bot: TradingBot) {
+    super(bot)
+    this.buyInterval = bot.config.parameters.interval === "daily" ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000
+    this.buyAmount = bot.config.parameters.amount || 50
+    this.priceDeviation = bot.config.parameters.priceDeviation || 5
+  }
+
+  getName(): string {
+    return "DCA (Dollar Cost Averaging)"
+  }
+
+  shouldBuy(marketData: MarketDataPoint): boolean {
+    const now = new Date()
+    const timeSinceLastBuy = now.getTime() - this.lastBuyTime.getTime()
+
+    if (timeSinceLastBuy < this.buyInterval) return false
+
+    // Check if price hasn't moved too much
+    const previousData = this.marketData.get(marketData.symbol)
+    if (previousData) {
+      const priceChange = Math.abs((marketData.price - previousData.price) / previousData.price) * 100
+      if (priceChange > this.priceDeviation) return false
+    }
+
+    this.lastBuyTime = now
+    return true
+  }
+
+  shouldSell(marketData: MarketDataPoint): boolean {
+    const position = this.positions.get(marketData.symbol) || 0
+    if (position <= 0) return false
+
+    const avgBuyPrice = this.calculateAverageBuyPrice(marketData.symbol)
+    const profitPercent = ((marketData.price - avgBuyPrice) / avgBuyPrice) * 100
+
+    return profitPercent >= this.bot.config.takeProfit || profitPercent <= -this.bot.config.stopLoss
+  }
+
+  calculateOrderSize(marketData: MarketDataPoint): number {
+    return this.buyAmount / marketData.price
+  }
+
+  private calculateAverageBuyPrice(symbol: string): number {
+    const buyTrades = this.trades.filter((t) => t.symbol === symbol && t.side === "buy" && t.status === "filled")
+    if (buyTrades.length === 0) return 0
+
+    const totalValue = buyTrades.reduce((sum, t) => sum + t.amount * t.price, 0)
+    const totalAmount = buyTrades.reduce((sum, t) => sum + t.amount, 0)
+
+    return totalValue / totalAmount
+  }
+}
+
+export class GridTradingStrategy extends TradingStrategy {
+  private gridLevels: number
+  private gridSpacing: number
+  private basePrice = 0
+  private gridOrders: Map<number, Trade> = new Map()
+
+  constructor(bot: TradingBot) {
+    super(bot)
+    this.gridLevels = bot.config.parameters.gridLevels || 10
+    this.gridSpacing = bot.config.parameters.gridSpacing || 2
+  }
+
+  getName(): string {
+    return "Grid Trading"
+  }
+
+  shouldBuy(marketData: MarketDataPoint): boolean {
+    if (this.basePrice === 0) {
+      this.basePrice = marketData.price
+      this.setupGrid(marketData)
+      return false
+    }
+
+    // Check if price hit a buy grid level
+    for (let i = 1; i <= this.gridLevels / 2; i++) {
+      const buyPrice = this.basePrice * (1 - (this.gridSpacing / 100) * i)
+      if (marketData.price <= buyPrice && !this.gridOrders.has(-i)) {
+        return true
+      }
+    }
+
+    return false
+  }
+
+  shouldSell(marketData: MarketDataPoint): boolean {
+    if (this.basePrice === 0) return false
+
+    // Check if price hit a sell grid level
+    for (let i = 1; i <= this.gridLevels / 2; i++) {
+      const sellPrice = this.basePrice * (1 + (this.gridSpacing / 100) * i)
+      if (marketData.price >= sellPrice && !this.gridOrders.has(i)) {
+        const position = this.positions.get(marketData.symbol) || 0
+        return position > 0
+      }
+    }
+
+    return false
+  }
+
+  calculateOrderSize(marketData: MarketDataPoint): number {
+    const orderValue = this.bot.config.investment / this.gridLevels
+    return orderValue / marketData.price
+  }
+
+  private setupGrid(marketData: MarketDataPoint): void {
+    // Initialize grid tracking
+    for (let i = -this.gridLevels / 2; i <= this.gridLevels / 2; i++) {
+      if (i !== 0) {
+        this.gridOrders.set(i, {} as Trade)
+      }
+    }
+  }
+}
+
+export class ScalpingStrategy extends TradingStrategy {
+  private profitTarget: number
+  private maxHoldTime: number
+  private entryTime: Date | null = null
+  private entryPrice = 0
+
+  constructor(bot: TradingBot) {
+    super(bot)
+    this.profitTarget = bot.config.parameters.profitTarget || 0.5
+    this.maxHoldTime = (bot.config.parameters.maxHoldTime || 15) * 60 * 1000 // Convert to ms
+  }
+
+  getName(): string {
+    return "Scalping"
+  }
+
+  shouldBuy(marketData: MarketDataPoint): boolean {
+    const position = this.positions.get(marketData.symbol) || 0
+    if (position > 0) return false // Already in position
+
+    // Simple momentum check - buy if price is trending up
+    const previousData = this.marketData.get(marketData.symbol)
+    if (!previousData) return false
+
+    const priceChange = ((marketData.price - previousData.price) / previousData.price) * 100
+    return priceChange > 0.1 // Buy if price increased by more than 0.1%
+  }
+
+  shouldSell(marketData: MarketDataPoint): boolean {
+    const position = this.positions.get(marketData.symbol) || 0
+    if (position <= 0) return false
+
+    if (!this.entryTime || this.entryPrice === 0) return false
+
+    const profitPercent = ((marketData.price - this.entryPrice) / this.entryPrice) * 100
+    const timeHeld = Date.now() - this.entryTime.getTime()
+
+    // Sell if profit target reached or max hold time exceeded
+    return profitPercent >= this.profitTarget || timeHeld >= this.maxHoldTime
+  }
+
+  calculateOrderSize(marketData: MarketDataPoint): number {
+    const orderValue = this.bot.config.investment * 0.1 // Use 10% of investment per trade
+    this.entryTime = new Date()
+    this.entryPrice = marketData.price
+    return orderValue / marketData.price
+  }
+}
+
+export class TradingBotEngine {
+  private bots: Map<string, TradingBot> = new Map()
+  private strategies: Map<string, TradingStrategy> = new Map()
+  private executionEngine: TradeExecutionEngine
+  private marketDataUnsubscribers: Map<string, () => void> = new Map()
 
   constructor() {
-    this.initializeMarketData()
-  }
-
-  private initializeMarketData() {
-    // Initialize with some mock market data
-    const symbols = ["BTC/USDT", "ETH/USDT", "ADA/USDT", "DOT/USDT", "LINK/USDT"]
-
-    symbols.forEach((symbol) => {
-      const basePrice = Math.random() * 50000 + 1000 // Random price between 1000-51000
-      this.marketData.set(symbol, {
-        symbol,
-        price: basePrice,
-        volume: Math.random() * 1000000,
-        change24h: (Math.random() - 0.5) * 20, // -10% to +10%
-        timestamp: new Date(),
-        high24h: basePrice * (1 + Math.random() * 0.1),
-        low24h: basePrice * (1 - Math.random() * 0.1),
-      })
-    })
-
-    // Update market data every 5 seconds
-    setInterval(() => {
-      this.updateMarketData()
-    }, 5000)
-  }
-
-  private updateMarketData() {
-    this.marketData.forEach((data, symbol) => {
-      // Simulate price movement
-      const change = (Math.random() - 0.5) * 0.02 // -1% to +1%
-      const newPrice = data.price * (1 + change)
-
-      this.marketData.set(symbol, {
-        ...data,
-        price: newPrice,
-        change24h: data.change24h + change * 100,
-        timestamp: new Date(),
-        high24h: Math.max(data.high24h, newPrice),
-        low24h: Math.min(data.low24h, newPrice),
-      })
-    })
-  }
-
-  async createBot(userId: string, config: BotConfig): Promise<string> {
-    // Check subscription limits
-    const limits = await subscriptionManager.checkLimits(userId, "bots")
-    if (!limits.allowed) {
-      throw new Error(`Bot limit reached. Current: ${limits.current}, Limit: ${limits.limit}`)
+    const riskLimits: RiskLimits = {
+      maxPositionSize: 10000,
+      maxDailyLoss: 1000,
+      maxOrderValue: 5000,
+      allowedPairs: [],
+      blockedPairs: [],
     }
 
-    // Validate config
-    if (!config.symbol || !config.strategy || !config.amount) {
-      throw new Error("Invalid bot configuration")
-    }
+    this.executionEngine = new TradeExecutionEngine(riskLimits)
+  }
 
-    // Create bot in database
-    const bot = await database.createBot({
-      userId,
-      name: `${config.strategy} Bot - ${config.symbol}`,
+  createBot(config: {
+    name: string
+    strategy: string
+    pair: string
+    investment: number
+    riskLevel: number
+    stopLoss: number
+    takeProfit: number
+    maxTrades: number
+    parameters: Record<string, any>
+  }): TradingBot {
+    const bot: TradingBot = {
+      id: `bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      name: config.name,
       strategy: config.strategy,
+      pair: config.pair,
       status: "stopped",
-      config: config,
-      performance: {
-        totalTrades: 0,
-        winRate: 0,
-        totalPnL: 0,
+      config: {
+        investment: config.investment,
+        riskLevel: config.riskLevel,
+        stopLoss: config.stopLoss,
+        takeProfit: config.takeProfit,
+        maxTrades: config.maxTrades,
+        strategy: config.strategy,
+        parameters: config.parameters,
       },
-    })
-
-    // Record usage
-    await subscriptionManager.recordUsage(userId, "bot")
-
-    return bot.id
-  }
-
-  async startBot(botId: string): Promise<boolean> {
-    const bot = await database.getBotById(botId)
-    if (!bot) {
-      throw new Error("Bot not found")
+      stats: {
+        totalTrades: 0,
+        winningTrades: 0,
+        losingTrades: 0,
+        totalProfit: 0,
+        totalLoss: 0,
+        winRate: 0,
+        currentDrawdown: 0,
+        maxDrawdown: 0,
+        sharpeRatio: 0,
+      },
+      createdAt: new Date(),
+      lastUpdate: new Date(),
     }
 
-    // Check if user has access
-    const hasAccess = await subscriptionManager.checkAccess(bot.userId, "trading")
-    if (!hasAccess) {
-      throw new Error("Subscription expired or insufficient permissions")
-    }
+    this.bots.set(bot.id, bot)
+    this.createStrategy(bot)
 
-    // Update bot status
-    await database.updateBot(botId, { status: "active" })
-
-    // Start generating signals for this bot
-    this.generateSignalsForBot(bot)
-
-    return true
+    return bot
   }
 
-  async stopBot(botId: string): Promise<boolean> {
-    const bot = await database.getBotById(botId)
-    if (!bot) {
-      throw new Error("Bot not found")
-    }
-
-    await database.updateBot(botId, { status: "stopped" })
-    return true
-  }
-
-  async pauseBot(botId: string): Promise<boolean> {
-    const bot = await database.getBotById(botId)
-    if (!bot) {
-      throw new Error("Bot not found")
-    }
-
-    await database.updateBot(botId, { status: "paused" })
-    return true
-  }
-
-  private async generateSignalsForBot(bot: any) {
-    const marketData = this.marketData.get(bot.config.symbol)
-    if (!marketData) return
-
-    // Simple strategy implementation
-    let signal: TradingSignal | null = null
+  private createStrategy(bot: TradingBot): void {
+    let strategy: TradingStrategy
 
     switch (bot.strategy) {
-      case "scalping":
-        signal = this.generateScalpingSignal(bot, marketData)
-        break
       case "dca":
-        signal = this.generateDCASignal(bot, marketData)
+        strategy = new DCAStrategy(bot)
         break
-      case "momentum":
-        signal = this.generateMomentumSignal(bot, marketData)
+      case "grid":
+        strategy = new GridTradingStrategy(bot)
+        break
+      case "scalping":
+        strategy = new ScalpingStrategy(bot)
         break
       default:
-        signal = this.generateRandomSignal(bot, marketData)
+        strategy = new DCAStrategy(bot)
     }
 
-    if (signal && signal.action !== "hold") {
-      this.activeSignals.push(signal)
-      await this.executeTrade(bot, signal)
-    }
+    this.strategies.set(bot.id, strategy)
   }
 
-  private generateScalpingSignal(bot: any, marketData: MarketData): TradingSignal {
-    // Simple scalping logic - buy on dips, sell on peaks
-    const priceChange = Math.random() - 0.5
-    const action = priceChange > 0.01 ? "sell" : priceChange < -0.01 ? "buy" : "hold"
+  startBot(botId: string): boolean {
+    const bot = this.bots.get(botId)
+    if (!bot) return false
 
-    return {
-      id: generateRandomString(16),
-      symbol: bot.config.symbol,
-      action,
-      price: marketData.price,
-      confidence: Math.random() * 0.4 + 0.6, // 60-100% confidence
-      timestamp: new Date(),
-      strategy: "scalping",
-      metadata: {
-        priceChange,
-        botId: bot.id,
-      },
-    }
-  }
+    bot.status = "running"
 
-  private generateDCASignal(bot: any, marketData: MarketData): TradingSignal {
-    // Dollar Cost Averaging - regular buys regardless of price
-    return {
-      id: generateRandomString(16),
-      symbol: bot.config.symbol,
-      action: "buy",
-      price: marketData.price,
-      confidence: 0.8,
-      timestamp: new Date(),
-      strategy: "dca",
-      metadata: {
-        botId: bot.id,
-      },
-    }
-  }
-
-  private generateMomentumSignal(bot: any, marketData: MarketData): TradingSignal {
-    // Momentum strategy - follow the trend
-    const action = marketData.change24h > 2 ? "buy" : marketData.change24h < -2 ? "sell" : "hold"
-
-    return {
-      id: generateRandomString(16),
-      symbol: bot.config.symbol,
-      action,
-      price: marketData.price,
-      confidence: Math.abs(marketData.change24h) / 10, // Higher confidence with bigger moves
-      timestamp: new Date(),
-      strategy: "momentum",
-      metadata: {
-        change24h: marketData.change24h,
-        botId: bot.id,
-      },
-    }
-  }
-
-  private generateRandomSignal(bot: any, marketData: MarketData): TradingSignal {
-    const actions: ("buy" | "sell" | "hold")[] = ["buy", "sell", "hold"]
-    const action = actions[Math.floor(Math.random() * actions.length)]
-
-    return {
-      id: generateRandomString(16),
-      symbol: bot.config.symbol,
-      action,
-      price: marketData.price,
-      confidence: Math.random(),
-      timestamp: new Date(),
-      strategy: bot.strategy,
-      metadata: {
-        botId: bot.id,
-      },
-    }
-  }
-
-  private async executeTrade(bot: any, signal: TradingSignal) {
-    // Check trade limits
-    const limits = await subscriptionManager.checkLimits(bot.userId, "trades")
-    if (!limits.allowed) {
-      console.log(`Trade limit reached for user ${bot.userId}`)
-      return
-    }
-
-    // Create trade record
-    const trade = await database.createTrade({
-      botId: bot.id,
-      userId: bot.userId,
-      symbol: signal.symbol,
-      side: signal.action,
-      amount: bot.config.amount,
-      price: signal.price,
-      status: "filled", // Simulate immediate fill
-      filledAt: new Date(),
+    // Subscribe to market data
+    const unsubscribe = marketDataIngestion.subscribe(bot.pair, (data) => {
+      const strategy = this.strategies.get(botId)
+      if (strategy && bot.status === "running") {
+        strategy.onMarketData(data)
+      }
     })
 
-    // Record usage
-    await subscriptionManager.recordUsage(bot.userId, "trade")
+    this.marketDataUnsubscribers.set(botId, unsubscribe)
 
-    // Update bot performance
-    await this.updateBotPerformance(bot.id)
-
-    console.log(`Trade executed: ${signal.action} ${bot.config.amount} ${signal.symbol} at ${signal.price}`)
+    console.log(`Bot ${bot.name} started for ${bot.pair}`)
+    return true
   }
 
-  private async updateBotPerformance(botId: string) {
-    const bot = await database.getBotById(botId)
-    if (!bot) return
+  stopBot(botId: string): boolean {
+    const bot = this.bots.get(botId)
+    if (!bot) return false
 
-    const trades = await database.getTradesByBotId(botId)
-    const filledTrades = trades.filter((t) => t.status === "filled")
+    bot.status = "stopped"
 
-    if (filledTrades.length === 0) return
-
-    // Calculate basic performance metrics
-    let totalPnL = 0
-    let winningTrades = 0
-
-    // Simple P&L calculation (this would be more complex in reality)
-    for (let i = 1; i < filledTrades.length; i++) {
-      const prevTrade = filledTrades[i - 1]
-      const currentTrade = filledTrades[i]
-
-      if (prevTrade.side === "buy" && currentTrade.side === "sell") {
-        const pnl = (currentTrade.price - prevTrade.price) * prevTrade.amount
-        totalPnL += pnl
-        if (pnl > 0) winningTrades++
-      }
+    // Unsubscribe from market data
+    const unsubscribe = this.marketDataUnsubscribers.get(botId)
+    if (unsubscribe) {
+      unsubscribe()
+      this.marketDataUnsubscribers.delete(botId)
     }
 
-    const performance: Partial<typeof bot.performance> = {
-      totalTrades: filledTrades.length,
-      winRate: filledTrades.length > 0 ? winningTrades / filledTrades.length : 0,
-      totalPnL,
-    }
-
-    await database.updateBot(botId, { performance })
+    console.log(`Bot ${bot.name} stopped`)
+    return true
   }
 
-  async getBotPerformance(botId: string): Promise<BotPerformance | null> {
-    const bot = await database.getBotById(botId)
-    if (!bot || !bot.performance) return null
+  pauseBot(botId: string): boolean {
+    const bot = this.bots.get(botId)
+    if (!bot) return false
+
+    bot.status = "paused"
+    console.log(`Bot ${bot.name} paused`)
+    return true
+  }
+
+  deleteBot(botId: string): boolean {
+    const bot = this.bots.get(botId)
+    if (!bot) return false
+
+    this.stopBot(botId)
+    this.bots.delete(botId)
+    this.strategies.delete(botId)
+
+    console.log(`Bot ${bot.name} deleted`)
+    return true
+  }
+
+  getBot(botId: string): TradingBot | undefined {
+    return this.bots.get(botId)
+  }
+
+  getAllBots(): TradingBot[] {
+    return Array.from(this.bots.values())
+  }
+
+  getBotTrades(botId: string): Trade[] {
+    const strategy = this.strategies.get(botId)
+    return strategy ? strategy.getTrades() : []
+  }
+
+  getBotPositions(botId: string): Map<string, number> {
+    const strategy = this.strategies.get(botId)
+    return strategy ? strategy.getPositions() : new Map()
+  }
+
+  getPortfolioStats(): {
+    totalBots: number
+    runningBots: number
+    totalProfit: number
+    totalTrades: number
+    avgWinRate: number
+  } {
+    const bots = Array.from(this.bots.values())
+    const runningBots = bots.filter((b) => b.status === "running").length
+    const totalProfit = bots.reduce((sum, b) => sum + b.stats.totalProfit - Math.abs(b.stats.totalLoss), 0)
+    const totalTrades = bots.reduce((sum, b) => sum + b.stats.totalTrades, 0)
+    const avgWinRate = bots.length > 0 ? bots.reduce((sum, b) => sum + b.stats.winRate, 0) / bots.length : 0
 
     return {
-      totalTrades: bot.performance.totalTrades,
-      winningTrades: Math.floor(bot.performance.totalTrades * bot.performance.winRate),
-      losingTrades: bot.performance.totalTrades - Math.floor(bot.performance.totalTrades * bot.performance.winRate),
-      winRate: bot.performance.winRate,
-      totalPnL: bot.performance.totalPnL,
-      averagePnL: bot.performance.totalTrades > 0 ? bot.performance.totalPnL / bot.performance.totalTrades : 0,
-      maxDrawdown: bot.performance.totalPnL * -0.1, // Mock value
-      sharpeRatio: Math.random() * 2, // Mock value
-      lastUpdated: new Date(),
+      totalBots: bots.length,
+      runningBots,
+      totalProfit,
+      totalTrades,
+      avgWinRate,
     }
   }
 
-  async getMarketData(symbol?: string): Promise<MarketData[]> {
-    if (symbol) {
-      const data = this.marketData.get(symbol)
-      return data ? [data] : []
-    }
-
-    return Array.from(this.marketData.values())
-  }
-
-  async getActiveSignals(botId?: string): Promise<TradingSignal[]> {
-    if (botId) {
-      return this.activeSignals.filter((signal) => signal.metadata?.botId === botId)
-    }
-
-    return this.activeSignals
-  }
-
-  async getUserBots(userId: string): Promise<any[]> {
-    return database.getBotsByUserId(userId)
-  }
-
-  async deleteBot(botId: string): Promise<boolean> {
-    // Stop bot first
-    await this.stopBot(botId)
-
-    // Delete from database
-    return database.deleteBot(botId)
-  }
-
-  start() {
-    if (this.isRunning) return
-
-    this.isRunning = true
-    console.log("Trading bot engine started")
-
-    // Run bot logic every 10 seconds
-    setInterval(async () => {
-      const activeBots = await database.getAllBots()
-      const runningBots = activeBots.filter((bot) => bot.status === "active")
-
-      for (const bot of runningBots) {
-        try {
-          await this.generateSignalsForBot(bot)
-        } catch (error) {
-          console.error(`Error processing bot ${bot.id}:`, error)
-        }
+  emergencyStopAll(): void {
+    this.bots.forEach((bot, botId) => {
+      if (bot.status === "running") {
+        this.stopBot(botId)
       }
-    }, 10000)
-  }
+    })
 
-  stop() {
-    this.isRunning = false
-    console.log("Trading bot engine stopped")
+    this.executionEngine.emergencyStop()
+    console.log("Emergency stop activated - all bots stopped")
   }
 }
 
-// Create and export trading bot engine instance
+// Singleton instance
 export const tradingBotEngine = new TradingBotEngine()
-
-// Export the class as well
-export { TradingBotEngine }
-
-// Auto-start the engine
-tradingBotEngine.start()
