@@ -5,17 +5,25 @@ import { createContext, useContext, useEffect, useState } from "react"
 
 export interface User {
   id: string
+  firstName: string
+  lastName: string
+  username: string
   email: string
-  name: string
+  dateOfBirth: string
+  isEmailVerified: boolean
+  isActive: boolean
   avatar?: string
   plan: "free" | "pro" | "enterprise"
   createdAt: string
 }
 
 export interface SignupData {
-  name: string
+  firstName: string
+  lastName: string
+  username: string
   email: string
   password: string
+  dateOfBirth: string
   acceptTerms: boolean
 }
 
@@ -90,7 +98,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signup = async (signupData: SignupData) => {
     try {
-      const response = await fetch("/api/auth/signup", {
+      const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -101,11 +109,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json()
 
       if (response.ok) {
-        localStorage.setItem("auth_token", data.token)
-        setUser(data.user)
+        // Don't auto-login, user needs to verify email first
         return { success: true }
       } else {
-        return { success: false, error: data.error || "Signup failed" }
+        return { success: false, error: data.error || "Registration failed" }
       }
     } catch (error) {
       return { success: false, error: "Network error" }
