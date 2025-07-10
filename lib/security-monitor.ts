@@ -1,12 +1,16 @@
+import { generateRandomString } from "./security"
+
 export enum SecurityEventType {
   LOGIN_ATTEMPT = "login_attempt",
-  FAILED_LOGIN = "failed_login",
+  LOGIN_SUCCESS = "login_success",
+  LOGIN_FAILURE = "login_failure",
+  RATE_LIMIT_EXCEEDED = "rate_limit_exceeded",
   SUSPICIOUS_ACTIVITY = "suspicious_activity",
-  API_ABUSE = "api_abuse",
+  API_KEY_USAGE = "api_key_usage",
   UNAUTHORIZED_ACCESS = "unauthorized_access",
-  DATA_BREACH = "data_breach",
-  MALWARE_DETECTED = "malware_detected",
-  DDOS_ATTACK = "ddos_attack",
+  DATA_BREACH_ATTEMPT = "data_breach_attempt",
+  SYSTEM_ERROR = "system_error",
+  ADMIN_ACTION = "admin_action",
 }
 
 export enum SecuritySeverity {
@@ -22,184 +26,102 @@ export interface SecurityEvent {
   severity: SecuritySeverity
   message: string
   userId?: string
-  ipAddress?: string
+  ip?: string
   userAgent?: string
+  endpoint?: string
   timestamp: Date
-  metadata?: any
+  metadata?: Record<string, any>
+  resolved: boolean
+  resolvedAt?: Date
+  resolvedBy?: string
 }
 
-export class SecurityMonitor {
+export interface SecurityAlert {
+  id: string
+  eventId: string
+  title: string
+  description: string
+  severity: SecuritySeverity
+  status: "active" | "acknowledged" | "resolved"
+  createdAt: Date
+  acknowledgedAt?: Date
+  resolvedAt?: Date
+  assignedTo?: string
+}
+
+export interface ThreatIntelligence {
+  ip: string
+  country?: string
+  isMalicious: boolean
+  threatLevel: number
+  lastSeen: Date
+  sources: string[]
+}
+
+class SecurityMonitor {
   private events: SecurityEvent[] = []
-  private alertThresholds = {
-    [SecurityEventType.FAILED_LOGIN]: 5,
-    [SecurityEventType.API_ABUSE]: 100,
-    [SecurityEventType.SUSPICIOUS_ACTIVITY]: 3,
+  private alerts: SecurityAlert[] = []
+  private threatIntel: Map<string, ThreatIntelligence> = new Map()
+  private suspiciousIPs: Set<string> = new Set()
+  private rateLimitViolations: Map<string, number> = new Map()
+
+  constructor() {
+    this.initializeThreatIntelligence()
+    this.startMonitoring()
   }
 
-  async logEvent(event: Omit<SecurityEvent, "id" | "timestamp">): Promise<void> {
-    const securityEvent: SecurityEvent = {
-      ...event,
-      id: this.generateId(),
-      timestamp: new Date(),
-    }
+  private initializeThreatIntelligence() {
+    // Initialize with some known malicious IPs (mock data)
+    const maliciousIPs = [
+      "192.168.1.100",
+      "10.0.0.50",
+      "172.16.0.25",
+    ]
 
-    this.events.push(securityEvent)
-
-    // Keep only last 1000 events
-    if (this.events.length > 1000) {
-      this.events = this.events.slice(-1000)
-    }
-
-    // Check for alerts
-    await this.checkAlerts(securityEvent)
-
-    console.log(`Security Event: ${event.type} - ${event.message}`)
-  }
-
-  async getEvents(filters?: {
-    type?: SecurityEventType
-    severity?: SecuritySeverity
-    userId?: string
-    limit?: number
-  }): Promise<SecurityEvent[]> {
-    let filteredEvents = [...this.events]
-
-    if (filters?.type) {
-      filteredEvents = filteredEvents.filter((e) => e.type === filters.type)
-    }
-
-    if (filters?.severity) {
-      filteredEvents = filteredEvents.filter((e) => e.severity === filters.severity)
-    }
-
-    if (filters?.userId) {
-      filteredEvents = filteredEvents.filter((e) => e.userId === filters.userId)
-    }
-
-    // Sort by timestamp (newest first)
-    filteredEvents.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-
-    if (filters?.limit) {
-      filteredEvents = filteredEvents.slice(0, filters.limit)
-    }
-
-    return filteredEvents
-  }
-
-  async getSecurityDashboard(): Promise<any> {
-    const last24Hours = new Date(Date.now() - 24 * 60 * 60 * 1000)
-    const recentEvents = this.events.filter((e) => e.timestamp > last24Hours)
-
-    const eventsByType = recentEvents.reduce(
-      (acc, event) => {
-        acc[event.type] = (acc[event.type] || 0) + 1
-        return acc
-      },
-      {} as Record<string, number>,
-    )
-
-    const eventsBySeverity = recentEvents.reduce(
-      (acc, event) => {
-        acc[event.severity] = (acc[event.severity] || 0) + 1
-        return acc
-      },
-      {} as Record<string, number>,
-    )
-
-    return {
-      totalEvents: recentEvents.length,
-      eventsByType,
-      eventsBySeverity,
-      criticalEvents: recentEvents.filter((e) => e.severity === SecuritySeverity.CRITICAL).length,
-      topThreats: this.getTopThreats(recentEvents),
-    }
-  }
-
-  private async checkAlerts(event: SecurityEvent): Promise<void> {
-    const threshold = this.alertThresholds[event.type]
-    if (!threshold) return
-
-    const recentEvents = this.events.filter(
-      (e) => e.type === event.type && e.timestamp > new Date(Date.now() - 60 * 60 * 1000), // Last hour
-    )
-
-    if (recentEvents.length >= threshold) {
-      await this.triggerAlert(event.type, recentEvents.length)
-    }
-  }
-
-  private async triggerAlert(eventType: SecurityEventType, count: number): Promise<void> {
-    console.warn(`SECURITY ALERT: ${eventType} threshold exceeded (${count} events in last hour)`)
-
-    // In a real app, this would send notifications via email, Slack, etc.
-    if (process.env.SECURITY_WEBHOOK_URL) {
-      try {
-        await fetch(process.env.SECURITY_WEBHOOK_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            alert: `Security Alert: ${eventType}`,
-            count,
-            timestamp: new Date().toISOString(),
-          }),
-        })
-      } catch (error) {
-        console.error("Failed to send security alert:", error)
-      }
-    }
-  }
-
-  private getTopThreats(events: SecurityEvent[]): any[] {
-    const threatsByIP = events.reduce(
-      (acc, event) => {
-        if (event.ipAddress) {
-          acc[event.ipAddress] = (acc[event.ipAddress] || 0) + 1
-        }
-        return acc
-      },
-      {} as Record<string, number>,
-    )
-
-    return Object.entries(threatsByIP)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 5)
-      .map(([ip, count]) => ({ ip, count }))
-  }
-
-  private generateId(): string {
-    return Math.random().toString(36).substring(2) + Date.now().toString(36)
-  }
-
-  // Monitor specific security patterns
-  async monitorLoginAttempts(userId: string, success: boolean, ipAddress?: string): Promise<void> {
-    await this.logEvent({
-      type: success ? SecurityEventType.LOGIN_ATTEMPT : SecurityEventType.FAILED_LOGIN,
-      severity: success ? SecuritySeverity.LOW : SecuritySeverity.MEDIUM,
-      message: `Login ${success ? "successful" : "failed"} for user ${userId}`,
-      userId,
-      ipAddress,
+    maliciousIPs.forEach((ip) => {
+      this.threatIntel.set(ip, {
+        ip,
+        country: "Unknown",
+        isMalicious: true,
+        threatLevel: 8,
+        lastSeen: new Date(),
+        sources: ["internal_blacklist"],
+      })
     })
   }
 
-  async monitorAPIUsage(userId: string, endpoint: string, ipAddress?: string): Promise<void> {
-    // Check for API abuse patterns
-    const recentAPICalls = this.events.filter(
-      (e) =>
-        e.userId === userId && e.type === SecurityEventType.API_ABUSE && e.timestamp > new Date(Date.now() - 60 * 1000), // Last minute
-    )
+  private startMonitoring() {
+    // Clean up old events every hour
+    setInterval(() => {
+      this.cleanupOldEvents()
+    }, 60 * 60 * 1000)
 
-    if (recentAPICalls.length > 60) {
-      // More than 60 calls per minute
-      await this.logEvent({
-        type: SecurityEventType.API_ABUSE,
-        severity: SecuritySeverity.HIGH,
-        message: `Potential API abuse detected for user ${userId} on ${endpoint}`,
-        userId,
-        ipAddress,
-        metadata: { endpoint, callsPerMinute: recentAPICalls.length },
-      })
-    }
+    // Reset rate limit violations every 15 minutes
+    setInterval(() => {
+      this.rateLimitViolations.clear()
+    }, 15 * 60 * 1000)
   }
-}
 
-export const securityMonitor = new SecurityMonitor()
+  private cleanupOldEvents() {
+    const cutoffDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) // 30 days ago
+    this.events = this.events.filter((event) => event.timestamp > cutoffDate)
+  }
+
+  logEvent(
+    type: SecurityEventType,
+    severity: SecuritySeverity,
+    message: string,
+    metadata?: {
+      userId?: string
+      ip?: string
+      userAgent?: string
+      endpoint?: string
+      [key: string]: any
+    }
+  ): SecurityEvent {
+    const event: SecurityEvent = {
+      id: generateRandomString(16),
+      type,
+      severity,
+      message,
+      \
