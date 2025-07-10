@@ -1,19 +1,37 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { authService } from "./auth"
-import { adminManager } from "./admin"
+import { apiKeyManager } from "./api-key-manager"
 import { subscriptionManager } from "./subscription-manager"
+import { adminManager } from "./admin"
+import crypto from "crypto"
 
 export interface AuthenticatedRequest extends NextRequest {
   user?: {
-    id: string
+    userId: string
     email: string
     username: string
-    isActive: boolean
+    role?: string
+    subscriptionStatus: string
+    subscription?: any
   }
-  admin?: {
+  apiKey?: {
     id: string
-    username: string
-    role: "admin"
+    userId: string
+    permissions: string[]
+  }
+}
+
+export interface APIResponse<T = any> {
+  success: boolean
+  data?: T
+  error?: string
+  meta?: {
+    timestamp: string
+    requestId: string
+    rateLimit?: {
+      remaining: number
+      resetTime: string
+    }
   }
 }
 
@@ -25,32 +43,110 @@ export function createErrorResponse(message: string, status = 400) {
   return NextResponse.json({ error: { message } }, { status })
 }
 
-export function withAuth(handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
-  return async (req: NextRequest) => {
+export function withAPIAuth(
+  handler: (req: AuthenticatedRequest) => Promise<NextResponse>,
+  requiredPermission?: string,
+) {
+  return async (req: NextRequest): Promise<NextResponse> => {
     try {
-      // Get token from cookie or Authorization header
-      const cookieToken = req.cookies.get("auth-token")?.value
-      const headerToken = req.headers.get("authorization")?.replace("Bearer ", "")
-      const token = cookieToken || headerToken
-
-      if (!token) {
-        return createErrorResponse("Authentication required", 401)
-      }
-
-      // Verify token and get user
-      const user = await authService.verifyAuthToken(token)
-      if (!user) {
-        return createErrorResponse("Invalid or expired token", 401)
-      }
-
-      // Add user to request
       const authenticatedReq = req as AuthenticatedRequest
-      authenticatedReq.user = user
+
+      // Check for API key first
+      const apiKey = req.headers.get("x-api-key") || req.headers.get("authorization")?.replace("Bearer ", "")
+
+      if (apiKey) {
+        const keyData = await apiKeyManager.validateAPIKey(apiKey)
+        if (!keyData) {
+          return NextResponse.json({ error: "Invalid API key" }, { status: 401 })
+        }
+
+        // Check rate limits
+        const rateLimitCheck = await apiKeyManager.checkRateLimit(keyData)
+        if (!rateLimitCheck.allowed) {
+          return NextResponse.json(
+            {
+              error: "Rate limit exceeded",
+              resetTime: rateLimitCheck.resetTime,
+            },
+            { status: 429 },
+          )
+        }
+
+        // Check permissions
+        if (
+          requiredPermission &&
+          !keyData.permissions.includes(requiredPermission) &&
+          !keyData.permissions.includes("*")
+        ) {
+          return NextResponse.json({ error: "Insufficient permissions" }, { status: 403 })
+        }
+
+        // Get user data
+        const user = await authService.getUserById(keyData.userId)
+        if (!user) {
+          return NextResponse.json({ error: "User not found" }, { status: 404 })
+        }
+
+        authenticatedReq.user = {
+          userId: user.id,
+          email: user.email,
+          username: user.username,
+          role: user.role,
+          subscriptionStatus: user.subscription?.status || "inactive",
+          subscription: user.subscription,
+        }
+
+        authenticatedReq.apiKey = {
+          id: keyData.id,
+          userId: keyData.userId,
+          permissions: keyData.permissions,
+        }
+
+        // Record API usage
+        const startTime = Date.now()
+        const response = await handler(authenticatedReq)
+        const responseTime = Date.now() - startTime
+
+        // Record usage asynchronously
+        setImmediate(() => {
+          apiKeyManager.recordAPIUsage(
+            keyData.id,
+            req.nextUrl.pathname,
+            req.method,
+            responseTime,
+            response.status,
+            req.headers.get("user-agent") || undefined,
+            req.ip || req.headers.get("x-forwarded-for") || undefined,
+          )
+        })
+
+        return response
+      }
+
+      // Check for auth token
+      const authToken = req.cookies.get("auth-token")?.value
+      if (!authToken) {
+        return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+      }
+
+      const user = await authService.verifyAuthToken(authToken)
+      if (!user) {
+        return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 })
+      }
+
+      authenticatedReq.user = {
+        userId: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        subscriptionStatus: user.subscription?.status || "inactive",
+        subscription: user.subscription,
+      }
 
       return handler(authenticatedReq)
     } catch (error) {
-      console.error("Auth middleware error:", error)
-      return createErrorResponse("Authentication failed", 500)
+      console.error("API auth middleware error:", error)
+      return NextResponse.json({ error: "Authentication failed" }, { status: 500 })
     }
   }
 }
@@ -58,158 +154,283 @@ export function withAuth(handler: (req: AuthenticatedRequest) => Promise<NextRes
 export function withAdminAuth(handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
   return async (req: NextRequest) => {
     try {
-      // Get admin token from cookie or Authorization header
-      const cookieToken = req.cookies.get("admin-token")?.value
-      const headerToken = req.headers.get("authorization")?.replace("Bearer ", "")
-      const token = cookieToken || headerToken
-
-      if (!token) {
-        return createErrorResponse("Admin authentication required", 401)
+      const adminToken = req.cookies.get("admin-token")?.value
+      if (!adminToken) {
+        return NextResponse.json({ error: "Admin authentication required" }, { status: 401 })
       }
 
-      // Verify admin token
-      const admin = await authService.verifyAdminToken(token)
+      const { verifyAdminToken } = await import("./admin")
+      const admin = await verifyAdminToken(adminToken)
       if (!admin) {
-        return createErrorResponse("Invalid or expired admin token", 401)
+        return NextResponse.json({ error: "Invalid admin token" }, { status: 401 })
       }
 
-      // Add admin to request
       const authenticatedReq = req as AuthenticatedRequest
-      authenticatedReq.admin = admin
+      authenticatedReq.user = {
+        userId: admin.id,
+        email: admin.email || "",
+        username: admin.username,
+        role: admin.role,
+        subscriptionStatus: "active", // Admins always have access
+      }
 
       return handler(authenticatedReq)
     } catch (error) {
       console.error("Admin auth middleware error:", error)
-      return createErrorResponse("Admin authentication failed", 500)
+      return NextResponse.json({ error: "Admin authentication failed" }, { status: 500 })
     }
   }
 }
 
-export function withAPIAuth(handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
-  return async (req: NextRequest) => {
-    try {
-      // Get API key from header
-      const apiKey = req.headers.get("x-api-key")
-
-      if (!apiKey) {
-        return createErrorResponse("API key required", 401)
-      }
-
-      // Validate API key (implement your API key validation logic)
-      // For now, we'll use a simple check
-      if (apiKey !== process.env.API_SECRET_KEY) {
-        return createErrorResponse("Invalid API key", 401)
-      }
-
-      return handler(req as AuthenticatedRequest)
-    } catch (error) {
-      console.error("API auth middleware error:", error)
-      return createErrorResponse("API authentication failed", 500)
-    }
-  }
-}
-
-export function withCORS(handler: (req: NextRequest) => Promise<NextResponse>) {
-  return async (req: NextRequest) => {
-    // Handle preflight requests
-    if (req.method === "OPTIONS") {
-      return new NextResponse(null, {
-        status: 200,
-        headers: {
-          "Access-Control-Allow-Origin": "*",
-          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization, x-api-key",
-        },
-      })
-    }
-
-    const response = await handler(req)
-
-    // Add CORS headers to response
-    response.headers.set("Access-Control-Allow-Origin", "*")
-    response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key")
-
-    return response
-  }
-}
-
-export function withRateLimit(
-  handler: (req: NextRequest) => Promise<NextResponse>,
-  options: { maxRequests: number; windowMs: number } = { maxRequests: 100, windowMs: 60000 },
+export function withSubscriptionCheck(
+  handler: (req: AuthenticatedRequest) => Promise<NextResponse>,
+  requiredFeature?: string,
 ) {
-  const requests = new Map<string, { count: number; resetTime: number }>()
-
-  return async (req: NextRequest) => {
-    const ip = req.ip || req.headers.get("x-forwarded-for") || "unknown"
-    const now = Date.now()
-    const windowStart = now - options.windowMs
-
-    // Clean up old entries
-    for (const [key, value] of requests.entries()) {
-      if (value.resetTime < windowStart) {
-        requests.delete(key)
+  return withAPIAuth(async (req: AuthenticatedRequest): Promise<NextResponse> => {
+    try {
+      const user = req.user
+      if (!user) {
+        return createErrorResponse("Authentication required", 401)
       }
+
+      // Admin bypass
+      const admin = await adminManager.getCurrentAdmin()
+      if (admin) {
+        return handler(req)
+      }
+
+      // Check subscription access
+      if (requiredFeature) {
+        const hasAccess = await subscriptionManager.checkAccess(user.userId, requiredFeature)
+        if (!hasAccess) {
+          return NextResponse.json(
+            {
+              error: `Feature not available: ${requiredFeature}`,
+              subscriptionStatus: user.subscriptionStatus,
+              upgradeUrl: "/subscription",
+            },
+            { status: 403 },
+          )
+        }
+      }
+
+      return handler(req)
+    } catch (error) {
+      console.error("Subscription check middleware error:", error)
+      return NextResponse.json({ error: "Internal server error", status: 500 })
     }
-
-    // Get or create request count for this IP
-    const requestData = requests.get(ip) || { count: 0, resetTime: now + options.windowMs }
-
-    // Check if rate limit exceeded
-    if (requestData.count >= options.maxRequests && requestData.resetTime > now) {
-      return createErrorResponse("Rate limit exceeded", 429)
-    }
-
-    // Increment request count
-    requestData.count++
-    requests.set(ip, requestData)
-
-    return handler(req)
-  }
+  })
 }
 
 export function withGracefulExpiration(handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
-  return async (req: AuthenticatedRequest) => {
+  return async (req: AuthenticatedRequest): Promise<NextResponse> => {
     try {
-      return await handler(req)
-    } catch (error: any) {
-      // Handle token expiration gracefully
-      if (error.message?.includes("expired") || error.message?.includes("invalid")) {
-        return createErrorResponse("Session expired. Please login again.", 401)
+      // First authenticate the request
+      const authResult = await withAPIAuth(handler)(req)
+
+      // If authentication failed, return the error
+      if (authResult.status !== 200) {
+        return authResult
       }
 
-      console.error("Request handler error:", error)
-      return createErrorResponse("Internal server error", 500)
+      // Check subscription status
+      if (req.user && req.user.subscriptionStatus !== "active") {
+        // Allow read operations but restrict write operations
+        if (req.method !== "GET") {
+          return NextResponse.json(
+            {
+              error: "Subscription expired. Read-only access granted.",
+              subscriptionStatus: req.user.subscriptionStatus,
+              upgradeUrl: "/subscription",
+            },
+            { status: 402 },
+          )
+        }
+      }
+
+      return handler(req)
+    } catch (error) {
+      console.error("Graceful expiration middleware error:", error)
+      return NextResponse.json({ error: "Request processing failed" }, { status: 500 })
     }
   }
 }
 
-export function withErrorHandling(handler: (req: NextRequest) => Promise<NextResponse>) {
-  return async (req: NextRequest) => {
+export function withFeatureAccess(feature: string) {
+  return (handler: (req: AuthenticatedRequest) => Promise<NextResponse>) =>
+    async (req: AuthenticatedRequest): Promise<NextResponse> => {
+      try {
+        if (!req.user) {
+          return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+        }
+
+        const hasAccess = await subscriptionManager.checkAccess(req.user.userId, feature)
+        if (!hasAccess) {
+          return NextResponse.json(
+            {
+              error: `Feature not available: ${feature}`,
+              subscriptionStatus: req.user.subscriptionStatus,
+              upgradeUrl: "/subscription",
+            },
+            { status: 403 },
+          )
+        }
+
+        return handler(req)
+      } catch (error) {
+        console.error("Feature access middleware error:", error)
+        return NextResponse.json({ error: "Feature access check failed" }, { status: 500 })
+      }
+    }
+}
+
+export function withValidation<T>(schema: any) {
+  return (handler: (req: AuthenticatedRequest, body: T) => Promise<NextResponse>) =>
+    async (req: AuthenticatedRequest): Promise<NextResponse> => {
+      try {
+        const body = await req.json()
+        const validatedBody = schema.parse(body)
+        return handler(req, validatedBody)
+      } catch (error: any) {
+        if (error.name === "ZodError") {
+          return NextResponse.json(
+            {
+              error: "Invalid request body",
+              details: error.errors,
+            },
+            { status: 400 },
+          )
+        }
+
+        console.error("Validation middleware error:", error)
+        return NextResponse.json({ error: "Request validation failed" }, { status: 500 })
+      }
+    }
+}
+
+export function withRateLimit(requests = 100, windowMs = 60000) {
+  const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
+
+  return (handler: (req: AuthenticatedRequest) => Promise<NextResponse>) =>
+    async (req: AuthenticatedRequest): Promise<NextResponse> => {
+      try {
+        const identifier = req.user?.userId || req.ip || "anonymous"
+        const now = Date.now()
+        const windowStart = now - windowMs
+
+        // Clean up old entries
+        for (const [key, value] of rateLimitMap.entries()) {
+          if (value.resetTime < windowStart) {
+            rateLimitMap.delete(key)
+          }
+        }
+
+        const current = rateLimitMap.get(identifier) || { count: 0, resetTime: now + windowMs }
+
+        if (current.count >= requests && current.resetTime > now) {
+          return NextResponse.json(
+            {
+              error: "Rate limit exceeded",
+              resetTime: new Date(current.resetTime).toISOString(),
+            },
+            { status: 429 },
+          )
+        }
+
+        current.count++
+        rateLimitMap.set(identifier, current)
+
+        const response = await handler(req)
+
+        // Add rate limit headers
+        response.headers.set("X-RateLimit-Limit", requests.toString())
+        response.headers.set("X-RateLimit-Remaining", Math.max(0, requests - current.count).toString())
+        response.headers.set("X-RateLimit-Reset", new Date(current.resetTime).toISOString())
+
+        return response
+      } catch (error) {
+        console.error("Rate limit middleware error:", error)
+        return NextResponse.json({ error: "Rate limit check failed" }, { status: 500 })
+      }
+    }
+}
+
+export function withCORS(handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
+  return async (req: AuthenticatedRequest): Promise<NextResponse> => {
+    try {
+      // Handle preflight requests
+      if (req.method === "OPTIONS") {
+        return new NextResponse(null, {
+          status: 200,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, x-api-key",
+            "Access-Control-Max-Age": "86400",
+          },
+        })
+      }
+
+      const response = await handler(req)
+
+      // Add CORS headers to response
+      response.headers.set("Access-Control-Allow-Origin", "*")
+      response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+      response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization, x-api-key")
+
+      return response
+    } catch (error) {
+      console.error("CORS middleware error:", error)
+      return NextResponse.json({ error: "CORS handling failed" }, { status: 500 })
+    }
+  }
+}
+
+export function createAPIResponse<T>(data?: T, error?: string, status = 200, meta?: any): NextResponse {
+  const response: APIResponse<T> = {
+    success: !error,
+    ...(data && { data }),
+    ...(error && { error }),
+    meta: {
+      timestamp: new Date().toISOString(),
+      requestId: crypto.randomUUID(),
+      ...meta,
+    },
+  }
+
+  return NextResponse.json(response, { status })
+}
+
+export function withErrorHandling(handler: (req: AuthenticatedRequest) => Promise<NextResponse>) {
+  return async (req: AuthenticatedRequest): Promise<NextResponse> => {
     try {
       return await handler(req)
     } catch (error: any) {
-      console.error("API Error:", error)
+      console.error("API handler error:", error)
 
       // Handle specific error types
       if (error.name === "ValidationError") {
-        return createErrorResponse(error.message, 400)
+        return createAPIResponse(null, error.message, 400)
       }
 
       if (error.name === "UnauthorizedError") {
-        return createErrorResponse("Unauthorized", 401)
+        return createAPIResponse(null, "Unauthorized", 401)
       }
 
       if (error.name === "ForbiddenError") {
-        return createErrorResponse("Forbidden", 403)
+        return createAPIResponse(null, "Forbidden", 403)
       }
 
       if (error.name === "NotFoundError") {
-        return createErrorResponse("Resource not found", 404)
+        return createAPIResponse(null, "Not found", 404)
       }
 
-      // Generic error response
-      return createErrorResponse("Internal server error", 500)
+      // Generic server error
+      return createAPIResponse(
+        null,
+        process.env.NODE_ENV === "development" ? error.message : "Internal server error",
+        500,
+      )
     }
   }
 }
@@ -244,131 +465,33 @@ export function combineMiddleware(...middlewares: Array<(handler: any) => any>) 
   }
 }
 
-export function withSubscriptionCheck(
-  handler: (req: AuthenticatedRequest) => Promise<NextResponse>,
-  requiredFeature?: string,
-) {
-  return withAuth(async (req: AuthenticatedRequest): Promise<NextResponse> => {
-    try {
-      const user = req.user
-      if (!user) {
-        return createErrorResponse("Authentication required", 401)
-      }
-
-      // Admin bypass
-      const admin = await adminManager.getCurrentAdmin()
-      if (admin) {
-        return handler(req)
-      }
-
-      // Check subscription access
-      if (requiredFeature) {
-        const hasAccess = await subscriptionManager.checkAccess(user.id, requiredFeature)
-        if (!hasAccess) {
-          return createErrorResponse("Subscription required", 403)
-        }
-      }
-
-      return handler(req)
-    } catch (error) {
-      console.error("Subscription check middleware error:", error)
-      return createErrorResponse("Internal server error", 500)
-    }
-  })
-}
-
 // Additional utility functions for API responses
 export function successResponse<T>(data: T, message?: string, status = 200): NextResponse {
-  return NextResponse.json(
-    {
-      success: true,
-      data,
-      message,
-    },
-    { status },
-  )
+  return createAPIResponse(data, null, status)
 }
 
 export function errorResponse(message: string, error?: any, status = 400): NextResponse {
-  return NextResponse.json(
-    {
-      success: false,
-      error: message,
-      details: error,
-    },
-    { status },
-  )
+  return createAPIResponse(null, message, status, { error })
 }
 
 export function validationErrorResponse(errors: any[], status = 400): NextResponse {
-  return NextResponse.json(
-    {
-      success: false,
-      error: "Validation failed",
-      errors,
-    },
-    { status },
-  )
+  return createAPIResponse(null, "Validation failed", status, { errors })
 }
 
 export function notFoundResponse(resource = "Resource", status = 404): NextResponse {
-  return NextResponse.json(
-    {
-      success: false,
-      error: `${resource} not found`,
-    },
-    { status },
-  )
+  return createAPIResponse(null, `${resource} not found`, status)
 }
 
 export function unauthorizedResponse(message = "Unauthorized", status = 401): NextResponse {
-  return NextResponse.json(
-    {
-      success: false,
-      error: message,
-    },
-    { status },
-  )
+  return createAPIResponse(null, message, status)
 }
 
 export function forbiddenResponse(message = "Forbidden", status = 403): NextResponse {
-  return NextResponse.json(
-    {
-      success: false,
-      error: message,
-    },
-    { status },
-  )
+  return createAPIResponse(null, message, status)
 }
 
 export function serverErrorResponse(message = "Internal server error", status = 500): NextResponse {
-  return NextResponse.json(
-    {
-      success: false,
-      error: message,
-    },
-    { status },
-  )
-}
-
-// Request validation middleware
-export function withValidation(schema: any) {
-  return (handler: (req: NextRequest, body: any) => Promise<NextResponse>) => {
-    return async (req: NextRequest) => {
-      try {
-        const body = await req.json()
-
-        // Basic validation - you can integrate with Zod or similar validation library
-        if (!body) {
-          return validationErrorResponse([{ field: "body", message: "Request body is required" }])
-        }
-
-        return handler(req, body)
-      } catch (error) {
-        return validationErrorResponse([{ field: "body", message: "Invalid JSON format" }])
-      }
-    }
-  }
+  return createAPIResponse(null, message, status)
 }
 
 // Content-Type validation middleware
