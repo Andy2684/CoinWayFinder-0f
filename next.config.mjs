@@ -1,28 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ['bcryptjs'],
-    instrumentationHook: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  images: {
-    domains: ['images.unsplash.com', 'api.dicebear.com'],
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**.unsplash.com',
-      },
-      {
-        protocol: 'https',
-        hostname: '**.dicebear.com',
-      }
-    ],
-    unoptimized: true,
+    serverComponentsExternalPackages: ['mongodb', 'ioredis']
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
@@ -31,15 +10,24 @@ const nextConfig = {
         fs: false,
         net: false,
         tls: false,
+        crypto: false,
       }
     }
     return config
   },
-  compiler: {
-    removeConsole: process.env.NODE_ENV === 'production',
+  images: {
+    domains: ['placeholder.com', 'via.placeholder.com'],
+    unoptimized: true
   },
-  swcMinify: true,
-  outputFileTracing: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  env: {
+    CUSTOM_KEY: process.env.CUSTOM_KEY,
+  }
 }
 
 export default nextConfig

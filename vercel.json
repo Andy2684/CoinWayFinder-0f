@@ -4,24 +4,16 @@
       "maxDuration": 30
     }
   },
-  "regions": ["iad1"],
-  "env": {
-    "NEXT_PUBLIC_SENTRY_DSN": "https://be9e7174e5ef1dfe96267f9229459d54@o4509641938698240.ingest.us.sentry.io/4509641948921856"
-  },
-  "build": {
-    "env": {
-      "NEXT_TELEMETRY_DISABLED": "1"
-    }
-  },
   "headers": [
     {
       "source": "/api/(.*)",
       "headers": [
         {
           "key": "Cache-Control",
-          "value": "s-maxage=60, stale-while-revalidate=300"
+          "value": "s-maxage=60, stale-while-revalidate"
         }
       ]
     }
-  ]
+  ],
+  "regions": ["iad1"]
 }
