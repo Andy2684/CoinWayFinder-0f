@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { sentryService } from "@/lib/sentry"
 
 interface ErrorReport {
   errorId: string
@@ -8,6 +9,9 @@ interface ErrorReport {
   timestamp: string
   userAgent: string
   url: string
+  userId?: string
+  component?: string
+  context?: Record<string, any>
 }
 
 export async function POST(request: NextRequest) {
@@ -24,20 +28,53 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // In production, you would send this to your error monitoring service
-    // Examples: Sentry, LogRocket, Bugsnag, etc.
-    if (process.env.NODE_ENV === "production") {
-      // Example: Send to monitoring service
-      await sendToMonitoringService(errorReport)
+    // Create error object from report
+    const error = new Error(errorReport.message)
+    if (errorReport.stack) {
+      error.stack = errorReport.stack
     }
+
+    // Send to Sentry with full context
+    const sentryId = sentryService.captureException(error, {
+      userId: errorReport.userId,
+      component: errorReport.component || "frontend",
+      action: "client-error-report",
+      additionalData: {
+        errorId: errorReport.errorId,
+        componentStack: errorReport.componentStack,
+        userAgent: errorReport.userAgent,
+        url: errorReport.url,
+        timestamp: errorReport.timestamp,
+        reportedViaAPI: true,
+        ...errorReport.context,
+      },
+    })
+
+    // Add breadcrumb for the error report
+    sentryService.addBreadcrumb("Client error reported via API", "error-report", {
+      errorId: errorReport.errorId,
+      sentryId,
+      component: errorReport.component,
+      url: errorReport.url,
+    })
 
     return NextResponse.json({
       success: true,
       message: "Error reported successfully",
       errorId: errorReport.errorId,
+      sentryId,
     })
   } catch (error) {
     console.error("Failed to process error report:", error)
+
+    // Report the error reporting failure to Sentry
+    sentryService.captureException(error as Error, {
+      component: "error-reporting-api",
+      action: "process-error-report",
+      additionalData: {
+        originalErrorId: (error as any)?.errorId,
+      },
+    })
 
     return NextResponse.json(
       {
@@ -47,25 +84,4 @@ export async function POST(request: NextRequest) {
       { status: 500 },
     )
   }
-}
-
-async function sendToMonitoringService(errorReport: ErrorReport) {
-  // This is where you would integrate with your monitoring service
-  // For example, with Sentry:
-  /*
-  Sentry.captureException(new Error(errorReport.message), {
-    tags: {
-      errorId: errorReport.errorId,
-      component: 'frontend'
-    },
-    extra: {
-      componentStack: errorReport.componentStack,
-      userAgent: errorReport.userAgent,
-      url: errorReport.url
-    }
-  })
-  */
-
-  // For now, just log to console
-  console.log("Would send to monitoring service:", errorReport)
 }

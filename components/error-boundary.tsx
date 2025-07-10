@@ -5,6 +5,7 @@ import { AlertTriangle, RefreshCw, Home, Bug } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { sentryService } from "@/lib/sentry"
 
 interface ErrorBoundaryState {
   hasError: boolean
@@ -18,6 +19,8 @@ interface ErrorBoundaryProps {
   fallback?: React.ComponentType<ErrorFallbackProps>
   onError?: (error: Error, errorInfo: React.ErrorInfo) => void
   resetOnPropsChange?: boolean
+  component?: string
+  userId?: string
 }
 
 interface ErrorFallbackProps {
@@ -63,8 +66,28 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
       console.error("Error Boundary caught an error:", error, errorInfo)
     }
 
-    // Report error to monitoring service
-    this.reportError(error, errorInfo, errorId)
+    // Report error to Sentry
+    const sentryId = sentryService.captureException(error, {
+      component: this.props.component || "error-boundary",
+      action: "component-error",
+      userId: this.props.userId,
+      additionalData: {
+        errorId,
+        componentStack: errorInfo.componentStack,
+        errorBoundary: true,
+      },
+    })
+
+    // Add breadcrumb for context
+    sentryService.addBreadcrumb(
+      `Error boundary caught error in ${this.props.component || "unknown component"}`,
+      "error",
+      {
+        errorId,
+        sentryId,
+        errorMessage: error.message,
+      },
+    )
 
     // Call custom error handler if provided
     if (this.props.onError) {
@@ -82,37 +105,22 @@ class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundarySta
   }
 
   resetError = () => {
+    // Add breadcrumb for error recovery
+    sentryService.addBreadcrumb(
+      `Error boundary reset in ${this.props.component || "unknown component"}`,
+      "navigation",
+      {
+        errorId: this.state.errorId,
+        action: "error-recovery",
+      },
+    )
+
     this.setState({
       hasError: false,
       error: null,
       errorInfo: null,
       errorId: "",
     })
-  }
-
-  reportError = async (error: Error, errorInfo: React.ErrorInfo, errorId: string) => {
-    try {
-      // In production, send to error monitoring service
-      if (process.env.NODE_ENV === "production") {
-        await fetch("/api/error-report", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            errorId,
-            message: error.message,
-            stack: error.stack,
-            componentStack: errorInfo.componentStack,
-            timestamp: new Date().toISOString(),
-            userAgent: navigator.userAgent,
-            url: window.location.href,
-          }),
-        })
-      }
-    } catch (reportError) {
-      console.error("Failed to report error:", reportError)
-    }
   }
 
   render() {
@@ -137,11 +145,27 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({ error, errorInfo, 
   const [showDetails, setShowDetails] = React.useState(false)
 
   const handleReload = () => {
+    sentryService.addBreadcrumb("User triggered page reload from error boundary", "user", {
+      errorId,
+      action: "page-reload",
+    })
     window.location.reload()
   }
 
   const handleGoHome = () => {
+    sentryService.addBreadcrumb("User navigated to home from error boundary", "navigation", {
+      errorId,
+      action: "navigate-home",
+    })
     window.location.href = "/"
+  }
+
+  const handleRetry = () => {
+    sentryService.addBreadcrumb("User triggered error retry", "user", {
+      errorId,
+      action: "retry-error",
+    })
+    resetError()
   }
 
   return (
@@ -153,7 +177,8 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({ error, errorInfo, 
           </div>
           <CardTitle className="text-2xl font-bold text-red-600 dark:text-red-400">Something went wrong</CardTitle>
           <CardDescription className="text-lg">
-            We're sorry, but something unexpected happened. Our team has been notified.
+            We're sorry, but something unexpected happened. Our team has been automatically notified and is working on a
+            fix.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -163,11 +188,13 @@ const DefaultErrorFallback: React.FC<ErrorFallbackProps> = ({ error, errorInfo, 
               <strong>Error ID:</strong> {errorId}
               <br />
               <strong>Time:</strong> {new Date().toLocaleString()}
+              <br />
+              <strong>Status:</strong> Automatically reported to our monitoring system
             </AlertDescription>
           </Alert>
 
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <Button onClick={resetError} variant="default" className="flex items-center gap-2">
+            <Button onClick={handleRetry} variant="default" className="flex items-center gap-2">
               <RefreshCw className="w-4 h-4" />
               Try Again
             </Button>
