@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { toast } from "sonner"
 
 interface ErrorContext {
   userId?: string
@@ -45,91 +44,90 @@ export function useComprehensiveErrorHandler() {
     if (process.env.NODE_ENV === "development") {
       console.error("Error logged:", errorInfo)
     }
-
-    // Show toast notification
-    toast.error(`Error: ${error.message}`)
   }, [])
 
-  const handleAsyncError = useCallback(async <T>(\
-    asyncFn: () => Promise<T>,\
-    context: ErrorContext = {},\
-    options: ErrorHandlerOptions = {}\
-  ): Promise<T | null> => {\
-  const { maxRetries = 3, retryDelay = 1000, showToast = true, logToConsole = true, reportToService = false } = options
+  const handleAsyncError = useCallback(
+    async (
+      asyncFn: () => Promise<any>,
+      context: ErrorContext = {},
+      options: ErrorHandlerOptions = {},
+    ): Promise<any | null> => {
+      const {
+        maxRetries = 3,
+        retryDelay = 1000,
+        showToast = true,
+        logToConsole = true,
+        reportToService = false,
+      } = options
 
-  let lastError: Error | null = null
+      let lastError: Error | null = null
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      setIsLoading(true)
-      const result = await asyncFn()
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          setIsLoading(true)
+          const result = await asyncFn()
+          setIsLoading(false)
+          return result
+        } catch (error) {
+          lastError = error as Error
+
+          if (attempt < maxRetries) {
+            // Wait before retrying
+            await new Promise((resolve) => setTimeout(resolve, retryDelay * Math.pow(2, attempt)))
+          }
+        }
+      }
+
       setIsLoading(false)
-      return result
-    } catch (error) {
-      lastError = error as Error
 
-      if (attempt < maxRetries) {
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, retryDelay * Math.pow(2, attempt)))
+      if (lastError) {
+        const errorInfo: ErrorInfo = {
+          message: lastError.message,
+          stack: lastError.stack,
+          context,
+          timestamp: Date.now(),
+          retryCount: maxRetries,
+        }
+
+        setErrors((prev) => [...prev, errorInfo])
+
+        if (logToConsole) {
+          console.error("Async operation failed after retries:", errorInfo)
+        }
+
+        if (reportToService) {
+          // Report to error tracking service
+          try {
+            await fetch("/api/error-report", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(errorInfo),
+            })
+          } catch (reportError) {
+            console.error("Failed to report error:", reportError)
+          }
+        }
       }
-    }
-  }
 
-  setIsLoading(false)
+      return null
+    },
+    [],
+  )
 
-  if (lastError) {
-    const errorInfo: ErrorInfo = {
-      message: lastError.message,
-      stack: lastError.stack,
-      context,
-      timestamp: Date.now(),
-      retryCount: maxRetries,
-    }
+  const clearErrors = useCallback(() => {
+    setErrors([])
+  }, [])
 
-    setErrors((prev) => [...prev, errorInfo])
+  const removeError = useCallback((timestamp: number) => {
+    setErrors((prev) => prev.filter((error) => error.timestamp !== timestamp))
+  }, [])
 
-    if (logToConsole) {
-      console.error("Async operation failed after retries:", errorInfo)
-    }
-
-    if (showToast) {
-      toast.error(`Operation failed: ${lastError.message}`)
-    }
-
-    if (reportToService) {
-      // Report to error tracking service
-      try {
-        await fetch('/api/error-report', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(errorInfo)
-          })
-      } catch (reportError) {
-        console.error("Failed to report error:", reportError)
-      }
-    }
-  }
-
-  return null
-  \
-}
-, [])
-
-const clearErrors = useCallback(() => {
-  setErrors([])
-}, [])
-
-const removeError = useCallback((timestamp: number) => {
-  setErrors((prev) => prev.filter((error) => error.timestamp !== timestamp))
-}, [])
-
-return {
+  return {
     errors,
     isLoading,
     logError,
     handleAsyncError,
     clearErrors,
-    removeError
+    removeError,
   }
-\
 }
