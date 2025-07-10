@@ -7,20 +7,23 @@ export interface ErrorHandlerOptions {
   showToast?: boolean
   toastMessage?: string
   logError?: boolean
-  retryCount?: number
+  onError?: (error: Error) => void
 }
 
-export interface UseErrorHandlerReturn {
+export interface ErrorHandlerState {
   error: Error | null
   isLoading: boolean
-  handleAsyncOperation: <T>(operation: () => Promise<T>, options?: ErrorHandlerOptions) => Promise<T | null>
   clearError: () => void
-  setError: (error: Error | null) => void
+  handleAsyncOperation: <T>(operation: () => Promise<T>, options?: ErrorHandlerOptions) => Promise<T | null>
 }
 
-export function useErrorHandler(): UseErrorHandlerReturn {
+export function useErrorHandler(): ErrorHandlerState {
   const [error, setError] = useState<Error | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
 
   const handleAsyncOperation = useCallback(async <T>(\
     operation: () => Promise<T>,\
@@ -44,6 +47,10 @@ export function useErrorHandler(): UseErrorHandlerReturn {
       toast.error(options.toastMessage || error.message)
     }
 
+    if (options.onError) {
+      options.onError(error)
+    }
+
     return null
   } finally {
     setIsLoading(false)
@@ -52,16 +59,11 @@ export function useErrorHandler(): UseErrorHandlerReturn {
 }
 , [])
 
-const clearError = useCallback(() => {
-  setError(null)
-}, [])
-
 return {
     error,
     isLoading,
-    handleAsyncOperation,
     clearError,
-    setError
+    handleAsyncOperation
   }
 \
 }
