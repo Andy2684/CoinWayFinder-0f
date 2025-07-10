@@ -1,85 +1,77 @@
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { ArrowRight, Bot, TrendingUp, Zap, Shield } from "lucide-react"
+import { ArrowRight, Bot } from "lucide-react"
 import Link from "next/link"
 
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden py-20 px-4 sm:px-6 lg:px-8">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#30D5C8]/10 via-transparent to-purple-500/10" />
-
-      {/* Grid pattern overlay */}
-      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
-
-      <div className="relative max-w-7xl mx-auto">
+    <section className="relative pt-20 pb-16 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto">
         <div className="text-center">
           {/* Badge */}
-          <Badge className="mb-6 bg-[#30D5C8]/10 text-[#30D5C8] border-[#30D5C8]/20 hover:bg-[#30D5C8]/20">
-            <Bot className="w-4 h-4 mr-2" />
-            AI-Powered Trading Assistant
-          </Badge>
+          <div className="inline-flex items-center px-4 py-2 rounded-full bg-[#30D5C8]/10 border border-[#30D5C8]/20 mb-8">
+            <Bot className="w-4 h-4 text-[#30D5C8] mr-2" />
+            <span className="text-[#30D5C8] text-sm font-medium">AI-Powered Trading Assistant</span>
+          </div>
 
-          {/* Main heading */}
-          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-            Smart Crypto Trading
+          {/* Main Headline */}
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
+            Smart AI-Powered
             <br />
-            <span className="bg-gradient-to-r from-[#30D5C8] to-blue-400 bg-clip-text text-transparent">
-              Made Simple
-            </span>
+            <span className="text-[#30D5C8]">Crypto Trading</span>
+            <br />
+            Assistant
           </h1>
 
-          {/* Subheading */}
+          {/* Subheadline */}
           <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
             Get real-time crypto signals, automated DCA bots, and AI-driven market analysis delivered directly to your
-            Telegram. Start trading smarter with CoinWayfinder.
+            Telegram. Start trading smarter, not harder.
           </p>
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Link href="/dashboard">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+            <Link href="/pricing">
               <Button
                 size="lg"
-                className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-black font-semibold px-8 py-4 text-lg"
+                className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E] font-semibold px-8 py-3 text-lg"
               >
-                Start Trading Now
-                <ArrowRight className="w-5 h-5 ml-2" />
+                Start Free Trial
+                <ArrowRight className="ml-2 w-5 h-5" />
               </Button>
             </Link>
-            <Button
-              size="lg"
-              variant="outline"
-              className="border-gray-600 text-white hover:bg-gray-800 px-8 py-4 text-lg bg-transparent"
-            >
-              Watch Demo
-            </Button>
+            <Link href="/signals">
+              <Button
+                size="lg"
+                variant="outline"
+                className="border-gray-600 text-white hover:bg-gray-800 px-8 py-3 text-lg bg-transparent"
+              >
+                See Demo
+              </Button>
+            </Link>
           </div>
 
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-2xl mx-auto">
             <div className="text-center">
-              <div className="flex items-center justify-center mb-2">
-                <TrendingUp className="w-6 h-6 text-[#30D5C8] mr-2" />
-                <span className="text-2xl font-bold text-white">95%</span>
-              </div>
-              <p className="text-gray-400">Signal Accuracy</p>
+              <div className="text-3xl font-bold text-[#30D5C8] mb-2">10K+</div>
+              <div className="text-gray-400">Active Traders</div>
             </div>
             <div className="text-center">
-              <div className="flex items-center justify-center mb-2">
-                <Zap className="w-6 h-6 text-[#30D5C8] mr-2" />
-                <span className="text-2xl font-bold text-white">24/7</span>
-              </div>
-              <p className="text-gray-400">Market Monitoring</p>
+              <div className="text-3xl font-bold text-[#30D5C8] mb-2">85%</div>
+              <div className="text-gray-400">Success Rate</div>
             </div>
             <div className="text-center">
-              <div className="flex items-center justify-center mb-2">
-                <Shield className="w-6 h-6 text-[#30D5C8] mr-2" />
-                <span className="text-2xl font-bold text-white">100K+</span>
-              </div>
-              <p className="text-gray-400">Active Users</p>
+              <div className="text-3xl font-bold text-[#30D5C8] mb-2">24/7</div>
+              <div className="text-gray-400">Market Monitoring</div>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-[#30D5C8]/5 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-[#30D5C8]/5 rounded-full blur-3xl"></div>
       </div>
     </section>
   )
