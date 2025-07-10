@@ -1,125 +1,57 @@
-import { simpleHash, generateRandomString } from "./security"
+import type { User } from "./auth"
 
-export interface User {
-  _id?: string
-  id: string
-  email: string
-  username: string
-  password?: string
-  isActive: boolean
-  createdAt: Date
-  updatedAt: Date
-  subscription?: {
-    plan: string
-    status: string
-    trialEndsAt?: Date
-    currentPeriodEnd?: Date
-    stripeCustomerId?: string
-    stripeSubscriptionId?: string
-  }
+// In-memory database for development
+const users = new Map<string, User>()
+const sessions = new Map<string, any>()
+const bots = new Map<string, any>()
+const trades = new Map<string, any>()
+const apiKeys = new Map<string, any>()
+const userSettings = new Map<string, any>()
+
+// Generate unique IDs
+function generateId(): string {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36)
 }
 
-export interface Bot {
-  _id?: string
-  id?: string
-  userId: string
-  name: string
-  exchange: string
-  strategy: string
-  symbol: string
-  status: "running" | "paused" | "stopped" | "error"
-  config: {
-    riskLevel: number
-    lotSize: number
-    takeProfit: number
-    stopLoss: number
-    investment: number
-    dcaInterval?: string
-    parameters?: any
-  }
-  stats: {
-    totalTrades: number
-    winRate: number
-    totalProfit: number
-    totalLoss: number
-    currentDrawdown: number
-    lastTradeAt?: Date
-    performance24h?: number
-    performance7d?: number
-    performance30d?: number
-  }
-  createdAt: Date
-  updatedAt: Date
-  lastRunAt?: Date
-}
-
-export interface Trade {
-  _id?: string
-  id: string
-  botId: string
-  userId: string
-  symbol: string
-  side: "buy" | "sell"
-  amount: number
-  price: number
-  status: "pending" | "filled" | "cancelled" | "failed"
-  profit?: number
-  timestamp: Date
-  createdAt: Date
-  filledAt?: Date
-}
-
-export interface Session {
-  _id?: string
-  id: string
-  userId: string
-  token: string
-  expiresAt: Date
-  createdAt: Date
-  isActive: boolean
-}
-
-export interface APIKey {
-  _id?: string
-  id: string
-  userId: string
-  name: string
-  key: string
-  permissions: string[]
-  createdAt: Date
-  lastUsed?: Date
-  isActive: boolean
-}
-
-class InMemoryDatabase {
-  private users: Map<string, User> = new Map()
-  private bots: Map<string, Bot> = new Map()
-  private trades: Map<string, Trade> = new Map()
-  private sessions: Map<string, Session> = new Map()
-  private apiKeys: Map<string, APIKey> = new Map()
-
-  private generateId(): string {
-    return generateRandomString(16)
-  }
-
+export class Database {
   // User operations
-  async createUser(userData: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
+  async createUser(userData: Partial<User>): Promise<User> {
+    const id = generateId()
     const user: User = {
-      id: this.generateId(),
+      id,
+      email: userData.email!,
+      username: userData.username!,
+      password: userData.password,
+      isActive: userData.isActive ?? true,
       createdAt: new Date(),
       updatedAt: new Date(),
-      ...userData,
+      subscription: userData.subscription || {
+        plan: "free",
+        status: "active",
+      },
     }
-    this.users.set(user.id, user)
+
+    users.set(id, user)
+
+    // Create default user settings
+    userSettings.set(id, {
+      userId: id,
+      subscription: user.subscription,
+      preferences: {
+        notifications: true,
+        theme: "light",
+      },
+    })
+
     return user
   }
 
   async getUserById(id: string): Promise<User | null> {
-    return this.users.get(id) || null
+    return users.get(id) || null
   }
 
   async getUserByEmail(email: string): Promise<User | null> {
-    for (const user of this.users.values()) {
+    for (const user of users.values()) {
       if (user.email === email) {
         return user
       }
@@ -127,290 +59,181 @@ class InMemoryDatabase {
     return null
   }
 
-  async getUserByUsername(username: string): Promise<User | null> {
-    for (const user of this.users.values()) {
-      if (user.username === username) {
-        return user
-      }
-    }
-    return null
-  }
-
   async updateUser(id: string, updates: Partial<User>): Promise<User | null> {
-    const user = this.users.get(id)
+    const user = users.get(id)
     if (!user) return null
 
-    const updatedUser = {
-      ...user,
-      ...updates,
-      updatedAt: new Date(),
-    }
-    this.users.set(id, updatedUser)
+    const updatedUser = { ...user, ...updates, updatedAt: new Date() }
+    users.set(id, updatedUser)
     return updatedUser
   }
 
   async deleteUser(id: string): Promise<boolean> {
-    return this.users.delete(id)
+    return users.delete(id)
   }
 
-  async getAllUsers(): Promise<User[]> {
-    return Array.from(this.users.values())
+  // User settings operations
+  async getUserSettings(userId: string): Promise<any> {
+    return userSettings.get(userId) || null
   }
 
-  // Bot operations
-  async createBot(botData: Omit<Bot, "_id" | "id" | "createdAt" | "updatedAt">): Promise<Bot> {
-    const bot: Bot = {
-      _id: this.generateId(),
-      id: this.generateId(),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      ...botData,
-    }
-    this.bots.set(bot._id!, bot)
-    return bot
-  }
-
-  async getBotById(id: string): Promise<Bot | null> {
-    return this.bots.get(id) || null
-  }
-
-  async getUserBots(userId: string): Promise<Bot[]> {
-    return Array.from(this.bots.values()).filter((bot) => bot.userId === userId)
-  }
-
-  async getBotsByUserId(userId: string): Promise<Bot[]> {
-    return this.getUserBots(userId)
-  }
-
-  async updateBot(id: string, updates: Partial<Bot>): Promise<Bot | null> {
-    const bot = this.bots.get(id)
-    if (!bot) return null
-
-    const updatedBot = {
-      ...bot,
-      ...updates,
-      updatedAt: new Date(),
-    }
-    this.bots.set(id, updatedBot)
-    return updatedBot
-  }
-
-  async deleteBot(id: string): Promise<boolean> {
-    return this.bots.delete(id)
-  }
-
-  async getAllBots(): Promise<Bot[]> {
-    return Array.from(this.bots.values())
-  }
-
-  // Trade operations
-  async createTrade(tradeData: Omit<Trade, "_id" | "id" | "createdAt">): Promise<Trade> {
-    const trade: Trade = {
-      _id: this.generateId(),
-      id: this.generateId(),
-      createdAt: new Date(),
-      ...tradeData,
-    }
-    this.trades.set(trade._id!, trade)
-    return trade
-  }
-
-  async getTradeById(id: string): Promise<Trade | null> {
-    return this.trades.get(id) || null
-  }
-
-  async getTradesByUserId(userId: string): Promise<Trade[]> {
-    return Array.from(this.trades.values()).filter((trade) => trade.userId === userId)
-  }
-
-  async getTradesByBotId(botId: string): Promise<Trade[]> {
-    return Array.from(this.trades.values()).filter((trade) => trade.botId === botId)
-  }
-
-  async updateTrade(id: string, updates: Partial<Trade>): Promise<Trade | null> {
-    const trade = this.trades.get(id)
-    if (!trade) return null
-
-    const updatedTrade = {
-      ...trade,
-      ...updates,
-    }
-    this.trades.set(id, updatedTrade)
-    return updatedTrade
-  }
-
-  async deleteTrade(id: string): Promise<boolean> {
-    return this.trades.delete(id)
-  }
-
-  async getAllTrades(): Promise<Trade[]> {
-    return Array.from(this.trades.values())
+  async updateUserSettings(userId: string, settings: any): Promise<any> {
+    const existing = userSettings.get(userId) || {}
+    const updated = { ...existing, ...settings }
+    userSettings.set(userId, updated)
+    return updated
   }
 
   // Session operations
-  async createSession(sessionData: Omit<Session, "_id" | "id" | "createdAt">): Promise<Session> {
-    const session: Session = {
-      _id: this.generateId(),
-      id: this.generateId(),
-      createdAt: new Date(),
+  async createSession(userId: string, sessionData: any): Promise<any> {
+    const sessionId = generateId()
+    const session = {
+      id: sessionId,
+      userId,
       ...sessionData,
+      createdAt: new Date(),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
     }
-    this.sessions.set(session._id!, session)
+    sessions.set(sessionId, session)
     return session
   }
 
-  async getSessionById(id: string): Promise<Session | null> {
-    return this.sessions.get(id) || null
+  async getSession(sessionId: string): Promise<any> {
+    return sessions.get(sessionId) || null
   }
 
-  async getSessionByToken(token: string): Promise<Session | null> {
-    for (const session of this.sessions.values()) {
-      if (session.token === token && session.isActive && session.expiresAt > new Date()) {
-        return session
+  async deleteSession(sessionId: string): Promise<boolean> {
+    return sessions.delete(sessionId)
+  }
+
+  // Bot operations
+  async createBot(userId: string, botData: any): Promise<any> {
+    const botId = generateId()
+    const bot = {
+      id: botId,
+      userId,
+      ...botData,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      status: "inactive",
+    }
+    bots.set(botId, bot)
+    return bot
+  }
+
+  async getBotById(botId: string): Promise<any> {
+    return bots.get(botId) || null
+  }
+
+  async getBotsByUserId(userId: string): Promise<any[]> {
+    const userBots = []
+    for (const bot of bots.values()) {
+      if (bot.userId === userId) {
+        userBots.push(bot)
       }
     }
-    return null
+    return userBots
   }
 
-  async getSessionsByUserId(userId: string): Promise<Session[]> {
-    return Array.from(this.sessions.values()).filter((session) => session.userId === userId)
+  async updateBot(botId: string, updates: any): Promise<any> {
+    const bot = bots.get(botId)
+    if (!bot) return null
+
+    const updatedBot = { ...bot, ...updates, updatedAt: new Date() }
+    bots.set(botId, updatedBot)
+    return updatedBot
   }
 
-  async updateSession(id: string, updates: Partial<Session>): Promise<Session | null> {
-    const session = this.sessions.get(id)
-    if (!session) return null
+  async deleteBot(botId: string): Promise<boolean> {
+    return bots.delete(botId)
+  }
 
-    const updatedSession = {
-      ...session,
-      ...updates,
+  // Trade operations
+  async createTrade(tradeData: any): Promise<any> {
+    const tradeId = generateId()
+    const trade = {
+      id: tradeId,
+      ...tradeData,
+      createdAt: new Date(),
     }
-    this.sessions.set(id, updatedSession)
-    return updatedSession
+    trades.set(tradeId, trade)
+    return trade
   }
 
-  async deleteSession(id: string): Promise<boolean> {
-    return this.sessions.delete(id)
-  }
-
-  async deleteSessionsByUserId(userId: string): Promise<number> {
-    let deletedCount = 0
-    for (const [id, session] of this.sessions.entries()) {
-      if (session.userId === userId) {
-        this.sessions.delete(id)
-        deletedCount++
+  async getTradesByUserId(userId: string): Promise<any[]> {
+    const userTrades = []
+    for (const trade of trades.values()) {
+      if (trade.userId === userId) {
+        userTrades.push(trade)
       }
     }
-    return deletedCount
+    return userTrades
+  }
+
+  async getTradesByBotId(botId: string): Promise<any[]> {
+    const botTrades = []
+    for (const trade of trades.values()) {
+      if (trade.botId === botId) {
+        botTrades.push(trade)
+      }
+    }
+    return botTrades
   }
 
   // API Key operations
-  async createAPIKey(keyData: Omit<APIKey, "_id" | "id" | "createdAt">): Promise<APIKey> {
-    const apiKey: APIKey = {
-      _id: this.generateId(),
-      id: this.generateId(),
-      createdAt: new Date(),
+  async createApiKey(userId: string, keyData: any): Promise<any> {
+    const keyId = generateId()
+    const apiKey = {
+      id: keyId,
+      userId,
       ...keyData,
+      createdAt: new Date(),
+      lastUsed: null,
     }
-    this.apiKeys.set(apiKey._id!, apiKey)
+    apiKeys.set(keyId, apiKey)
     return apiKey
   }
 
-  async getAPIKeyById(id: string): Promise<APIKey | null> {
-    return this.apiKeys.get(id) || null
-  }
-
-  async getAPIKeyByKey(key: string): Promise<APIKey | null> {
-    for (const apiKey of this.apiKeys.values()) {
-      if (apiKey.key === key && apiKey.isActive) {
-        return apiKey
+  async getApiKeysByUserId(userId: string): Promise<any[]> {
+    const userKeys = []
+    for (const key of apiKeys.values()) {
+      if (key.userId === userId) {
+        userKeys.push(key)
       }
     }
-    return null
+    return userKeys
   }
 
-  async getAPIKeysByUserId(userId: string): Promise<APIKey[]> {
-    return Array.from(this.apiKeys.values()).filter((key) => key.userId === userId)
-  }
+  async updateApiKey(keyId: string, updates: any): Promise<any> {
+    const key = apiKeys.get(keyId)
+    if (!key) return null
 
-  async updateAPIKey(id: string, updates: Partial<APIKey>): Promise<APIKey | null> {
-    const apiKey = this.apiKeys.get(id)
-    if (!apiKey) return null
-
-    const updatedKey = {
-      ...apiKey,
-      ...updates,
-    }
-    this.apiKeys.set(id, updatedKey)
+    const updatedKey = { ...key, ...updates }
+    apiKeys.set(keyId, updatedKey)
     return updatedKey
   }
 
-  async deleteAPIKey(id: string): Promise<boolean> {
-    return this.apiKeys.delete(id)
+  async deleteApiKey(keyId: string): Promise<boolean> {
+    return apiKeys.delete(keyId)
   }
 
-  // Utility methods
-  async cleanup(): Promise<void> {
-    const now = new Date()
-    for (const [id, session] of this.sessions.entries()) {
-      if (session.expiresAt < now) {
-        this.sessions.delete(id)
-      }
-    }
-  }
-
-  async getStats(): Promise<{
-    users: number
-    bots: number
-    trades: number
-    sessions: number
-    apiKeys: number
-  }> {
+  // Statistics
+  async getStats(): Promise<any> {
     return {
-      users: this.users.size,
-      bots: this.bots.size,
-      trades: this.trades.size,
-      sessions: this.sessions.size,
-      apiKeys: this.apiKeys.size,
+      totalUsers: users.size,
+      totalBots: bots.size,
+      totalTrades: trades.size,
+      totalApiKeys: apiKeys.size,
     }
-  }
-
-  async initialize(): Promise<void> {
-    // Create sample admin user
-    await this.createUser({
-      email: "admin@coinwayfinder.com",
-      username: "admin",
-      password: await simpleHash("admin_password"),
-      isActive: true,
-      subscription: {
-        plan: "enterprise",
-        status: "active",
-      },
-    })
-
-    // Create sample regular user
-    await this.createUser({
-      email: "user@example.com",
-      username: "testuser",
-      password: await simpleHash("user_password"),
-      isActive: true,
-      subscription: {
-        plan: "pro",
-        status: "active",
-        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    })
-
-    console.log("✅ Database initialized with sample data")
   }
 }
 
-// Export singleton instance
-export const database = new InMemoryDatabase()
-
-// Mock connectToDatabase function for compatibility
-export async function connectToDatabase() {
+// Database connection
+export async function connectToDatabase(): Promise<Database> {
+  // In a real app, this would connect to MongoDB, PostgreSQL, etc.
+  console.log("Connected to in-memory database")
   return database
 }
 
-// Initialize on module load
-database.initialize().catch(console.error)
+// Export singleton instance
+export const database = new Database()

@@ -1,5 +1,6 @@
 import { simpleHash, generateRandomString } from "./security"
 import { database } from "./database"
+import { cookies } from "next/headers"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 const JWT_EXPIRES_IN = "7d"
@@ -77,6 +78,7 @@ export class AuthService {
 
   generateAuthToken(user: User): string {
     const payload = {
+      userId: user.id,
       id: user.id,
       email: user.email,
       username: user.username,
@@ -97,7 +99,7 @@ export class AuthService {
   async verifyAuthToken(token: string): Promise<User | null> {
     try {
       const decoded = verifyJWT(token, JWT_SECRET)
-      const user = await database.getUserById(decoded.id)
+      const user = await database.getUserById(decoded.id || decoded.userId)
 
       if (!user || !user.isActive) {
         return null
@@ -126,6 +128,33 @@ export class AuthService {
       return null
     } catch (error) {
       console.error("Admin token verification error:", error)
+      return null
+    }
+  }
+
+  async getCurrentUser(): Promise<{ userId: string; email: string; username: string } | null> {
+    try {
+      const cookieStore = cookies()
+      const token = cookieStore.get("auth-token")?.value
+
+      if (!token) {
+        return null
+      }
+
+      const decoded = verifyJWT(token, JWT_SECRET)
+      const user = await database.getUserById(decoded.id || decoded.userId)
+
+      if (!user || !user.isActive) {
+        return null
+      }
+
+      return {
+        userId: user.id,
+        email: user.email,
+        username: user.username,
+      }
+    } catch (error) {
+      console.error("Get current user error:", error)
       return null
     }
   }
@@ -267,15 +296,12 @@ export class AuthManager {
 // Mock lucia export for compatibility
 export const lucia = {
   validateSession: async (sessionId: string) => {
-    // Mock implementation
     return { user: null, session: null }
   },
   createSession: async (userId: string, attributes: any) => {
-    // Mock implementation
     return { id: generateRandomString(16) }
   },
   invalidateSession: async (sessionId: string) => {
-    // Mock implementation
     return true
   },
 }
@@ -283,6 +309,11 @@ export const lucia = {
 // Export instances
 export const authService = new AuthService()
 export const authManager = new AuthManager()
+
+// Static method for getCurrentUser
+export const getCurrentUser = async () => {
+  return authService.getCurrentUser()
+}
 
 // Initialize on module load
 authManager.initialize().catch(console.error)
