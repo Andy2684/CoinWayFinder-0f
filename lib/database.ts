@@ -39,30 +39,32 @@ let db: Db
 
 async function createIndexes() {
   try {
+    const database = await connectToDatabase()
+
     // Users collection indexes
-    await db.collection("users").createIndex({ email: 1 }, { unique: true })
-    await db.collection("users").createIndex({ username: 1 }, { unique: true })
-    await db.collection("users").createIndex({ isActive: 1 })
-    await db.collection("users").createIndex({ "subscription.status": 1 })
+    await database.collection("users").createIndex({ email: 1 }, { unique: true })
+    await database.collection("users").createIndex({ username: 1 }, { unique: true })
+    await database.collection("users").createIndex({ isActive: 1 })
+    await database.collection("users").createIndex({ "subscription.status": 1 })
 
     // Admins collection indexes
-    await db.collection("admins").createIndex({ username: 1 }, { unique: true })
+    await database.collection("admins").createIndex({ username: 1 }, { unique: true })
 
     // Bots collection indexes
-    await db.collection("bots").createIndex({ userId: 1 })
-    await db.collection("bots").createIndex({ status: 1 })
-    await db.collection("bots").createIndex({ strategy: 1 })
+    await database.collection("bots").createIndex({ userId: 1 })
+    await database.collection("bots").createIndex({ status: 1 })
+    await database.collection("bots").createIndex({ strategy: 1 })
 
     // Trades collection indexes
-    await db.collection("trades").createIndex({ userId: 1 })
-    await db.collection("trades").createIndex({ botId: 1 })
-    await db.collection("trades").createIndex({ timestamp: -1 })
-    await db.collection("trades").createIndex({ symbol: 1 })
+    await database.collection("trades").createIndex({ userId: 1 })
+    await database.collection("trades").createIndex({ botId: 1 })
+    await database.collection("trades").createIndex({ timestamp: -1 })
+    await database.collection("trades").createIndex({ symbol: 1 })
 
     // API Keys collection indexes
-    await db.collection("apiKeys").createIndex({ userId: 1 })
-    await db.collection("apiKeys").createIndex({ keyHash: 1 }, { unique: true })
-    await db.collection("apiKeys").createIndex({ isActive: 1 })
+    await database.collection("apiKeys").createIndex({ userId: 1 })
+    await database.collection("apiKeys").createIndex({ keyHash: 1 }, { unique: true })
+    await database.collection("apiKeys").createIndex({ isActive: 1 })
 
     console.log("Database indexes created successfully")
   } catch (error) {
@@ -245,7 +247,7 @@ export interface UserSettingsDocument {
 }
 
 export class Database {
-  private db: Db
+  private db: Db | null = null
 
   constructor() {
     this.initialize()
@@ -256,9 +258,17 @@ export class Database {
     await createIndexes()
   }
 
+  private async getDb(): Promise<Db> {
+    if (!this.db) {
+      this.db = await connectToDatabase()
+    }
+    return this.db
+  }
+
   // User operations
   async createUser(userData: Partial<UserDocument>): Promise<UserDocument> {
-    const collection = this.db.collection<UserDocument>("users")
+    const db = await this.getDb()
+    const collection = db.collection<UserDocument>("users")
     const userId = new Date().getTime().toString()
 
     const user: UserDocument = {
@@ -302,35 +312,41 @@ export class Database {
   }
 
   async getUserById(userId: string): Promise<UserDocument | null> {
-    const collection = this.db.collection<UserDocument>("users")
+    const db = await this.getDb()
+    const collection = db.collection<UserDocument>("users")
     return collection.findOne({ _id: userId, isActive: true })
   }
 
   async getUserByEmail(email: string): Promise<UserDocument | null> {
-    const collection = this.db.collection<UserDocument>("users")
+    const db = await this.getDb()
+    const collection = db.collection<UserDocument>("users")
     return collection.findOne({ email, isActive: true })
   }
 
   async getUserByUsername(username: string): Promise<UserDocument | null> {
-    const collection = this.db.collection<UserDocument>("users")
+    const db = await this.getDb()
+    const collection = db.collection<UserDocument>("users")
     return collection.findOne({ username, isActive: true })
   }
 
   async updateUser(userId: string, updates: Partial<UserDocument>): Promise<boolean> {
-    const collection = this.db.collection<UserDocument>("users")
+    const db = await this.getDb()
+    const collection = db.collection<UserDocument>("users")
     const result = await collection.updateOne({ _id: userId }, { $set: { ...updates, updatedAt: new Date() } })
     return result.modifiedCount > 0
   }
 
   async deleteUser(userId: string): Promise<boolean> {
-    const collection = this.db.collection<UserDocument>("users")
+    const db = await this.getDb()
+    const collection = db.collection<UserDocument>("users")
     const result = await collection.updateOne({ _id: userId }, { $set: { isActive: false, updatedAt: new Date() } })
     return result.modifiedCount > 0
   }
 
   // Bot operations
   async createBot(botData: Partial<BotDocument>): Promise<BotDocument> {
-    const collection = this.db.collection<BotDocument>("bots")
+    const db = await this.getDb()
+    const collection = db.collection<BotDocument>("bots")
     const botId = new Date().getTime().toString()
 
     const bot: BotDocument = {
@@ -360,30 +376,35 @@ export class Database {
   }
 
   async getBotById(botId: string): Promise<BotDocument | null> {
-    const collection = this.db.collection<BotDocument>("bots")
+    const db = await this.getDb()
+    const collection = db.collection<BotDocument>("bots")
     return collection.findOne({ _id: botId })
   }
 
   async getBotsByUserId(userId: string): Promise<BotDocument[]> {
-    const collection = this.db.collection<BotDocument>("bots")
+    const db = await this.getDb()
+    const collection = db.collection<BotDocument>("bots")
     return collection.find({ userId }).toArray()
   }
 
   async updateBot(botId: string, updates: Partial<BotDocument>): Promise<boolean> {
-    const collection = this.db.collection<BotDocument>("bots")
+    const db = await this.getDb()
+    const collection = db.collection<BotDocument>("bots")
     const result = await collection.updateOne({ _id: botId }, { $set: { ...updates, updatedAt: new Date() } })
     return result.modifiedCount > 0
   }
 
   async deleteBot(botId: string): Promise<boolean> {
-    const collection = this.db.collection<BotDocument>("bots")
+    const db = await this.getDb()
+    const collection = db.collection<BotDocument>("bots")
     const result = await collection.deleteOne({ _id: botId })
     return result.deletedCount > 0
   }
 
   // Trade operations
   async createTrade(tradeData: Partial<TradeDocument>): Promise<TradeDocument> {
-    const collection = this.db.collection<TradeDocument>("trades")
+    const db = await this.getDb()
+    const collection = db.collection<TradeDocument>("trades")
     const tradeId = new Date().getTime().toString()
 
     const trade: TradeDocument = {
@@ -412,30 +433,35 @@ export class Database {
   }
 
   async getTradeById(tradeId: string): Promise<TradeDocument | null> {
-    const collection = this.db.collection<TradeDocument>("trades")
+    const db = await this.getDb()
+    const collection = db.collection<TradeDocument>("trades")
     return collection.findOne({ _id: tradeId })
   }
 
   async getTradesByUserId(userId: string, limit = 100): Promise<TradeDocument[]> {
-    const collection = this.db.collection<TradeDocument>("trades")
+    const db = await this.getDb()
+    const collection = db.collection<TradeDocument>("trades")
     return collection.find({ userId }).sort({ timestamp: -1 }).limit(limit).toArray()
   }
 
   async getTradesByBotId(botId: string, limit = 100): Promise<TradeDocument[]> {
-    const collection = this.db.collection<TradeDocument>("trades")
+    const db = await this.getDb()
+    const collection = db.collection<TradeDocument>("trades")
     return collection.find({ botId }).sort({ timestamp: -1 }).limit(limit).toArray()
   }
 
   async updateTrade(tradeId: string, updates: Partial<TradeDocument>): Promise<boolean> {
-    const collection = this.db.collection<TradeDocument>("trades")
+    const db = await this.getDb()
+    const collection = db.collection<TradeDocument>("trades")
     const result = await collection.updateOne({ _id: tradeId }, { $set: updates })
     return result.modifiedCount > 0
   }
 
   // Analytics and statistics
   async getUserStats(userId: string): Promise<any> {
-    const tradesCollection = this.db.collection<TradeDocument>("trades")
-    const botsCollection = this.db.collection<BotDocument>("bots")
+    const db = await this.getDb()
+    const tradesCollection = db.collection<TradeDocument>("trades")
+    const botsCollection = db.collection<BotDocument>("bots")
 
     const [trades, bots] = await Promise.all([
       tradesCollection.find({ userId }).toArray(),
@@ -464,9 +490,10 @@ export class Database {
   }
 
   async getSystemStats(): Promise<any> {
-    const usersCollection = this.db.collection<UserDocument>("users")
-    const botsCollection = this.db.collection<BotDocument>("bots")
-    const tradesCollection = this.db.collection<TradeDocument>("trades")
+    const db = await this.getDb()
+    const usersCollection = db.collection<UserDocument>("users")
+    const botsCollection = db.collection<BotDocument>("bots")
+    const tradesCollection = db.collection<TradeDocument>("trades")
 
     const [totalUsers, totalBots, totalTrades] = await Promise.all([
       usersCollection.countDocuments({ isActive: true }),
@@ -497,3 +524,6 @@ export class Database {
     }
   }
 }
+
+// Create and export the database instance
+export const database = new Database()
