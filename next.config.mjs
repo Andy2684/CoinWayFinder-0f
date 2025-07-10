@@ -7,9 +7,11 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    unoptimized: true,
+    disableStaticImages: true,
   },
-  serverExternalPackages: ['openai']
-}
+  server: {
+    externalPackages: ['openai']
+  }
+};
 
-export default nextConfig
+export default nextConfig;
