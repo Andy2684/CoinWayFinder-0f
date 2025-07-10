@@ -1,284 +1,144 @@
-"use client"
-
-export interface ErrorReportOptions {
-  context?: Record<string, any>
-  severity?: "low" | "medium" | "high" | "critical"
-  tags?: Record<string, string>
-  user?: {
-    id?: string
-    email?: string
-    username?: string
-  }
-  extra?: Record<string, any>
-  stack?: string
-}
-
 export interface ErrorReport {
   id: string
-  timestamp: Date
   message: string
   stack?: string
   context: Record<string, any>
-  severity: string
-  reported: boolean
-  reportChannels: string[]
+  severity: "low" | "medium" | "high" | "critical"
+  timestamp: Date
+  userAgent?: string
+  url?: string
+  userId?: string
+}
+
+export interface ErrorReportingConfig {
+  apiEndpoint?: string
+  enableConsoleLogging?: boolean
+  enableLocalStorage?: boolean
+  maxStoredErrors?: number
+  reportingThreshold?: "low" | "medium" | "high" | "critical"
 }
 
 export class ErrorReportingService {
+  private config: ErrorReportingConfig
   private errorQueue: ErrorReport[] = []
-  private isReporting = false
-  private maxQueueSize = 100
-  private reportingChannels: Set<string> = new Set(["console", "localStorage"])
+  private isOnline = true
 
-  constructor() {
-    this.loadQueueFromStorage()
-    this.setupPeriodicReporting()
+  constructor(config: ErrorReportingConfig = {}) {
+    this.config = {
+      apiEndpoint: "/api/error-report",
+      enableConsoleLogging: true,
+      enableLocalStorage: true,
+      maxStoredErrors: 100,
+      reportingThreshold: "medium",
+      ...config,
+    }
+
+    if (typeof window !== "undefined") {
+      this.isOnline = navigator.onLine
+      window.addEventListener("online", this.handleOnline.bind(this))
+      window.addEventListener("offline", this.handleOffline.bind(this))
+      this.loadStoredErrors()
+    }
   }
 
-  private generateReportId(): string {
-    return `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  private handleOnline() {
+    this.isOnline = true
+    this.flushErrorQueue()
   }
 
-  private loadQueueFromStorage(): void {
-    if (typeof window === "undefined") return
+  private handleOffline() {
+    this.isOnline = false
+  }
+
+  private loadStoredErrors() {
+    if (!this.config.enableLocalStorage) return
 
     try {
-      const stored = localStorage.getItem("error_queue")
+      const stored = localStorage.getItem("error-reports")
       if (stored) {
-        const parsed = JSON.parse(stored)
-        this.errorQueue = parsed.map((item: any) => ({
-          ...item,
-          timestamp: new Date(item.timestamp),
-        }))
+        this.errorQueue = JSON.parse(stored)
       }
     } catch (error) {
-      console.warn("Failed to load error queue from storage:", error)
+      console.warn("Failed to load stored errors:", error)
     }
   }
 
-  private saveQueueToStorage(): void {
-    if (typeof window === "undefined") return
+  private saveErrorsToStorage() {
+    if (!this.config.enableLocalStorage) return
 
     try {
-      // Keep only recent errors to prevent storage bloat
-      const recentErrors = this.errorQueue.slice(0, this.maxQueueSize)
-      localStorage.setItem("error_queue", JSON.stringify(recentErrors))
+      localStorage.setItem("error-reports", JSON.stringify(this.errorQueue.slice(-this.config.maxStoredErrors!)))
     } catch (error) {
-      console.warn("Failed to save error queue to storage:", error)
+      console.warn("Failed to save errors to storage:", error)
     }
   }
 
-  private setupPeriodicReporting(): void {
-    if (typeof window === "undefined") return
+  private async flushErrorQueue() {
+    if (!this.isOnline || this.errorQueue.length === 0) return
 
-    // Report queued errors every 30 seconds
-    setInterval(() => {
-      this.processErrorQueue()
-    }, 30000)
+    const errorsToSend = [...this.errorQueue]
+    this.errorQueue = []
 
-    // Report immediately when online
-    window.addEventListener("online", () => {
-      this.processErrorQueue()
-    })
+    try {
+      await fetch(this.config.apiEndpoint!, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ errors: errorsToSend }),
+      })
+
+      this.saveErrorsToStorage()
+    } catch (error) {
+      // Re-add errors to queue if sending failed
+      this.errorQueue.unshift(...errorsToSend)
+      console.warn("Failed to send error reports:", error)
+    }
   }
 
-  public reportError(error: Error, options: ErrorReportOptions = {}): string {
-    const report: ErrorReport = {
-      id: this.generateReportId(),
-      timestamp: new Date(),
+  private shouldReport(severity: string): boolean {
+    const severityLevels = { low: 0, medium: 1, high: 2, critical: 3 }
+    const threshold = severityLevels[this.config.reportingThreshold as keyof typeof severityLevels] || 1
+    const errorLevel = severityLevels[severity as keyof typeof severityLevels] || 1
+    return errorLevel >= threshold
+  }
+
+  async reportError(error: Error, context: Partial<ErrorReport> = {}) {
+    const errorReport: ErrorReport = {
+      id: `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       message: error.message,
-      stack: error.stack || options.stack,
-      context: options.context || {},
-      severity: options.severity || "medium",
-      reported: false,
-      reportChannels: [],
+      stack: error.stack,
+      context: context.context || {},
+      severity: context.severity || "medium",
+      timestamp: new Date(),
+      userAgent: typeof window !== "undefined" ? navigator.userAgent : undefined,
+      url: typeof window !== "undefined" ? window.location.href : undefined,
+      userId: context.userId,
     }
 
-    // Add to queue
-    this.errorQueue.unshift(report)
-
-    // Trim queue if too large
-    if (this.errorQueue.length > this.maxQueueSize) {
-      this.errorQueue = this.errorQueue.slice(0, this.maxQueueSize)
-    }
-
-    this.saveQueueToStorage()
-
-    // Try to report immediately
-    this.reportSingle(report, options)
-
-    return report.id
-  }
-
-  private async reportSingle(report: ErrorReport, options: ErrorReportOptions): Promise<void> {
-    const reportChannels: string[] = []
-
-    // Console reporting (always available)
-    if (this.reportingChannels.has("console")) {
-      this.reportToConsole(report, options)
-      reportChannels.push("console")
-    }
-
-    // Local storage reporting
-    if (this.reportingChannels.has("localStorage")) {
-      try {
-        this.reportToLocalStorage(report)
-        reportChannels.push("localStorage")
-      } catch (error) {
-        console.warn("Failed to report to localStorage:", error)
-      }
-    }
-
-    // Network reporting
-    if (this.reportingChannels.has("network") && typeof navigator !== "undefined" && navigator.onLine) {
-      try {
-        await this.reportToNetwork(report, options)
-        reportChannels.push("network")
-      } catch (error) {
-        console.warn("Failed to report to network:", error)
-      }
-    }
-
-    // Update report status
-    report.reported = reportChannels.length > 0
-    report.reportChannels = reportChannels
-  }
-
-  private reportToConsole(report: ErrorReport, options: ErrorReportOptions): void {
-    const style = this.getConsoleStyle(report.severity)
-
-    console.group(`%c🚨 Error Report [${report.severity.toUpperCase()}]`, style)
-    console.error("Message:", report.message)
-    console.error("Timestamp:", report.timestamp.toISOString())
-    console.error("Context:", report.context)
-
-    if (report.stack) {
-      console.error("Stack:", report.stack)
-    }
-
-    if (options.extra) {
-      console.error("Extra:", options.extra)
-    }
-
-    console.groupEnd()
-  }
-
-  private getConsoleStyle(severity: string): string {
-    const styles = {
-      low: "color: #3b82f6; font-weight: bold;",
-      medium: "color: #f59e0b; font-weight: bold;",
-      high: "color: #ef4444; font-weight: bold;",
-      critical: "color: #dc2626; font-weight: bold; background: #fee2e2; padding: 2px 4px;",
-    }
-    return styles[severity as keyof typeof styles] || styles.medium
-  }
-
-  private reportToLocalStorage(report: ErrorReport): void {
-    if (typeof window === "undefined") return
-
-    try {
-      const key = `error_report_${report.id}`
-      const data = {
-        ...report,
-        timestamp: report.timestamp.toISOString(),
-      }
-      localStorage.setItem(key, JSON.stringify(data))
-
-      // Clean up old reports (keep last 50)
-      const keys = Object.keys(localStorage).filter((k) => k.startsWith("error_report_"))
-      if (keys.length > 50) {
-        keys
-          .sort()
-          .slice(0, keys.length - 50)
-          .forEach((key) => {
-            localStorage.removeItem(key)
-          })
-      }
-    } catch (error) {
-      console.warn("Failed to save error report to localStorage:", error)
-    }
-  }
-
-  private async reportToNetwork(report: ErrorReport, options: ErrorReportOptions): Promise<void> {
-    const payload = {
-      id: report.id,
-      timestamp: report.timestamp.toISOString(),
-      message: report.message,
-      stack: report.stack,
-      context: report.context,
-      severity: report.severity,
-      options,
-    }
-
-    const response = await fetch("/api/error-report", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    })
-
-    if (!response.ok) {
-      throw new Error(`Network reporting failed: ${response.status}`)
-    }
-  }
-
-  private async processErrorQueue(): Promise<void> {
-    if (this.isReporting || this.errorQueue.length === 0) {
+    if (!this.shouldReport(errorReport.severity)) {
       return
     }
 
-    this.isReporting = true
+    if (this.config.enableConsoleLogging) {
+      console.error(`[${errorReport.severity.toUpperCase()}] Error Report:`, errorReport)
+    }
 
-    try {
-      const unreportedErrors = this.errorQueue.filter((report) => !report.reported)
+    this.errorQueue.push(errorReport)
 
-      for (const report of unreportedErrors) {
-        try {
-          await this.reportSingle(report, {})
-        } catch (error) {
-          console.warn(`Failed to process error report ${report.id}:`, error)
-        }
-      }
-
-      this.saveQueueToStorage()
-    } finally {
-      this.isReporting = false
+    if (this.isOnline) {
+      await this.flushErrorQueue()
+    } else {
+      this.saveErrorsToStorage()
     }
   }
 
-  public getQueueStats(): {
-    total: number
-    reported: number
-    unreported: number
-    oldestUnreported?: Date
-  } {
-    const reported = this.errorQueue.filter((r) => r.reported).length
-    const unreported = this.errorQueue.filter((r) => !r.reported)
-
-    return {
-      total: this.errorQueue.length,
-      reported,
-      unreported: unreported.length,
-      oldestUnreported: unreported.length > 0 ? unreported[unreported.length - 1].timestamp : undefined,
-    }
+  getQueuedErrors(): ErrorReport[] {
+    return [...this.errorQueue]
   }
 
-  public clearQueue(): void {
+  clearQueue() {
     this.errorQueue = []
-    this.saveQueueToStorage()
-  }
-
-  public configureChannels(channels: string[]): void {
-    this.reportingChannels = new Set(channels)
+    this.saveErrorsToStorage()
   }
 }
-
-// Export singleton instance
-const errorReportingService = new ErrorReportingService()
-
-export const reportError = (error: Error, options?: ErrorReportOptions): string => {
-  return errorReportingService.reportError(error, options)
-}
-
-export { errorReportingService }

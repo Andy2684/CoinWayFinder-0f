@@ -1,158 +1,241 @@
-"use client"
-
 interface CacheItem<T> {
   data: T
   timestamp: number
   ttl: number
-  key: string
 }
 
-interface CacheStats {
-  hits: number
-  misses: number
-  size: number
-  maxSize: number
+interface CacheOptions {
+  ttl?: number // Time to live in milliseconds
+  maxSize?: number // Maximum number of items in cache
+  persistent?: boolean // Whether to persist to localStorage
 }
 
 export class CacheManager {
   private cache = new Map<string, CacheItem<any>>()
-  private stats: CacheStats = {
-    hits: 0,
-    misses: 0,
-    size: 0,
-    maxSize: 1000,
-  }
+  private defaultTTL = 5 * 60 * 1000 // 5 minutes
+  private maxSize = 1000
+  private persistent = false
   private cleanupInterval: NodeJS.Timeout | null = null
 
-  constructor(maxSize = 1000, cleanupIntervalMs = 60000) {
-    this.stats.maxSize = maxSize
-    this.startCleanup(cleanupIntervalMs)
-  }
+  constructor(options: CacheOptions = {}) {
+    this.defaultTTL = options.ttl || this.defaultTTL
+    this.maxSize = options.maxSize || this.maxSize
+    this.persistent = options.persistent || false
 
-  private startCleanup(intervalMs: number): void {
+    if (this.persistent && typeof window !== "undefined") {
+      this.loadFromStorage()
+    }
+
+    // Start cleanup interval
     this.cleanupInterval = setInterval(() => {
       this.cleanup()
-    }, intervalMs)
+    }, 60000) // Cleanup every minute
   }
 
-  private cleanup(): void {
+  private loadFromStorage() {
+    try {
+      const stored = localStorage.getItem("cache-manager")
+      if (stored) {
+        const data = JSON.parse(stored)
+        Object.entries(data).forEach(([key, item]) => {
+          this.cache.set(key, item as CacheItem<any>)
+        })
+      }
+    } catch (error) {
+      console.warn("Failed to load cache from storage:", error)
+    }
+  }
+
+  private saveToStorage() {
+    if (!this.persistent || typeof window === "undefined") return
+
+    try {
+      const data = Object.fromEntries(this.cache.entries())
+      localStorage.setItem("cache-manager", JSON.stringify(data))
+    } catch (error) {
+      console.warn("Failed to save cache to storage:", error)
+    }
+  }
+
+  private cleanup() {
     const now = Date.now()
     const keysToDelete: string[] = []
 
-    for (const [key, item] of this.cache.entries()) {
+    this.cache.forEach((item, key) => {
       if (now - item.timestamp > item.ttl) {
         keysToDelete.push(key)
       }
-    }
+    })
 
     keysToDelete.forEach((key) => {
       this.cache.delete(key)
     })
 
-    this.stats.size = this.cache.size
-
-    // If still over max size, remove oldest items
-    if (this.cache.size > this.stats.maxSize) {
-      const sortedEntries = Array.from(this.cache.entries()).sort(([, a], [, b]) => a.timestamp - b.timestamp)
-
-      const itemsToRemove = this.cache.size - this.stats.maxSize
-      for (let i = 0; i < itemsToRemove; i++) {
-        this.cache.delete(sortedEntries[i][0])
-      }
-
-      this.stats.size = this.cache.size
+    if (keysToDelete.length > 0 && this.persistent) {
+      this.saveToStorage()
     }
   }
 
-  public set<T>(key: string, data: T, ttlMs = 300000): void {
-    // Default TTL: 5 minutes
+  private evictOldest() {
+    if (this.cache.size === 0) return
+
+    let oldestKey = ""
+    let oldestTime = Date.now()
+
+    this.cache.forEach((item, key) => {
+      if (item.timestamp < oldestTime) {
+        oldestTime = item.timestamp
+        oldestKey = key
+      }
+    })
+
+    if (oldestKey) {
+      this.cache.delete(oldestKey)
+    }
+  }
+
+  set<T>(key: string, data: T, ttl?: number): void {
+    // Evict oldest item if cache is full
+    if (this.cache.size >= this.maxSize) {
+      this.evictOldest()
+    }
+
     const item: CacheItem<T> = {
       data,
       timestamp: Date.now(),
-      ttl: ttlMs,
-      key,
+      ttl: ttl || this.defaultTTL,
     }
 
     this.cache.set(key, item)
-    this.stats.size = this.cache.size
 
-    // Immediate cleanup if over max size
-    if (this.cache.size > this.stats.maxSize) {
-      this.cleanup()
+    if (this.persistent) {
+      this.saveToStorage()
     }
   }
 
-  public get<T>(key: string): T | null {
+  get<T>(key: string): T | null {
     const item = this.cache.get(key)
 
     if (!item) {
-      this.stats.misses++
       return null
     }
 
     const now = Date.now()
     if (now - item.timestamp > item.ttl) {
       this.cache.delete(key)
-      this.stats.size = this.cache.size
-      this.stats.misses++
+      if (this.persistent) {
+        this.saveToStorage()
+      }
       return null
     }
 
-    this.stats.hits++
-    return item.data
+    return item.data as T
   }
 
-  public has(key: string): boolean {
+  has(key: string): boolean {
     const item = this.cache.get(key)
-    if (!item) return false
+
+    if (!item) {
+      return false
+    }
 
     const now = Date.now()
     if (now - item.timestamp > item.ttl) {
       this.cache.delete(key)
-      this.stats.size = this.cache.size
+      if (this.persistent) {
+        this.saveToStorage()
+      }
       return false
     }
 
     return true
   }
 
-  public delete(key: string): boolean {
+  delete(key: string): boolean {
     const deleted = this.cache.delete(key)
-    if (deleted) {
-      this.stats.size = this.cache.size
+
+    if (deleted && this.persistent) {
+      this.saveToStorage()
     }
+
     return deleted
   }
 
-  public clear(): void {
+  clear(): void {
     this.cache.clear()
-    this.stats.size = 0
-    this.stats.hits = 0
-    this.stats.misses = 0
+
+    if (this.persistent) {
+      this.saveToStorage()
+    }
   }
 
-  public getStats(): CacheStats {
-    return { ...this.stats }
+  size(): number {
+    return this.cache.size
   }
 
-  public getHitRate(): number {
-    const total = this.stats.hits + this.stats.misses
-    return total === 0 ? 0 : this.stats.hits / total
-  }
-
-  public keys(): string[] {
+  keys(): string[] {
     return Array.from(this.cache.keys())
   }
 
-  public values<T>(): T[] {
-    return Array.from(this.cache.values()).map((item) => item.data)
+  getStats() {
+    const now = Date.now()
+    let expired = 0
+    let active = 0
+
+    this.cache.forEach((item) => {
+      if (now - item.timestamp > item.ttl) {
+        expired++
+      } else {
+        active++
+      }
+    })
+
+    return {
+      total: this.cache.size,
+      active,
+      expired,
+      maxSize: this.maxSize,
+      hitRate: this.getHitRate(),
+    }
   }
 
-  public entries<T>(): Array<[string, T]> {
-    return Array.from(this.cache.entries()).map(([key, item]) => [key, item.data])
+  private hitCount = 0
+  private missCount = 0
+
+  private getHitRate(): number {
+    const total = this.hitCount + this.missCount
+    return total === 0 ? 0 : this.hitCount / total
   }
 
-  public destroy(): void {
+  // Wrapper method that tracks hit/miss statistics
+  getWithStats<T>(key: string): T | null {
+    const result = this.get<T>(key)
+
+    if (result !== null) {
+      this.hitCount++
+    } else {
+      this.missCount++
+    }
+
+    return result
+  }
+
+  // Async wrapper for caching async operations
+  async getOrSet<T>(key: string, fetcher: () => Promise<T>, ttl?: number): Promise<T> {
+    const cached = this.get<T>(key)
+
+    if (cached !== null) {
+      this.hitCount++
+      return cached
+    }
+
+    this.missCount++
+    const data = await fetcher()
+    this.set(key, data, ttl)
+    return data
+  }
+
+  destroy() {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval)
       this.cleanupInterval = null
@@ -161,157 +244,46 @@ export class CacheManager {
   }
 }
 
-// Utility functions for common caching patterns
-export function createCacheKey(...parts: (string | number | boolean)[]): string {
-  return parts.map(String).join(":")
-}
-
-export function withCache<T>(cache: CacheManager, key: string, fetcher: () => Promise<T>, ttlMs = 300000): Promise<T> {
-  const cached = cache.get<T>(key)
-  if (cached !== null) {
-    return Promise.resolve(cached)
-  }
-
-  return fetcher().then((data) => {
-    cache.set(key, data, ttlMs)
-    return data
-  })
-}
-
-export function memoize<T extends (...args: any[]) => any>(
-  fn: T,
-  cache: CacheManager,
-  keyGenerator?: (...args: Parameters<T>) => string,
-  ttlMs = 300000,
-): T {
-  return ((...args: Parameters<T>) => {
-    const key = keyGenerator ? keyGenerator(...args) : createCacheKey("memoized", JSON.stringify(args))
-
-    const cached = cache.get(key)
-    if (cached !== null) {
-      return cached
-    }
-
-    const result = fn(...args)
-    cache.set(key, result, ttlMs)
-    return result
-  }) as T
-}
-
 // Global cache instance
-export const globalCache = new CacheManager(1000, 60000)
+export const globalCache = new CacheManager({
+  ttl: 5 * 60 * 1000, // 5 minutes
+  maxSize: 1000,
+  persistent: true,
+})
 
-// Specialized cache instances
-export const apiCache = new CacheManager(500, 30000) // API responses
-export const userCache = new CacheManager(100, 600000) // User data (10 minutes)
-export const configCache = new CacheManager(50, 3600000) // Configuration (1 hour)
-
-// Cache utilities for specific use cases
+// Utility functions for common caching patterns
 export const cacheUtils = {
   // Cache API responses
-  cacheApiResponse: (endpoint: string, data: any, ttl = 300000) => {
-    apiCache.set(createCacheKey("api", endpoint), data, ttl)
+  cacheApiResponse: <T>(url: string, data: T, ttl = 5 * 60 * 1000) => {
+    globalCache.set(`api:${url}`, data, ttl)
   },
 
-  // Get cached API response
-  getCachedApiResponse: (endpoint: string): any | null => {
-    return apiCache.get(createCacheKey("api", endpoint))
+  getCachedApiResponse: <T>(url: string): T | null => {\
+    return globalCache.get<T>(`api:${url}`)
   },
 
   // Cache user data
-  cacheUserData: (userId: string, data: any, ttl = 600000) => {
-    userCache.set(createCacheKey("user", userId), data, ttl)
+  cacheUserData: <T>(userId: string, data: T, ttl = 15 * 60 * 1000) => {
+    globalCache.set(`user:${userId}`, data, ttl)
   },
 
-  // Get cached user data
-  getCachedUserData: (userId: string): any | null => {
-    return userCache.get(createCacheKey("user", userId))
+  getCachedUserData: <T>(userId: string): T | null => {\
+    return globalCache.get<T>(`user:${userId}`)
   },
 
-  // Cache configuration
-  cacheConfig: (configKey: string, data: any, ttl = 3600000) => {
-    configCache.set(createCacheKey("config", configKey), data, ttl)
+  // Cache crypto prices
+  cacheCryptoPrice: (symbol: string, price: number, ttl = 30 * 1000) => {
+    globalCache.set(`price:${symbol}`, price, ttl)
   },
 
-  // Get cached configuration
-  getCachedConfig: (configKey: string): any | null => {
-    return configCache.get(createCacheKey("config", configKey))
+  getCachedCryptoPrice: (symbol: string): number | null => {\
+    return globalCache.get<number>(`price:${symbol}`)
   },
 
-  // Clear all caches
-  clearAll: () => {
-    globalCache.clear()
-    apiCache.clear()
-    userCache.clear()
-    configCache.clear()
-  },
-
-  // Get combined stats
-  getAllStats: () => ({
-    global: globalCache.getStats(),
-    api: apiCache.getStats(),
-    user: userCache.getStats(),
-    config: configCache.getStats(),
-  }),
-}
-
-// Browser storage integration
-export const persistentCache = {
-  set: (key: string, data: any, ttlMs = 300000) => {
-    if (typeof window === "undefined") return
-
-    try {
-      const item = {
-        data,
-        timestamp: Date.now(),
-        ttl: ttlMs,
-      }
-      localStorage.setItem(`cache_${key}`, JSON.stringify(item))
-    } catch (error) {
-      console.warn("Failed to save to persistent cache:", error)
-    }
-  },
-
-  get: (key: string): any | null => {
-    if (typeof window === "undefined") return null
-
-    try {
-      const stored = localStorage.getItem(`cache_${key}`)
-      if (!stored) return null
-
-      const item = JSON.parse(stored)
-      const now = Date.now()
-
-      if (now - item.timestamp > item.ttl) {
-        localStorage.removeItem(`cache_${key}`)
-        return null
-      }
-
-      return item.data
-    } catch (error) {
-      console.warn("Failed to read from persistent cache:", error)
-      return null
-    }
-  },
-
-  delete: (key: string) => {
-    if (typeof window === "undefined") return
-
-    try {
-      localStorage.removeItem(`cache_${key}`)
-    } catch (error) {
-      console.warn("Failed to delete from persistent cache:", error)
-    }
-  },
-
-  clear: () => {
-    if (typeof window === "undefined") return
-
-    try {
-      const keys = Object.keys(localStorage).filter((key) => key.startsWith("cache_"))
-      keys.forEach((key) => localStorage.removeItem(key))
-    } catch (error) {
-      console.warn("Failed to clear persistent cache:", error)
-    }
-  },
+  // Invalidate related cache entries
+  invalidatePattern: (pattern: string) => {\
+    const keys = globalCache.keys()
+    const keysToDelete = keys.filter((key) => key.includes(pattern))
+    keysToDelete.forEach((key) => globalCache.delete(key))
+  },\
 }
