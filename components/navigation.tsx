@@ -1,146 +1,157 @@
 "use client"
 
-import Link from "next/link"
 import { useState } from "react"
-import { Menu, TrendingUp } from "lucide-react"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Menu, TrendingUp, User, Settings, LogOut } from "lucide-react"
+import { useAuth } from "@/components/auth/auth-provider"
 
-const navItems = [
-  { href: "/", label: "Home" },
-  { href: "/signals", label: "Signals" },
-  { href: "/bots", label: "Bots" },
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/integrations", label: "Integrations" },
-  { href: "/news", label: "News" },
+const navigation = [
+  { name: "Home", href: "/" },
+  { name: "Signals", href: "/signals" },
+  { name: "Bots", href: "/bots" },
+  { name: "Dashboard", href: "/dashboard" },
+  { name: "Integrations", href: "/integrations" },
+  { name: "News", href: "/news" },
 ]
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
+  const pathname = usePathname()
+  const { user, logout } = useAuth()
+
+  const handleLogout = () => {
+    logout()
+  }
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center">
-        <div className="mr-4 hidden md:flex">
-          <Link href="/" className="mr-6 flex items-center space-x-2">
-            <TrendingUp className="h-6 w-6" />
-            <span className="hidden font-bold sm:inline-block">CoinWayfinder</span>
+    <header className="sticky top-0 z-50 w-full border-b border-gray-800 bg-[#191A1E]/95 backdrop-blur supports-[backdrop-filter]:bg-[#191A1E]/60">
+      <div className="container mx-auto px-4">
+        <div className="flex h-16 items-center justify-between">
+          {/* Logo */}
+          <Link href="/" className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-[#30D5C8] rounded-lg flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-[#191A1E]" />
+            </div>
+            <span className="text-xl font-bold text-white">CoinWayfinder</span>
           </Link>
-          <nav className="flex items-center space-x-6 text-sm font-medium">
-            {navItems.map((item) => (
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center space-x-8">
+            {navigation.map((item) => (
               <Link
-                key={item.href}
+                key={item.name}
                 href={item.href}
-                className="transition-colors hover:text-foreground/80 text-foreground/60"
+                className={`text-sm font-medium transition-colors hover:text-[#30D5C8] ${
+                  pathname === item.href ? "text-[#30D5C8]" : "text-gray-300"
+                }`}
               >
-                {item.label}
+                {item.name}
               </Link>
             ))}
           </nav>
-        </div>
 
-        {/* Mobile Navigation */}
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              className="mr-2 px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden"
-            >
-              <Menu className="h-6 w-6" />
-              <span className="sr-only">Toggle Menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="pr-0">
-            <Link href="/" className="flex items-center space-x-2" onClick={() => setIsOpen(false)}>
-              <TrendingUp className="h-6 w-6" />
-              <span className="font-bold">CoinWayfinder</span>
-            </Link>
-            <div className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
-              <div className="flex flex-col space-y-3">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setIsOpen(false)}
-                    className="text-foreground/60 transition-colors hover:text-foreground"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+          {/* User Menu / Auth Buttons */}
+          <div className="flex items-center space-x-4">
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                      <AvatarFallback className="bg-[#30D5C8] text-[#191A1E]">
+                        {user.name.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 bg-gray-900 border-gray-800" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none text-white">{user.name}</p>
+                      <p className="text-xs leading-none text-gray-400">{user.email}</p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator className="bg-gray-800" />
+                  <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-gray-800">
+                    <User className="mr-2 h-4 w-4" />
+                    <span>Profile</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-gray-800">
+                    <Settings className="mr-2 h-4 w-4" />
+                    <span>Settings</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-gray-800" />
+                  <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-gray-800" onClick={handleLogout}>
+                    <LogOut className="mr-2 h-4 w-4" />
+                    <span>Log out</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <div className="hidden md:flex items-center space-x-2">
+                <Button variant="ghost" asChild className="text-gray-300 hover:text-white">
+                  <Link href="/auth/login">Sign In</Link>
+                </Button>
+                <Button asChild className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]">
+                  <Link href="/auth/signup">Sign Up</Link>
+                </Button>
               </div>
-            </div>
-          </SheetContent>
-        </Sheet>
+            )}
 
-        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-          <div className="w-full flex-1 md:w-auto md:flex-none">
-            <Link href="/" className="flex items-center space-x-2 md:hidden">
-              <TrendingUp className="h-6 w-6" />
-              <span className="font-bold">CoinWayfinder</span>
-            </Link>
+            {/* Mobile Menu */}
+            <Sheet open={isOpen} onOpenChange={setIsOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="md:hidden">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-[300px] bg-gray-900 border-gray-800">
+                <div className="flex flex-col space-y-4 mt-8">
+                  {navigation.map((item) => (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className={`text-sm font-medium transition-colors hover:text-[#30D5C8] ${
+                        pathname === item.href ? "text-[#30D5C8]" : "text-gray-300"
+                      }`}
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {item.name}
+                    </Link>
+                  ))}
+
+                  {!user && (
+                    <div className="flex flex-col space-y-2 pt-4 border-t border-gray-800">
+                      <Button variant="ghost" asChild className="text-gray-300 hover:text-white justify-start">
+                        <Link href="/auth/login" onClick={() => setIsOpen(false)}>
+                          Sign In
+                        </Link>
+                      </Button>
+                      <Button asChild className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E] justify-start">
+                        <Link href="/auth/signup" onClick={() => setIsOpen(false)}>
+                          Sign Up
+                        </Link>
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
-          <nav className="flex items-center space-x-2">
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/dashboard">Get Started</Link>
-            </Button>
-          </nav>
         </div>
       </div>
-    </nav>
+    </header>
   )
-}
-
-// Dashboard config for other components that might need it
-export interface MainNavItem {
-  title: string
-  href: string
-  disabled?: boolean
-}
-
-export interface SidebarNavItem {
-  title: string
-  href: string
-  icon: any
-  disabled?: boolean
-}
-
-export interface DashboardConfig {
-  mainNav: MainNavItem[]
-  sidebarNav: SidebarNavItem[]
-}
-
-export const dashboardConfig: DashboardConfig = {
-  mainNav: [
-    {
-      title: "Documentation",
-      href: "/docs",
-    },
-    {
-      title: "Support",
-      href: "/support",
-      disabled: true,
-    },
-  ],
-  sidebarNav: [
-    {
-      title: "Dashboard",
-      href: "/dashboard",
-      icon: "Home",
-    },
-    {
-      title: "Signals",
-      href: "/signals",
-      icon: "TrendingUp",
-    },
-    {
-      title: "Bots",
-      href: "/bots",
-      icon: "ListChecks",
-    },
-    {
-      title: "Integrations",
-      href: "/integrations",
-      icon: "Settings",
-    },
-  ],
 }

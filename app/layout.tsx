@@ -2,16 +2,17 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Navigation } from "@/components/navigation"
-import { Footer } from "@/components/footer"
+import { AuthProvider } from "@/components/auth/auth-provider"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "CoinWayfinder - Smart AI-Powered Crypto Trading Assistant",
+  title: "CoinWayfinder - Smart Crypto Trading Platform",
   description:
-    "Get real-time crypto signals, automated DCA bots, and AI-driven market analysis delivered directly to your Telegram. Start trading smarter with CoinWayfinder.",
-  keywords: "crypto trading, AI signals, DCA bots, telegram bot, crypto analysis, trading assistant",
+    "Advanced crypto trading platform with AI-powered signals, automated bots, and comprehensive market analysis.",
     generator: 'v0.dev'
 }
 
@@ -21,11 +22,17 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <Navigation />
-        {children}
-        <Footer />
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+          <AuthProvider>
+            <div className="min-h-screen bg-[#191A1E]">
+              <Navigation />
+              <main>{children}</main>
+              <Toaster />
+            </div>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   )
