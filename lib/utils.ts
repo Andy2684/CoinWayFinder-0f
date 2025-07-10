@@ -44,11 +44,17 @@ export function formatTime(date: Date | string): string {
   })
 }
 
-export function formatNumber(value: number, decimals = 2): string {
-  return value.toLocaleString("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  })
+export function formatNumber(num: number): string {
+  if (num >= 1e9) {
+    return (num / 1e9).toFixed(1) + "B"
+  }
+  if (num >= 1e6) {
+    return (num / 1e6).toFixed(1) + "M"
+  }
+  if (num >= 1e3) {
+    return (num / 1e3).toFixed(1) + "K"
+  }
+  return num.toString()
 }
 
 export function truncateString(str: string, length: number): string {
@@ -371,9 +377,9 @@ export function getRelativeTime(date: Date): string {
 
 export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text
-  return text.substr(0, maxLength) + "..."
+  return text.substring(0, maxLength) + "..."
 }
 
-export function capitalize(str: string): string {
+export function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1)
 }
