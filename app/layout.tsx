@@ -4,7 +4,7 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
-import { ErrorBoundary } from "@/components/error-boundary"
+import { RootErrorBoundary } from "@/components/error-boundaries/root-error-boundary"
 import { initSentry } from "@/lib/sentry"
 
 const inter = Inter({ subsets: ["latin"] })
@@ -36,12 +36,12 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ErrorBoundary context="root-layout">
+        <RootErrorBoundary>
           <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
             {children}
             <Toaster />
           </ThemeProvider>
-        </ErrorBoundary>
+        </RootErrorBoundary>
       </body>
     </html>
   )
