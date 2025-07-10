@@ -5,7 +5,6 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
-    "lint": "next lint",
     "start": "next start"
   },
   "dependencies": {
@@ -33,7 +32,6 @@
     "@radix-ui/react-scroll-area": "latest",
     "@radix-ui/react-select": "latest",
     "@radix-ui/react-separator": "latest",
-    "@radix-ui/react-sheet": "^1.1.0",
     "@radix-ui/react-slider": "latest",
     "@radix-ui/react-slot": "latest",
     "@radix-ui/react-switch": "latest",
@@ -43,7 +41,10 @@
     "@radix-ui/react-toggle-group": "latest",
     "@radix-ui/react-tooltip": "latest",
     "@sentry/nextjs": "latest",
-    "@upstash/redis": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@upstash/redis": "^1.21.0",
     "ai": "latest",
     "bcryptjs": "latest",
     "bullmq": "latest",
@@ -51,7 +52,6 @@
     "clsx": "^2.1.1",
     "cmdk": "latest",
     "crypto": "latest",
-    "date-fns": "^4.1.0",
     "embla-carousel-react": "latest",
     "gcp-metadata": "latest",
     "input-otp": "latest",
@@ -83,16 +83,10 @@
     "zod-to-json-schema": "3.20.2"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "autoprefixer": "^10.4.20",
-    "eslint": "^9.15.0",
-    "eslint-config-next": "14.1.0",
     "postcss": "^8.5",
-    "tailwindcss": "^3.4.15",
     "typescript": "^5"
   }
 }

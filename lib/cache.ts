@@ -1,305 +1,289 @@
-import { Redis } from "@upstash/redis"
-
-export interface CacheOptions {
-  ttl?: number // Time to live in seconds
-  tags?: string[] // Cache tags for invalidation
-  revalidate?: boolean // Whether to revalidate in background
+interface CacheItem<T> {
+  data: T
+  timestamp: number
+  ttl: number
 }
 
-export interface CacheStats {
-  hits: number
-  misses: number
-  hitRate: number
-  totalKeys: number
-  memoryUsage: number
-  lastCleanup: Date
+interface CacheOptions {
+  ttl?: number // Time to live in milliseconds
+  maxSize?: number // Maximum number of items in cache
+  persistent?: boolean // Whether to persist to localStorage
 }
 
-class CacheManager {
-  private redis: Redis | null = null
-  private memoryCache = new Map<string, { value: any; expires: number; tags: string[] }>()
-  private stats: CacheStats = {
-    hits: 0,
-    misses: 0,
-    hitRate: 0,
-    totalKeys: 0,
-    memoryUsage: 0,
-    lastCleanup: new Date(),
-  }
+export class CacheManager {
+  private cache = new Map<string, CacheItem<any>>()
+  private defaultTTL = 5 * 60 * 1000 // 5 minutes
+  private maxSize = 1000
+  private persistent = false
   private cleanupInterval: NodeJS.Timeout | null = null
-  private maxMemoryKeys = 1000
-  private defaultTTL = 3600 // 1 hour
 
-  constructor() {
-    // Initialize Redis if available
-    if (process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN) {
-      this.redis = new Redis({
-        url: process.env.KV_REST_API_URL,
-        token: process.env.KV_REST_API_TOKEN,
-      })
+  constructor(options: CacheOptions = {}) {
+    this.defaultTTL = options.ttl || this.defaultTTL
+    this.maxSize = options.maxSize || this.maxSize
+    this.persistent = options.persistent || false
+
+    if (this.persistent && typeof window !== "undefined") {
+      this.loadFromStorage()
     }
 
     // Start cleanup interval
-    this.startCleanup()
+    this.cleanupInterval = setInterval(() => {
+      this.cleanup()
+    }, 60000) // Cleanup every minute
   }
 
-  async get<T>(key: string): Promise<T | null> {
+  private loadFromStorage() {
     try {
-      // Try memory cache first
-      const memoryResult = this.getFromMemory<T>(key)
-      if (memoryResult !== null) {
-        this.stats.hits++
-        this.updateHitRate()
-        return memoryResult
+      const stored = localStorage.getItem("cache-manager")
+      if (stored) {
+        const data = JSON.parse(stored)
+        Object.entries(data).forEach(([key, item]) => {
+          this.cache.set(key, item as CacheItem<any>)
+        })
       }
+    } catch (error) {
+      console.warn("Failed to load cache from storage:", error)
+    }
+  }
 
-      // Try Redis if available
-      if (this.redis) {
-        const redisResult = await this.redis.get(key)
-        if (redisResult !== null) {
-          // Store in memory cache for faster access
-          this.setInMemory(key, redisResult, Date.now() + this.defaultTTL * 1000, [])
-          this.stats.hits++
-          this.updateHitRate()
-          return redisResult as T
-        }
+  private saveToStorage() {
+    if (!this.persistent || typeof window === "undefined") return
+
+    try {
+      const data = Object.fromEntries(this.cache.entries())
+      localStorage.setItem("cache-manager", JSON.stringify(data))
+    } catch (error) {
+      console.warn("Failed to save cache to storage:", error)
+    }
+  }
+
+  private cleanup() {
+    const now = Date.now()
+    const keysToDelete: string[] = []
+
+    this.cache.forEach((item, key) => {
+      if (now - item.timestamp > item.ttl) {
+        keysToDelete.push(key)
       }
+    })
 
-      this.stats.misses++
-      this.updateHitRate()
+    keysToDelete.forEach((key) => {
+      this.cache.delete(key)
+    })
+
+    if (keysToDelete.length > 0 && this.persistent) {
+      this.saveToStorage()
+    }
+  }
+
+  private evictOldest() {
+    if (this.cache.size === 0) return
+
+    let oldestKey = ""
+    let oldestTime = Date.now()
+
+    this.cache.forEach((item, key) => {
+      if (item.timestamp < oldestTime) {
+        oldestTime = item.timestamp
+        oldestKey = key
+      }
+    })
+
+    if (oldestKey) {
+      this.cache.delete(oldestKey)
+    }
+  }
+
+  set<T>(key: string, data: T, ttl?: number): void {
+    // Evict oldest item if cache is full
+    if (this.cache.size >= this.maxSize) {
+      this.evictOldest()
+    }
+
+    const item: CacheItem<T> = {
+      data,
+      timestamp: Date.now(),
+      ttl: ttl || this.defaultTTL,
+    }
+
+    this.cache.set(key, item)
+
+    if (this.persistent) {
+      this.saveToStorage()
+    }
+  }
+
+  get<T>(key: string): T | null {
+    const item = this.cache.get(key)
+
+    if (!item) {
       return null
-    } catch (error) {
-      console.warn("Cache get error:", error)
-      this.stats.misses++
-      this.updateHitRate()
+    }
+
+    const now = Date.now()
+    if (now - item.timestamp > item.ttl) {
+      this.cache.delete(key)
+      if (this.persistent) {
+        this.saveToStorage()
+      }
       return null
     }
+
+    return item.data as T
   }
 
-  async set<T>(key: string, value: T, options: CacheOptions = {}): Promise<void> {
-    const { ttl = this.defaultTTL, tags = [] } = options
-    const expires = Date.now() + ttl * 1000
+  has(key: string): boolean {
+    const item = this.cache.get(key)
 
-    try {
-      // Set in memory cache
-      this.setInMemory(key, value, expires, tags)
+    if (!item) {
+      return false
+    }
 
-      // Set in Redis if available
-      if (this.redis) {
-        await this.redis.setex(key, ttl, JSON.stringify(value))
-
-        // Store tags for invalidation
-        if (tags.length > 0) {
-          for (const tag of tags) {
-            await this.redis.sadd(`tag:${tag}`, key)
-            await this.redis.expire(`tag:${tag}`, ttl)
-          }
-        }
+    const now = Date.now()
+    if (now - item.timestamp > item.ttl) {
+      this.cache.delete(key)
+      if (this.persistent) {
+        this.saveToStorage()
       }
+      return false
+    }
 
-      this.updateStats()
-    } catch (error) {
-      console.warn("Cache set error:", error)
+    return true
+  }
+
+  delete(key: string): boolean {
+    const deleted = this.cache.delete(key)
+
+    if (deleted && this.persistent) {
+      this.saveToStorage()
+    }
+
+    return deleted
+  }
+
+  clear(): void {
+    this.cache.clear()
+
+    if (this.persistent) {
+      this.saveToStorage()
     }
   }
 
-  async delete(key: string): Promise<void> {
-    try {
-      // Delete from memory cache
-      this.memoryCache.delete(key)
+  size(): number {
+    return this.cache.size
+  }
 
-      // Delete from Redis if available
-      if (this.redis) {
-        await this.redis.del(key)
+  keys(): string[] {
+    return Array.from(this.cache.keys())
+  }
+
+  getStats() {
+    const now = Date.now()
+    let expired = 0
+    let active = 0
+
+    this.cache.forEach((item) => {
+      if (now - item.timestamp > item.ttl) {
+        expired++
+      } else {
+        active++
       }
+    })
 
-      this.updateStats()
-    } catch (error) {
-      console.warn("Cache delete error:", error)
+    return {
+      total: this.cache.size,
+      active,
+      expired,
+      maxSize: this.maxSize,
+      hitRate: this.getHitRate(),
     }
   }
 
-  async invalidateByTag(tag: string): Promise<void> {
-    try {
-      if (this.redis) {
-        // Get all keys with this tag
-        const keys = await this.redis.smembers(`tag:${tag}`)
+  private hitCount = 0
+  private missCount = 0
 
-        if (keys.length > 0) {
-          // Delete all keys
-          await this.redis.del(...keys)
-          // Delete the tag set
-          await this.redis.del(`tag:${tag}`)
-        }
-      }
-
-      // Invalidate from memory cache
-      for (const [key, entry] of this.memoryCache.entries()) {
-        if (entry.tags.includes(tag)) {
-          this.memoryCache.delete(key)
-        }
-      }
-
-      this.updateStats()
-    } catch (error) {
-      console.warn("Cache invalidation error:", error)
-    }
+  private getHitRate(): number {
+    const total = this.hitCount + this.missCount
+    return total === 0 ? 0 : this.hitCount / total
   }
 
-  async clear(): Promise<void> {
-    try {
-      // Clear memory cache
-      this.memoryCache.clear()
+  // Wrapper method that tracks hit/miss statistics
+  getWithStats<T>(key: string): T | null {
+    const result = this.get<T>(key)
 
-      // Clear Redis if available (be careful with this in production)
-      if (this.redis && process.env.NODE_ENV !== "production") {
-        await this.redis.flushall()
-      }
-
-      this.resetStats()
-    } catch (error) {
-      console.warn("Cache clear error:", error)
+    if (result !== null) {
+      this.hitCount++
+    } else {
+      this.missCount++
     }
+
+    return result
   }
 
-  async memoize<T>(key: string, fn: () => Promise<T>, options: CacheOptions = {}): Promise<T> {
-    // Try to get from cache first
-    const cached = await this.get<T>(key)
+  // Async wrapper for caching async operations
+  async getOrSet<T>(key: string, fetcher: () => Promise<T>, ttl?: number): Promise<T> {
+    const cached = this.get<T>(key)
+
     if (cached !== null) {
+      this.hitCount++
       return cached
     }
 
-    // Execute function and cache result
-    try {
-      const result = await fn()
-      await this.set(key, result, options)
-      return result
-    } catch (error) {
-      // Don't cache errors
-      throw error
-    }
+    this.missCount++
+    const data = await fetcher()
+    this.set(key, data, ttl)
+    return data
   }
 
-  getStats(): CacheStats {
-    return { ...this.stats }
-  }
-
-  private getFromMemory<T>(key: string): T | null {
-    const entry = this.memoryCache.get(key)
-    if (!entry) {
-      return null
-    }
-
-    // Check if expired
-    if (Date.now() > entry.expires) {
-      this.memoryCache.delete(key)
-      return null
-    }
-
-    return entry.value as T
-  }
-
-  private setInMemory<T>(key: string, value: T, expires: number, tags: string[]): void {
-    // Implement LRU eviction if cache is full
-    if (this.memoryCache.size >= this.maxMemoryKeys) {
-      const firstKey = this.memoryCache.keys().next().value
-      if (firstKey) {
-        this.memoryCache.delete(firstKey)
-      }
-    }
-
-    this.memoryCache.set(key, { value, expires, tags })
-  }
-
-  private updateHitRate(): void {
-    const total = this.stats.hits + this.stats.misses
-    this.stats.hitRate = total > 0 ? (this.stats.hits / total) * 100 : 0
-  }
-
-  private updateStats(): void {
-    this.stats.totalKeys = this.memoryCache.size
-    this.stats.memoryUsage = this.calculateMemoryUsage()
-  }
-
-  private calculateMemoryUsage(): number {
-    // Rough estimation of memory usage
-    let size = 0
-    for (const [key, entry] of this.memoryCache.entries()) {
-      size += key.length * 2 // UTF-16 characters
-      size += JSON.stringify(entry.value).length * 2
-      size += entry.tags.join("").length * 2
-      size += 64 // Overhead for object structure
-    }
-    return size
-  }
-
-  private resetStats(): void {
-    this.stats = {
-      hits: 0,
-      misses: 0,
-      hitRate: 0,
-      totalKeys: 0,
-      memoryUsage: 0,
-      lastCleanup: new Date(),
-    }
-  }
-
-  private startCleanup(): void {
-    // Clean up expired entries every 5 minutes
-    this.cleanupInterval = setInterval(
-      () => {
-        this.cleanup()
-      },
-      5 * 60 * 1000,
-    )
-  }
-
-  private cleanup(): void {
-    const now = Date.now()
-    let cleaned = 0
-
-    for (const [key, entry] of this.memoryCache.entries()) {
-      if (now > entry.expires) {
-        this.memoryCache.delete(key)
-        cleaned++
-      }
-    }
-
-    this.stats.lastCleanup = new Date()
-    this.updateStats()
-
-    if (cleaned > 0) {
-      console.log(`Cache cleanup: removed ${cleaned} expired entries`)
-    }
-  }
-
-  destroy(): void {
+  destroy() {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval)
       this.cleanupInterval = null
     }
+    this.clear()
   }
 }
 
-// Export singleton instance
-export const cache = new CacheManager()
+// Global cache instance
+export const globalCache = new CacheManager({
+  ttl: 5 * 60 * 1000, // 5 minutes
+  maxSize: 1000,
+  persistent: true,
+})
 
-// Export class for custom instances
-export { CacheManager }
+// Utility functions for common caching patterns
+export const cacheUtils = {
+  // Cache API responses
+  cacheApiResponse: <T>(url: string, data: T, ttl = 5 * 60 * 1000) => {
+    globalCache.set(`api:${url}`, data, ttl)
+  },
 
-// Utility functions
-export async function getCachedData<T>(key: string, fetcher: () => Promise<T>, options: CacheOptions = {}): Promise<T> {
-  return cache.memoize(key, fetcher, options)
-}
+  getCachedApiResponse: <T>(url: string): T | null => {\
+    return globalCache.get<T>(`api:${url}`)
+  },
 
-export async function invalidateCache(keyOrTag: string, isTag = false): Promise<void> {
-  if (isTag) {
-    await cache.invalidateByTag(keyOrTag)
-  } else {
-    await cache.delete(keyOrTag)
-  }
-}
+  // Cache user data
+  cacheUserData: <T>(userId: string, data: T, ttl = 15 * 60 * 1000) => {
+    globalCache.set(`user:${userId}`, data, ttl)
+  },
 
-export function getCacheStats(): CacheStats {
-  return cache.getStats()
+  getCachedUserData: <T>(userId: string): T | null => {\
+    return globalCache.get<T>(`user:${userId}`)
+  },
+
+  // Cache crypto prices
+  cacheCryptoPrice: (symbol: string, price: number, ttl = 30 * 1000) => {
+    globalCache.set(`price:${symbol}`, price, ttl)
+  },
+
+  getCachedCryptoPrice: (symbol: string): number | null => {\
+    return globalCache.get<number>(`price:${symbol}`)
+  },
+
+  // Invalidate related cache entries
+  invalidatePattern: (pattern: string) => {\
+    const keys = globalCache.keys()
+    const keysToDelete = keys.filter((key) => key.includes(pattern))
+    keysToDelete.forEach((key) => globalCache.delete(key))
+  },\
 }
