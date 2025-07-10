@@ -2,89 +2,125 @@ import { type NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import crypto from "crypto"
 
-// Mock user database - replace with real database (MongoDB/Firebase)
+// Store pending registrations (users who haven't verified email yet)
+const pendingUsers: any[] = []
+
+// Store verified users
 const users: any[] = []
-const pendingVerifications: any[] = []
 
-// Mock email service - replace with real email service
-const sendVerificationEmail = async (email: string, token: string) => {
-  // In production, use services like SendGrid, Nodemailer, or AWS SES
-  console.log(`Verification email sent to ${email}`)
-  console.log(`Verification link: ${process.env.NEXT_PUBLIC_BASE_URL}/auth/verify-email?token=${token}`)
+// Email verification tokens
+const verificationTokens: { [key: string]: { userId: string; expires: Date } } = {}
 
-  // For demo purposes, we'll just log the verification link
-  // In production, you would send an actual email here
-  return true
-}
-
-const calculateAge = (birthDate: string): number => {
+function calculateAge(dateOfBirth: string): number {
   const today = new Date()
-  const birth = new Date(birthDate)
-  let age = today.getFullYear() - birth.getFullYear()
-  const monthDiff = today.getMonth() - birth.getMonth()
+  const birthDate = new Date(dateOfBirth)
+  let age = today.getFullYear() - birthDate.getFullYear()
+  const monthDiff = today.getMonth() - birthDate.getMonth()
 
-  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
     age--
   }
 
   return age
 }
 
+function isValidUsername(username: string): boolean {
+  const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
+  return usernameRegex.test(username)
+}
+
+function isValidEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(email)
+}
+
+function isStrongPassword(password: string): boolean {
+  const minLength = 6
+  const hasUpperCase = /[A-Z]/.test(password)
+  const hasLowerCase = /[a-z]/.test(password)
+  const hasNumbers = /\d/.test(password)
+
+  return password.length >= minLength && hasUpperCase && hasLowerCase && hasNumbers
+}
+
+async function sendVerificationEmail(email: string, token: string) {
+  // In production, integrate with SendGrid, Nodemailer, or AWS SES
+  const verificationLink = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/auth/verify-email?token=${token}`
+
+  console.log(`
+    📧 EMAIL VERIFICATION
+    To: ${email}
+    Subject: Verify your CoinWayFinder account
+    
+    Click here to verify your account: ${verificationLink}
+    
+    This link expires in 24 hours.
+  `)
+
+  // Simulate email sending delay
+  await new Promise((resolve) => setTimeout(resolve, 1000))
+
+  return { success: true }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { firstName, lastName, username, email, password, dateOfBirth } = await request.json()
+    const { firstName, lastName, username, email, password, dateOfBirth, acceptTerms } = await request.json()
 
     // Validation
-    if (!firstName || !lastName || !username || !email || !password || !dateOfBirth) {
-      return NextResponse.json({ error: "All fields are required" }, { status: 400 })
-    }
-
-    // Username validation
-    if (username.length < 3) {
-      return NextResponse.json({ error: "Username must be at least 3 characters long" }, { status: 400 })
-    }
-
-    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-      return NextResponse.json(
-        { error: "Username can only contain letters, numbers, and underscores" },
-        { status: 400 },
-      )
-    }
-
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: "Please enter a valid email address" }, { status: 400 })
-    }
-
-    // Password validation
-    if (password.length < 6) {
-      return NextResponse.json({ error: "Password must be at least 6 characters long" }, { status: 400 })
-    }
-
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+    if (!firstName || !lastName || !username || !email || !password || !dateOfBirth || !acceptTerms) {
       return NextResponse.json(
         {
-          error: "Password must contain at least one uppercase letter, one lowercase letter, and one number",
+          error: "All fields are required and terms must be accepted",
         },
         { status: 400 },
       )
     }
 
-    // Age validation
-    const age = calculateAge(dateOfBirth)
-    if (age < 18) {
-      return NextResponse.json({ error: "You must be at least 18 years old to create an account" }, { status: 400 })
+    // Validate email format
+    if (!isValidEmail(email)) {
+      return NextResponse.json({ error: "Please enter a valid email address" }, { status: 400 })
     }
 
-    // Check if user already exists
-    const existingUser = users.find((u) => u.email === email || u.username === username)
+    // Validate username
+    if (!isValidUsername(username)) {
+      return NextResponse.json(
+        {
+          error: "Username must be 3-20 characters long and contain only letters, numbers, and underscores",
+        },
+        { status: 400 },
+      )
+    }
+
+    // Validate password strength
+    if (!isStrongPassword(password)) {
+      return NextResponse.json(
+        {
+          error: "Password must be at least 6 characters long and contain uppercase, lowercase, and numbers",
+        },
+        { status: 400 },
+      )
+    }
+
+    // Validate age (must be 18+)
+    const age = calculateAge(dateOfBirth)
+    if (age < 18) {
+      return NextResponse.json(
+        {
+          error: "You must be at least 18 years old to create an account",
+        },
+        { status: 400 },
+      )
+    }
+
+    // Check if user already exists (in both pending and verified users)
+    const existingUser = [...pendingUsers, ...users].find((u) => u.email === email || u.username === username)
+
     if (existingUser) {
       if (existingUser.email === email) {
-        return NextResponse.json({ error: "User with this email already exists" }, { status: 409 })
-      }
-      if (existingUser.username === username) {
-        return NextResponse.json({ error: "Username is already taken" }, { status: 409 })
+        return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 })
+      } else {
+        return NextResponse.json({ error: "This username is already taken" }, { status: 409 })
       }
     }
 
@@ -93,40 +129,52 @@ export async function POST(request: NextRequest) {
 
     // Generate verification token
     const verificationToken = crypto.randomBytes(32).toString("hex")
+    const tokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
 
-    // Create user (but don't activate yet)
+    // Create new user (pending verification)
     const newUser = {
-      id: Date.now().toString(),
-      firstName,
-      lastName,
-      username,
-      email,
+      id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      username: username.trim().toLowerCase(),
+      email: email.trim().toLowerCase(),
       password: hashedPassword,
       dateOfBirth,
       isEmailVerified: false,
       isActive: false,
+      role: "user",
       plan: "free" as const,
+      permissions: ["basic_access"],
       createdAt: new Date().toISOString(),
-      verificationToken,
     }
 
-    // Store user in pending verification
-    pendingVerifications.push(newUser)
+    // Store in pending users
+    pendingUsers.push(newUser)
+
+    // Store verification token
+    verificationTokens[verificationToken] = {
+      userId: newUser.id,
+      expires: tokenExpires,
+    }
 
     // Send verification email
     try {
       await sendVerificationEmail(email, verificationToken)
     } catch (emailError) {
       console.error("Failed to send verification email:", emailError)
-      return NextResponse.json({ error: "Failed to send verification email" }, { status: 500 })
+      // Don't fail registration if email fails, but log it
     }
 
     return NextResponse.json({
       success: true,
-      message: "Account created successfully! Please check your email to verify your account.",
+      message: "Registration successful! Please check your email to verify your account.",
+      requiresVerification: true,
     })
   } catch (error) {
     console.error("Registration error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
+
+// Export the arrays so other routes can access them
+export { pendingUsers, users, verificationTokens }
