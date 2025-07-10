@@ -65,7 +65,7 @@ interface NewAPIKey {
   }
 }
 
-export function APIAccess() {
+export function ApiAccess() {
   const [apiKeys, setApiKeys] = useState<APIKey[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -512,3 +512,6 @@ export function APIAccess() {
     </div>
   )
 }
+
+// Also export as APIAccess for backward compatibility
+export { ApiAccess as APIAccess }
