@@ -1,20 +1,14 @@
 "use client"
 
-import { useCallback, useRef, useState } from "react"
+import { useState, useCallback, useRef, useEffect } from "react"
 import { toast } from "sonner"
-
-export interface ErrorContext {
-  component?: string
-  action?: string
-  userId?: string
-  metadata?: Record<string, any>
-}
+import { reportError, type ErrorSeverity, type ErrorContext } from "@/lib/error-reporting"
 
 export interface ErrorHandlerOptions {
   maxRetries?: number
   retryDelay?: number
   showToast?: boolean
-  reportError?: boolean
+  severity?: ErrorSeverity
   fallbackValue?: any
   onError?: (error: Error, context: ErrorContext) => void
   onRetry?: (attempt: number, error: Error) => void
@@ -26,7 +20,7 @@ export interface ErrorInfo {
   error: Error
   context: ErrorContext
   timestamp: Date
-  severity: "low" | "medium" | "high" | "critical"
+  severity: ErrorSeverity
   resolved: boolean
   attempts: number
 }
@@ -37,236 +31,244 @@ export interface RetryableOperation<T> {
   options?: ErrorHandlerOptions
 }
 
-export const useComprehensiveErrorHandler = () => {
+export function useComprehensiveErrorHandler() {
   const [errors, setErrors] = useState<ErrorInfo[]>([])
-  const [isOffline, setIsOffline] = useState(false)
-  const errorQueue = useRef<ErrorInfo[]>([])
-  const retryAttempts = useRef<Map<string, number>>(new Map())
+  const [isOnline, setIsOnline] = useState(true)
+  const retryTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map())
 
-  // Check if we're offline
-  const checkOnlineStatus = useCallback(() => {
-    setIsOffline(!navigator.onLine)
+  // Monitor network status
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+
+    window.addEventListener("online", handleOnline)
+    window.addEventListener("offline", handleOffline)
+
+    return () => {
+      window.removeEventListener("online", handleOnline)
+      window.removeEventListener("offline", handleOffline)
+    }
   }, [])
 
-  // Add error to history
-  const addError = useCallback(
-    (error: Error, context: ErrorContext, severity: ErrorInfo["severity"] = "medium") => {
-      const errorInfo: ErrorInfo = {
-        id: `error-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        error,
-        context,
-        timestamp: new Date(),
-        severity,
-        resolved: false,
-        attempts: 0,
-      }
+  // Clean up timeouts on unmount
+  useEffect(() => {
+    return () => {
+      retryTimeouts.current.forEach((timeout) => clearTimeout(timeout))
+      retryTimeouts.current.clear()
+    }
+  }, [])
 
-      setErrors((prev) => [errorInfo, ...prev.slice(0, 99)]) // Keep last 100 errors
+  const addError = useCallback((error: Error, context: ErrorContext = {}, severity: ErrorSeverity = "medium") => {
+    const errorInfo: ErrorInfo = {
+      id: `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      error,
+      context,
+      timestamp: new Date(),
+      severity,
+      resolved: false,
+      attempts: 0,
+    }
 
-      // Queue for offline reporting
-      if (isOffline) {
-        errorQueue.current.push(errorInfo)
-      }
+    setErrors((prev) => [errorInfo, ...prev.slice(0, 99)]) // Keep last 100 errors
+    reportError(error, context, severity)
 
-      return errorInfo.id
-    },
-    [isOffline],
-  )
+    return errorInfo.id
+  }, [])
 
-  // Mark error as resolved
   const resolveError = useCallback((errorId: string) => {
     setErrors((prev) => prev.map((error) => (error.id === errorId ? { ...error, resolved: true } : error)))
   }, [])
 
-  // Clear all errors
   const clearErrors = useCallback(() => {
     setErrors([])
-    retryAttempts.current.clear()
   }, [])
 
-  // Get error statistics
-  const getErrorStats = useCallback(() => {
-    const total = errors.length
-    const resolved = errors.filter((e) => e.resolved).length
-    const unresolved = total - resolved
-    const bySeverity = errors.reduce(
-      (acc, error) => {
-        acc[error.severity] = (acc[error.severity] || 0) + 1
-        return acc
-      },
-      {} as Record<string, number>,
-    )
+  const handleWithRetry = useCallback(async <T>(\
+    operation: () => Promise<T>,\
+    context: ErrorContext = {},\
+    options: ErrorHandlerOptions = {}\
+  ): Promise<T> => {\
+  const {
+    maxRetries = 3,
+    retryDelay = 1000,
+    showToast = true,
+    severity = "medium",
+    fallbackValue,
+    onError,
+    onRetry,
+    onSuccess,
+  } = options
 
-    return {
-      total,
-      resolved,
-      unresolved,
-      bySeverity,
+  const operationId = `${context.component || "unknown"}_${Date.now()}`
+  let lastError: Error
+  let attempts = 0
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    attempts = attempt + 1
+
+    try {
+      const result = await operation()
+
+      if (attempt > 0 && onSuccess) {
+        onSuccess(result, attempts)
+      }
+
+      if (attempt > 0 && showToast) {
+        toast.success(`Operation succeeded after ${attempts} attempts`)
+      }
+
+      return result
+    } catch (error) {
+      lastError = error as Error
+
+      const errorContext = {
+        ...context,
+        attempt: attempt + 1,
+        maxRetries,
+        operationId,
+        isOnline,
+      }
+
+      if (onError) {
+        onError(lastError, errorContext)
+      }
+
+      // Don't retry on final attempt
+      if (attempt === maxRetries) {
+        break
+      }
+
+      // Don't retry certain types of errors
+      if (
+        lastError.name === "ValidationError" ||
+        lastError.name === "AuthenticationError" ||
+        lastError.message.includes("404") ||
+        lastError.message.includes("401") ||
+        lastError.message.includes("403")
+      ) {
+        break
+      }
+
+      if (onRetry) {
+        onRetry(attempt + 1, lastError)
+      }
+
+      if (showToast && attempt < maxRetries) {
+        toast.warning(`Retrying operation (${attempt + 1}/${maxRetries})...`)
+      }
+
+      // Exponential backoff with jitter
+      const delay = retryDelay * Math.pow(2, attempt) + Math.random() * 1000
+
+      await new Promise(resolve => {
+          const timeout = setTimeout(resolve, delay)
+          retryTimeouts.current.set(operationId, timeout)
+        })
+
+      retryTimeouts.current.delete(operationId)
+    }
+  }
+
+  // All retries failed
+  const errorId = addError(
+    lastError,
+    {
+      ...context,
+      totalAttempts: attempts,
+      operationId,
+    },
+    severity,
+  )
+
+  if (showToast) {
+    toast.error(`Operation failed after ${attempts} attempts: ${lastError.message}`)
+  }
+
+  if (fallbackValue !== undefined) {
+    return fallbackValue
+  }
+
+  throw lastError
+  \
+}
+, [addError, isOnline])
+
+const handleAsync = useCallback(async <T>({
+    operation,
+    context = {},
+    options = {}\
+  }: RetryableOperation<T>): Promise<T> => {\
+return handleWithRetry(operation, context, options)
+\
+  }, [handleWithRetry])
+
+const wrapSync = useCallback(<T>(
+    operation: () => T,
+    context: ErrorContext = {},\
+    options: Omit<ErrorHandlerOptions, 'maxRetries' | 'retryDelay'> = {}
+  ): T | undefined => {\
+    const {
+      showToast = true,
+      severity = 'medium',
+      fallbackValue,
+      onError
+    } = options
+
+    try {\
+      return operation()
+    } catch (error) {\
+      const err = error as Error
+      
+      if (onError) {
+        onError(err, context)
+      }
+
+      addError(err, context, severity)
+
+      if (showToast) {
+        toast.error(`Operation failed: ${err.message}`)
+      }
+
+      return fallbackValue
+    }
+  }, [addError])
+
+  const getErrorStats = useCallback(() => {\
+    const now = new Date()
+    const last24h = new Date(now.getTime() - 24 * 60 * 60 * 1000)
+    const lastHour = new Date(now.getTime() - 60 * 60 * 1000)
+
+    const recent = errors.filter(e => e.timestamp >= last24h)
+    const hourly = errors.filter(e => e.timestamp >= lastHour)
+
+    return {\
+      total: errors.length,
+      last24h: recent.length,
+      lastHour: hourly.length,
+      resolved: errors.filter(e => e.resolved).length,
+      bySeverity: {\
+        low: errors.filter(e => e.severity === 'low').length,
+        medium: errors.filter(e => e.severity === 'medium').length,
+        high: errors.filter(e => e.severity === 'high').length,
+        critical: errors.filter(e => e.severity === 'critical').length
+      },
+      byComponent: errors.reduce((acc, error) => {\
+        const component = error.context.component || 'unknown'
+        acc[component] = (acc[component] || 0) + 1
+        return acc\
+      }, {} as Record<string, number>)
     }
   }, [errors])
 
-  // Sleep utility for retry delays
-  const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
-  // Handle operation with comprehensive error handling
-  const handleOperation = useCallback(
-    async (operation, context = {}, options = {}) => {
-      const {
-        maxRetries = 3,
-        retryDelay = 1000,
-        showToast = true,
-        reportError = true,
-        fallbackValue,
-        onError,
-        onRetry,
-        onSuccess,
-      } = options
-
-      const operationId = `${context.component || "unknown"}-${context.action || "operation"}`
-      let lastError: Error
-      let attempts = 0
-
-      for (let attempt = 0; attempt <= maxRetries; attempt++) {
-        attempts = attempt + 1
-
-        try {
-          const result = await operation()
-
-          if (attempt > 0 && onSuccess) {
-            onSuccess(result, attempts)
-          }
-
-          if (attempt > 0 && showToast) {
-            toast.success(`Operation succeeded after ${attempts} attempts`)
-          }
-
-          return result
-        } catch (error) {
-          lastError = error instanceof Error ? error : new Error(String(error))
-
-          // Determine error severity
-          let severity: ErrorInfo["severity"] = "medium"
-          if (lastError.message.includes("network") || lastError.message.includes("fetch")) {
-            severity = "high"
-          }
-          if (lastError.message.includes("critical") || lastError.message.includes("fatal")) {
-            severity = "critical"
-          }
-
-          // Add to error history
-          const errorId = addError(lastError, { ...context, operationId }, severity)
-
-          // Call error callback
-          if (onError) {
-            onError(lastError, context)
-          }
-
-          // If this isn't the last attempt, retry
-          if (attempt < maxRetries) {
-            if (onRetry) {
-              onRetry(attempt + 1, lastError)
-            }
-
-            if (showToast) {
-              toast.error(`Attempt ${attempt + 1} failed. Retrying...`)
-            }
-
-            // Exponential backoff
-            const delay = retryDelay * Math.pow(2, attempt)
-            await sleep(delay)
-            continue
-          }
-
-          // Final attempt failed
-          if (showToast) {
-            toast.error(`Operation failed after ${attempts} attempts: ${lastError.message}`)
-          }
-
-          // Report error if enabled
-          if (reportError) {
-            console.error(`[ErrorHandler] ${operationId} failed:`, {
-              error: lastError,
-              context,
-              attempts,
-            })
-          }
-
-          // Return fallback value if provided
-          if (fallbackValue !== undefined) {
-            return fallbackValue
-          }
-
-          // Re-throw the error
-          throw lastError
-        }
-      }
-
-      throw lastError!
-    },
-    [addError, isOffline],
-  )
-
-  // Handle operation with retry (alternative interface)
-  const handleWithRetry = useCallback(
-    async ({ operation, context = {}, options = {} }: RetryableOperation<any>) => {
-      return handleOperation(operation, context, options)
-    },
-    [handleOperation],
-  )
-
-  // Handle async operation safely
-  const safeAsync = useCallback(
-    async (operation, fallback, context = {}) => {
-      try {
-        return await handleOperation(operation, context, {
-          maxRetries: 1,
-          showToast: false,
-          fallbackValue: fallback,
-        })
-      } catch {
-        return fallback
-      }
-    },
-    [handleOperation],
-  )
-
-  // Handle sync operation safely
-  const safeSync = useCallback(
-    (operation, fallback, context = {}) => {
-      try {
-        return operation()
-      } catch (error) {
-        const err = error instanceof Error ? error : new Error(String(error))
-        addError(err, context, "low")
-        return fallback
-      }
-    },
-    [addError],
-  )
-
   return {
-    // Error handling methods
-    handleOperation,
-    handleWithRetry,
-    safeAsync,
-    safeSync,
-
-    // Error management
+    errors,
+    isOnline,
     addError,
     resolveError,
     clearErrors,
-
-    // Error data
-    errors,
-    getErrorStats,
-
-    // Network status
-    isOffline,
-    checkOnlineStatus,
-
-    // Error queue for offline scenarios
-    errorQueue: errorQueue.current,
-  }
+    handleWithRetry,
+    handleAsync,
+    wrapSync,
+    getErrorStats
+  }\
 }
-
-export default useComprehensiveErrorHandler

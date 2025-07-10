@@ -2,11 +2,11 @@
 
 import type React from "react"
 import { Component, type ReactNode } from "react"
-import { AlertTriangle, RefreshCw, Home, Bug } from "lucide-react"
+import { AlertTriangle, RefreshCw, Bug, Home } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { errorReporting } from "@/lib/error-reporting"
+import { reportError } from "@/lib/error-reporting"
 
 interface Props {
   children: ReactNode
@@ -19,7 +19,6 @@ interface State {
   error: Error | null
   errorInfo: React.ErrorInfo | null
   retryCount: number
-  isRetrying: boolean
 }
 
 export class RootErrorBoundary extends Component<Props, State> {
@@ -32,7 +31,6 @@ export class RootErrorBoundary extends Component<Props, State> {
       error: null,
       errorInfo: null,
       retryCount: 0,
-      isRetrying: false,
     }
   }
 
@@ -50,7 +48,7 @@ export class RootErrorBoundary extends Component<Props, State> {
     })
 
     // Report error
-    errorReporting.report(
+    reportError(
       error,
       {
         component: "RootErrorBoundary",
@@ -68,21 +66,36 @@ export class RootErrorBoundary extends Component<Props, State> {
       this.props.onError(error, errorInfo)
     }
 
-    console.error("Root Error Boundary caught an error:", error, errorInfo)
+    // Auto-retry after 5 seconds for the first 2 attempts
+    if (this.state.retryCount < 2) {
+      this.retryTimeoutId = setTimeout(() => {
+        this.handleRetry()
+      }, 5000)
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.retryTimeoutId) {
+      clearTimeout(this.retryTimeoutId)
+    }
   }
 
   handleRetry = () => {
-    this.setState({ isRetrying: true })
+    if (this.retryTimeoutId) {
+      clearTimeout(this.retryTimeoutId)
+      this.retryTimeoutId = null
+    }
 
-    this.retryTimeoutId = setTimeout(() => {
-      this.setState({
-        hasError: false,
-        error: null,
-        errorInfo: null,
-        retryCount: this.state.retryCount + 1,
-        isRetrying: false,
-      })
-    }, 1000)
+    this.setState((prevState) => ({
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      retryCount: prevState.retryCount + 1,
+    }))
+  }
+
+  handleReload = () => {
+    window.location.reload()
   }
 
   handleGoHome = () => {
@@ -100,68 +113,48 @@ export class RootErrorBoundary extends Component<Props, State> {
       timestamp: new Date().toISOString(),
     }
 
-    // Create mailto link with bug report
-    const subject = encodeURIComponent("Bug Report: Application Error")
-    const body = encodeURIComponent(
-      `
-Bug Report Details:
+    // In a real app, you might open a bug report form or send to an endpoint
+    console.log("Bug report:", bugReport)
 
-Error: ${bugReport.error}
-URL: ${bugReport.url}
-Timestamp: ${bugReport.timestamp}
-
-Stack Trace:
-${bugReport.stack}
-
-Component Stack:
-${bugReport.componentStack}
-
-User Agent:
-${bugReport.userAgent}
-
-Please describe what you were doing when this error occurred:
-[Your description here]
-    `.trim(),
-    )
-
-    window.open(`mailto:support@coinwayfinder.com?subject=${subject}&body=${body}`)
-  }
-
-  componentWillUnmount() {
-    if (this.retryTimeoutId) {
-      clearTimeout(this.retryTimeoutId)
-    }
+    // For now, copy to clipboard
+    navigator.clipboard
+      .writeText(JSON.stringify(bugReport, null, 2))
+      .then(() => {
+        alert("Bug report copied to clipboard!")
+      })
+      .catch(() => {
+        alert("Failed to copy bug report. Please check the console for details.")
+      })
   }
 
   render() {
     if (this.state.hasError) {
-      // Custom fallback UI
       if (this.props.fallback) {
         return this.props.fallback
       }
 
-      const { error, errorInfo, retryCount, isRetrying } = this.state
+      const { error, errorInfo, retryCount } = this.state
       const isDevelopment = process.env.NODE_ENV === "development"
 
       return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
           <Card className="w-full max-w-2xl">
             <CardHeader className="text-center">
-              <div className="mx-auto mb-4 w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-8 h-8 text-red-600" />
+              <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
               </div>
-              <CardTitle className="text-2xl font-bold text-gray-900">Oops! Something went wrong</CardTitle>
-              <CardDescription className="text-lg">
-                We encountered an unexpected error. Don't worry, our team has been notified.
+              <CardTitle className="text-2xl font-bold text-gray-900">Something went wrong</CardTitle>
+              <CardDescription className="text-gray-600">
+                We apologize for the inconvenience. The application encountered an unexpected error.
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-6">
-              {/* Error Summary */}
+              {/* Error Message */}
               <Alert>
-                <Bug className="h-4 w-4" />
+                <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Error:</strong> {error?.message || "Unknown error occurred"}
+                  <strong>Error:</strong> {error?.message || "An unexpected error occurred"}
                 </AlertDescription>
               </Alert>
 
@@ -169,33 +162,33 @@ Please describe what you were doing when this error occurred:
               {retryCount > 0 && (
                 <Alert>
                   <AlertDescription>
-                    <strong>Retry attempts:</strong> {retryCount}
+                    <strong>Retry attempts:</strong> {retryCount}/2
+                    {retryCount < 2 && " (Auto-retry in 5 seconds)"}
                   </AlertDescription>
                 </Alert>
               )}
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button onClick={this.handleRetry} disabled={isRetrying} className="flex-1">
-                  {isRetrying ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                      Retrying...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="w-4 h-4 mr-2" />
-                      Try Again
-                    </>
-                  )}
+                <Button onClick={this.handleRetry} className="flex-1" variant="default">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Try Again
                 </Button>
 
-                <Button variant="outline" onClick={this.handleGoHome} className="flex-1 bg-transparent">
+                <Button onClick={this.handleReload} className="flex-1 bg-transparent" variant="outline">
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Reload Page
+                </Button>
+
+                <Button onClick={this.handleGoHome} className="flex-1 bg-transparent" variant="outline">
                   <Home className="w-4 h-4 mr-2" />
                   Go Home
                 </Button>
+              </div>
 
-                <Button variant="outline" onClick={this.handleReportBug} className="flex-1 bg-transparent">
+              {/* Bug Report Button */}
+              <div className="text-center">
+                <Button onClick={this.handleReportBug} variant="ghost" size="sm">
                   <Bug className="w-4 h-4 mr-2" />
                   Report Bug
                 </Button>
@@ -207,26 +200,19 @@ Please describe what you were doing when this error occurred:
                   <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
                     Development Details (Click to expand)
                   </summary>
-                  <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                  <div className="mt-4 p-4 bg-gray-100 rounded-lg">
                     <div className="space-y-4">
                       <div>
-                        <h4 className="font-medium text-gray-900">Error Message:</h4>
-                        <p className="text-sm text-gray-700 font-mono bg-white p-2 rounded border">{error.message}</p>
+                        <h4 className="font-medium text-gray-900">Error Stack:</h4>
+                        <pre className="mt-2 text-xs text-gray-700 overflow-auto whitespace-pre-wrap">
+                          {error.stack}
+                        </pre>
                       </div>
 
-                      {error.stack && (
-                        <div>
-                          <h4 className="font-medium text-gray-900">Stack Trace:</h4>
-                          <pre className="text-xs text-gray-700 font-mono bg-white p-2 rounded border overflow-auto max-h-40">
-                            {error.stack}
-                          </pre>
-                        </div>
-                      )}
-
-                      {errorInfo?.componentStack && (
+                      {errorInfo && (
                         <div>
                           <h4 className="font-medium text-gray-900">Component Stack:</h4>
-                          <pre className="text-xs text-gray-700 font-mono bg-white p-2 rounded border overflow-auto max-h-40">
+                          <pre className="mt-2 text-xs text-gray-700 overflow-auto whitespace-pre-wrap">
                             {errorInfo.componentStack}
                           </pre>
                         </div>
@@ -237,13 +223,8 @@ Please describe what you were doing when this error occurred:
               )}
 
               {/* Help Text */}
-              <div className="text-center text-sm text-gray-600">
-                <p>
-                  If this problem persists, please contact our support team at{" "}
-                  <a href="mailto:support@coinwayfinder.com" className="text-blue-600 hover:text-blue-800 underline">
-                    support@coinwayfinder.com
-                  </a>
-                </p>
+              <div className="text-center text-sm text-gray-500">
+                If this problem persists, please contact support with the error details above.
               </div>
             </CardContent>
           </Card>
@@ -254,5 +235,3 @@ Please describe what you were doing when this error occurred:
     return this.props.children
   }
 }
-
-export default RootErrorBoundary
