@@ -9,16 +9,12 @@ const ADMIN_JWT_EXPIRES_IN = "24h"
 export interface User {
   id: string
   email: string
-  username: string
-  password?: string
-  isActive: boolean
+  name?: string
   createdAt: Date
-  updatedAt: Date
   subscription?: {
     plan: string
     status: string
-    trialEndsAt?: Date
-    currentPeriodEnd?: Date
+    expiresAt?: Date
   }
 }
 
@@ -31,108 +27,175 @@ export interface Admin {
   lastLogin?: Date
 }
 
-function createJWT(payload: any, secret: string, expiresIn: string): string {
-  const header = { alg: "HS256", typ: "JWT" }
-  const now = Math.floor(Date.now() / 1000)
-  const exp = now + (expiresIn === "7d" ? 7 * 24 * 60 * 60 : 24 * 60 * 60)
-
-  const jwtPayload = { ...payload, iat: now, exp }
-
-  const encodedHeader = btoa(JSON.stringify(header))
-  const encodedPayload = btoa(JSON.stringify(jwtPayload))
-  const signature = simpleHash(`${encodedHeader}.${encodedPayload}.${secret}`)
-
-  return `${encodedHeader}.${encodedPayload}.${signature}`
+export interface AuthSession {
+  id: string
+  userId: string
+  token: string
+  expiresAt: Date
+  createdAt: Date
 }
 
-function verifyJWT(token: string, secret: string): any {
-  try {
-    const [encodedHeader, encodedPayload, signature] = token.split(".")
-    const expectedSignature = simpleHash(`${encodedHeader}.${encodedPayload}.${secret}`)
+class AuthService {
+  private jwtSecret: string
 
-    if (signature !== expectedSignature) {
-      throw new Error("Invalid signature")
-    }
-
-    const payload = JSON.parse(atob(encodedPayload))
-
-    if (payload.exp < Math.floor(Date.now() / 1000)) {
-      throw new Error("Token expired")
-    }
-
-    return payload
-  } catch (error) {
-    throw new Error("Invalid token")
-  }
-}
-
-export class AuthService {
-  async hashPassword(password: string): Promise<string> {
-    return simpleHash(password + "salt")
+  constructor() {
+    this.jwtSecret = process.env.JWT_SECRET || "fallback-secret-key"
   }
 
-  async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
-    const hashedInput = await this.hashPassword(password)
-    return hashedInput === hashedPassword
+  // Simple JWT implementation without crypto dependency
+  private createJWT(payload: any): string {
+    const header = { alg: "HS256", typ: "JWT" }
+    const encodedHeader = Buffer.from(JSON.stringify(header)).toString("base64url")
+    const encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url")
+
+    const signature = simpleHash(`${encodedHeader}.${encodedPayload}.${this.jwtSecret}`)
+
+    return `${encodedHeader}.${encodedPayload}.${signature}`
   }
 
-  generateAuthToken(user: User): string {
-    const payload = {
-      userId: user.id,
-      id: user.id,
-      email: user.email,
-      username: user.username,
-      isActive: user.isActive,
-    }
-    return createJWT(payload, JWT_SECRET, JWT_EXPIRES_IN)
-  }
-
-  generateAdminToken(admin: Admin): string {
-    const payload = {
-      id: admin.id,
-      username: admin.username,
-      role: admin.role,
-    }
-    return createJWT(payload, JWT_SECRET, ADMIN_JWT_EXPIRES_IN)
-  }
-
-  async verifyAuthToken(token: string): Promise<User | null> {
+  private verifyJWT(token: string): any {
     try {
-      const decoded = verifyJWT(token, JWT_SECRET)
-      const user = await database.getUserById(decoded.id || decoded.userId)
+      const [encodedHeader, encodedPayload, signature] = token.split(".")
 
-      if (!user || !user.isActive) {
+      if (!encodedHeader || !encodedPayload || !signature) {
         return null
       }
 
-      return user
-    } catch (error) {
-      console.error("Token verification error:", error)
-      return null
-    }
-  }
+      const expectedSignature = simpleHash(`${encodedHeader}.${encodedPayload}.${this.jwtSecret}`)
 
-  async verifyAdminToken(token: string): Promise<Admin | null> {
-    try {
-      const decoded = verifyJWT(token, JWT_SECRET)
-
-      if (decoded.role === "admin") {
-        return {
-          id: decoded.id,
-          username: decoded.username,
-          role: decoded.role,
-          createdAt: new Date(),
-        }
+      if (signature !== expectedSignature) {
+        return null
       }
 
-      return null
+      const payload = JSON.parse(Buffer.from(encodedPayload, "base64url").toString())
+
+      // Check expiration
+      if (payload.exp && Date.now() >= payload.exp * 1000) {
+        return null
+      }
+
+      return payload
     } catch (error) {
-      console.error("Admin token verification error:", error)
       return null
     }
   }
 
-  async getCurrentUser(): Promise<{ userId: string; email: string; username: string } | null> {
+  async hashPassword(password: string): Promise<string> {
+    // Simple password hashing - in production, use bcrypt
+    const salt = generateRandomString(16)
+    const hash = simpleHash(password + salt)
+    return `${salt}:${hash}`
+  }
+
+  async verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+    try {
+      const [salt, hash] = hashedPassword.split(":")
+      const expectedHash = simpleHash(password + salt)
+      return hash === expectedHash
+    } catch (error) {
+      return false
+    }
+  }
+
+  async signUp(email: string, password: string, name?: string): Promise<{ user: User; token: string }> {
+    // Check if user already exists
+    const existingUser = database.users.find((u) => u.email === email)
+    if (existingUser) {
+      throw new Error("User already exists")
+    }
+
+    // Hash password
+    const hashedPassword = await this.hashPassword(password)
+
+    // Create user
+    const user: User = {
+      id: generateRandomString(16),
+      email,
+      name,
+      createdAt: new Date(),
+      subscription: {
+        plan: "free",
+        status: "active",
+      },
+    }
+
+    // Store user in database
+    database.users.push({
+      ...user,
+      password: hashedPassword,
+    })
+
+    // Create JWT token
+    const tokenPayload = {
+      id: user.id,
+      userId: user.id, // Add userId for compatibility
+      email: user.email,
+      exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60, // 7 days
+    }
+
+    const token = this.createJWT(tokenPayload)
+
+    // Create session
+    const session: AuthSession = {
+      id: generateRandomString(16),
+      userId: user.id,
+      token,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      createdAt: new Date(),
+    }
+
+    database.sessions.push(session)
+
+    return { user, token }
+  }
+
+  async signIn(email: string, password: string): Promise<{ user: User; token: string }> {
+    // Find user
+    const dbUser = database.users.find((u) => u.email === email)
+    if (!dbUser) {
+      throw new Error("Invalid credentials")
+    }
+
+    // Verify password
+    const isValidPassword = await this.verifyPassword(password, dbUser.password)
+    if (!isValidPassword) {
+      throw new Error("Invalid credentials")
+    }
+
+    // Create user object without password
+    const user: User = {
+      id: dbUser.id,
+      email: dbUser.email,
+      name: dbUser.name,
+      createdAt: dbUser.createdAt,
+      subscription: dbUser.subscription,
+    }
+
+    // Create JWT token
+    const tokenPayload = {
+      id: user.id,
+      userId: user.id, // Add userId for compatibility
+      email: user.email,
+      exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60, // 7 days
+    }
+
+    const token = this.createJWT(tokenPayload)
+
+    // Create session
+    const session: AuthSession = {
+      id: generateRandomString(16),
+      userId: user.id,
+      token,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      createdAt: new Date(),
+    }
+
+    database.sessions.push(session)
+
+    return { user, token }
+  }
+
+  async getCurrentUser(): Promise<User | null> {
     try {
       const cookieStore = cookies()
       const token = cookieStore.get("auth-token")?.value
@@ -141,179 +204,114 @@ export class AuthService {
         return null
       }
 
-      const decoded = verifyJWT(token, JWT_SECRET)
-      const user = await database.getUserById(decoded.id || decoded.userId)
-
-      if (!user || !user.isActive) {
+      const payload = this.verifyJWT(token)
+      if (!payload) {
         return null
       }
 
+      // Find user by ID (support both 'id' and 'userId' fields)
+      const userId = payload.id || payload.userId
+      if (!userId) {
+        return null
+      }
+
+      const dbUser = database.users.find((u) => u.id === userId)
+      if (!dbUser) {
+        return null
+      }
+
+      // Return user without password
       return {
-        userId: user.id,
-        email: user.email,
-        username: user.username,
+        id: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.name,
+        createdAt: dbUser.createdAt,
+        subscription: dbUser.subscription,
       }
     } catch (error) {
-      console.error("Get current user error:", error)
+      console.error("Error getting current user:", error)
       return null
     }
   }
 
-  async signUp(email: string, username: string, password: string): Promise<{ user: User; token: string }> {
-    const existingUser = await database.getUserByEmail(email)
+  async signOut(token: string): Promise<void> {
+    // Remove session from database
+    const sessionIndex = database.sessions.findIndex((s) => s.token === token)
+    if (sessionIndex !== -1) {
+      database.sessions.splice(sessionIndex, 1)
+    }
+  }
 
-    if (existingUser) {
-      throw new Error("User already exists with this email or username")
+  async verifyToken(token: string): Promise<User | null> {
+    const payload = this.verifyJWT(token)
+    if (!payload) {
+      return null
     }
 
-    const hashedPassword = await this.hashPassword(password)
-
-    const newUser = await database.createUser({
-      email,
-      username,
-      password: hashedPassword,
-      isActive: true,
-      subscription: {
-        plan: "free",
-        status: "active",
-        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      },
-    })
-
-    const token = this.generateAuthToken(newUser)
-
-    return { user: newUser, token }
-  }
-
-  async signIn(emailOrUsername: string, password: string): Promise<{ user: User; token: string }> {
-    const user = await database.getUserByEmail(emailOrUsername)
-
-    if (!user || !user.isActive) {
-      throw new Error("Invalid credentials")
+    const userId = payload.id || payload.userId
+    if (!userId) {
+      return null
     }
 
-    const isValidPassword = await this.comparePassword(password, user.password!)
-    if (!isValidPassword) {
-      throw new Error("Invalid credentials")
+    const dbUser = database.users.find((u) => u.id === userId)
+    if (!dbUser) {
+      return null
     }
 
-    await database.updateUser(user.id, { updatedAt: new Date() })
-
-    const token = this.generateAuthToken(user)
-
-    return { user, token }
-  }
-
-  async adminSignIn(username: string, password: string): Promise<{ admin: Admin; token: string }> {
-    if (username === "admin" && password === "CoinWayFinder2024!") {
-      const admin: Admin = {
-        id: "admin_1",
-        username: "admin",
-        role: "admin",
-        createdAt: new Date(),
-        lastLogin: new Date(),
-      }
-
-      const token = this.generateAdminToken(admin)
-      return { admin, token }
+    return {
+      id: dbUser.id,
+      email: dbUser.email,
+      name: dbUser.name,
+      createdAt: dbUser.createdAt,
+      subscription: dbUser.subscription,
     }
-
-    throw new Error("Invalid admin credentials")
-  }
-
-  async getUserById(userId: string): Promise<User | null> {
-    return await database.getUserById(userId)
-  }
-
-  async updateUser(userId: string, updates: Partial<User>): Promise<User | null> {
-    return await database.updateUser(userId, updates)
-  }
-
-  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<boolean> {
-    const user = await database.getUserById(userId)
-    if (!user) {
-      throw new Error("User not found")
-    }
-
-    const isValidPassword = await this.comparePassword(currentPassword, user.password!)
-    if (!isValidPassword) {
-      throw new Error("Current password is incorrect")
-    }
-
-    const hashedNewPassword = await this.hashPassword(newPassword)
-
-    await database.updateUser(userId, { password: hashedNewPassword })
-
-    return true
-  }
-
-  async deactivateUser(userId: string): Promise<boolean> {
-    await database.updateUser(userId, { isActive: false })
-    return true
-  }
-
-  async createDefaultAdmin(): Promise<void> {
-    console.log("Default admin available: admin / CoinWayFinder2024!")
   }
 }
 
-export class AuthManager {
-  private authService: AuthService
+export const authService = new AuthService()
 
-  constructor() {
-    this.authService = new AuthService()
-  }
-
-  async initialize(): Promise<void> {
-    await this.authService.createDefaultAdmin()
-  }
-
-  getAuthService(): AuthService {
-    return this.authService
-  }
-
-  async authenticateUser(token: string): Promise<User | null> {
-    return this.authService.verifyAuthToken(token)
-  }
-
-  async authenticateAdmin(token: string): Promise<Admin | null> {
-    return this.authService.verifyAdminToken(token)
-  }
-
-  async registerUser(email: string, username: string, password: string): Promise<{ user: User; token: string }> {
-    return this.authService.signUp(email, username, password)
-  }
-
-  async loginUser(emailOrUsername: string, password: string): Promise<{ user: User; token: string }> {
-    return this.authService.signIn(emailOrUsername, password)
-  }
-
-  async loginAdmin(username: string, password: string): Promise<{ admin: Admin; token: string }> {
-    return this.authService.adminSignIn(username, password)
-  }
-}
-
-// Mock lucia export for compatibility
+// Mock lucia for compatibility
 export const lucia = {
   validateSession: async (sessionId: string) => {
-    return { user: null, session: null }
+    const session = database.sessions.find((s) => s.id === sessionId)
+    if (!session || session.expiresAt < new Date()) {
+      return { session: null, user: null }
+    }
+
+    const user = database.users.find((u) => u.id === session.userId)
+    return {
+      session: {
+        id: session.id,
+        userId: session.userId,
+        expiresAt: session.expiresAt,
+      },
+      user: user
+        ? {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+          }
+        : null,
+    }
   },
-  createSession: async (userId: string, attributes: any) => {
-    return { id: generateRandomString(16) }
+
+  createSession: async (userId: string) => {
+    const session: AuthSession = {
+      id: generateRandomString(16),
+      userId,
+      token: generateRandomString(32),
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      createdAt: new Date(),
+    }
+
+    database.sessions.push(session)
+    return session
   },
+
   invalidateSession: async (sessionId: string) => {
-    return true
+    const index = database.sessions.findIndex((s) => s.id === sessionId)
+    if (index !== -1) {
+      database.sessions.splice(index, 1)
+    }
   },
 }
-
-// Export instances
-export const authService = new AuthService()
-export const authManager = new AuthManager()
-
-// Static method for getCurrentUser
-export const getCurrentUser = async () => {
-  return authService.getCurrentUser()
-}
-
-// Initialize on module load
-authManager.initialize().catch(console.error)
