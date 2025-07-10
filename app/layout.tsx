@@ -2,20 +2,31 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import { Navigation } from "@/components/navigation"
+import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
-import { ClientLayout } from "./ClientLayout"
 import { ErrorBoundary } from "@/components/error-boundary"
+import { initSentry } from "@/lib/sentry"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "CoinWayFinder - AI-Powered Crypto Trading Platform",
+  title: "CoinWayFinder - Advanced Crypto Trading Platform",
   description:
-    "Automate your cryptocurrency trading with advanced AI algorithms, real-time market analysis, and professional-grade risk management.",
-  keywords: "cryptocurrency, trading, AI, automation, bitcoin, ethereum, DeFi",
+    "Professional cryptocurrency trading platform with automated bots, real-time analytics, and advanced trading strategies.",
+  keywords: ["cryptocurrency", "trading", "bot", "automated", "crypto", "bitcoin", "ethereum"],
+  authors: [{ name: "CoinWayFinder Team" }],
+  creator: "CoinWayFinder",
+  publisher: "CoinWayFinder",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
     generator: 'v0.dev'
 }
+
+// Initialize Sentry
+initSentry()
 
 export default function RootLayout({
   children,
@@ -23,14 +34,13 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ErrorBoundary>
-          <ClientLayout>
-            <Navigation />
-            <main className="pt-20">{children}</main>
+        <ErrorBoundary context="root-layout">
+          <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+            {children}
             <Toaster />
-          </ClientLayout>
+          </ThemeProvider>
         </ErrorBoundary>
       </body>
     </html>

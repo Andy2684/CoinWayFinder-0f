@@ -2,31 +2,29 @@
 
 import { useCallback } from "react"
 import { toast } from "@/components/ui/use-toast"
-import { sentryService } from "@/lib/sentry"
+import { captureError, addBreadcrumb, setUserContext } from "@/lib/sentry"
 
 interface ErrorHandlerOptions {
   showToast?: boolean
   logError?: boolean
   reportError?: boolean
-  component?: string
-  action?: string
+  context?: string
   userId?: string
-  additionalContext?: Record<string, any>
 }
 
 export const useErrorHandler = () => {
   const handleError = useCallback(async (error: Error, context?: string, options: ErrorHandlerOptions = {}) => {
-    const {
-      showToast = true,
-      logError = true,
-      reportError = true,
-      component,
-      action,
-      userId,
-      additionalContext,
-    } = options
+    const { showToast = true, logError = true, reportError = true, userId } = options
 
     const errorId = `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+    // Set user context if provided
+    if (userId) {
+      setUserContext({ id: userId })
+    }
+
+    // Add breadcrumb for context
+    addBreadcrumb(`Error in ${context || "unknown context"}: ${error.message}`, "error", "error")
 
     // Log error to console
     if (logError) {
@@ -46,88 +44,34 @@ export const useErrorHandler = () => {
 
     // Report error to Sentry
     if (reportError) {
-      try {
-        const sentryId = sentryService.captureException(error, {
-          userId,
-          component: component || context,
-          action: action || "user-action",
-          additionalData: {
-            errorId,
-            context,
-            handledByHook: true,
-            ...additionalContext,
-          },
-        })
-
-        // Add breadcrumb for the handled error
-        sentryService.addBreadcrumb(`Error handled in ${context || "unknown context"}`, "error-handling", {
-          errorId,
-          sentryId,
-          component,
-          action,
-        })
-
-        return { errorId, sentryId }
-      } catch (reportError) {
-        console.error("Failed to report error to Sentry:", reportError)
-        return { errorId, sentryId: null }
-      }
+      captureError(error, {
+        context,
+        errorId,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        url: window.location.href,
+        userId,
+      })
     }
 
-    return { errorId, sentryId: null }
+    return errorId
   }, [])
 
-  const handleAPIError = useCallback(
-    async (error: Error, endpoint: string, method: string, statusCode?: number, userId?: string) => {
-      return handleError(error, `API ${method} ${endpoint}`, {
-        component: "api-client",
-        action: `${method.toLowerCase()}-request`,
-        userId,
-        additionalContext: {
-          endpoint,
-          method,
-          statusCode,
-        },
-      })
+  const handleAsyncError = useCallback(
+    async (asyncOperation: () => Promise<any>, context?: string, options: ErrorHandlerOptions = {}) => {
+      try {
+        addBreadcrumb(`Starting async operation: ${context || "unknown"}`, "operation", "info")
+        const result = await asyncOperation()
+        addBreadcrumb(`Completed async operation: ${context || "unknown"}`, "operation", "info")
+        return result
+      } catch (error) {
+        const errorToHandle = error instanceof Error ? error : new Error(String(error))
+        await handleError(errorToHandle, context, options)
+        throw error // Re-throw to allow calling code to handle it
+      }
     },
     [handleError],
   )
 
-  const handleBotError = useCallback(
-    async (error: Error, botId: string, strategy: string, userId?: string) => {
-      return handleError(error, `Bot ${botId}`, {
-        component: "trading-bot",
-        action: "bot-operation",
-        userId,
-        additionalContext: {
-          botId,
-          strategy,
-        },
-      })
-    },
-    [handleError],
-  )
-
-  const handleTradeError = useCallback(
-    async (error: Error, tradeId: string, symbol: string, side: string, userId?: string) => {
-      return handleError(error, `Trade ${tradeId}`, {
-        component: "trade-execution",
-        action: "execute-trade",
-        userId,
-        additionalContext: {
-          tradeId,
-          symbol,
-          side,
-        },
-      })
-    },
-    [handleError],
-  )
-
-  return {
-    handleError,
-    handleAPIError,
-    handleBotError,
-    handleTradeError,
-  }
+  return { handleError, handleAsyncError }
 }

@@ -1,210 +1,99 @@
 import * as Sentry from "@sentry/nextjs"
 
-export interface ErrorContext {
-  userId?: string
-  userEmail?: string
-  component?: string
-  action?: string
-  botId?: string
-  tradeId?: string
-  exchangeId?: string
-  additionalData?: Record<string, any>
-}
+const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN
 
-export interface PerformanceContext {
-  operation: string
-  component?: string
-  userId?: string
-  duration?: number
-  additionalData?: Record<string, any>
-}
-
-class SentryService {
-  /**
-   * Capture an exception with context
-   */
-  captureException(error: Error, context?: ErrorContext) {
-    return Sentry.withScope((scope) => {
-      if (context) {
-        // Set user context
-        if (context.userId || context.userEmail) {
-          scope.setUser({
-            id: context.userId,
-            email: context.userEmail,
-          })
+export const initSentry = () => {
+  if (SENTRY_DSN) {
+    Sentry.init({
+      dsn: SENTRY_DSN,
+      environment: process.env.NODE_ENV,
+      debug: process.env.NODE_ENV === "development",
+      tracesSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+      beforeSend(event, hint) {
+        // Filter out known non-critical errors
+        if (event.exception) {
+          const error = hint.originalException
+          if (error instanceof Error) {
+            // Skip network errors that are not actionable
+            if (error.message.includes("NetworkError") || error.message.includes("Failed to fetch")) {
+              return null
+            }
+            // Skip canceled requests
+            if (error.message.includes("The operation was aborted")) {
+              return null
+            }
+          }
         }
-
-        // Set tags for filtering
-        if (context.component) scope.setTag("component", context.component)
-        if (context.action) scope.setTag("action", context.action)
-        if (context.botId) scope.setTag("botId", context.botId)
-        if (context.tradeId) scope.setTag("tradeId", context.tradeId)
-        if (context.exchangeId) scope.setTag("exchangeId", context.exchangeId)
-
-        // Set additional context
-        if (context.additionalData) {
-          scope.setContext("additional", context.additionalData)
-        }
-      }
-
-      return Sentry.captureException(error)
+        return event
+      },
+      integrations: [
+        new Sentry.BrowserTracing({
+          // Performance monitoring
+          tracingOrigins: ["localhost", process.env.NEXT_PUBLIC_BASE_URL || ""],
+        }),
+        new Sentry.Replay({
+          // Session replay for debugging
+          maskAllText: true,
+          blockAllMedia: true,
+        }),
+      ],
+      // Session replay sample rate
+      replaysSessionSampleRate: process.env.NODE_ENV === "production" ? 0.1 : 1.0,
+      replaysOnErrorSampleRate: 1.0,
     })
   }
+}
 
-  /**
-   * Capture a message with context
-   */
-  captureMessage(message: string, level: Sentry.SeverityLevel = "info", context?: ErrorContext) {
-    return Sentry.withScope((scope) => {
-      if (context) {
-        if (context.userId || context.userEmail) {
-          scope.setUser({
-            id: context.userId,
-            email: context.userEmail,
-          })
-        }
+export const captureError = (error: Error, context?: Record<string, any>) => {
+  console.error("Error captured:", error)
 
-        if (context.component) scope.setTag("component", context.component)
-        if (context.action) scope.setTag("action", context.action)
-        if (context.additionalData) {
-          scope.setContext("additional", context.additionalData)
-        }
-      }
-
-      scope.setLevel(level)
-      return Sentry.captureMessage(message)
-    })
-  }
-
-  /**
-   * Start a performance transaction
-   */
-  startTransaction(name: string, operation: string, context?: PerformanceContext) {
-    const transaction = Sentry.startTransaction({
-      name,
-      op: operation,
+  if (SENTRY_DSN) {
+    Sentry.captureException(error, {
       tags: {
-        component: context?.component,
-        userId: context?.userId,
-        ...context?.additionalData,
+        component: "frontend",
+        environment: process.env.NODE_ENV,
       },
-    })
-
-    return transaction
-  }
-
-  /**
-   * Capture performance metrics
-   */
-  capturePerformance(context: PerformanceContext) {
-    Sentry.addBreadcrumb({
-      message: `Performance: ${context.operation}`,
-      category: "performance",
-      level: "info",
-      data: {
-        component: context.component,
-        duration: context.duration,
-        ...context.additionalData,
-      },
+      extra: context,
     })
   }
+}
 
-  /**
-   * Set user context globally
-   */
-  setUser(user: { id?: string; email?: string; username?: string }) {
-    Sentry.setUser(user)
+export const captureMessage = (
+  message: string,
+  level: Sentry.SeverityLevel = "info",
+  context?: Record<string, any>,
+) => {
+  if (SENTRY_DSN) {
+    Sentry.captureMessage(message, {
+      level,
+      tags: {
+        component: "frontend",
+        environment: process.env.NODE_ENV,
+      },
+      extra: context,
+    })
   }
+}
 
-  /**
-   * Add breadcrumb for debugging
-   */
-  addBreadcrumb(message: string, category: string, data?: Record<string, any>) {
+export const setUserContext = (user: { id: string; email?: string; username?: string }) => {
+  if (SENTRY_DSN) {
+    Sentry.setUser({
+      id: user.id,
+      email: user.email,
+      username: user.username,
+    })
+  }
+}
+
+export const addBreadcrumb = (message: string, category: string, level: Sentry.SeverityLevel = "info") => {
+  if (SENTRY_DSN) {
     Sentry.addBreadcrumb({
       message,
       category,
-      level: "info",
-      data,
-    })
-  }
-
-  /**
-   * Capture trading bot errors
-   */
-  captureBotError(error: Error, botId: string, strategy: string, additionalContext?: Record<string, any>) {
-    return this.captureException(error, {
-      component: "trading-bot",
-      action: "bot-execution",
-      botId,
-      additionalData: {
-        strategy,
-        ...additionalContext,
-      },
-    })
-  }
-
-  /**
-   * Capture API errors
-   */
-  captureAPIError(error: Error, endpoint: string, method: string, statusCode?: number, userId?: string) {
-    return this.captureException(error, {
-      component: "api",
-      action: `${method} ${endpoint}`,
-      userId,
-      additionalData: {
-        endpoint,
-        method,
-        statusCode,
-      },
-    })
-  }
-
-  /**
-   * Capture exchange integration errors
-   */
-  captureExchangeError(error: Error, exchangeId: string, operation: string, userId?: string) {
-    return this.captureException(error, {
-      component: "exchange-integration",
-      action: operation,
-      exchangeId,
-      userId,
-      additionalData: {
-        exchange: exchangeId,
-        operation,
-      },
-    })
-  }
-
-  /**
-   * Capture trade execution errors
-   */
-  captureTradeError(error: Error, tradeId: string, symbol: string, side: string, userId?: string) {
-    return this.captureException(error, {
-      component: "trade-execution",
-      action: "execute-trade",
-      tradeId,
-      userId,
-      additionalData: {
-        symbol,
-        side,
-        tradeId,
-      },
+      level,
+      timestamp: Date.now() / 1000,
     })
   }
 }
 
-export const sentryService = new SentryService()
-
-// Export commonly used functions
-export const {
-  captureException,
-  captureMessage,
-  startTransaction,
-  capturePerformance,
-  setUser,
-  addBreadcrumb,
-  captureBotError,
-  captureAPIError,
-  captureExchangeError,
-  captureTradeError,
-} = sentryService
+export { Sentry }

@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { sentryService } from "@/lib/sentry"
+import { Sentry } from "@/lib/sentry"
 
 interface ErrorReport {
   errorId: string
@@ -9,9 +9,8 @@ interface ErrorReport {
   timestamp: string
   userAgent: string
   url: string
+  context?: string
   userId?: string
-  component?: string
-  context?: Record<string, any>
 }
 
 export async function POST(request: NextRequest) {
@@ -25,56 +24,64 @@ export async function POST(request: NextRequest) {
         message: errorReport.message,
         timestamp: errorReport.timestamp,
         url: errorReport.url,
+        context: errorReport.context,
       })
     }
 
-    // Create error object from report
-    const error = new Error(errorReport.message)
-    if (errorReport.stack) {
-      error.stack = errorReport.stack
-    }
+    // Send to Sentry
+    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+      const eventId = Sentry.captureException(new Error(errorReport.message), {
+        tags: {
+          component: "api-error-report",
+          errorId: errorReport.errorId,
+          context: errorReport.context || "unknown",
+        },
+        extra: {
+          stack: errorReport.stack,
+          componentStack: errorReport.componentStack,
+          userAgent: errorReport.userAgent,
+          url: errorReport.url,
+          timestamp: errorReport.timestamp,
+        },
+        user: errorReport.userId ? { id: errorReport.userId } : undefined,
+      })
 
-    // Send to Sentry with full context
-    const sentryId = sentryService.captureException(error, {
-      userId: errorReport.userId,
-      component: errorReport.component || "frontend",
-      action: "client-error-report",
-      additionalData: {
+      // Add breadcrumb for tracking
+      Sentry.addBreadcrumb({
+        message: `Error reported: ${errorReport.message}`,
+        category: "error-report",
+        level: "error",
+        data: {
+          errorId: errorReport.errorId,
+          context: errorReport.context,
+        },
+      })
+
+      return NextResponse.json({
+        success: true,
+        message: "Error reported successfully",
         errorId: errorReport.errorId,
-        componentStack: errorReport.componentStack,
-        userAgent: errorReport.userAgent,
-        url: errorReport.url,
-        timestamp: errorReport.timestamp,
-        reportedViaAPI: true,
-        ...errorReport.context,
-      },
-    })
-
-    // Add breadcrumb for the error report
-    sentryService.addBreadcrumb("Client error reported via API", "error-report", {
-      errorId: errorReport.errorId,
-      sentryId,
-      component: errorReport.component,
-      url: errorReport.url,
-    })
+        sentryEventId: eventId,
+      })
+    }
 
     return NextResponse.json({
       success: true,
-      message: "Error reported successfully",
+      message: "Error logged successfully",
       errorId: errorReport.errorId,
-      sentryId,
     })
   } catch (error) {
     console.error("Failed to process error report:", error)
 
     // Report the error reporting failure to Sentry
-    sentryService.captureException(error as Error, {
-      component: "error-reporting-api",
-      action: "process-error-report",
-      additionalData: {
-        originalErrorId: (error as any)?.errorId,
-      },
-    })
+    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
+      Sentry.captureException(error, {
+        tags: {
+          component: "api-error-report",
+          operation: "error-report-failure",
+        },
+      })
+    }
 
     return NextResponse.json(
       {

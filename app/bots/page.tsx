@@ -92,11 +92,10 @@ export default function BotsPage() {
   return (
     <BotErrorBoundary>
       <div className="container mx-auto p-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold mb-2">Trading Bots</h1>
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold">Trading Bots</h1>
           <p className="text-muted-foreground">Create and manage your automated trading strategies</p>
         </div>
-
         <BotsOverview />
 
         {/* Bot Statistics */}
