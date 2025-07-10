@@ -1,26 +1,15 @@
 {
   "functions": {
     "app/api/**/*.ts": {
-      "maxDuration": 30
+      "runtime": "nodejs18.x"
     }
   },
-  "env": {
-    "MONGODB_URI": "@mongodb_uri",
-    "JWT_SECRET": "@jwt_secret",
-    "STRIPE_SECRET_KEY": "@stripe_secret_key",
-    "STRIPE_PUBLISHABLE_KEY": "@stripe_publishable_key",
-    "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret",
-    "COINBASE_API_KEY": "@coinbase_api_key",
-    "COINBASE_API_SECRET": "@coinbase_api_secret",
-    "TELEGRAM_BOT_TOKEN": "@telegram_bot_token",
-    "REDIS_URL": "@redis_url",
-    "NEXT_PUBLIC_BASE_URL": "@next_public_base_url",
-    "API_SECRET_KEY": "@api_secret_key",
-    "SMTP_HOST": "@smtp_host",
-    "SMTP_USER": "@smtp_user",
-    "SMTP_PASS": "@smtp_pass",
-    "XAI_API_KEY": "@xai_api_key"
-  },
+  "rewrites": [
+    {
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
+    }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
@@ -35,33 +24,9 @@
         },
         {
           "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization, X-API-Key"
-        },
-        {
-          "key": "Access-Control-Max-Age",
-          "value": "86400"
+          "value": "Content-Type, Authorization"
         }
       ]
-    }
-  ],
-  "rewrites": [
-    {
-      "source": "/api/v1/(.*)",
-      "destination": "/api/v1/$1"
-    }
-  ],
-  "crons": [
-    {
-      "path": "/api/bots/scheduler",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/crypto/prices",
-      "schedule": "*/1 * * * *"
-    },
-    {
-      "path": "/api/crypto/news",
-      "schedule": "*/15 * * * *"
     }
   ]
 }

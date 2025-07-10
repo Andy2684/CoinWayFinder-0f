@@ -28,9 +28,7 @@ export default function RootLayout({
         <ErrorBoundary>
           <ClientLayout>
             <Navigation />
-            <main className="pt-20">
-              <ErrorBoundary>{children}</ErrorBoundary>
-            </main>
+            <main className="pt-20">{children}</main>
             <Toaster />
           </ClientLayout>
         </ErrorBoundary>

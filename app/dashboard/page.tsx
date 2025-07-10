@@ -1,5 +1,4 @@
 "use client"
-
 import { useState } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview"
@@ -11,7 +10,7 @@ import { ApiAccess } from "@/components/dashboard/api-access"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { TrendingUp, Bot, DollarSign, Activity, BarChart3 } from "lucide-react"
-import { DashboardErrorBoundary } from "@/components/dashboard-error-boundary"
+import { DashboardErrorBoundary } from "@/components/error-boundaries/dashboard-error-boundary"
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("overview")

@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -10,7 +9,7 @@ import { BotStrategies } from "@/components/bots/bot-strategies"
 import { ActiveBots } from "@/components/bots/active-bots"
 import { Bot, Play, Pause, Square, TrendingUp } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { BotErrorBoundary } from "@/components/bot-error-boundary"
+import { BotErrorBoundary } from "@/components/error-boundaries/bot-error-boundary"
 import { BotsOverview } from "@/components/bots/bots-overview"
 
 interface TradingBot {
@@ -94,10 +93,13 @@ export default function BotsPage() {
     <BotErrorBoundary>
       <div className="container mx-auto p-6">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold tracking-tight">Trading Bots</h1>
+          <h1 className="text-3xl font-bold mb-2">Trading Bots</h1>
           <p className="text-muted-foreground">Create and manage your automated trading strategies</p>
         </div>
+
         <BotsOverview />
+
+        {/* Bot Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-slate-800/50 border-slate-700">
             <CardContent className="p-4">
