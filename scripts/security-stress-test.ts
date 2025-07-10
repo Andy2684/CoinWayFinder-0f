@@ -1,6 +1,5 @@
 #!/usr/bin/env ts-node
 
-import { IncidentResponseAutomation } from "./incident-response-automation"
 import { securityMonitor, SecurityEventType, SecuritySeverity } from "../lib/security-monitor"
 
 interface StressTestMetrics {
@@ -14,7 +13,6 @@ interface StressTestMetrics {
 }
 
 class SecurityStressTester {
-  private automation: IncidentResponseAutomation
   private metrics: StressTestMetrics = {
     totalEvents: 0,
     eventsPerSecond: 0,
@@ -23,10 +21,6 @@ class SecurityStressTester {
     failedResponses: 0,
     memoryUsage: process.memoryUsage(),
     duration: 0,
-  }
-
-  constructor() {
-    this.automation = new IncidentResponseAutomation()
   }
 
   async runStressTest(duration = 60000, eventsPerSecond = 10): Promise<void> {
@@ -107,6 +101,7 @@ class SecurityStressTester {
         stressTest: true,
         timestamp: new Date().toISOString(),
         eventId: Math.random().toString(36).substr(2, 9),
+        payload: this.getRandomPayload(randomEventType),
       },
     })
   }
@@ -121,6 +116,8 @@ class SecurityStressTester {
       "/admin/users",
       "/api/news",
       "/api/portfolio",
+      "/api/subscription",
+      "/api/integrations",
     ]
     return endpoints[Math.floor(Math.random() * endpoints.length)]
   }
@@ -133,8 +130,35 @@ class SecurityStressTester {
       "Python/3.9 requests/2.25.1",
       "curl/7.68.0",
       "PostmanRuntime/7.28.0",
+      "sqlmap/1.6.12",
+      "Nikto/2.1.6",
     ]
     return userAgents[Math.floor(Math.random() * userAgents.length)]
+  }
+
+  private getRandomPayload(eventType: SecurityEventType): string {
+    switch (eventType) {
+      case SecurityEventType.SQL_INJECTION_ATTEMPT:
+        const sqlPayloads = [
+          "' OR '1'='1",
+          "'; DROP TABLE users; --",
+          "' UNION SELECT * FROM passwords --",
+          "1' AND (SELECT COUNT(*) FROM users) > 0 --",
+        ]
+        return sqlPayloads[Math.floor(Math.random() * sqlPayloads.length)]
+
+      case SecurityEventType.XSS_ATTEMPT:
+        const xssPayloads = [
+          "<script>alert('XSS')</script>",
+          "javascript:alert(document.cookie)",
+          "<img src=x onerror=alert(1)>",
+          "<svg onload=alert(1)>",
+        ]
+        return xssPayloads[Math.floor(Math.random() * xssPayloads.length)]
+
+      default:
+        return "random_payload_" + Math.random().toString(36).substr(2, 9)
+    }
   }
 
   async runConcurrencyTest(concurrentEvents = 50): Promise<void> {
@@ -198,6 +222,59 @@ class SecurityStressTester {
       console.log("⚠️ Potential memory leak detected!")
     } else {
       console.log("✅ No significant memory leak detected")
+    }
+  }
+
+  async runThroughputTest(targetThroughput = 100): Promise<void> {
+    console.log("\n⚡ Starting Throughput Test")
+    console.log("=".repeat(50))
+    console.log(`Target Throughput: ${targetThroughput} events/second`)
+    console.log("=".repeat(50))
+
+    const testDuration = 10000 // 10 seconds
+    const startTime = Date.now()
+    let eventCount = 0
+    const errors: any[] = []
+
+    const interval = setInterval(async () => {
+      const batchSize = Math.ceil(targetThroughput / 10) // 10 batches per second
+      const promises: Promise<void>[] = []
+
+      for (let i = 0; i < batchSize; i++) {
+        promises.push(
+          this.generateRandomSecurityEvent().catch((error) => {
+            errors.push(error)
+          }),
+        )
+      }
+
+      try {
+        await Promise.all(promises)
+        eventCount += batchSize
+      } catch (error) {
+        console.error("Batch processing error:", error)
+      }
+    }, 100) // Every 100ms
+
+    // Wait for test duration
+    await this.sleep(testDuration)
+    clearInterval(interval)
+
+    const actualDuration = Date.now() - startTime
+    const actualThroughput = eventCount / (actualDuration / 1000)
+
+    console.log(`\n📊 Throughput Test Results:`)
+    console.log(`  Events Processed: ${eventCount}`)
+    console.log(`  Test Duration: ${(actualDuration / 1000).toFixed(2)}s`)
+    console.log(`  Target Throughput: ${targetThroughput} events/s`)
+    console.log(`  Actual Throughput: ${actualThroughput.toFixed(2)} events/s`)
+    console.log(`  Success Rate: ${(((eventCount - errors.length) / eventCount) * 100).toFixed(2)}%`)
+    console.log(`  Errors: ${errors.length}`)
+
+    if (actualThroughput >= targetThroughput * 0.9) {
+      console.log(`✅ Throughput test PASSED (${((actualThroughput / targetThroughput) * 100).toFixed(1)}% of target)`)
+    } else {
+      console.log(`❌ Throughput test FAILED (${((actualThroughput / targetThroughput) * 100).toFixed(1)}% of target)`)
     }
   }
 
@@ -265,6 +342,29 @@ class SecurityStressTester {
   private async sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms))
   }
+
+  async runFullTestSuite(): Promise<void> {
+    console.log("🧪 Starting Full Security Stress Test Suite")
+    console.log("=".repeat(60))
+
+    try {
+      // 1. Basic stress test
+      await this.runStressTest(30000, 15) // 30 seconds, 15 events/second
+
+      // 2. Concurrency test
+      await this.runConcurrencyTest(25)
+
+      // 3. Memory leak test
+      await this.runMemoryLeakTest(500)
+
+      // 4. Throughput test
+      await this.runThroughputTest(50)
+
+      console.log("\n🎉 Full Test Suite Completed Successfully!")
+    } catch (error) {
+      console.error("❌ Test suite failed:", error)
+    }
+  }
 }
 
 // CLI interface
@@ -273,27 +373,40 @@ if (require.main === module) {
 
   const [, , testType, ...args] = process.argv
 
-  if (testType === "stress") {
-    const duration = Number.parseInt(args[0]) || 60000
-    const eventsPerSecond = Number.parseInt(args[1]) || 10
-    tester.runStressTest(duration, eventsPerSecond)
-  } else if (testType === "concurrency") {
-    const concurrentEvents = Number.parseInt(args[0]) || 50
-    tester.runConcurrencyTest(concurrentEvents)
-  } else if (testType === "memory") {
-    const iterations = Number.parseInt(args[0]) || 1000
-    tester.runMemoryLeakTest(iterations)
-  } else {
-    console.log("Usage:")
-    console.log("  ts-node security-stress-test.ts stress [duration_ms] [events_per_second]")
-    console.log("  ts-node security-stress-test.ts concurrency [concurrent_events]")
-    console.log("  ts-node security-stress-test.ts memory [iterations]")
-    console.log("")
-    console.log("Examples:")
-    console.log("  ts-node security-stress-test.ts stress 30000 20")
-    console.log("  ts-node security-stress-test.ts concurrency 100")
-    console.log("  ts-node security-stress-test.ts memory 2000")
+  async function runTests() {
+    if (testType === "stress") {
+      const duration = Number.parseInt(args[0]) || 60000
+      const eventsPerSecond = Number.parseInt(args[1]) || 10
+      await tester.runStressTest(duration, eventsPerSecond)
+    } else if (testType === "concurrency") {
+      const concurrentEvents = Number.parseInt(args[0]) || 50
+      await tester.runConcurrencyTest(concurrentEvents)
+    } else if (testType === "memory") {
+      const iterations = Number.parseInt(args[0]) || 1000
+      await tester.runMemoryLeakTest(iterations)
+    } else if (testType === "throughput") {
+      const targetThroughput = Number.parseInt(args[0]) || 100
+      await tester.runThroughputTest(targetThroughput)
+    } else if (testType === "full") {
+      await tester.runFullTestSuite()
+    } else {
+      console.log("Usage:")
+      console.log("  ts-node security-stress-test.ts stress [duration_ms] [events_per_second]")
+      console.log("  ts-node security-stress-test.ts concurrency [concurrent_events]")
+      console.log("  ts-node security-stress-test.ts memory [iterations]")
+      console.log("  ts-node security-stress-test.ts throughput [events_per_second]")
+      console.log("  ts-node security-stress-test.ts full")
+      console.log("")
+      console.log("Examples:")
+      console.log("  ts-node security-stress-test.ts stress 30000 20")
+      console.log("  ts-node security-stress-test.ts concurrency 100")
+      console.log("  ts-node security-stress-test.ts memory 2000")
+      console.log("  ts-node security-stress-test.ts throughput 75")
+      console.log("  ts-node security-stress-test.ts full")
+    }
   }
+
+  runTests().catch(console.error)
 }
 
 export { SecurityStressTester }
