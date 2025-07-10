@@ -6,43 +6,31 @@ const redis = new Redis({
 })
 
 export interface CacheOptions {
-  ttl?: number
+  ttl?: number // Time to live in seconds
   prefix?: string
 }
 
 export class CacheManager {
-  private defaultTTL = 3600
-  private keyPrefix = "coinwayfinder:"
+  private defaultTTL = 3600 // 1 hour
+  private defaultPrefix = "coinwayfinder:"
 
-  constructor(private options: CacheOptions = {}) {
-    if (options.ttl) {
-      this.defaultTTL = options.ttl
-    }
-    if (options.prefix) {
-      this.keyPrefix = options.prefix
-    }
-  }
-
-  private getKey(key: string): string {
-    return `${this.keyPrefix}${key}`
-  }
-
-  async get<T>(key: string): Promise<T | null> {
+  async get<T>(key: string, options: CacheOptions = {}): Promise<T | null> {
     try {
-      const result = await redis.get(this.getKey(key))
-      return result as T
+      const fullKey = this.buildKey(key, options.prefix)
+      const value = await redis.get(fullKey)
+      return value as T
     } catch (error) {
       console.error("Cache get error:", error)
       return null
     }
   }
 
-  async set<T>(key: string, value: T, ttl?: number): Promise<boolean> {
+  async set<T>(key: string, value: T, options: CacheOptions = {}): Promise<boolean> {
     try {
-      const cacheKey = this.getKey(key)
-      const timeToLive = ttl || this.defaultTTL
+      const fullKey = this.buildKey(key, options.prefix)
+      const ttl = options.ttl || this.defaultTTL
 
-      await redis.setex(cacheKey, timeToLive, JSON.stringify(value))
+      await redis.setex(fullKey, ttl, JSON.stringify(value))
       return true
     } catch (error) {
       console.error("Cache set error:", error)
@@ -50,9 +38,10 @@ export class CacheManager {
     }
   }
 
-  async del(key: string): Promise<boolean> {
+  async del(key: string, options: CacheOptions = {}): Promise<boolean> {
     try {
-      await redis.del(this.getKey(key))
+      const fullKey = this.buildKey(key, options.prefix)
+      await redis.del(fullKey)
       return true
     } catch (error) {
       console.error("Cache delete error:", error)
@@ -60,9 +49,10 @@ export class CacheManager {
     }
   }
 
-  async exists(key: string): Promise<boolean> {
+  async exists(key: string, options: CacheOptions = {}): Promise<boolean> {
     try {
-      const result = await redis.exists(this.getKey(key))
+      const fullKey = this.buildKey(key, options.prefix)
+      const result = await redis.exists(fullKey)
       return result === 1
     } catch (error) {
       console.error("Cache exists error:", error)
@@ -70,70 +60,75 @@ export class CacheManager {
     }
   }
 
-  async flush(): Promise<boolean> {
+  async increment(key: string, options: CacheOptions = {}): Promise<number> {
     try {
-      const keys = await redis.keys(`${this.keyPrefix}*`)
-      if (keys.length > 0) {
-        await redis.del(...keys)
-      }
-      return true
-    } catch (error) {
-      console.error("Cache flush error:", error)
-      return false
-    }
-  }
-
-  async mget<T>(keys: string[]): Promise<(T | null)[]> {
-    try {
-      const cacheKeys = keys.map((key) => this.getKey(key))
-      const results = await redis.mget(...cacheKeys)
-      return results.map((result) => result as T | null)
-    } catch (error) {
-      console.error("Cache mget error:", error)
-      return keys.map(() => null)
-    }
-  }
-
-  async mset<T>(entries: Array<{ key: string; value: T; ttl?: number }>): Promise<boolean> {
-    try {
-      const pipeline = redis.pipeline()
-
-      entries.forEach(({ key, value, ttl }) => {
-        const cacheKey = this.getKey(key)
-        const timeToLive = ttl || this.defaultTTL
-        pipeline.setex(cacheKey, timeToLive, JSON.stringify(value))
-      })
-
-      await pipeline.exec()
-      return true
-    } catch (error) {
-      console.error("Cache mset error:", error)
-      return false
-    }
-  }
-
-  async increment(key: string, amount = 1): Promise<number | null> {
-    try {
-      const result = await redis.incrby(this.getKey(key), amount)
-      return result
+      const fullKey = this.buildKey(key, options.prefix)
+      return await redis.incr(fullKey)
     } catch (error) {
       console.error("Cache increment error:", error)
-      return null
+      return 0
     }
   }
 
-  async expire(key: string, ttl: number): Promise<boolean> {
+  async expire(key: string, ttl: number, options: CacheOptions = {}): Promise<boolean> {
     try {
-      await redis.expire(this.getKey(key), ttl)
+      const fullKey = this.buildKey(key, options.prefix)
+      await redis.expire(fullKey, ttl)
       return true
     } catch (error) {
       console.error("Cache expire error:", error)
       return false
     }
   }
+
+  private buildKey(key: string, prefix?: string): string {
+    const keyPrefix = prefix || this.defaultPrefix
+    return `${keyPrefix}${key}`
+  }
+
+  // Utility methods for common cache patterns
+  async getOrSet<T>(key: string, fetcher: () => Promise<T>, options: CacheOptions = {}): Promise<T | null> {
+    const cached = await this.get<T>(key, options)
+    if (cached !== null) {
+      return cached
+    }
+
+    try {
+      const fresh = await fetcher()
+      await this.set(key, fresh, options)
+      return fresh
+    } catch (error) {
+      console.error("Cache getOrSet error:", error)
+      return null
+    }
+  }
+
+  async invalidatePattern(pattern: string): Promise<void> {
+    try {
+      // Note: This is a simplified implementation
+      // In production, you might want to use Redis SCAN for better performance
+      const keys = await redis.keys(`${this.defaultPrefix}${pattern}`)
+      if (keys.length > 0) {
+        await redis.del(...keys)
+      }
+    } catch (error) {
+      console.error("Cache invalidate pattern error:", error)
+    }
+  }
 }
 
+// Export singleton instance
 export const cache = new CacheManager()
-export const userCache = new CacheManager({ prefix: "user:", ttl: 1800 })
-export const apiCache = new CacheManager({ prefix: "api:", ttl: 300 })
-export const sessionCache = new CacheManager({ prefix: "session:", ttl: 86400 })
+
+// Utility functions for common cache operations
+export async function getCachedData<T>(key: string, fetcher: () => Promise<T>, ttl = 3600): Promise<T | null> {
+  return cache.getOrSet(key, fetcher, { ttl })
+}
+
+export async function invalidateCache(key: string): Promise<void> {
+  await cache.del(key)
+}
+
+export async function setCachedData<T>(key: string, data: T, ttl = 3600): Promise<void> {
+  await cache.set(key, data, { ttl })
+}

@@ -5,31 +5,28 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatCurrency(amount: number, currency = "USD"): string {
-  return new Intl.NumberFormat("en-US", {
+export function formatCurrency(amount: number, currency = "USD", locale = "en-US"): string {
+  return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
   }).format(amount)
+}
+
+export function formatNumber(number: number, options: Intl.NumberFormatOptions = {}): string {
+  return new Intl.NumberFormat("en-US", options).format(number)
 }
 
 export function formatPercentage(value: number, decimals = 2): string {
   return `${value.toFixed(decimals)}%`
 }
 
-export function formatNumber(value: number, decimals = 2): string {
-  return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  }).format(value)
+export function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text
+  return text.slice(0, maxLength) + "..."
 }
 
-export function truncateAddress(address: string, start = 6, end = 4): string {
-  if (address.length <= start + end) return address
-  return `${address.slice(0, start)}...${address.slice(-end)}`
-}
-
-export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+export function generateId(): string {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36)
 }
 
 export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
@@ -51,13 +48,8 @@ export function throttle<T extends (...args: any[]) => any>(func: T, limit: numb
   }
 }
 
-export function generateId(length = 8): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-  let result = ""
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return result
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export function isValidEmail(email: string): boolean {
@@ -74,25 +66,26 @@ export function isValidUrl(url: string): boolean {
   }
 }
 
-export function capitalize(str: string): string {
+export function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase())
+    .join("")
+    .slice(0, 2)
+}
+
+export function capitalizeFirst(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
 
-export function camelToKebab(str: string): string {
-  return str.replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, "$1-$2").toLowerCase()
+export function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w ]+/g, "")
+    .replace(/ +/g, "-")
 }
 
-export function kebabToCamel(str: string): string {
-  return str.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())
-}
-
-export function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  if (typeof error === "string") return error
-  return "An unknown error occurred"
-}
-
-export function safeParseJSON<T>(json: string, fallback: T): T {
+export function parseJSON<T>(json: string, fallback: T): T {
   try {
     return JSON.parse(json)
   } catch {
@@ -100,14 +93,52 @@ export function safeParseJSON<T>(json: string, fallback: T): T {
   }
 }
 
-export function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max)
+export function omit<T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Omit<T, K> {
+  const result = { ...obj }
+  keys.forEach((key) => delete result[key])
+  return result
+}
+
+export function pick<T extends Record<string, any>, K extends keyof T>(obj: T, keys: K[]): Pick<T, K> {
+  const result = {} as Pick<T, K>
+  keys.forEach((key) => {
+    if (key in obj) {
+      result[key] = obj[key]
+    }
+  })
+  return result
+}
+
+export function groupBy<T>(array: T[], keyFn: (item: T) => string | number): Record<string, T[]> {
+  return array.reduce(
+    (groups, item) => {
+      const key = keyFn(item).toString()
+      if (!groups[key]) {
+        groups[key] = []
+      }
+      groups[key].push(item)
+      return groups
+    },
+    {} as Record<string, T[]>,
+  )
+}
+
+export function unique<T>(array: T[]): T[] {
+  return Array.from(new Set(array))
+}
+
+export function chunk<T>(array: T[], size: number): T[][] {
+  const chunks: T[][] = []
+  for (let i = 0; i < array.length; i += size) {
+    chunks.push(array.slice(i, i + size))
+  }
+  return chunks
 }
 
 export function randomBetween(min: number, max: number): number {
-  return Math.random() * (max - min) + min
+  return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
-export function roundToDecimals(value: number, decimals: number): number {
-  return Math.round(value * Math.pow(10, decimals)) / Math.pow(10, decimals)
+export function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max)
 }

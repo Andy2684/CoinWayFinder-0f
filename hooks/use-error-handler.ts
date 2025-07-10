@@ -1,57 +1,33 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { toast } from "@/components/ui/use-toast"
+import { toast } from "sonner"
 
 export interface ErrorHandlerOptions {
   showToast?: boolean
-  toastTitle?: string
+  logError?: boolean
   onError?: (error: Error) => void
-  retryCount?: number
 }
 
-export interface UseErrorHandlerReturn<T> {
-  execute: (fn: () => Promise<T>, options?: ErrorHandlerOptions) => Promise<T | null>
-  isLoading: boolean
-  error: Error | null
-  clearError: () => void
-  retry: () => Promise<T | null>
-}
-
-export function useErrorHandler<T = any>(): UseErrorHandlerReturn<T> {
-  const [isLoading, setIsLoading] = useState(false)
+export function useErrorHandler() {
   const [error, setError] = useState<Error | null>(null)
-  const [lastFunction, setLastFunction] = useState<(() => Promise<T>) | null>(null)
-  const [lastOptions, setLastOptions] = useState<ErrorHandlerOptions>({})
+  const [isLoading, setIsLoading] = useState(false)
 
-  const execute = useCallback(async (fn: () => Promise<T>, options: ErrorHandlerOptions = {}): Promise<T | null> => {
-    try {
-      setIsLoading(true)
-      setError(null)
-      setLastFunction(() => fn)
-      setLastOptions(options)
+  const handleError = useCallback((error: Error, options: ErrorHandlerOptions = {}) => {
+    const { showToast = true, logError = true, onError } = options
 
-      const result = await fn()
-      return result
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error("An unknown error occurred")
-      setError(error)
+    setError(error)
 
-      if (options.showToast !== false) {
-        toast({
-          title: options.toastTitle || "Error",
-          description: error.message,
-          variant: "destructive",
-        })
-      }
+    if (logError) {
+      console.error("Error:", error)
+    }
 
-      if (options.onError) {
-        options.onError(error)
-      }
+    if (showToast) {
+      toast.error(error.message || "An error occurred")
+    }
 
-      return null
-    } finally {
-      setIsLoading(false)
+    if (onError) {
+      onError(error)
     }
   }, [])
 
@@ -59,20 +35,35 @@ export function useErrorHandler<T = any>(): UseErrorHandlerReturn<T> {
     setError(null)
   }, [])
 
-  const retry = useCallback(async (): Promise<T | null> => {
-    if (lastFunction) {
-      return execute(lastFunction, lastOptions)
-    }
+  const executeWithErrorHandling = useCallback(
+    async <T>(\
+      operation: () => Promise<T>,\
+      options: ErrorHandlerOptions = {}\
+    ): Promise<T | null> => {\
+  try {
+    setIsLoading(true)
+    setError(null)
+    const result = await operation()
+    return result
+  } catch (err) {
+    const error = err instanceof Error ? err : new Error("An unknown error occurred")
+    handleError(error, options)
     return null
-  }, [execute, lastFunction, lastOptions])
-
-  return {
-    execute,
-    isLoading,
-    error,
-    clearError,
-    retry,
+  } finally {
+    setIsLoading(false)
   }
+  \
 }
+,
+    [handleError]
+  )
 
-export default useErrorHandler
+return {
+    error,
+    isLoading,
+    handleError,
+    clearError,
+    executeWithErrorHandling,
+  }
+\
+}

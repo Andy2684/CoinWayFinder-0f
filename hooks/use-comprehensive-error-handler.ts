@@ -2,37 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react"
 import { toast } from "sonner"
-
-export interface ErrorContext {
-  component?: string
-  action?: string
-  userId?: string
-  timestamp?: Date
-  metadata?: Record<string, any>
-}
-
-export interface ErrorHandlerConfig {
-  enableLogging?: boolean
-  enableToasts?: boolean
-  enableRetry?: boolean
-  maxRetries?: number
-  retryDelay?: number
-  onError?: (error: Error, context?: ErrorContext) => void
-}
-
-export interface UseComprehensiveErrorHandlerReturn {
-  error: Error | null
-  isLoading: boolean
-  retryCount: number
-  clearError: () => void
-  handleError: (error: Error, context?: ErrorContext) => void
-  executeWithErrorHandling: <T>(
-    operation: () => Promise<T>,
-    context?: ErrorContext,
-    config?: ErrorHandlerConfig,
-  ) => Promise<T | null>
-  retryLastOperation: () => Promise<void>
-}
+import { ErrorContext, ErrorHandlerConfig, type UseComprehensiveErrorHandlerReturn } from "./types"
 
 export function useComprehensiveErrorHandler(
   defaultConfig: ErrorHandlerConfig = {},
@@ -86,7 +56,7 @@ export function useComprehensiveErrorHandler(
         config.onError(error, context)
       }
     },
-    [retryCount],
+    [retryCount, config],
   )
 
   const executeWithErrorHandling = useCallback(
@@ -127,7 +97,7 @@ export function useComprehensiveErrorHandler(
   \
 }
 ,
-    [retryCount, handleError],
+    [retryCount, handleError, config],
   )
 
 const retryLastOperation = useCallback(async () => {
