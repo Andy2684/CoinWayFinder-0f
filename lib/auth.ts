@@ -9,17 +9,13 @@ const ADMIN_JWT_EXPIRES_IN = "24h"
 export interface User {
   id: string
   email: string
-  username: string
-  password?: string
-  isActive: boolean
+  name: string
+  role: "user" | "admin"
+  subscriptionTier: "free" | "starter" | "pro" | "enterprise"
+  subscriptionStatus: "active" | "inactive" | "trial"
+  trialEndsAt?: Date
   createdAt: Date
   updatedAt: Date
-  subscription?: {
-    plan: string
-    status: string
-    trialEndsAt?: Date
-    currentPeriodEnd?: Date
-  }
 }
 
 export interface Admin {
@@ -29,6 +25,15 @@ export interface Admin {
   role: "admin"
   createdAt: Date
   lastLogin?: Date
+}
+
+export interface AuthToken {
+  userId: string
+  email: string
+  role: string
+  subscriptionTier: string
+  iat: number
+  exp: number
 }
 
 export class AuthService {
@@ -52,13 +57,16 @@ export class AuthService {
   }
 
   generateAuthToken(user: User): string {
-    const payload = {
-      id: user.id,
-      email: user.email,
-      username: user.username,
-      isActive: user.isActive,
-    }
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
+    return jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        subscriptionTier: user.subscriptionTier,
+      },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN },
+    )
   }
 
   generateAdminToken(admin: Admin): string {
@@ -79,7 +87,7 @@ export class AuthService {
       }
 
       const user = await this.db.collection("users").findOne({
-        _id: decoded.id,
+        _id: decoded.userId,
         isActive: true,
       })
 
@@ -90,11 +98,13 @@ export class AuthService {
       return {
         id: user._id,
         email: user.email,
-        username: user.username,
-        isActive: user.isActive,
+        name: user.username,
+        role: user.role,
+        subscriptionTier: user.subscriptionTier,
+        subscriptionStatus: user.subscriptionStatus,
+        trialEndsAt: user.trialEndsAt,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
-        subscription: user.subscription,
       }
     } catch (error) {
       console.error("Token verification error:", error)
@@ -156,14 +166,13 @@ export class AuthService {
       email,
       username,
       password: hashedPassword,
+      role: "user",
+      subscriptionTier: "free",
+      subscriptionStatus: "active",
+      trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days trial
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
-      subscription: {
-        plan: "free",
-        status: "active",
-        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days trial
-      },
     }
 
     await this.db.collection("users").insertOne(newUser)
@@ -171,11 +180,13 @@ export class AuthService {
     const user: User = {
       id: newUser._id,
       email: newUser.email,
-      username: newUser.username,
-      isActive: newUser.isActive,
+      name: newUser.username,
+      role: newUser.role,
+      subscriptionTier: newUser.subscriptionTier,
+      subscriptionStatus: newUser.subscriptionStatus,
+      trialEndsAt: newUser.trialEndsAt,
       createdAt: newUser.createdAt,
       updatedAt: newUser.updatedAt,
-      subscription: newUser.subscription,
     }
 
     const token = this.generateAuthToken(user)
@@ -212,11 +223,13 @@ export class AuthService {
     const userResponse: User = {
       id: user._id,
       email: user.email,
-      username: user.username,
-      isActive: user.isActive,
+      name: user.username,
+      role: user.role,
+      subscriptionTier: user.subscriptionTier,
+      subscriptionStatus: user.subscriptionStatus,
+      trialEndsAt: user.trialEndsAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
-      subscription: user.subscription,
     }
 
     const token = this.generateAuthToken(userResponse)
@@ -278,11 +291,13 @@ export class AuthService {
     return {
       id: user._id,
       email: user.email,
-      username: user.username,
-      isActive: user.isActive,
+      name: user.username,
+      role: user.role,
+      subscriptionTier: user.subscriptionTier,
+      subscriptionStatus: user.subscriptionStatus,
+      trialEndsAt: user.trialEndsAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
-      subscription: user.subscription,
     }
   }
 
@@ -406,14 +421,31 @@ export class AuthManager {
   }
 }
 
-// Add this function before the export statements at the bottom
-export async function verifyToken(token: string): Promise<User | null> {
-  return authService.verifyAuthToken(token)
+export function extractTokenFromHeader(authHeader: string | null): string | null {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return null
+  }
+  return authHeader.substring(7)
 }
 
-// Add this function for admin token verification
-export async function verifyAdminToken(token: string): Promise<Admin | null> {
-  return authService.verifyAdminToken(token)
+function verifyToken(token: string): AuthToken | null {
+  try {
+    return jwt.verify(token, JWT_SECRET) as AuthToken
+  } catch (error) {
+    console.error("Token verification error:", error)
+    return null
+  }
+}
+
+export function getCurrentUser(request: Request): AuthToken | null {
+  const authHeader = request.headers.get("authorization")
+  const token = extractTokenFromHeader(authHeader)
+
+  if (!token) {
+    return null
+  }
+
+  return verifyToken(token)
 }
 
 // Export instances
