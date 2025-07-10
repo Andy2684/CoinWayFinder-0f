@@ -1,12 +1,15 @@
+import { generateRandomString } from "./security"
+import { database } from "./database"
+
 export enum SecurityEventType {
-  FAILED_AUTH_ATTEMPTS = "failed_auth_attempts",
+  FAILED_AUTH_ATTEMPTS = "failed_authentication",
   RATE_LIMIT_EXCEEDED = "rate_limit_exceeded",
   SQL_INJECTION_ATTEMPT = "sql_injection_attempt",
   XSS_ATTEMPT = "xss_attempt",
   SUSPICIOUS_LOGIN = "suspicious_login",
   UNAUTHORIZED_ACCESS = "unauthorized_access",
-  API_ABUSE = "api_abuse",
   BRUTE_FORCE_ATTACK = "brute_force_attack",
+  API_ABUSE = "api_abuse",
   CSP_VIOLATION = "csp_violation",
   ADMIN_ACCESS_ATTEMPT = "admin_access_attempt",
   SUSPICIOUS_USER_AGENT = "suspicious_user_agent",
@@ -24,61 +27,69 @@ export interface SecurityEvent {
   id: string
   type: SecurityEventType
   severity: SecuritySeverity
-  timestamp: Date
   source: string
   ip?: string
   userAgent?: string
   userId?: string
   details: Record<string, any>
+  timestamp: Date
   resolved: boolean
-  alertTriggered: boolean
 }
 
 export interface SecurityAlert {
   id: string
-  eventId: string
-  type: SecurityEventType
-  severity: SecuritySeverity
-  message: string
-  timestamp: Date
-  resolved: boolean
-  resolvedAt?: Date
-  resolvedBy?: string
+  eventType: SecurityEventType
+  threshold: number
+  timeWindow: number // minutes
+  currentCount: number
+  triggered: boolean
+  lastTriggered?: Date
   actions: string[]
 }
 
-export interface SecurityStats {
-  totalEvents: number
-  eventsByType: Record<SecurityEventType, number>
-  eventsBySeverity: Record<SecuritySeverity, number>
-  recentEvents: SecurityEvent[]
-  activeAlerts: SecurityAlert[]
-  threatLevel: "low" | "medium" | "high" | "critical"
+export interface ThreatLevel {
+  level: "low" | "medium" | "high" | "critical"
+  score: number
+  factors: string[]
+  recommendation: string
+}
+
+export interface SystemHealth {
+  status: "healthy" | "warning" | "critical"
+  message: string
+  details: {
+    eventRate: number
+    threatLevel: string
+    activeAlerts: number
+    systemLoad: number
+  }
 }
 
 class SecurityMonitor {
-  private events: Map<string, SecurityEvent> = new Map()
+  private events: SecurityEvent[] = []
   private alerts: Map<string, SecurityAlert> = new Map()
-  private alertThresholds: Map<SecurityEventType, { count: number; timeWindow: number }> = new Map()
+  private maxEvents = 10000 // Keep last 10k events in memory
+  private alertThresholds: Map<SecurityEventType, { threshold: number; timeWindow: number }> = new Map()
 
   constructor() {
     this.initializeAlertThresholds()
+    this.startCleanupInterval()
   }
 
-  private initializeAlertThresholds(): void {
-    // Set alert thresholds for different event types
-    this.alertThresholds.set(SecurityEventType.FAILED_AUTH_ATTEMPTS, { count: 5, timeWindow: 15 * 60 * 1000 }) // 5 in 15 minutes
-    this.alertThresholds.set(SecurityEventType.RATE_LIMIT_EXCEEDED, { count: 10, timeWindow: 5 * 60 * 1000 }) // 10 in 5 minutes
-    this.alertThresholds.set(SecurityEventType.SQL_INJECTION_ATTEMPT, { count: 1, timeWindow: 60 * 1000 }) // 1 in 1 minute
-    this.alertThresholds.set(SecurityEventType.XSS_ATTEMPT, { count: 1, timeWindow: 60 * 1000 }) // 1 in 1 minute
-    this.alertThresholds.set(SecurityEventType.BRUTE_FORCE_ATTACK, { count: 1, timeWindow: 60 * 1000 }) // 1 in 1 minute
-    this.alertThresholds.set(SecurityEventType.UNAUTHORIZED_ACCESS, { count: 3, timeWindow: 10 * 60 * 1000 }) // 3 in 10 minutes
-    this.alertThresholds.set(SecurityEventType.API_ABUSE, { count: 20, timeWindow: 5 * 60 * 1000 }) // 20 in 5 minutes
-    this.alertThresholds.set(SecurityEventType.SUSPICIOUS_LOGIN, { count: 3, timeWindow: 30 * 60 * 1000 }) // 3 in 30 minutes
-  }
-
-  private generateId(): string {
-    return Math.random().toString(36).substr(2, 9) + Date.now().toString(36)
+  private initializeAlertThresholds() {
+    // Define alert thresholds for different event types
+    this.alertThresholds.set(SecurityEventType.FAILED_AUTH_ATTEMPTS, { threshold: 5, timeWindow: 15 })
+    this.alertThresholds.set(SecurityEventType.RATE_LIMIT_EXCEEDED, { threshold: 10, timeWindow: 5 })
+    this.alertThresholds.set(SecurityEventType.SQL_INJECTION_ATTEMPT, { threshold: 1, timeWindow: 1 })
+    this.alertThresholds.set(SecurityEventType.XSS_ATTEMPT, { threshold: 1, timeWindow: 1 })
+    this.alertThresholds.set(SecurityEventType.BRUTE_FORCE_ATTACK, { threshold: 3, timeWindow: 10 })
+    this.alertThresholds.set(SecurityEventType.UNAUTHORIZED_ACCESS, { threshold: 3, timeWindow: 5 })
+    this.alertThresholds.set(SecurityEventType.API_ABUSE, { threshold: 20, timeWindow: 10 })
+    this.alertThresholds.set(SecurityEventType.ADMIN_ACCESS_ATTEMPT, { threshold: 2, timeWindow: 5 })
+    this.alertThresholds.set(SecurityEventType.SUSPICIOUS_LOGIN, { threshold: 5, timeWindow: 30 })
+    this.alertThresholds.set(SecurityEventType.CSP_VIOLATION, { threshold: 50, timeWindow: 60 })
+    this.alertThresholds.set(SecurityEventType.SUSPICIOUS_USER_AGENT, { threshold: 10, timeWindow: 15 })
+    this.alertThresholds.set(SecurityEventType.MALICIOUS_PAYLOAD, { threshold: 1, timeWindow: 1 })
   }
 
   async logSecurityEvent(eventData: {
@@ -88,235 +99,377 @@ class SecurityMonitor {
     ip?: string
     userAgent?: string
     userId?: string
-    details?: Record<string, any>
-  }): Promise<SecurityEvent> {
+    details: Record<string, any>
+  }): Promise<void> {
     const event: SecurityEvent = {
-      id: this.generateId(),
+      id: generateRandomString(16),
+      ...eventData,
       timestamp: new Date(),
       resolved: false,
-      alertTriggered: false,
-      details: {},
-      ...eventData,
     }
 
-    this.events.set(event.id, event)
+    // Add to in-memory storage
+    this.events.unshift(event)
 
-    // Check if this event should trigger an alert
-    await this.checkAlertThresholds(event)
+    // Keep only the most recent events
+    if (this.events.length > this.maxEvents) {
+      this.events = this.events.slice(0, this.maxEvents)
+    }
+
+    // Store in database
+    await database.createSecurityEvent({
+      type: event.type,
+      severity: event.severity,
+      message: `Security event: ${event.type}`,
+      details: event.details,
+      ip: event.ip,
+      userAgent: event.userAgent,
+      userId: event.userId,
+    })
+
+    // Check for alert conditions
+    await this.checkAlertConditions(event)
 
     // Log to console for immediate visibility
-    console.log(`🔒 Security Event: ${event.type} (${event.severity}) from ${event.ip || "unknown"} at ${event.source}`)
-
-    return event
+    this.logToConsole(event)
   }
 
-  private async checkAlertThresholds(event: SecurityEvent): Promise<void> {
+  private async checkAlertConditions(event: SecurityEvent): Promise<void> {
     const threshold = this.alertThresholds.get(event.type)
     if (!threshold) return
 
-    const now = Date.now()
-    const windowStart = now - threshold.timeWindow
+    const alertId = `${event.type}_alert`
+    let alert = this.alerts.get(alertId)
 
-    // Count recent events of the same type
-    const recentEvents = Array.from(this.events.values()).filter(
-      (e) => e.type === event.type && e.timestamp.getTime() >= windowStart && (event.ip ? e.ip === event.ip : true),
+    if (!alert) {
+      alert = {
+        id: alertId,
+        eventType: event.type,
+        threshold: threshold.threshold,
+        timeWindow: threshold.timeWindow,
+        currentCount: 0,
+        triggered: false,
+        actions: this.getAlertActions(event.type),
+      }
+      this.alerts.set(alertId, alert)
+    }
+
+    // Count events in the time window
+    const windowStart = new Date(Date.now() - threshold.timeWindow * 60 * 1000)
+    const recentEvents = this.events.filter(
+      (e) => e.type === event.type && e.timestamp > windowStart && (!event.ip || e.ip === event.ip),
     )
 
-    if (recentEvents.length >= threshold.count) {
-      await this.createAlert(
-        event,
-        `${event.type} threshold exceeded: ${recentEvents.length} events in ${threshold.timeWindow / 1000}s`,
-      )
+    alert.currentCount = recentEvents.length
+
+    // Trigger alert if threshold exceeded
+    if (alert.currentCount >= alert.threshold && !alert.triggered) {
+      alert.triggered = true
+      alert.lastTriggered = new Date()
+      await this.triggerAlert(alert, event)
+    }
+
+    // Reset alert if count drops below threshold
+    if (alert.currentCount < alert.threshold && alert.triggered) {
+      alert.triggered = false
     }
   }
 
-  private async createAlert(event: SecurityEvent, message: string): Promise<SecurityAlert> {
-    const alert: SecurityAlert = {
-      id: this.generateId(),
-      eventId: event.id,
-      type: event.type,
-      severity: event.severity,
-      message,
-      timestamp: new Date(),
-      resolved: false,
-      actions: [],
+  private getAlertActions(eventType: SecurityEventType): string[] {
+    const actionMap: Record<SecurityEventType, string[]> = {
+      [SecurityEventType.FAILED_AUTH_ATTEMPTS]: ["block_ip", "notify_admin", "increase_monitoring"],
+      [SecurityEventType.RATE_LIMIT_EXCEEDED]: ["throttle_requests", "temporary_block"],
+      [SecurityEventType.SQL_INJECTION_ATTEMPT]: ["block_ip", "alert_security_team", "log_payload"],
+      [SecurityEventType.XSS_ATTEMPT]: ["block_ip", "alert_security_team", "sanitize_input"],
+      [SecurityEventType.BRUTE_FORCE_ATTACK]: ["block_ip", "notify_admin", "increase_security"],
+      [SecurityEventType.UNAUTHORIZED_ACCESS]: ["block_access", "alert_admin", "audit_permissions"],
+      [SecurityEventType.API_ABUSE]: ["rate_limit", "require_auth", "monitor_usage"],
+      [SecurityEventType.ADMIN_ACCESS_ATTEMPT]: ["block_ip", "alert_admin", "require_2fa"],
+      [SecurityEventType.SUSPICIOUS_LOGIN]: ["require_verification", "notify_user", "log_location"],
+      [SecurityEventType.CSP_VIOLATION]: ["log_violation", "review_policy", "block_resource"],
+      [SecurityEventType.SUSPICIOUS_USER_AGENT]: ["flag_requests", "increase_monitoring"],
+      [SecurityEventType.MALICIOUS_PAYLOAD]: ["block_ip", "alert_security_team", "quarantine_request"],
     }
 
-    this.alerts.set(alert.id, alert)
-
-    // Mark the event as having triggered an alert
-    event.alertTriggered = true
-    this.events.set(event.id, event)
-
-    console.log(`🚨 Security Alert: ${alert.message}`)
-
-    return alert
+    return actionMap[eventType] || ["log_event", "monitor"]
   }
 
-  async resolveAlert(alertId: string, resolvedBy?: string): Promise<boolean> {
-    const alert = this.alerts.get(alertId)
-    if (!alert) return false
+  private async triggerAlert(alert: SecurityAlert, triggeringEvent: SecurityEvent): Promise<void> {
+    console.warn(`🚨 SECURITY ALERT TRIGGERED: ${alert.eventType}`)
+    console.warn(`   Threshold: ${alert.currentCount}/${alert.threshold} events in ${alert.timeWindow} minutes`)
+    console.warn(`   Source IP: ${triggeringEvent.ip || "unknown"}`)
+    console.warn(`   Actions: ${alert.actions.join(", ")}`)
 
-    alert.resolved = true
-    alert.resolvedAt = new Date()
-    alert.resolvedBy = resolvedBy
+    // Execute alert actions
+    for (const action of alert.actions) {
+      await this.executeAlertAction(action, triggeringEvent)
+    }
 
-    this.alerts.set(alertId, alert)
-    return true
-  }
-
-  getSecurityStats(): SecurityStats {
-    const events = Array.from(this.events.values())
-    const alerts = Array.from(this.alerts.values())
-
-    // Count events by type
-    const eventsByType = {} as Record<SecurityEventType, number>
-    Object.values(SecurityEventType).forEach((type) => {
-      eventsByType[type] = events.filter((e) => e.type === type).length
+    // Store alert in database
+    await database.createSecurityEvent({
+      type: "security_alert" as SecurityEventType,
+      severity: SecuritySeverity.HIGH,
+      message: `Security alert triggered: ${alert.eventType}`,
+      details: {
+        alertId: alert.id,
+        threshold: alert.threshold,
+        currentCount: alert.currentCount,
+        timeWindow: alert.timeWindow,
+        triggeringEvent: triggeringEvent.id,
+        actions: alert.actions,
+      },
+      ip: triggeringEvent.ip,
+      userAgent: triggeringEvent.userAgent,
     })
+  }
 
-    // Count events by severity
-    const eventsBySeverity = {} as Record<SecuritySeverity, number>
-    Object.values(SecuritySeverity).forEach((severity) => {
-      eventsBySeverity[severity] = events.filter((e) => e.severity === severity).length
-    })
+  private async executeAlertAction(action: string, event: SecurityEvent): Promise<void> {
+    switch (action) {
+      case "block_ip":
+        console.log(`🚫 Blocking IP: ${event.ip}`)
+        // In a real implementation, this would add the IP to a blocklist
+        break
 
-    // Get recent events (last 24 hours)
-    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000
-    const recentEvents = events
-      .filter((e) => e.timestamp.getTime() >= oneDayAgo)
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-      .slice(0, 50)
+      case "notify_admin":
+      case "alert_admin":
+        console.log(`📧 Notifying admin about security event: ${event.type}`)
+        // In a real implementation, this would send an email/notification
+        break
 
-    // Get active alerts
-    const activeAlerts = alerts.filter((a) => !a.resolved)
+      case "alert_security_team":
+        console.log(`🚨 Alerting security team about: ${event.type}`)
+        // In a real implementation, this would trigger security team alerts
+        break
 
-    // Calculate threat level
-    const threatLevel = this.calculateThreatLevel(eventsBySeverity, activeAlerts)
+      case "throttle_requests":
+      case "rate_limit":
+        console.log(`⏱️ Applying rate limiting to: ${event.ip}`)
+        // In a real implementation, this would apply rate limiting
+        break
 
-    return {
-      totalEvents: events.length,
-      eventsByType,
-      eventsBySeverity,
-      recentEvents,
-      activeAlerts,
-      threatLevel,
+      case "log_payload":
+        console.log(`📝 Logging malicious payload from: ${event.ip}`)
+        // Additional logging is already handled
+        break
+
+      case "increase_monitoring":
+        console.log(`👁️ Increasing monitoring for: ${event.ip}`)
+        // In a real implementation, this would increase monitoring sensitivity
+        break
+
+      default:
+        console.log(`🔧 Executing action: ${action}`)
+        break
     }
   }
 
-  private calculateThreatLevel(
-    eventsBySeverity: Record<SecuritySeverity, number>,
-    activeAlerts: SecurityAlert[],
-  ): "low" | "medium" | "high" | "critical" {
-    const criticalEvents = eventsBySeverity[SecuritySeverity.CRITICAL] || 0
-    const highEvents = eventsBySeverity[SecuritySeverity.HIGH] || 0
-    const criticalAlerts = activeAlerts.filter((a) => a.severity === SecuritySeverity.CRITICAL).length
-    const highAlerts = activeAlerts.filter((a) => a.severity === SecuritySeverity.HIGH).length
+  private logToConsole(event: SecurityEvent): void {
+    const severityEmoji = {
+      [SecuritySeverity.LOW]: "ℹ️",
+      [SecuritySeverity.MEDIUM]: "⚠️",
+      [SecuritySeverity.HIGH]: "🚨",
+      [SecuritySeverity.CRITICAL]: "🔥",
+    }
 
-    if (criticalEvents > 0 || criticalAlerts > 0) {
-      return "critical"
-    } else if (highEvents > 5 || highAlerts > 2) {
-      return "high"
-    } else if (highEvents > 0 || activeAlerts.length > 0) {
-      return "medium"
-    } else {
-      return "low"
+    console.log(
+      `${severityEmoji[event.severity]} Security Event: ${event.type} | ${event.severity.toUpperCase()} | ${event.source} | ${event.ip || "unknown"}`,
+    )
+
+    if (event.details && Object.keys(event.details).length > 0) {
+      console.log(`   Details:`, event.details)
     }
   }
 
   getAllEvents(limit = 100): SecurityEvent[] {
-    return Array.from(this.events.values())
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-      .slice(0, limit)
+    return this.events.slice(0, limit)
   }
 
   getEventsByType(type: SecurityEventType, limit = 50): SecurityEvent[] {
-    return Array.from(this.events.values())
-      .filter((e) => e.type === type)
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
-      .slice(0, limit)
+    return this.events.filter((event) => event.type === type).slice(0, limit)
   }
 
-  getRecentEvents(timeWindow = 60 * 60 * 1000): SecurityEvent[] {
-    const cutoff = Date.now() - timeWindow
-    return Array.from(this.events.values())
-      .filter((e) => e.timestamp.getTime() >= cutoff)
-      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+  getEventsBySeverity(severity: SecuritySeverity, limit = 50): SecurityEvent[] {
+    return this.events.filter((event) => event.severity === severity).slice(0, limit)
   }
 
-  async getSecurityEvents(type?: SecurityEventType, limit = 100): Promise<SecurityEvent[]> {
-    let events = Array.from(this.events.values())
-
-    if (type) {
-      events = events.filter((e) => e.type === type)
-    }
-
-    return events.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime()).slice(0, limit)
+  getRecentEvents(timeWindowMs: number): SecurityEvent[] {
+    const cutoff = new Date(Date.now() - timeWindowMs)
+    return this.events.filter((event) => event.timestamp > cutoff)
   }
 
-  async getSystemHealth(): Promise<{
-    status: "healthy" | "warning" | "critical"
-    message: string
-    details: Record<string, any>
-  }> {
-    const stats = this.getSecurityStats()
-    const recentCriticalEvents = stats.recentEvents.filter(
-      (e) => e.severity === SecuritySeverity.CRITICAL && e.timestamp.getTime() > Date.now() - 60 * 60 * 1000, // Last hour
-    ).length
+  getEventsByIP(ip: string, limit = 50): SecurityEvent[] {
+    return this.events.filter((event) => event.ip === ip).slice(0, limit)
+  }
 
-    if (recentCriticalEvents > 5) {
-      return {
-        status: "critical",
-        message: "Multiple critical security events detected",
-        details: {
-          criticalEvents: recentCriticalEvents,
-          activeAlerts: stats.activeAlerts.length,
-          threatLevel: stats.threatLevel,
-        },
-      }
-    } else if (stats.activeAlerts.length > 3) {
-      return {
-        status: "warning",
-        message: "Multiple active security alerts",
-        details: {
-          activeAlerts: stats.activeAlerts.length,
-          threatLevel: stats.threatLevel,
-        },
-      }
+  getActiveAlerts(): SecurityAlert[] {
+    return Array.from(this.alerts.values()).filter((alert) => alert.triggered)
+  }
+
+  getAllAlerts(): SecurityAlert[] {
+    return Array.from(this.alerts.values())
+  }
+
+  calculateThreatLevel(): ThreatLevel {
+    const recentEvents = this.getRecentEvents(60 * 60 * 1000) // Last hour
+    const criticalEvents = recentEvents.filter((e) => e.severity === SecuritySeverity.CRITICAL).length
+    const highEvents = recentEvents.filter((e) => e.severity === SecuritySeverity.HIGH).length
+    const mediumEvents = recentEvents.filter((e) => e.severity === SecuritySeverity.MEDIUM).length
+    const activeAlerts = this.getActiveAlerts().length
+
+    let score = 0
+    const factors: string[] = []
+
+    // Calculate threat score
+    score += criticalEvents * 10
+    score += highEvents * 5
+    score += mediumEvents * 2
+    score += activeAlerts * 3
+
+    if (criticalEvents > 0) factors.push(`${criticalEvents} critical events`)
+    if (highEvents > 0) factors.push(`${highEvents} high severity events`)
+    if (mediumEvents > 0) factors.push(`${mediumEvents} medium severity events`)
+    if (activeAlerts > 0) factors.push(`${activeAlerts} active alerts`)
+
+    // Determine threat level
+    let level: "low" | "medium" | "high" | "critical"
+    let recommendation: string
+
+    if (score >= 50) {
+      level = "critical"
+      recommendation = "Immediate action required. Multiple critical security events detected."
+    } else if (score >= 20) {
+      level = "high"
+      recommendation = "High threat level. Review security events and take preventive measures."
+    } else if (score >= 10) {
+      level = "medium"
+      recommendation = "Moderate threat level. Monitor closely and review security policies."
     } else {
-      return {
-        status: "healthy",
-        message: "Security monitoring system operational",
-        details: {
-          totalEvents: stats.totalEvents,
-          threatLevel: stats.threatLevel,
-        },
-      }
+      level = "low"
+      recommendation = "Low threat level. Continue normal monitoring."
+    }
+
+    return { level, score, factors, recommendation }
+  }
+
+  getSecurityStats(): {
+    totalEvents: number
+    eventsByType: Record<string, number>
+    eventsBySeverity: Record<string, number>
+    threatLevel: string
+    activeAlerts: number
+    eventsLastHour: number
+    eventsLast24Hours: number
+  } {
+    const threatLevel = this.calculateThreatLevel()
+    const lastHour = this.getRecentEvents(60 * 60 * 1000)
+    const last24Hours = this.getRecentEvents(24 * 60 * 60 * 1000)
+
+    const eventsByType: Record<string, number> = {}
+    const eventsBySeverity: Record<string, number> = {}
+
+    this.events.forEach((event) => {
+      eventsByType[event.type] = (eventsByType[event.type] || 0) + 1
+      eventsBySeverity[event.severity] = (eventsBySeverity[event.severity] || 0) + 1
+    })
+
+    return {
+      totalEvents: this.events.length,
+      eventsByType,
+      eventsBySeverity,
+      threatLevel: threatLevel.level,
+      activeAlerts: this.getActiveAlerts().length,
+      eventsLastHour: lastHour.length,
+      eventsLast24Hours: last24Hours.length,
     }
   }
 
-  async cleanup(maxAge = 7 * 24 * 60 * 60 * 1000): Promise<number> {
-    const cutoff = Date.now() - maxAge
-    let cleanedCount = 0
+  async getSystemHealth(): Promise<SystemHealth> {
+    const stats = this.getSecurityStats()
+    const threatLevel = this.calculateThreatLevel()
+    const activeAlerts = this.getActiveAlerts().length
 
-    // Clean up old events
-    for (const [id, event] of this.events.entries()) {
-      if (event.timestamp.getTime() < cutoff && event.resolved) {
-        this.events.delete(id)
-        cleanedCount++
-      }
+    let status: "healthy" | "warning" | "critical"
+    let message: string
+
+    if (threatLevel.level === "critical" || activeAlerts >= 5) {
+      status = "critical"
+      message = "System under active threat. Immediate attention required."
+    } else if (threatLevel.level === "high" || activeAlerts >= 2) {
+      status = "warning"
+      message = "Elevated threat level detected. Monitor closely."
+    } else {
+      status = "healthy"
+      message = "System operating normally. No immediate threats detected."
     }
 
-    // Clean up old resolved alerts
-    for (const [id, alert] of this.alerts.entries()) {
-      if (alert.timestamp.getTime() < cutoff && alert.resolved) {
-        this.alerts.delete(id)
-      }
+    return {
+      status,
+      message,
+      details: {
+        eventRate: stats.eventsLastHour,
+        threatLevel: threatLevel.level,
+        activeAlerts,
+        systemLoad: Math.min(100, (stats.eventsLastHour / 10) * 100), // Simple load calculation
+      },
+    }
+  }
+
+  async resolveEvent(eventId: string): Promise<boolean> {
+    const event = this.events.find((e) => e.id === eventId)
+    if (event) {
+      event.resolved = true
+      return true
+    }
+    return false
+  }
+
+  async cleanup(olderThanMs = 24 * 60 * 60 * 1000): Promise<number> {
+    const cutoff = new Date(Date.now() - olderThanMs)
+    const initialCount = this.events.length
+
+    this.events = this.events.filter((event) => event.timestamp > cutoff)
+
+    return initialCount - this.events.length
+  }
+
+  private startCleanupInterval(): void {
+    // Clean up old events every hour
+    setInterval(
+      () => {
+        this.cleanup(7 * 24 * 60 * 60 * 1000) // Keep 7 days of events
+      },
+      60 * 60 * 1000,
+    )
+  }
+
+  // Export events for analysis
+  exportEvents(format: "json" | "csv" = "json"): string {
+    if (format === "csv") {
+      const headers = ["id", "type", "severity", "source", "ip", "timestamp", "resolved"]
+      const rows = this.events.map((event) => [
+        event.id,
+        event.type,
+        event.severity,
+        event.source,
+        event.ip || "",
+        event.timestamp.toISOString(),
+        event.resolved.toString(),
+      ])
+
+      return [headers.join(","), ...rows.map((row) => row.join(","))].join("\n")
     }
 
-    return cleanedCount
+    return JSON.stringify(this.events, null, 2)
+  }
+
+  // Import events from backup
+  importEvents(eventsData: SecurityEvent[]): void {
+    this.events = [...eventsData, ...this.events].slice(0, this.maxEvents)
   }
 }
 
 // Export singleton instance
 export const securityMonitor = new SecurityMonitor()
+
+// Export the class for testing
+export { SecurityMonitor }

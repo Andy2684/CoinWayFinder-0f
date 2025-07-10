@@ -1,12 +1,12 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { authService } from "./lib/auth"
-import { crypto } from "crypto"
+import { generateRandomString } from "./lib/security"
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Generate a nonce for CSP
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64")
+  // Generate a nonce for CSP using our custom function
+  const nonce = generateRandomString(16)
 
   // Define comprehensive security headers
   const securityHeaders = {
