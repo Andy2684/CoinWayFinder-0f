@@ -5,6 +5,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
+    "lint": "next lint",
     "start": "next start"
   },
   "dependencies": {
@@ -41,9 +42,6 @@
     "@radix-ui/react-toggle-group": "latest",
     "@radix-ui/react-tooltip": "latest",
     "@sentry/nextjs": "latest",
-    "@types/node": "latest",
-    "@types/react": "latest",
-    "@types/react-dom": "latest",
     "@upstash/redis": "^1.21.0",
     "ai": "latest",
     "bcryptjs": "latest",
@@ -78,14 +76,17 @@
     "stripe": "latest",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.3.0",
     "vaul": "latest",
     "zod": "latest",
-    "zod-to-json-schema": "3.20.2"
+    "zod-to-json-schema": "^3.20.2"
   },
   "devDependencies": {
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "eslint": "^8.0.0",
+    "eslint-config-next": "^14.1.0",
     "postcss": "^8.5",
     "typescript": "^5"
   }
