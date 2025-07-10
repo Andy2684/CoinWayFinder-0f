@@ -6,9 +6,6 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  experimental: {
-    serverComponentsExternalPackages: ['mongodb', 'mongoose'],
-  },
   images: {
     domains: ['images.unsplash.com', 'via.placeholder.com'],
     unoptimized: true,
