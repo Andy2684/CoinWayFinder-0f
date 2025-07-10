@@ -4,7 +4,6 @@ import { Redis } from "ioredis"
 import { execSync } from "child_process"
 import * as fs from "fs"
 import * as path from "path"
-import fetch from "node-fetch"
 
 interface IncidentConfig {
   id: string
@@ -506,24 +505,22 @@ module.exports = (req, res, next) => {
 // CLI interface
 if (require.main === module) {
   const automation = new IncidentResponseAutomation()
-
-  const [, , incidentType, severity, ...detailsArgs] = process.argv
-
+  
+  const [,, incidentType, severity, ...detailsArgs] = process.argv
+  
   if (!incidentType || !severity) {
     console.error("Usage: ts-node incident-response-automation.ts <type> <severity> [details...]")
     process.exit(1)
   }
-
+  
   const details = detailsArgs.length > 0 ? JSON.parse(detailsArgs.join(" ")) : {}
-
-  automation
-    .handleSecurityIncident(incidentType, severity, details)
-    .then((incidentId) => {
+  
+  automation.handleSecurityIncident(incidentType, severity, details)
+    .then(incidentId => {
       console.log(`✅ Incident response completed: ${incidentId}`)
       process.exit(0)
     })
-    .catch((error) => {
+    .catch(error => {
       console.error("❌ Incident response failed:", error)
       process.exit(1)
     })
-}

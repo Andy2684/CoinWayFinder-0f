@@ -345,3 +345,6 @@ export interface Session {
     [key: string]: any
   }
 }
+
+// Export the database manager instance as 'database' for compatibility
+export const database = databaseManager
