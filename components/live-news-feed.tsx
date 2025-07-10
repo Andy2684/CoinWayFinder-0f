@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Clock, ExternalLink, Search, TrendingUp, TrendingDown, Minus, Newspaper } from "lucide-react"
 import Link from "next/link"
-import { ClientOnly } from "@/components/client-only"
 
 interface NewsArticle {
   id: string
@@ -28,88 +27,88 @@ interface LiveNewsFeedProps {
   limit?: number
 }
 
-// Mock data for demonstration
-const mockArticles: NewsArticle[] = [
-  {
-    id: "1",
-    title: "Bitcoin Surges to $68,000 After Record ETF Inflows",
-    summary: "Spot Bitcoin ETFs see record $400M daily volume as institutional adoption accelerates",
-    source: "Bloomberg",
-    category: "crypto",
-    publishedAt: "2024-01-07T14:30:00Z",
-    url: "#",
-    sentiment: "positive",
-    aiSummary: "This is likely bullish for BTC short-term as institutional demand increases.",
-    impact: "high",
-  },
-  {
-    id: "2",
-    title: "Fed Signals Potential Rate Cuts in Q2 2024",
-    summary: "Federal Reserve hints at monetary policy easing amid cooling inflation data",
-    source: "CNBC",
-    category: "economy",
-    publishedAt: "2024-01-07T13:15:00Z",
-    url: "#",
-    sentiment: "positive",
-    aiSummary: "Rate cuts typically boost risk assets including crypto and growth stocks.",
-    impact: "high",
-  },
-  {
-    id: "3",
-    title: "Ethereum Layer 2 Solutions See 300% Growth",
-    summary: "Arbitrum and Polygon lead scaling solution adoption with record transaction volumes",
-    source: "CoinDesk",
-    category: "crypto",
-    publishedAt: "2024-01-07T12:45:00Z",
-    url: "#",
-    sentiment: "positive",
-    aiSummary: "Strong fundamentals for ETH ecosystem, potential positive price impact.",
-    impact: "medium",
-  },
-  {
-    id: "4",
-    title: "Tech Stocks Rally on AI Earnings Optimism",
-    summary: "NVIDIA, Microsoft lead gains ahead of Q4 earnings season",
-    source: "MarketWatch",
-    category: "stocks",
-    publishedAt: "2024-01-07T11:20:00Z",
-    url: "#",
-    sentiment: "positive",
-    aiSummary: "AI sector strength may correlate with crypto AI tokens performance.",
-    impact: "medium",
-  },
-  {
-    id: "5",
-    title: "Global Inflation Rates Continue Downward Trend",
-    summary: "Major economies report cooling inflation, supporting risk asset sentiment",
-    source: "Reuters",
-    category: "economy",
-    publishedAt: "2024-01-07T10:30:00Z",
-    url: "#",
-    sentiment: "positive",
-    aiSummary: "Disinflationary trend supports continued monetary easing globally.",
-    impact: "medium",
-  },
-  {
-    id: "6",
-    title: "Altcoin Season Indicators Flash Green",
-    summary: "Alternative cryptocurrencies outperform Bitcoin as market sentiment improves",
-    source: "CryptoPanic",
-    category: "crypto",
-    publishedAt: "2024-01-07T09:15:00Z",
-    url: "#",
-    sentiment: "positive",
-    aiSummary: "Altcoin strength suggests broader crypto market bullishness.",
-    impact: "medium",
-  },
-]
-
-function LiveNewsFeedContent({ variant = "homepage", limit = 5 }: LiveNewsFeedProps) {
+export function LiveNewsFeed({ variant = "homepage", limit = 5 }: LiveNewsFeedProps) {
   const [articles, setArticles] = useState<NewsArticle[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [categoryFilter, setCategoryFilter] = useState<string>("all")
   const [timeFilter, setTimeFilter] = useState<string>("24h")
+
+  // Mock data for demonstration
+  const mockArticles: NewsArticle[] = [
+    {
+      id: "1",
+      title: "Bitcoin Surges to $68,000 After Record ETF Inflows",
+      summary: "Spot Bitcoin ETFs see record $400M daily volume as institutional adoption accelerates",
+      source: "Bloomberg",
+      category: "crypto",
+      publishedAt: "2024-01-07T14:30:00Z",
+      url: "#",
+      sentiment: "positive",
+      aiSummary: "This is likely bullish for BTC short-term as institutional demand increases.",
+      impact: "high",
+    },
+    {
+      id: "2",
+      title: "Fed Signals Potential Rate Cuts in Q2 2024",
+      summary: "Federal Reserve hints at monetary policy easing amid cooling inflation data",
+      source: "CNBC",
+      category: "economy",
+      publishedAt: "2024-01-07T13:15:00Z",
+      url: "#",
+      sentiment: "positive",
+      aiSummary: "Rate cuts typically boost risk assets including crypto and growth stocks.",
+      impact: "high",
+    },
+    {
+      id: "3",
+      title: "Ethereum Layer 2 Solutions See 300% Growth",
+      summary: "Arbitrum and Polygon lead scaling solution adoption with record transaction volumes",
+      source: "CoinDesk",
+      category: "crypto",
+      publishedAt: "2024-01-07T12:45:00Z",
+      url: "#",
+      sentiment: "positive",
+      aiSummary: "Strong fundamentals for ETH ecosystem, potential positive price impact.",
+      impact: "medium",
+    },
+    {
+      id: "4",
+      title: "Tech Stocks Rally on AI Earnings Optimism",
+      summary: "NVIDIA, Microsoft lead gains ahead of Q4 earnings season",
+      source: "MarketWatch",
+      category: "stocks",
+      publishedAt: "2024-01-07T11:20:00Z",
+      url: "#",
+      sentiment: "positive",
+      aiSummary: "AI sector strength may correlate with crypto AI tokens performance.",
+      impact: "medium",
+    },
+    {
+      id: "5",
+      title: "Global Inflation Rates Continue Downward Trend",
+      summary: "Major economies report cooling inflation, supporting risk asset sentiment",
+      source: "Reuters",
+      category: "economy",
+      publishedAt: "2024-01-07T10:30:00Z",
+      url: "#",
+      sentiment: "positive",
+      aiSummary: "Disinflationary trend supports continued monetary easing globally.",
+      impact: "medium",
+    },
+    {
+      id: "6",
+      title: "Altcoin Season Indicators Flash Green",
+      summary: "Alternative cryptocurrencies outperform Bitcoin as market sentiment improves",
+      source: "CryptoPanic",
+      category: "crypto",
+      publishedAt: "2024-01-07T09:15:00Z",
+      url: "#",
+      sentiment: "positive",
+      aiSummary: "Altcoin strength suggests broader crypto market bullishness.",
+      impact: "medium",
+    },
+  ]
 
   useEffect(() => {
     // Simulate API call
@@ -370,66 +369,5 @@ function LiveNewsFeedContent({ variant = "homepage", limit = 5 }: LiveNewsFeedPr
         </div>
       )}
     </div>
-  )
-}
-
-export function LiveNewsFeed(props: LiveNewsFeedProps) {
-  if (props.variant === "homepage") {
-    return (
-      <ClientOnly
-        fallback={
-          <section className="py-12 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-7xl mx-auto">
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center space-x-3">
-                  <Newspaper className="w-6 h-6 text-[#30D5C8]" />
-                  <h2 className="text-2xl font-bold text-white">📢 Live Market News</h2>
-                </div>
-                <Link href="/news">
-                  <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-800 bg-transparent">
-                    See All News
-                  </Button>
-                </Link>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {[...Array(3)].map((_, i) => (
-                  <Card key={i} className="bg-gray-900/50 border-gray-800 animate-pulse">
-                    <CardContent className="p-6">
-                      <div className="h-4 bg-gray-700 rounded mb-3"></div>
-                      <div className="h-3 bg-gray-700 rounded mb-2"></div>
-                      <div className="h-3 bg-gray-700 rounded w-2/3"></div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </section>
-        }
-      >
-        <LiveNewsFeedContent {...props} />
-      </ClientOnly>
-    )
-  }
-
-  return (
-    <ClientOnly
-      fallback={
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 gap-4">
-            {[...Array(5)].map((_, i) => (
-              <Card key={i} className="bg-gray-900/50 border-gray-800 animate-pulse">
-                <CardContent className="p-6">
-                  <div className="h-6 bg-gray-700 rounded mb-3"></div>
-                  <div className="h-4 bg-gray-700 rounded mb-2"></div>
-                  <div className="h-4 bg-gray-700 rounded w-3/4"></div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      }
-    >
-      <LiveNewsFeedContent {...props} />
-    </ClientOnly>
   )
 }

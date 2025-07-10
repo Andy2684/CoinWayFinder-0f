@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { TrendingUp, TrendingDown, Activity, Volume2, Zap, RefreshCw } from "lucide-react"
-import { ClientOnly } from "@/components/client-only"
 
 interface MarketData {
   symbol: string
@@ -22,71 +21,70 @@ interface MarketData {
   lastUpdate: string
 }
 
-const initialMarketData: MarketData[] = [
-  {
-    symbol: "BTC/USDT",
-    exchange: "Binance",
-    price: 67234.56,
-    change24h: 2.34,
-    volume24h: 1234567890,
-    high24h: 68500.0,
-    low24h: 65800.0,
-    fundingRate: 0.0001,
-    openInterest: 2345678,
-    liquidations: 1234567,
-    lastUpdate: "Live",
-  },
-  {
-    symbol: "ETH/USDT",
-    exchange: "Bybit",
-    price: 3456.78,
-    change24h: -1.23,
-    volume24h: 987654321,
-    high24h: 3520.0,
-    low24h: 3380.0,
-    fundingRate: -0.0002,
-    openInterest: 1234567,
-    liquidations: 987654,
-    lastUpdate: "Live",
-  },
-  {
-    symbol: "SOL/USDT",
-    exchange: "OKX",
-    price: 156.78,
-    change24h: 5.67,
-    volume24h: 456789123,
-    high24h: 162.0,
-    low24h: 148.0,
-    fundingRate: 0.0003,
-    openInterest: 789123,
-    liquidations: 456789,
-    lastUpdate: "Live",
-  },
-  {
-    symbol: "ADA/USDT",
-    exchange: "KuCoin",
-    price: 0.4567,
-    change24h: -2.45,
-    volume24h: 234567890,
-    high24h: 0.4789,
-    low24h: 0.4321,
-    lastUpdate: "Live",
-  },
-  {
-    symbol: "MATIC/USDT",
-    exchange: "Coinbase",
-    price: 0.8901,
-    change24h: 3.21,
-    volume24h: 123456789,
-    high24h: 0.9234,
-    low24h: 0.8567,
-    lastUpdate: "Live",
-  },
-]
-
-function LiveMarketDataContent() {
+export function LiveMarketData() {
   const [selectedExchange, setSelectedExchange] = useState("all")
-  const [marketData, setMarketData] = useState<MarketData[]>(initialMarketData)
+  const [marketData, setMarketData] = useState<MarketData[]>([
+    {
+      symbol: "BTC/USDT",
+      exchange: "Binance",
+      price: 67234.56,
+      change24h: 2.34,
+      volume24h: 1234567890,
+      high24h: 68500.0,
+      low24h: 65800.0,
+      fundingRate: 0.0001,
+      openInterest: 2345678,
+      liquidations: 1234567,
+      lastUpdate: "2 seconds ago",
+    },
+    {
+      symbol: "ETH/USDT",
+      exchange: "Bybit",
+      price: 3456.78,
+      change24h: -1.23,
+      volume24h: 987654321,
+      high24h: 3520.0,
+      low24h: 3380.0,
+      fundingRate: -0.0002,
+      openInterest: 1234567,
+      liquidations: 987654,
+      lastUpdate: "1 second ago",
+    },
+    {
+      symbol: "SOL/USDT",
+      exchange: "OKX",
+      price: 156.78,
+      change24h: 5.67,
+      volume24h: 456789123,
+      high24h: 162.0,
+      low24h: 148.0,
+      fundingRate: 0.0003,
+      openInterest: 789123,
+      liquidations: 456789,
+      lastUpdate: "3 seconds ago",
+    },
+    {
+      symbol: "ADA/USDT",
+      exchange: "KuCoin",
+      price: 0.4567,
+      change24h: -2.45,
+      volume24h: 234567890,
+      high24h: 0.4789,
+      low24h: 0.4321,
+      lastUpdate: "1 second ago",
+    },
+    {
+      symbol: "MATIC/USDT",
+      exchange: "Coinbase",
+      price: 0.8901,
+      change24h: 3.21,
+      volume24h: 123456789,
+      high24h: 0.9234,
+      low24h: 0.8567,
+      lastUpdate: "2 seconds ago",
+    },
+  ])
+
   const [lastRefresh, setLastRefresh] = useState(new Date())
 
   const refreshData = () => {
@@ -238,41 +236,5 @@ function LiveMarketDataContent() {
         </div>
       </CardContent>
     </Card>
-  )
-}
-
-export function LiveMarketData() {
-  return (
-    <ClientOnly
-      fallback={
-        <Card className="bg-gray-900/50 border-gray-800">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-white flex items-center">
-              <Activity className="w-5 h-5 mr-2 text-[#30D5C8]" />
-              Live Market Data
-            </CardTitle>
-            <div className="flex items-center space-x-2">
-              <Badge className="bg-green-500/10 text-green-400">
-                <Activity className="w-3 h-3 mr-1" />
-                Loading...
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="p-4 bg-gray-800/30 rounded-lg border border-gray-700 animate-pulse">
-                  <div className="h-4 bg-gray-700 rounded mb-3"></div>
-                  <div className="h-3 bg-gray-700 rounded mb-2"></div>
-                  <div className="h-3 bg-gray-700 rounded w-2/3"></div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      }
-    >
-      <LiveMarketDataContent />
-    </ClientOnly>
   )
 }
