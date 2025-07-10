@@ -1,64 +1,52 @@
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { ArrowRight, MessageSquare, Bot } from "lucide-react"
+import { ArrowRight, Zap } from "lucide-react"
 import Link from "next/link"
 
 export function CTASection() {
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#30D5C8]/20 via-blue-500/10 to-purple-500/20 border border-[#30D5C8]/30">
-          {/* Background pattern */}
-          <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-20" />
+    <section className="py-24 px-6 lg:px-8">
+      <div className="mx-auto max-w-4xl text-center">
+        <div className="relative">
+          {/* Background glow effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-[#30D5C8]/20 via-[#30D5C8]/10 to-[#30D5C8]/20 blur-3xl" />
 
-          <div className="relative p-8 sm:p-12 text-center">
-            {/* Badge */}
-            <Badge className="mb-6 bg-[#30D5C8]/20 text-[#30D5C8] border-[#30D5C8]/30">
-              <Bot className="w-4 h-4 mr-2" />
-              Ready to Start?
-            </Badge>
-
-            {/* Heading */}
-            <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-6">
-              Join Thousands of Successful
-              <br />
-              <span className="bg-gradient-to-r from-[#30D5C8] to-blue-400 bg-clip-text text-transparent">
-                Crypto Traders
-              </span>
-            </h2>
-
-            {/* Description */}
-            <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-              Start receiving AI-powered trading signals and automated DCA strategies directly in your Telegram today.
-              No experience required.
-            </p>
-
-            {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-              <Link href="/dashboard">
-                <Button
-                  size="lg"
-                  className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-black font-semibold px-8 py-4 text-lg"
-                >
-                  Start Free Trial
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </Button>
-              </Link>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-gray-600 text-white hover:bg-gray-800/50 px-8 py-4 text-lg bg-transparent"
-              >
-                <MessageSquare className="w-5 h-5 mr-2" />
-                Join Telegram
-              </Button>
+          <div className="relative bg-gray-900/80 backdrop-blur-sm border border-gray-700 rounded-2xl p-12">
+            <div className="flex items-center justify-center mb-6">
+              <Zap className="h-8 w-8 text-[#30D5C8]" />
             </div>
 
-            {/* Trust indicators */}
-            <div className="flex flex-wrap justify-center gap-8 text-sm text-gray-400">
-              <span>✓ 100,000+ Active Users</span>
-              <span>✓ 95% Signal Accuracy</span>
-              <span>✓ 24/7 Support</span>
+            <h2 className="text-4xl font-bold text-white sm:text-5xl mb-6">
+              Ready to Transform Your
+              <span className="text-[#30D5C8] block">Trading Results?</span>
+            </h2>
+
+            <p className="text-lg text-gray-300 mb-8 max-w-2xl mx-auto">
+              Join thousands of successful traders who are already using AI to maximize their cryptocurrency profits.
+              Start your free trial today and see the difference automation can make.
+            </p>
+
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link href="/dashboard">
+                <Button size="lg" className="bg-[#30D5C8] text-black hover:bg-[#30D5C8]/90 text-lg px-8 py-4">
+                  Start Free Trial Now
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+              <Link href="/subscription">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="border-[#30D5C8] text-[#30D5C8] hover:bg-[#30D5C8]/10 text-lg px-8 py-4 bg-transparent"
+                >
+                  View Pricing Plans
+                </Button>
+              </Link>
+            </div>
+
+            <div className="mt-8 flex items-center justify-center space-x-8 text-sm text-gray-400">
+              <span>✓ 14-day free trial</span>
+              <span>✓ No credit card required</span>
+              <span>✓ Cancel anytime</span>
             </div>
           </div>
         </div>

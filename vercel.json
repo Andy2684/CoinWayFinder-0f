@@ -1,57 +1,29 @@
 {
-  "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 30
+    },
+    "scripts/**/*.ts": {
+      "maxDuration": 60
     }
-  ],
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    }
-  ],
+  },
   "env": {
     "MONGODB_URI": "@mongodb_uri",
     "JWT_SECRET": "@jwt_secret",
     "STRIPE_SECRET_KEY": "@stripe_secret_key",
     "STRIPE_PUBLISHABLE_KEY": "@stripe_publishable_key",
     "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret",
+    "COINBASE_API_KEY": "@coinbase_api_key",
+    "COINBASE_API_SECRET": "@coinbase_api_secret",
+    "TELEGRAM_BOT_TOKEN": "@telegram_bot_token",
+    "REDIS_URL": "@redis_url",
     "NEXT_PUBLIC_BASE_URL": "@next_public_base_url",
     "API_SECRET_KEY": "@api_secret_key",
     "SMTP_HOST": "@smtp_host",
     "SMTP_USER": "@smtp_user",
     "SMTP_PASS": "@smtp_pass",
-    "TELEGRAM_BOT_TOKEN": "@telegram_bot_token",
-    "COINBASE_WEBHOOK_SECRET": "@coinbase_webhook_secret",
-    "REDIS_URL": "@redis_url"
+    "XAI_API_KEY": "@xai_api_key"
   },
-  "functions": {
-    "app/api/**/*.ts": {
-      "maxDuration": 30
-    },
-    "app/api/bots/scheduler/route.ts": {
-      "maxDuration": 300
-    },
-    "app/api/stripe/webhook/route.ts": {
-      "maxDuration": 60
-    }
-  },
-  "crons": [
-    {
-      "path": "/api/bots/scheduler",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/subscription/check-subscriptions",
-      "schedule": "0 */6 * * *"
-    },
-    {
-      "path": "/api/crypto/prices",
-      "schedule": "*/1 * * * *"
-    }
-  ],
   "headers": [
     {
       "source": "/api/(.*)",
@@ -66,31 +38,33 @@
         },
         {
           "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization, x-api-key"
+          "value": "Content-Type, Authorization, X-API-Key"
+        },
+        {
+          "key": "Access-Control-Max-Age",
+          "value": "86400"
         }
       ]
     }
   ],
   "rewrites": [
     {
-      "source": "/docs",
-      "destination": "/api-docs"
-    },
-    {
-      "source": "/docs/(.*)",
-      "destination": "/api-docs"
+      "source": "/api/v1/(.*)",
+      "destination": "/api/v1/$1"
     }
   ],
-  "redirects": [
+  "crons": [
     {
-      "source": "/login",
-      "destination": "/?auth=signin",
-      "permanent": false
+      "path": "/api/bots/scheduler",
+      "schedule": "*/5 * * * *"
     },
     {
-      "source": "/register",
-      "destination": "/?auth=signup",
-      "permanent": false
+      "path": "/api/crypto/prices",
+      "schedule": "*/1 * * * *"
+    },
+    {
+      "path": "/api/crypto/news",
+      "schedule": "*/15 * * * *"
     }
   ]
 }
