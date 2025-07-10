@@ -4,10 +4,10 @@
       "maxDuration": 30
     }
   },
-  "crons": [
+  "rewrites": [
     {
-      "path": "/api/bots/scheduler",
-      "schedule": "*/5 * * * *"
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
     }
   ]
 }

@@ -1,32 +1,41 @@
 import { MongoClient, type Db } from "mongodb"
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017"
-const DB_NAME = process.env.DB_NAME || "coinwayfinder"
+const uri = process.env.DATABASE_URL || process.env.MONGODB_URI || ""
+const options = {}
 
 let client: MongoClient
-let db: Db
+let clientPromise: Promise<MongoClient>
+
+if (!uri) {
+  throw new Error("Please add your MongoDB URI to .env.local")
+}
+
+if (process.env.NODE_ENV === "development") {
+  // In development mode, use a global variable so that the value
+  // is preserved across module reloads caused by HMR (Hot Module Replacement).
+  const globalWithMongo = global as typeof globalThis & {
+    _mongoClientPromise?: Promise<MongoClient>
+  }
+
+  if (!globalWithMongo._mongoClientPromise) {
+    client = new MongoClient(uri, options)
+    globalWithMongo._mongoClientPromise = client.connect()
+  }
+  clientPromise = globalWithMongo._mongoClientPromise
+} else {
+  // In production mode, it's best to not use a global variable.
+  client = new MongoClient(uri, options)
+  clientPromise = client.connect()
+}
 
 export async function connectToDatabase(): Promise<Db> {
-  if (db) {
-    return db
-  }
-
-  try {
-    client = new MongoClient(MONGODB_URI)
-    await client.connect()
-    db = client.db(DB_NAME)
-
-    console.log("Connected to MongoDB")
-
-    // Create indexes for better performance
-    await createIndexes()
-
-    return db
-  } catch (error) {
-    console.error("Failed to connect to MongoDB:", error)
-    throw error
-  }
+  const client = await clientPromise
+  return client.db("coinwayfinder")
 }
+
+export default clientPromise
+
+let db: Db
 
 async function createIndexes() {
   try {
@@ -244,6 +253,7 @@ export class Database {
 
   private async initialize() {
     this.db = await connectToDatabase()
+    await createIndexes()
   }
 
   // User operations
@@ -487,5 +497,3 @@ export class Database {
     }
   }
 }
-
-export const database = new Database()
