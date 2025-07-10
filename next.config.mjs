@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
+    serverComponentsExternalPackages: ['bcryptjs'],
     instrumentationHook: true,
   },
   eslint: {
@@ -23,10 +24,8 @@ const nextConfig = {
     ],
     unoptimized: true,
   },
-  // Optimize bundle size
   webpack: (config, { isServer }) => {
     if (!isServer) {
-      // Reduce client bundle size
       config.resolve.fallback = {
         ...config.resolve.fallback,
         fs: false,
@@ -36,13 +35,10 @@ const nextConfig = {
     }
     return config
   },
-  // Performance optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production',
   },
-  // Enable SWC minification
   swcMinify: true,
-  // Reduce memory usage during builds
   outputFileTracing: true,
 }
 
