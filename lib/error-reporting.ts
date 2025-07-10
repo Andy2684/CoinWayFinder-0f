@@ -40,6 +40,8 @@ export class ErrorReportingService {
   }
 
   private loadQueueFromStorage(): void {
+    if (typeof window === "undefined") return
+
     try {
       const stored = localStorage.getItem("error_queue")
       if (stored) {
@@ -55,6 +57,8 @@ export class ErrorReportingService {
   }
 
   private saveQueueToStorage(): void {
+    if (typeof window === "undefined") return
+
     try {
       // Keep only recent errors to prevent storage bloat
       const recentErrors = this.errorQueue.slice(0, this.maxQueueSize)
@@ -65,6 +69,8 @@ export class ErrorReportingService {
   }
 
   private setupPeriodicReporting(): void {
+    if (typeof window === "undefined") return
+
     // Report queued errors every 30 seconds
     setInterval(() => {
       this.processErrorQueue()
@@ -124,7 +130,7 @@ export class ErrorReportingService {
     }
 
     // Network reporting
-    if (this.reportingChannels.has("network") && navigator.onLine) {
+    if (this.reportingChannels.has("network") && typeof navigator !== "undefined" && navigator.onLine) {
       try {
         await this.reportToNetwork(report, options)
         reportChannels.push("network")
@@ -168,6 +174,8 @@ export class ErrorReportingService {
   }
 
   private reportToLocalStorage(report: ErrorReport): void {
+    if (typeof window === "undefined") return
+
     try {
       const key = `error_report_${report.id}`
       const data = {
@@ -267,7 +275,10 @@ export class ErrorReportingService {
 }
 
 // Export singleton instance
+const errorReportingService = new ErrorReportingService()
+
 export const reportError = (error: Error, options?: ErrorReportOptions): string => {
-  const service = new ErrorReportingService()
-  return service.reportError(error, options)
+  return errorReportingService.reportError(error, options)
 }
+
+export { errorReportingService }

@@ -8,16 +8,10 @@
     "lint": "next lint",
     "start": "next start"
   },
-  "overrides": {
-    "zod": "^3.22.4"
-  },
   "dependencies": {
     "@ai-sdk/openai": "latest",
-    "@ai-sdk/ui-utils": "^0.0.46",
     "@auth/core": "latest",
     "@aws-sdk/credential-providers": "latest",
-    "@headlessui/react": "^2.1.10",
-    "@heroicons/react": "^2.1.5",
     "@hookform/resolvers": "^3.9.1",
     "@mongodb-js/zstd": "latest",
     "@radix-ui/react-accordion": "latest",
@@ -49,9 +43,6 @@
     "@radix-ui/react-toggle-group": "latest",
     "@radix-ui/react-tooltip": "latest",
     "@sentry/nextjs": "latest",
-    "@stripe/stripe-js": "^4.8.0",
-    "@tailwindcss/forms": "^0.5.9",
-    "@tailwindcss/typography": "^0.5.15",
     "ai": "latest",
     "bcryptjs": "latest",
     "bullmq": "latest",
@@ -61,7 +52,6 @@
     "crypto": "latest",
     "date-fns": "latest",
     "embla-carousel-react": "latest",
-    "framer-motion": "^11.11.17",
     "gcp-metadata": "latest",
     "input-otp": "latest",
     "ioredis": "latest",

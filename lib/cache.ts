@@ -258,6 +258,8 @@ export const cacheUtils = {
 // Browser storage integration
 export const persistentCache = {
   set: (key: string, data: any, ttlMs = 300000) => {
+    if (typeof window === "undefined") return
+
     try {
       const item = {
         data,
@@ -271,6 +273,8 @@ export const persistentCache = {
   },
 
   get: (key: string): any | null => {
+    if (typeof window === "undefined") return null
+
     try {
       const stored = localStorage.getItem(`cache_${key}`)
       if (!stored) return null
@@ -291,6 +295,8 @@ export const persistentCache = {
   },
 
   delete: (key: string) => {
+    if (typeof window === "undefined") return
+
     try {
       localStorage.removeItem(`cache_${key}`)
     } catch (error) {
@@ -299,6 +305,8 @@ export const persistentCache = {
   },
 
   clear: () => {
+    if (typeof window === "undefined") return
+
     try {
       const keys = Object.keys(localStorage).filter((key) => key.startsWith("cache_"))
       keys.forEach((key) => localStorage.removeItem(key))

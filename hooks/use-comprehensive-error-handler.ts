@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback, useRef, useEffect } from "react"
-import { ErrorReportingService } from "@/lib/error-reporting"
+import { toast } from "sonner"
 
 export interface ErrorContext {
   component?: string
@@ -48,20 +48,25 @@ export interface RetryableOperation<T> {
 export function useComprehensiveErrorHandler() {
   const [errors, setErrors] = useState<ErrorInfo[]>([])
   const [isOnline, setIsOnline] = useState(true)
-  const errorReportingService = useRef<ErrorReportingService>()
+  const retryTimeouts = useRef<Map<string, NodeJS.Timeout>>(new Map())
 
   useEffect(() => {
-    errorReportingService.current = new ErrorReportingService()
-
     const handleOnline = () => setIsOnline(true)
     const handleOffline = () => setIsOnline(false)
 
-    window.addEventListener("online", handleOnline)
-    window.addEventListener("offline", handleOffline)
+    if (typeof window !== "undefined") {
+      setIsOnline(navigator.onLine)
+      window.addEventListener("online", handleOnline)
+      window.addEventListener("offline", handleOffline)
+    }
 
     return () => {
-      window.removeEventListener("online", handleOnline)
-      window.removeEventListener("offline", handleOffline)
+      if (typeof window !== "undefined") {
+        window.removeEventListener("online", handleOnline)
+        window.removeEventListener("offline", handleOffline)
+      }
+      retryTimeouts.current.forEach((timeout) => clearTimeout(timeout))
+      retryTimeouts.current.clear()
     }
   }, [])
 
@@ -81,14 +86,12 @@ export function useComprehensiveErrorHandler() {
 
       setErrors((prev) => [errorInfo, ...prev.slice(0, 99)]) // Keep last 100 errors
 
-      // Report error to service
-      if (errorReportingService.current) {
-        errorReportingService.current.reportError(new Error(error.message), {
-          context: error.context,
-          severity: error.severity,
-          stack: error.stack,
-        })
-      }
+      // Report error to console
+      console.error(`[${error.severity.toUpperCase()}] Error in ${error.context.component || "unknown"}:`, {
+        message: error.message,
+        context: error.context,
+        stack: error.stack,
+      })
 
       return errorInfo.id
     },
@@ -133,6 +136,10 @@ export function useComprehensiveErrorHandler() {
 
       operationErrors.forEach((error) => resolveError(error.id))
 
+      if (retryCount > 0 && showUserNotification) {
+        toast.success(`Operation succeeded after ${retryCount} retries`)
+      }
+
       return result
     } catch (error) {
       lastError = error instanceof Error ? error : new Error(String(error))
@@ -148,12 +155,26 @@ export function useComprehensiveErrorHandler() {
       if (enableRetry && retryCount < maxRetries) {
         // Exponential backoff with jitter
         const delay = retryDelay * Math.pow(2, retryCount - 1) + Math.random() * 1000
-        await new Promise((resolve) => setTimeout(resolve, delay))
+
+        if (showUserNotification) {
+          toast.warning(`Retrying operation (${retryCount}/${maxRetries})...`)
+        }
+
+        await new Promise((resolve) => {
+          const timeout = setTimeout(resolve, delay)
+          retryTimeouts.current.set(operationId, timeout)
+        })
+
+        retryTimeouts.current.delete(operationId)
         return executeWithRetry()
       }
 
       // Update final error with retry count
       setErrors((prev) => prev.map((e) => (e.id === errorId ? { ...e, retryCount } : e)))
+
+      if (showUserNotification) {
+        toast.error(`Operation failed after ${retryCount} attempts: ${lastError.message}`)
+      }
 
       throw lastError
     }

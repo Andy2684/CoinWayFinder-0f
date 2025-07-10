@@ -100,11 +100,15 @@ export class RootErrorBoundary extends Component<Props, State> {
   }
 
   handleReload = () => {
-    window.location.reload()
+    if (typeof window !== "undefined") {
+      window.location.reload()
+    }
   }
 
   handleGoHome = () => {
-    window.location.href = "/"
+    if (typeof window !== "undefined") {
+      window.location.href = "/"
+    }
   }
 
   handleCopyError = async () => {
@@ -113,15 +117,17 @@ export class RootErrorBoundary extends Component<Props, State> {
       stack: this.state.error?.stack,
       componentStack: this.state.errorInfo?.componentStack,
       timestamp: new Date().toISOString(),
-      userAgent: navigator.userAgent,
-      url: window.location.href,
+      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
+      url: typeof window !== "undefined" ? window.location.href : "unknown",
       errorId: this.state.errorId,
     }
 
     try {
-      await navigator.clipboard.writeText(JSON.stringify(errorDetails, null, 2))
-      this.setState({ errorCopied: true })
-      setTimeout(() => this.setState({ errorCopied: false }), 2000)
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        await navigator.clipboard.writeText(JSON.stringify(errorDetails, null, 2))
+        this.setState({ errorCopied: true })
+        setTimeout(() => this.setState({ errorCopied: false }), 2000)
+      }
     } catch (err) {
       console.error("Failed to copy error details:", err)
     }
@@ -257,12 +263,14 @@ export class RootErrorBoundary extends Component<Props, State> {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() =>
-                    window.open(
-                      "mailto:support@coinwayfinder.com?subject=Error Report&body=Error ID: " + this.state.errorId,
-                      "_blank",
-                    )
-                  }
+                  onClick={() => {
+                    if (typeof window !== "undefined") {
+                      window.open(
+                        "mailto:support@coinwayfinder.com?subject=Error Report&body=Error ID: " + this.state.errorId,
+                        "_blank",
+                      )
+                    }
+                  }}
                   className="flex-1"
                 >
                   <Bug className="mr-2 h-4 w-4" />
