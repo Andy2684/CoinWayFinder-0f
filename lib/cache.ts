@@ -7,17 +7,23 @@ const redis = new Redis({
 
 export interface CacheOptions {
   ttl?: number // Time to live in seconds
-  prefix?: string
+  tags?: string[]
 }
 
 export class CacheManager {
+  private static instance: CacheManager
   private defaultTTL = 3600 // 1 hour
-  private defaultPrefix = "coinwayfinder:"
 
-  async get<T>(key: string, options: CacheOptions = {}): Promise<T | null> {
+  static getInstance(): CacheManager {
+    if (!CacheManager.instance) {
+      CacheManager.instance = new CacheManager()
+    }
+    return CacheManager.instance
+  }
+
+  async get<T>(key: string): Promise<T | null> {
     try {
-      const fullKey = this.buildKey(key, options.prefix)
-      const value = await redis.get(fullKey)
+      const value = await redis.get(key)
       return value as T
     } catch (error) {
       console.error("Cache get error:", error)
@@ -27,10 +33,13 @@ export class CacheManager {
 
   async set<T>(key: string, value: T, options: CacheOptions = {}): Promise<boolean> {
     try {
-      const fullKey = this.buildKey(key, options.prefix)
       const ttl = options.ttl || this.defaultTTL
+      await redis.setex(key, ttl, JSON.stringify(value))
 
-      await redis.setex(fullKey, ttl, JSON.stringify(value))
+      if (options.tags) {
+        await this.addToTags(key, options.tags)
+      }
+
       return true
     } catch (error) {
       console.error("Cache set error:", error)
@@ -38,10 +47,9 @@ export class CacheManager {
     }
   }
 
-  async del(key: string, options: CacheOptions = {}): Promise<boolean> {
+  async delete(key: string): Promise<boolean> {
     try {
-      const fullKey = this.buildKey(key, options.prefix)
-      await redis.del(fullKey)
+      await redis.del(key)
       return true
     } catch (error) {
       console.error("Cache delete error:", error)
@@ -49,86 +57,78 @@ export class CacheManager {
     }
   }
 
-  async exists(key: string, options: CacheOptions = {}): Promise<boolean> {
+  async invalidateByTag(tag: string): Promise<boolean> {
     try {
-      const fullKey = this.buildKey(key, options.prefix)
-      const result = await redis.exists(fullKey)
-      return result === 1
+      const keys = await redis.smembers(`tag:${tag}`)
+      if (keys.length > 0) {
+        await redis.del(...keys)
+        await redis.del(`tag:${tag}`)
+      }
+      return true
     } catch (error) {
-      console.error("Cache exists error:", error)
+      console.error("Cache invalidate by tag error:", error)
       return false
     }
   }
 
-  async increment(key: string, options: CacheOptions = {}): Promise<number> {
+  async flush(): Promise<boolean> {
     try {
-      const fullKey = this.buildKey(key, options.prefix)
-      return await redis.incr(fullKey)
+      await redis.flushall()
+      return true
+    } catch (error) {
+      console.error("Cache flush error:", error)
+      return false
+    }
+  }
+
+  private async addToTags(key: string, tags: string[]): Promise<void> {
+    for (const tag of tags) {
+      await redis.sadd(`tag:${tag}`, key)
+    }
+  }
+
+  // Utility methods for common cache patterns
+  async remember<T>(key: string, callback: () => Promise<T>, options: CacheOptions = {}): Promise<T> {
+    const cached = await this.get<T>(key)
+    if (cached !== null) {
+      return cached
+    }
+
+    const value = await callback()
+    await this.set(key, value, options)
+    return value
+  }
+
+  async increment(key: string, amount = 1): Promise<number> {
+    try {
+      return await redis.incrby(key, amount)
     } catch (error) {
       console.error("Cache increment error:", error)
       return 0
     }
   }
 
-  async expire(key: string, ttl: number, options: CacheOptions = {}): Promise<boolean> {
+  async decrement(key: string, amount = 1): Promise<number> {
     try {
-      const fullKey = this.buildKey(key, options.prefix)
-      await redis.expire(fullKey, ttl)
-      return true
+      return await redis.decrby(key, amount)
     } catch (error) {
-      console.error("Cache expire error:", error)
-      return false
-    }
-  }
-
-  private buildKey(key: string, prefix?: string): string {
-    const keyPrefix = prefix || this.defaultPrefix
-    return `${keyPrefix}${key}`
-  }
-
-  // Utility methods for common cache patterns
-  async getOrSet<T>(key: string, fetcher: () => Promise<T>, options: CacheOptions = {}): Promise<T | null> {
-    const cached = await this.get<T>(key, options)
-    if (cached !== null) {
-      return cached
-    }
-
-    try {
-      const fresh = await fetcher()
-      await this.set(key, fresh, options)
-      return fresh
-    } catch (error) {
-      console.error("Cache getOrSet error:", error)
-      return null
-    }
-  }
-
-  async invalidatePattern(pattern: string): Promise<void> {
-    try {
-      // Note: This is a simplified implementation
-      // In production, you might want to use Redis SCAN for better performance
-      const keys = await redis.keys(`${this.defaultPrefix}${pattern}`)
-      if (keys.length > 0) {
-        await redis.del(...keys)
-      }
-    } catch (error) {
-      console.error("Cache invalidate pattern error:", error)
+      console.error("Cache decrement error:", error)
+      return 0
     }
   }
 }
 
-// Export singleton instance
-export const cache = new CacheManager()
+export const cache = CacheManager.getInstance()
 
-// Utility functions for common cache operations
-export async function getCachedData<T>(key: string, fetcher: () => Promise<T>, ttl = 3600): Promise<T | null> {
-  return cache.getOrSet(key, fetcher, { ttl })
-}
-
-export async function invalidateCache(key: string): Promise<void> {
-  await cache.del(key)
-}
-
-export async function setCachedData<T>(key: string, data: T, ttl = 3600): Promise<void> {
-  await cache.set(key, data, { ttl })
+// Helper functions for common cache keys
+export const cacheKeys = {
+  user: (id: string) => `user:${id}`,
+  userProfile: (id: string) => `user:profile:${id}`,
+  cryptoPrice: (symbol: string) => `crypto:price:${symbol}`,
+  cryptoNews: () => "crypto:news",
+  marketData: () => "market:data",
+  whaleAlerts: () => "whale:alerts",
+  botPerformance: (botId: string) => `bot:performance:${botId}`,
+  userBots: (userId: string) => `user:bots:${userId}`,
+  subscription: (userId: string) => `subscription:${userId}`,
 }

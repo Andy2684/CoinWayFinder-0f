@@ -11,9 +11,6 @@ export interface User {
   email: string
   name: string
   role: "user" | "admin"
-  subscriptionTier: "free" | "starter" | "pro" | "enterprise"
-  subscriptionStatus: "active" | "inactive" | "trial"
-  trialEndsAt?: Date
   createdAt: Date
   updatedAt: Date
 }
@@ -31,7 +28,6 @@ export interface AuthToken {
   userId: string
   email: string
   role: string
-  subscriptionTier: string
   iat: number
   exp: number
 }
@@ -62,7 +58,6 @@ export class AuthService {
         userId: user.id,
         email: user.email,
         role: user.role,
-        subscriptionTier: user.subscriptionTier,
       },
       JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN },
@@ -100,9 +95,6 @@ export class AuthService {
         email: user.email,
         name: user.username,
         role: user.role,
-        subscriptionTier: user.subscriptionTier,
-        subscriptionStatus: user.subscriptionStatus,
-        trialEndsAt: user.trialEndsAt,
         createdAt: user.createdAt,
         updatedAt: user.updatedAt,
       }
@@ -163,9 +155,6 @@ export class AuthService {
       username,
       password: hashedPassword,
       role: "user",
-      subscriptionTier: "free",
-      subscriptionStatus: "active",
-      trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -178,9 +167,6 @@ export class AuthService {
       email: newUser.email,
       name: newUser.username,
       role: newUser.role,
-      subscriptionTier: newUser.subscriptionTier,
-      subscriptionStatus: newUser.subscriptionStatus,
-      trialEndsAt: newUser.trialEndsAt,
       createdAt: newUser.createdAt,
       updatedAt: newUser.updatedAt,
     }
@@ -217,9 +203,6 @@ export class AuthService {
       email: user.email,
       name: user.username,
       role: user.role,
-      subscriptionTier: user.subscriptionTier,
-      subscriptionStatus: user.subscriptionStatus,
-      trialEndsAt: user.trialEndsAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     }
@@ -280,9 +263,6 @@ export class AuthService {
       email: user.email,
       name: user.username,
       role: user.role,
-      subscriptionTier: user.subscriptionTier,
-      subscriptionStatus: user.subscriptionStatus,
-      trialEndsAt: user.trialEndsAt,
       createdAt: user.createdAt,
       updatedAt: user.updatedAt,
     }
@@ -407,29 +387,32 @@ export function extractTokenFromHeader(authHeader: string | null): string | null
   return authHeader.substring(7)
 }
 
-// This is the missing export that was causing the deployment error
-export async function verifyToken(token: string): Promise<User | null> {
-  return authService.verifyAuthToken(token)
-}
-
-export function verifyTokenSync(token: string): AuthToken | null {
+export function verifyToken(token: string): AuthToken | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as AuthToken
+    const decoded = jwt.verify(token, JWT_SECRET) as AuthToken
+    return decoded
   } catch (error) {
-    console.error("Token verification error:", error)
+    console.error("Token verification failed:", error)
     return null
   }
 }
 
-export function getCurrentUser(request: Request): AuthToken | null {
-  const authHeader = request.headers.get("authorization")
-  const token = extractTokenFromHeader(authHeader)
+export function isAdmin(user: AuthToken): boolean {
+  return user.role === "admin"
+}
 
-  if (!token) {
+export function generateRefreshToken(userId: string): string {
+  return jwt.sign({ userId }, JWT_SECRET, { expiresIn: "30d" })
+}
+
+export function verifyRefreshToken(token: string): { userId: string } | null {
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string }
+    return decoded
+  } catch (error) {
+    console.error("Refresh token verification failed:", error)
     return null
   }
-
-  return verifyTokenSync(token)
 }
 
 // Export instances

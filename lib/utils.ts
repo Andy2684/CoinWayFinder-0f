@@ -8,7 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 export function formatCurrency(amount: number, currency = "USD", locale = "en-US"): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
-    currency,
+    currency: currency,
   }).format(amount)
 }
 
@@ -20,13 +20,13 @@ export function formatPercentage(value: number, decimals = 2): string {
   return `${value.toFixed(decimals)}%`
 }
 
-export function truncateText(text: string, maxLength: number): string {
-  if (text.length <= maxLength) return text
-  return text.slice(0, maxLength) + "..."
+export function truncateAddress(address: string, chars = 4): string {
+  if (address.length <= chars * 2) return address
+  return `${address.slice(0, chars)}...${address.slice(-chars)}`
 }
 
-export function generateId(): string {
-  return Math.random().toString(36).substring(2) + Date.now().toString(36)
+export function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
@@ -48,8 +48,8 @@ export function throttle<T extends (...args: any[]) => any>(func: T, limit: numb
   }
 }
 
-export function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms))
+export function generateId(): string {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36)
 }
 
 export function isValidEmail(email: string): boolean {
@@ -57,25 +57,8 @@ export function isValidEmail(email: string): boolean {
   return emailRegex.test(email)
 }
 
-export function isValidUrl(url: string): boolean {
-  try {
-    new URL(url)
-    return true
-  } catch {
-    return false
-  }
-}
-
-export function getInitials(name: string): string {
-  return name
-    .split(" ")
-    .map((word) => word.charAt(0).toUpperCase())
-    .join("")
-    .slice(0, 2)
-}
-
 export function capitalizeFirst(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+  return str.charAt(0).toUpperCase() + str.slice(1)
 }
 
 export function slugify(text: string): string {
@@ -85,9 +68,30 @@ export function slugify(text: string): string {
     .replace(/ +/g, "-")
 }
 
-export function parseJSON<T>(json: string, fallback: T): T {
+export function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((word) => word.charAt(0))
+    .join("")
+    .toUpperCase()
+    .slice(0, 2)
+}
+
+export function timeAgo(date: Date): string {
+  const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+  if (diffInSeconds < 60) return "just now"
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
+  if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`
+  if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)}mo ago`
+  return `${Math.floor(diffInSeconds / 31536000)}y ago`
+}
+
+export function parseJSON<T>(str: string, fallback: T): T {
   try {
-    return JSON.parse(json)
+    return JSON.parse(str)
   } catch {
     return fallback
   }
@@ -107,38 +111,4 @@ export function pick<T extends Record<string, any>, K extends keyof T>(obj: T, k
     }
   })
   return result
-}
-
-export function groupBy<T>(array: T[], keyFn: (item: T) => string | number): Record<string, T[]> {
-  return array.reduce(
-    (groups, item) => {
-      const key = keyFn(item).toString()
-      if (!groups[key]) {
-        groups[key] = []
-      }
-      groups[key].push(item)
-      return groups
-    },
-    {} as Record<string, T[]>,
-  )
-}
-
-export function unique<T>(array: T[]): T[] {
-  return Array.from(new Set(array))
-}
-
-export function chunk<T>(array: T[], size: number): T[][] {
-  const chunks: T[][] = []
-  for (let i = 0; i < array.length; i += size) {
-    chunks.push(array.slice(i, i + size))
-  }
-  return chunks
-}
-
-export function randomBetween(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min
-}
-
-export function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max)
 }
