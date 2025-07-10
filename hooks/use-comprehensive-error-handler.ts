@@ -103,11 +103,12 @@ export function useComprehensiveErrorHandler() {
     setErrors([])
   }, [])
 
-  const handleError = useCallback(async <T>(\
-    operation: () => Promise<T>,\
-    context: ErrorContext = {},\
-    options: ErrorHandlerOptions = {}\
-  ): Promise<T> => {\
+  const handleError = useCallback(
+    async <T>(\
+      operation: () => Promise<T>,\
+      context: ErrorContext = {},\
+      options: ErrorHandlerOptions = {}\
+    ): Promise<T> => {\
   const {
     maxRetries = 3,
     retryDelay = 1000,
@@ -161,16 +162,17 @@ export function useComprehensiveErrorHandler() {
   return executeWithRetry()
   \
 }
-, [errors, addError, resolveError])
+,
+    [errors, addError, resolveError],
+  )
 
-const handleErrorWithRetry = useCallback(async <T>({
-    operation,
-    context = {},
-    options = {}\
-  }: RetryableOperation<T>): Promise<T> => {\
+const handleErrorWithRetry = useCallback(\
+    async <T>({ operation, context = {}, options = {} }: RetryableOperation<T>): Promise<T> => {\
 return handleError(operation, context, options)
 \
-  }, [handleError])
+    },
+    [handleError],
+  )
 
 const getErrorStats = useCallback((): ErrorStats => {
   const byComponent: Record<string, number> = {}
@@ -230,7 +232,7 @@ return {
     resolveError,
     clearErrors,
     getErrorStats,
-    exportErrors
+    exportErrors,
   }
 \
 }

@@ -1,7 +1,5 @@
 "use client"
 
-import * as Sentry from "@sentry/nextjs"
-
 export interface ErrorReportOptions {
   context?: Record<string, any>
   severity?: "low" | "medium" | "high" | "critical"
@@ -30,7 +28,7 @@ export class ErrorReportingService {
   private errorQueue: ErrorReport[] = []
   private isReporting = false
   private maxQueueSize = 100
-  private reportingChannels: Set<string> = new Set(["console", "sentry"])
+  private reportingChannels: Set<string> = new Set(["console", "localStorage"])
 
   constructor() {
     this.loadQueueFromStorage()
@@ -115,16 +113,6 @@ export class ErrorReportingService {
       reportChannels.push("console")
     }
 
-    // Sentry reporting
-    if (this.reportingChannels.has("sentry")) {
-      try {
-        await this.reportToSentry(report, options)
-        reportChannels.push("sentry")
-      } catch (error) {
-        console.warn("Failed to report to Sentry:", error)
-      }
-    }
-
     // Local storage reporting
     if (this.reportingChannels.has("localStorage")) {
       try {
@@ -177,51 +165,6 @@ export class ErrorReportingService {
       critical: "color: #dc2626; font-weight: bold; background: #fee2e2; padding: 2px 4px;",
     }
     return styles[severity as keyof typeof styles] || styles.medium
-  }
-
-  private async reportToSentry(report: ErrorReport, options: ErrorReportOptions): Promise<void> {
-    Sentry.withScope((scope) => {
-      // Set severity
-      const sentryLevel = this.mapSeverityToSentryLevel(report.severity)
-      scope.setLevel(sentryLevel)
-
-      // Set context
-      scope.setContext("error_report", {
-        id: report.id,
-        timestamp: report.timestamp.toISOString(),
-        ...report.context,
-      })
-
-      // Set tags
-      if (options.tags) {
-        Object.entries(options.tags).forEach(([key, value]) => {
-          scope.setTag(key, value)
-        })
-      }
-
-      // Set user
-      if (options.user) {
-        scope.setUser(options.user)
-      }
-
-      // Set extra data
-      if (options.extra) {
-        scope.setExtra("additional_data", options.extra)
-      }
-
-      // Capture the error
-      Sentry.captureException(new Error(report.message))
-    })
-  }
-
-  private mapSeverityToSentryLevel(severity: string): Sentry.SeverityLevel {
-    const mapping = {
-      low: "info" as Sentry.SeverityLevel,
-      medium: "warning" as Sentry.SeverityLevel,
-      high: "error" as Sentry.SeverityLevel,
-      critical: "fatal" as Sentry.SeverityLevel,
-    }
-    return mapping[severity as keyof typeof mapping] || "error"
   }
 
   private reportToLocalStorage(report: ErrorReport): void {

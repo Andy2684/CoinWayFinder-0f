@@ -1,114 +1,38 @@
+"use client"
+
 interface CacheItem<T> {
   data: T
   timestamp: number
   ttl: number
+  key: string
 }
 
 interface CacheStats {
   hits: number
   misses: number
-  sets: number
-  deletes: number
   size: number
+  maxSize: number
 }
 
-class MemoryCache {
+export class CacheManager {
   private cache = new Map<string, CacheItem<any>>()
   private stats: CacheStats = {
     hits: 0,
     misses: 0,
-    sets: 0,
-    deletes: 0,
     size: 0,
+    maxSize: 1000,
   }
   private cleanupInterval: NodeJS.Timeout | null = null
 
-  constructor() {
-    // Clean up expired items every 5 minutes
-    this.cleanupInterval = setInterval(
-      () => {
-        this.cleanup()
-      },
-      5 * 60 * 1000,
-    )
-
-    // Clean up on process exit
-    if (typeof process !== "undefined") {
-      process.on("exit", () => {
-        if (this.cleanupInterval) {
-          clearInterval(this.cleanupInterval)
-        }
-      })
-    }
+  constructor(maxSize = 1000, cleanupIntervalMs = 60000) {
+    this.stats.maxSize = maxSize
+    this.startCleanup(cleanupIntervalMs)
   }
 
-  set<T>(key: string, data: T, ttlSeconds = 300): void {
-    const item: CacheItem<T> = {
-      data,
-      timestamp: Date.now(),
-      ttl: ttlSeconds * 1000,
-    }
-
-    this.cache.set(key, item)
-    this.stats.sets++
-    this.stats.size = this.cache.size
-  }
-
-  get<T>(key: string): T | null {
-    const item = this.cache.get(key)
-
-    if (!item) {
-      this.stats.misses++
-      return null
-    }
-
-    // Check if item has expired
-    if (Date.now() - item.timestamp > item.ttl) {
-      this.cache.delete(key)
-      this.stats.misses++
-      this.stats.size = this.cache.size
-      return null
-    }
-
-    this.stats.hits++
-    return item.data as T
-  }
-
-  delete(key: string): boolean {
-    const deleted = this.cache.delete(key)
-    if (deleted) {
-      this.stats.deletes++
-      this.stats.size = this.cache.size
-    }
-    return deleted
-  }
-
-  has(key: string): boolean {
-    const item = this.cache.get(key)
-    if (!item) return false
-
-    // Check if expired
-    if (Date.now() - item.timestamp > item.ttl) {
-      this.cache.delete(key)
-      this.stats.size = this.cache.size
-      return false
-    }
-
-    return true
-  }
-
-  clear(): void {
-    this.cache.clear()
-    this.stats.size = 0
-  }
-
-  getStats(): CacheStats {
-    return { ...this.stats }
-  }
-
-  getHitRate(): number {
-    const total = this.stats.hits + this.stats.misses
-    return total === 0 ? 0 : (this.stats.hits / total) * 100
+  private startCleanup(intervalMs: number): void {
+    this.cleanupInterval = setInterval(() => {
+      this.cleanup()
+    }, intervalMs)
   }
 
   private cleanup(): void {
@@ -126,132 +50,260 @@ class MemoryCache {
     })
 
     this.stats.size = this.cache.size
+
+    // If still over max size, remove oldest items
+    if (this.cache.size > this.stats.maxSize) {
+      const sortedEntries = Array.from(this.cache.entries()).sort(([, a], [, b]) => a.timestamp - b.timestamp)
+
+      const itemsToRemove = this.cache.size - this.stats.maxSize
+      for (let i = 0; i < itemsToRemove; i++) {
+        this.cache.delete(sortedEntries[i][0])
+      }
+
+      this.stats.size = this.cache.size
+    }
   }
 
-  // Get all keys (for debugging)
-  getKeys(): string[] {
+  public set<T>(key: string, data: T, ttlMs = 300000): void {
+    // Default TTL: 5 minutes
+    const item: CacheItem<T> = {
+      data,
+      timestamp: Date.now(),
+      ttl: ttlMs,
+      key,
+    }
+
+    this.cache.set(key, item)
+    this.stats.size = this.cache.size
+
+    // Immediate cleanup if over max size
+    if (this.cache.size > this.stats.maxSize) {
+      this.cleanup()
+    }
+  }
+
+  public get<T>(key: string): T | null {
+    const item = this.cache.get(key)
+
+    if (!item) {
+      this.stats.misses++
+      return null
+    }
+
+    const now = Date.now()
+    if (now - item.timestamp > item.ttl) {
+      this.cache.delete(key)
+      this.stats.size = this.cache.size
+      this.stats.misses++
+      return null
+    }
+
+    this.stats.hits++
+    return item.data
+  }
+
+  public has(key: string): boolean {
+    const item = this.cache.get(key)
+    if (!item) return false
+
+    const now = Date.now()
+    if (now - item.timestamp > item.ttl) {
+      this.cache.delete(key)
+      this.stats.size = this.cache.size
+      return false
+    }
+
+    return true
+  }
+
+  public delete(key: string): boolean {
+    const deleted = this.cache.delete(key)
+    if (deleted) {
+      this.stats.size = this.cache.size
+    }
+    return deleted
+  }
+
+  public clear(): void {
+    this.cache.clear()
+    this.stats.size = 0
+    this.stats.hits = 0
+    this.stats.misses = 0
+  }
+
+  public getStats(): CacheStats {
+    return { ...this.stats }
+  }
+
+  public getHitRate(): number {
+    const total = this.stats.hits + this.stats.misses
+    return total === 0 ? 0 : this.stats.hits / total
+  }
+
+  public keys(): string[] {
     return Array.from(this.cache.keys())
   }
 
-  // Get cache size in bytes (approximate)
-  getSizeInBytes(): number {
-    let size = 0
-    for (const [key, item] of this.cache.entries()) {
-      size += key.length * 2 // UTF-16 characters
-      size += JSON.stringify(item).length * 2
+  public values<T>(): T[] {
+    return Array.from(this.cache.values()).map((item) => item.data)
+  }
+
+  public entries<T>(): Array<[string, T]> {
+    return Array.from(this.cache.entries()).map(([key, item]) => [key, item.data])
+  }
+
+  public destroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval)
+      this.cleanupInterval = null
     }
-    return size
+    this.clear()
   }
 }
 
-// Global cache instance
-const cache = new MemoryCache()
+// Utility functions for common caching patterns
+export function createCacheKey(...parts: (string | number | boolean)[]): string {
+  return parts.map(String).join(":")
+}
 
-// Cache utility functions
-export const cacheUtils = {
-  // Generic cache wrapper for async functions
-  async withCache<T>(key: string, fetcher: () => Promise<T>, ttlSeconds = 300): Promise<T> {
-    // Try to get from cache first
-    const cached = cache.get<T>(key)
+export function withCache<T>(cache: CacheManager, key: string, fetcher: () => Promise<T>, ttlMs = 300000): Promise<T> {
+  const cached = cache.get<T>(key)
+  if (cached !== null) {
+    return Promise.resolve(cached)
+  }
+
+  return fetcher().then((data) => {
+    cache.set(key, data, ttlMs)
+    return data
+  })
+}
+
+export function memoize<T extends (...args: any[]) => any>(
+  fn: T,
+  cache: CacheManager,
+  keyGenerator?: (...args: Parameters<T>) => string,
+  ttlMs = 300000,
+): T {
+  return ((...args: Parameters<T>) => {
+    const key = keyGenerator ? keyGenerator(...args) : createCacheKey("memoized", JSON.stringify(args))
+
+    const cached = cache.get(key)
     if (cached !== null) {
       return cached
     }
 
-    // Fetch fresh data
-    const data = await fetcher()
+    const result = fn(...args)
+    cache.set(key, result, ttlMs)
+    return result
+  }) as T
+}
 
-    // Store in cache
-    cache.set(key, data, ttlSeconds)
+// Global cache instance
+export const globalCache = new CacheManager(1000, 60000)
 
-    return data
+// Specialized cache instances
+export const apiCache = new CacheManager(500, 30000) // API responses
+export const userCache = new CacheManager(100, 600000) // User data (10 minutes)
+export const configCache = new CacheManager(50, 3600000) // Configuration (1 hour)
+
+// Cache utilities for specific use cases
+export const cacheUtils = {
+  // Cache API responses
+  cacheApiResponse: (endpoint: string, data: any, ttl = 300000) => {
+    apiCache.set(createCacheKey("api", endpoint), data, ttl)
   },
 
-  // Cache for API responses
-  async cacheApiResponse<T>(endpoint: string, params: Record<string, any> = {}, ttlSeconds = 300): Promise<T> {
-    const cacheKey = generateCacheKey(endpoint, params)
-
-    return this.withCache(
-      cacheKey,
-      async () => {
-        const url = new URL(endpoint, process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000")
-        Object.entries(params).forEach(([key, value]) => {
-          url.searchParams.append(key, String(value))
-        })
-
-        const response = await fetch(url.toString())
-        if (!response.ok) {
-          throw new Error(`API request failed: ${response.statusText}`)
-        }
-
-        return response.json()
-      },
-      ttlSeconds,
-    )
+  // Get cached API response
+  getCachedApiResponse: (endpoint: string): any | null => {
+    return apiCache.get(createCacheKey("api", endpoint))
   },
 
-  // Invalidate cache by pattern
-  invalidatePattern(pattern: string): number {
-    const keys = cache.getKeys()
-    const regex = new RegExp(pattern)
-    let deleted = 0
+  // Cache user data
+  cacheUserData: (userId: string, data: any, ttl = 600000) => {
+    userCache.set(createCacheKey("user", userId), data, ttl)
+  },
 
-    keys.forEach((key) => {
-      if (regex.test(key)) {
-        cache.delete(key)
-        deleted++
+  // Get cached user data
+  getCachedUserData: (userId: string): any | null => {
+    return userCache.get(createCacheKey("user", userId))
+  },
+
+  // Cache configuration
+  cacheConfig: (configKey: string, data: any, ttl = 3600000) => {
+    configCache.set(createCacheKey("config", configKey), data, ttl)
+  },
+
+  // Get cached configuration
+  getCachedConfig: (configKey: string): any | null => {
+    return configCache.get(createCacheKey("config", configKey))
+  },
+
+  // Clear all caches
+  clearAll: () => {
+    globalCache.clear()
+    apiCache.clear()
+    userCache.clear()
+    configCache.clear()
+  },
+
+  // Get combined stats
+  getAllStats: () => ({
+    global: globalCache.getStats(),
+    api: apiCache.getStats(),
+    user: userCache.getStats(),
+    config: configCache.getStats(),
+  }),
+}
+
+// Browser storage integration
+export const persistentCache = {
+  set: (key: string, data: any, ttlMs = 300000) => {
+    try {
+      const item = {
+        data,
+        timestamp: Date.now(),
+        ttl: ttlMs,
       }
-    })
-
-    return deleted
-  },
-
-  // Get cache statistics
-  getStats() {
-    return {
-      ...cache.getStats(),
-      hitRate: cache.getHitRate(),
-      sizeInBytes: cache.getSizeInBytes(),
+      localStorage.setItem(`cache_${key}`, JSON.stringify(item))
+    } catch (error) {
+      console.warn("Failed to save to persistent cache:", error)
     }
   },
 
-  // Manual cache operations
-  set: (key: string, data: any, ttlSeconds?: number) => cache.set(key, data, ttlSeconds),
-  get: (key: string) => cache.get<any>(key),
-  delete: (key: string) => cache.delete(key),
-  has: (key: string) => cache.has(key),
-  clear: () => cache.clear(),
+  get: (key: string): any | null => {
+    try {
+      const stored = localStorage.getItem(`cache_${key}`)
+      if (!stored) return null
+
+      const item = JSON.parse(stored)
+      const now = Date.now()
+
+      if (now - item.timestamp > item.ttl) {
+        localStorage.removeItem(`cache_${key}`)
+        return null
+      }
+
+      return item.data
+    } catch (error) {
+      console.warn("Failed to read from persistent cache:", error)
+      return null
+    }
+  },
+
+  delete: (key: string) => {
+    try {
+      localStorage.removeItem(`cache_${key}`)
+    } catch (error) {
+      console.warn("Failed to delete from persistent cache:", error)
+    }
+  },
+
+  clear: () => {
+    try {
+      const keys = Object.keys(localStorage).filter((key) => key.startsWith("cache_"))
+      keys.forEach((key) => localStorage.removeItem(key))
+    } catch (error) {
+      console.warn("Failed to clear persistent cache:", error)
+    }
+  },
 }
-
-// Helper function to generate consistent cache keys
-export function generateCacheKey(prefix: string, params: Record<string, any> = {}): string {
-  const sortedParams = Object.keys(params)
-    .sort()
-    .map((key) => `${key}=${params[key]}`)
-    .join("&")
-
-  return sortedParams ? `${prefix}:${sortedParams}` : prefix
-}
-
-// Predefined cache keys for common operations
-export const CACHE_KEYS = {
-  CRYPTO_PRICES: "crypto:prices",
-  CRYPTO_NEWS: "crypto:news",
-  MARKET_TRENDS: "crypto:trends",
-  WHALE_ALERTS: "crypto:whales",
-  USER_PORTFOLIO: (userId: string) => `user:${userId}:portfolio`,
-  USER_BOTS: (userId: string) => `user:${userId}:bots`,
-  USER_TRADES: (userId: string) => `user:${userId}:trades`,
-  EXCHANGE_RATES: "exchange:rates",
-  API_USAGE: (userId: string) => `user:${userId}:api-usage`,
-} as const
-
-// Cache TTL constants (in seconds)
-export const CACHE_TTL = {
-  SHORT: 60, // 1 minute
-  MEDIUM: 300, // 5 minutes
-  LONG: 900, // 15 minutes
-  HOUR: 3600, // 1 hour
-  DAY: 86400, // 24 hours
-} as const
-
-export default cache
