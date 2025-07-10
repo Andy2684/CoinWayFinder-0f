@@ -1,91 +1,30 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { Sentry } from "@/lib/sentry"
-
-interface ErrorReport {
-  errorId: string
-  message: string
-  stack?: string
-  componentStack?: string
-  timestamp: string
-  userAgent: string
-  url: string
-  context?: string
-  userId?: string
-}
 
 export async function POST(request: NextRequest) {
   try {
-    const errorReport: ErrorReport = await request.json()
+    const body = await request.json()
+    const { errors, message, stack, context, severity, userId } = body
 
     // Log error to console in development
     if (process.env.NODE_ENV === "development") {
-      console.error("Error Report:", {
-        id: errorReport.errorId,
-        message: errorReport.message,
-        timestamp: errorReport.timestamp,
-        url: errorReport.url,
-        context: errorReport.context,
-      })
+      console.error("Error report received:", body)
     }
 
-    // Send to Sentry with detailed context
-    const eventId = Sentry.captureException(new Error(errorReport.message), {
-      tags: {
-        component: "api-error-report",
-        errorId: errorReport.errorId,
-        context: errorReport.context || "unknown",
-        source: "client-side",
-      },
-      extra: {
-        stack: errorReport.stack,
-        componentStack: errorReport.componentStack,
-        userAgent: errorReport.userAgent,
-        url: errorReport.url,
-        timestamp: errorReport.timestamp,
-        originalErrorId: errorReport.errorId,
-      },
-      user: errorReport.userId ? { id: errorReport.userId } : undefined,
-      level: "error",
-    })
+    // In production, you would send this to your error tracking service
+    // For now, we'll just log it
+    if (errors) {
+      // Multiple errors
+      errors.forEach((error: any) => {
+        console.error(`[${error.severity?.toUpperCase() || "ERROR"}]`, error.message, error.stack)
+      })
+    } else {
+      // Single error
+      console.error(`[${severity?.toUpperCase() || "ERROR"}]`, message, stack)
+    }
 
-    // Add breadcrumb for tracking
-    Sentry.addBreadcrumb({
-      message: `Error reported: ${errorReport.message}`,
-      category: "error-report",
-      level: "error",
-      data: {
-        errorId: errorReport.errorId,
-        context: errorReport.context,
-        sentryEventId: eventId,
-      },
-    })
-
-    return NextResponse.json({
-      success: true,
-      message: "Error reported successfully",
-      errorId: errorReport.errorId,
-      sentryEventId: eventId,
-    })
+    return NextResponse.json({ success: true })
   } catch (error) {
     console.error("Failed to process error report:", error)
-
-    // Report the error reporting failure to Sentry
-    Sentry.captureException(error, {
-      tags: {
-        component: "api-error-report",
-        operation: "error-report-failure",
-      },
-      extra: {
-        originalRequest: request.url,
-      },
-    })
-
-    return NextResponse.json(
-      {
-        success: false,
-        message: "Failed to process error report",
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: "Failed to process error report" }, { status: 500 })
   }
 }

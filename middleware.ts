@@ -100,6 +100,12 @@ export async function middleware(request: NextRequest) {
       return response
     }
   } else if (pathname.startsWith("/api/")) {
+    // Add CORS headers for API routes
+    const response = NextResponse.next()
+    response.headers.set("Access-Control-Allow-Origin", "*")
+    response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
     // Skip public API routes
     const publicApiRoutes = ["/api/crypto/prices", "/api/crypto/news", "/api/news", "/api/test-connection"]
 
@@ -137,7 +143,6 @@ export async function middleware(request: NextRequest) {
           }
 
           // Add API key info to headers
-          const response = NextResponse.next()
           response.headers.set("x-api-key-id", keyData.id)
           response.headers.set("x-user-id", keyData.userId)
           return response
@@ -156,7 +161,6 @@ export async function middleware(request: NextRequest) {
           }
 
           // Add user info to headers
-          const response = NextResponse.next()
           response.headers.set("x-user-id", user.id)
           response.headers.set("x-user-role", user.role || "user")
 
@@ -171,6 +175,8 @@ export async function middleware(request: NextRequest) {
         }
       }
     }
+
+    return response
   }
 
   return NextResponse.next()
