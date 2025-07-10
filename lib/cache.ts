@@ -1,58 +1,33 @@
-interface CacheConfig {
-  defaultTTL: number
-  maxSize: number
-  enableCompression: boolean
-}
-
-interface CacheEntry<T> {
+interface CacheItem<T> {
   data: T
   timestamp: number
   ttl: number
 }
 
 class MemoryCache {
-  private cache = new Map<string, CacheEntry<any>>()
-  private config: CacheConfig
+  private cache = new Map<string, CacheItem<any>>()
+  private defaultTTL = 5 * 60 * 1000 // 5 minutes
 
-  constructor(config: Partial<CacheConfig> = {}) {
-    this.config = {
-      defaultTTL: 300000, // 5 minutes
-      maxSize: 1000,
-      enableCompression: false,
-      ...config,
-    }
-  }
-
-  set<T>(key: string, value: T, ttl?: number): void {
-    const entry: CacheEntry<T> = {
-      data: value,
+  set<T>(key: string, data: T, ttl?: number): void {
+    const item: CacheItem<T> = {
+      data,
       timestamp: Date.now(),
-      ttl: ttl || this.config.defaultTTL,
+      ttl: ttl || this.defaultTTL,
     }
-
-    // Remove oldest entries if cache is full
-    if (this.cache.size >= this.config.maxSize) {
-      const oldestKey = this.cache.keys().next().value
-      this.cache.delete(oldestKey)
-    }
-
-    this.cache.set(key, entry)
+    this.cache.set(key, item)
   }
 
   get<T>(key: string): T | null {
-    const entry = this.cache.get(key)
+    const item = this.cache.get(key)
+    if (!item) return null
 
-    if (!entry) {
-      return null
-    }
-
-    // Check if entry has expired
-    if (Date.now() - entry.timestamp > entry.ttl) {
+    const now = Date.now()
+    if (now - item.timestamp > item.ttl) {
       this.cache.delete(key)
       return null
     }
 
-    return entry.data as T
+    return item.data as T
   }
 
   delete(key: string): boolean {
@@ -64,11 +39,11 @@ class MemoryCache {
   }
 
   has(key: string): boolean {
-    const entry = this.cache.get(key)
-    if (!entry) return false
+    const item = this.cache.get(key)
+    if (!item) return false
 
-    // Check if expired
-    if (Date.now() - entry.timestamp > entry.ttl) {
+    const now = Date.now()
+    if (now - item.timestamp > item.ttl) {
       this.cache.delete(key)
       return false
     }
@@ -79,28 +54,11 @@ class MemoryCache {
   size(): number {
     return this.cache.size
   }
-
-  // Clean up expired entries
-  cleanup(): void {
-    const now = Date.now()
-    for (const [key, entry] of this.cache.entries()) {
-      if (now - entry.timestamp > entry.ttl) {
-        this.cache.delete(key)
-      }
-    }
-  }
 }
 
-// Global cache instance
-export const globalCache = new MemoryCache({
-  defaultTTL: 300000, // 5 minutes
-  maxSize: 1000,
-  enableCompression: false,
-})
+export const globalCache = new MemoryCache()
 
-// Cache utilities
 export const cacheUtils = {
-  // Cache API responses
   setCachedApiResponse: <T>(url: string, data: T, ttl?: number): void => {
     globalCache.set(`api:${url}\`, data, ttl);
   },
@@ -109,7 +67,10 @@ export const cacheUtils = {
     return globalCache.get<T>(\`api:${url}\`);
   },
 
-  // Cache user data
+  invalidateApiCache: (url: string): boolean => {
+    return globalCache.delete(\`api:${url}\`);
+  },
+
   setCachedUserData: <T>(userId: string, data: T, ttl?: number): void => {
     globalCache.set(\`user:${userId}\`, data, ttl);
   },
@@ -118,49 +79,21 @@ export const cacheUtils = {
     return globalCache.get<T>(\`user:${userId}\`);
   },
 
-  // Cache market data
+  invalidateUserCache: (userId: string): boolean => {
+    return globalCache.delete(\`user:${userId}\`);
+  },
+
   setCachedMarketData: <T>(symbol: string, data: T, ttl?: number): void => {
-    globalCache.set(\`market:${symbol}\`, data, ttl || 60000); // 1 minute default for market data
+    globalCache.set(\`market:${symbol}\`, data, ttl || 30000); // 30 seconds for market data
   },
 
   getCachedMarketData: <T>(symbol: string): T | null => {
     return globalCache.get<T>(\`market:${symbol}\`);
   },
 
-  // Cache bot data
-  setCachedBotData: <T>(botId: string, data: T, ttl?: number): void => {
-    globalCache.set(\`bot:${botId}\`, data, ttl);
-  },
-
-  getCachedBotData: <T>(botId: string): T | null => {
-    return globalCache.get<T>(\`bot:${botId}\`);
-  },
-
-  // Generic cache operations
-  invalidatePattern: (pattern: string): void => {
-    // Simple pattern matching - could be enhanced
-    for (const key of Array.from(globalCache.cache.keys())) {
-      if (key.includes(pattern)) {
-        globalCache.delete(key);
-      }
-    }
-  },
-
-  // Get cache statistics
-  getStats: () => {
-    return {
-      size: globalCache.size(),
-      maxSize: globalCache.config.maxSize,
-      defaultTTL: globalCache.config.defaultTTL
-    };
+  clearAllCache: (): void => {
+    globalCache.clear();
   }
 };
-
-// Auto cleanup every 5 minutes
-if (typeof window === 'undefined') {
-  setInterval(() => {
-    globalCache.cleanup();
-  }, 300000);
-}
 \
 export default globalCache;
