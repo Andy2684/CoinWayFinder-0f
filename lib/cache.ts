@@ -60,40 +60,40 @@ export const globalCache = new MemoryCache()
 
 export const cacheUtils = {
   setCachedApiResponse: <T>(url: string, data: T, ttl?: number): void => {
-    globalCache.set(`api:${url}\`, data, ttl);
+    globalCache.set(`api:${url}`, data, ttl)
   },
 
-  getCachedApiResponse: <T>(url: string): T | null => {
-    return globalCache.get<T>(\`api:${url}\`);
+  getCachedApiResponse: <T>(url: string): T | null => {\
+    return globalCache.get<T>(`api:${url}`)
   },
 
-  invalidateApiCache: (url: string): boolean => {
-    return globalCache.delete(\`api:${url}\`);
+  invalidateApiCache: (url: string): boolean => {\
+    return globalCache.delete(`api:${url}`)
   },
 
   setCachedUserData: <T>(userId: string, data: T, ttl?: number): void => {
-    globalCache.set(\`user:${userId}\`, data, ttl);
+    globalCache.set(`user:${userId}`, data, ttl)
   },
 
-  getCachedUserData: <T>(userId: string): T | null => {
-    return globalCache.get<T>(\`user:${userId}\`);
+  getCachedUserData: <T>(userId: string): T | null => {\
+    return globalCache.get<T>(`user:${userId}`)
   },
 
-  invalidateUserCache: (userId: string): boolean => {
-    return globalCache.delete(\`user:${userId}\`);
+  invalidateUserCache: (userId: string): boolean => {\
+    return globalCache.delete(`user:${userId}`)
   },
 
   setCachedMarketData: <T>(symbol: string, data: T, ttl?: number): void => {
-    globalCache.set(\`market:${symbol}\`, data, ttl || 30000); // 30 seconds for market data
+    globalCache.set(`market:${symbol}`, data, ttl || 30000)
   },
 
-  getCachedMarketData: <T>(symbol: string): T | null => {
-    return globalCache.get<T>(\`market:${symbol}\`);
+  getCachedMarketData: <T>(symbol: string): T | null => {\
+    return globalCache.get<T>(`market:${symbol}`)
   },
 
   clearAllCache: (): void => {
-    globalCache.clear();
+    globalCache.clear()
   }
-};
+}
 \
-export default globalCache;
+export default globalCache
