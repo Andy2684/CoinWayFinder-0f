@@ -32,8 +32,16 @@ export function formatCurrency(amount: number, currency = "USD"): string {
   }).format(amount)
 }
 
-export function formatPercentage(value: number, decimals = 2): string {
-  return `${value.toFixed(decimals)}%`
+export function formatPercentage(value: number): string {
+  return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`
+}
+
+export function formatTime(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date
+  return d.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })
 }
 
 export function formatNumber(value: number, decimals = 2): string {
@@ -48,6 +56,11 @@ export function truncateString(str: string, length: number): string {
   return str.substring(0, length) + "..."
 }
 
+export function truncateAddress(address: string, chars = 4): string {
+  if (address.length <= chars * 2) return address
+  return `${address.slice(0, chars)}...${address.slice(-chars)}`
+}
+
 export function slugify(text: string): string {
   return text
     .toLowerCase()
@@ -56,13 +69,8 @@ export function slugify(text: string): string {
     .replace(/^-+|-+$/g, "")
 }
 
-export function generateId(length = 8): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-  let result = ""
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return result
+export function generateId(): string {
+  return Math.random().toString(36).substring(2) + Date.now().toString(36)
 }
 
 export function generatePassword(length = 12): string {
@@ -289,8 +297,7 @@ export function sleep(ms: number): Promise<void> {
 
 export function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message
-  if (typeof error === "string") return error
-  return "An unknown error occurred"
+  return String(error)
 }
 
 export function safeJsonParse<T>(json: string, fallback: T): T {
@@ -365,4 +372,8 @@ export function getRelativeTime(date: Date): string {
 export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text
   return text.substr(0, maxLength) + "..."
+}
+
+export function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1)
 }
