@@ -7,12 +7,23 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AlertTriangle, CheckCircle, Clock, Download, Search, Trash2 } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
+import {
+  AlertTriangle,
+  CheckCircle,
+  Download,
+  Search,
+  Clock,
+  Component,
+  AlertCircle,
+  Info,
+  XCircle,
+} from "lucide-react"
 import { useComprehensiveErrorHandler } from "@/hooks/use-comprehensive-error-handler"
 import { format } from "date-fns"
 
 export function ErrorMonitoringDashboard() {
-  const { errors, getErrorStats, resolveError, clearErrors } = useComprehensiveErrorHandler()
+  const { errors, getErrorStats, exportErrors, resolveError, clearErrors } = useComprehensiveErrorHandler()
   const [searchTerm, setSearchTerm] = useState("")
   const [severityFilter, setSeverityFilter] = useState<string>("all")
   const [statusFilter, setStatusFilter] = useState<string>("all")
@@ -23,77 +34,79 @@ export function ErrorMonitoringDashboard() {
   const filteredErrors = useMemo(() => {
     let filtered = errors
 
-    // Apply search filter
+    // Search filter
     if (searchTerm) {
       filtered = filtered.filter(
         (error) =>
-          error.error.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          error.error.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          (error.context.component || "").toLowerCase().includes(searchTerm.toLowerCase()),
+          error.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          error.context.component?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          error.context.action?.toLowerCase().includes(searchTerm.toLowerCase()),
       )
     }
 
-    // Apply severity filter
+    // Severity filter
     if (severityFilter !== "all") {
       filtered = filtered.filter((error) => error.severity === severityFilter)
     }
 
-    // Apply status filter
+    // Status filter
     if (statusFilter !== "all") {
       const isResolved = statusFilter === "resolved"
       filtered = filtered.filter((error) => error.resolved === isResolved)
     }
 
-    // Apply time filter
+    // Time filter
     if (timeFilter !== "all") {
       const now = new Date()
-      let cutoff: Date
-
-      switch (timeFilter) {
-        case "1h":
-          cutoff = new Date(now.getTime() - 60 * 60 * 1000)
-          break
-        case "24h":
-          cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000)
-          break
-        case "7d":
-          cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-          break
-        default:
-          return filtered
+      const timeThresholds = {
+        "1h": 1 * 60 * 60 * 1000,
+        "24h": 24 * 60 * 60 * 1000,
+        "7d": 7 * 24 * 60 * 60 * 1000,
+        "30d": 30 * 24 * 60 * 60 * 1000,
       }
 
-      filtered = filtered.filter((error) => error.timestamp >= cutoff)
+      const threshold = timeThresholds[timeFilter as keyof typeof timeThresholds]
+      if (threshold) {
+        filtered = filtered.filter((error) => now.getTime() - error.timestamp.getTime() <= threshold)
+      }
     }
 
     return filtered
   }, [errors, searchTerm, severityFilter, statusFilter, timeFilter])
 
-  const getSeverityColor = (severity: string) => {
+  const getSeverityIcon = (severity: string) => {
     switch (severity) {
-      case "low":
-        return "bg-blue-100 text-blue-800"
-      case "medium":
-        return "bg-yellow-100 text-yellow-800"
-      case "high":
-        return "bg-orange-100 text-orange-800"
       case "critical":
-        return "bg-red-100 text-red-800"
+        return <XCircle className="h-4 w-4 text-red-600" />
+      case "high":
+        return <AlertCircle className="h-4 w-4 text-orange-600" />
+      case "medium":
+        return <AlertTriangle className="h-4 w-4 text-yellow-600" />
+      case "low":
+        return <Info className="h-4 w-4 text-blue-600" />
       default:
-        return "bg-gray-100 text-gray-800"
+        return <AlertTriangle className="h-4 w-4 text-gray-600" />
     }
   }
 
-  const exportErrors = () => {
-    const dataStr = JSON.stringify(filteredErrors, null, 2)
-    const dataUri = "data:application/json;charset=utf-8," + encodeURIComponent(dataStr)
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case "critical":
+        return "destructive"
+      case "high":
+        return "destructive"
+      case "medium":
+        return "default"
+      case "low":
+        return "secondary"
+      default:
+        return "secondary"
+    }
+  }
 
-    const exportFileDefaultName = `error-report-${format(new Date(), "yyyy-MM-dd-HH-mm")}.json`
-
-    const linkElement = document.createElement("a")
-    linkElement.setAttribute("href", dataUri)
-    linkElement.setAttribute("download", exportFileDefaultName)
-    linkElement.click()
+  const getResolutionRate = () => {
+    if (stats.total === 0) return 0
+    return Math.round((stats.resolved / stats.total) * 100)
   }
 
   return (
@@ -104,19 +117,18 @@ export function ErrorMonitoringDashboard() {
           <h2 className="text-3xl font-bold tracking-tight">Error Monitoring</h2>
           <p className="text-muted-foreground">Monitor and manage application errors in real-time</p>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={exportErrors} variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
+        <div className="flex space-x-2">
+          <Button variant="outline" onClick={exportErrors}>
+            <Download className="mr-2 h-4 w-4" />
             Export
           </Button>
-          <Button onClick={clearErrors} variant="outline" size="sm">
-            <Trash2 className="w-4 h-4 mr-2" />
+          <Button variant="destructive" onClick={clearErrors}>
             Clear All
           </Button>
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {/* Stats Overview */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -125,44 +137,40 @@ export function ErrorMonitoringDashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-muted-foreground">{stats.resolved} resolved</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Last 24 Hours</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.last24h}</div>
-            <p className="text-xs text-muted-foreground">{stats.lastHour} in last hour</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Critical Errors</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.bySeverity.critical}</div>
-            <p className="text-xs text-muted-foreground">{stats.bySeverity.high} high severity</p>
+            <p className="text-xs text-muted-foreground">{stats.unresolved} unresolved</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Resolution Rate</CardTitle>
-            <CheckCircle className="h-4 w-4 text-green-500" />
+            <CheckCircle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0}%
-            </div>
-            <p className="text-xs text-muted-foreground">
-              {stats.resolved}/{stats.total} resolved
-            </p>
+            <div className="text-2xl font-bold">{getResolutionRate()}%</div>
+            <Progress value={getResolutionRate()} className="mt-2" />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Critical Errors</CardTitle>
+            <XCircle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{stats.bySeverity.critical || 0}</div>
+            <p className="text-xs text-muted-foreground">Requires immediate attention</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Most Affected</CardTitle>
+            <Component className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{Object.keys(stats.byComponent)[0] || "N/A"}</div>
+            <p className="text-xs text-muted-foreground">{Object.values(stats.byComponent)[0] || 0} errors</p>
           </CardContent>
         </Card>
       </div>
@@ -200,10 +208,10 @@ export function ErrorMonitoringDashboard() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Severities</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
                     <SelectItem value="critical">Critical</SelectItem>
+                    <SelectItem value="high">High</SelectItem>
+                    <SelectItem value="medium">Medium</SelectItem>
+                    <SelectItem value="low">Low</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -213,8 +221,8 @@ export function ErrorMonitoringDashboard() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="unresolved">Unresolved</SelectItem>
                     <SelectItem value="resolved">Resolved</SelectItem>
+                    <SelectItem value="unresolved">Unresolved</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -227,6 +235,7 @@ export function ErrorMonitoringDashboard() {
                     <SelectItem value="1h">Last Hour</SelectItem>
                     <SelectItem value="24h">Last 24h</SelectItem>
                     <SelectItem value="7d">Last 7 days</SelectItem>
+                    <SelectItem value="30d">Last 30 days</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -237,10 +246,19 @@ export function ErrorMonitoringDashboard() {
           <Card>
             <CardHeader>
               <CardTitle className="text-lg">Errors ({filteredErrors.length})</CardTitle>
+              <CardDescription>Recent application errors and their status</CardDescription>
             </CardHeader>
             <CardContent>
               {filteredErrors.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">No errors found matching your filters.</div>
+                <div className="text-center py-8">
+                  <CheckCircle className="mx-auto h-12 w-12 text-green-500 mb-4" />
+                  <h3 className="text-lg font-semibold">No errors found</h3>
+                  <p className="text-muted-foreground">
+                    {errors.length === 0
+                      ? "Great! No errors have been reported."
+                      : "No errors match your current filters."}
+                  </p>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {filteredErrors.map((error) => (
@@ -251,32 +269,41 @@ export function ErrorMonitoringDashboard() {
                       }`}
                     >
                       <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <Badge className={getSeverityColor(error.severity)}>{error.severity}</Badge>
+                        <div className="flex-1 space-y-2">
+                          <div className="flex items-center space-x-2">
+                            {getSeverityIcon(error.severity)}
+                            <Badge variant={getSeverityColor(error.severity) as any}>{error.severity}</Badge>
                             {error.resolved && (
-                              <Badge variant="outline" className="text-green-600 border-green-600">
+                              <Badge variant="outline" className="text-green-600">
+                                <CheckCircle className="mr-1 h-3 w-3" />
                                 Resolved
                               </Badge>
                             )}
-                            {error.context.component && <Badge variant="secondary">{error.context.component}</Badge>}
+                            {error.retryCount > 0 && <Badge variant="secondary">Retried {error.retryCount}x</Badge>}
                           </div>
 
-                          <h4 className="font-medium text-gray-900 mb-1">{error.error.name}</h4>
-
-                          <p className="text-sm text-gray-600 mb-2">{error.error.message}</p>
-
-                          <div className="flex items-center gap-4 text-xs text-gray-500">
-                            <span>{format(error.timestamp, "MMM dd, yyyy HH:mm:ss")}</span>
-                            {error.attempts > 1 && <span>{error.attempts} attempts</span>}
-                            {error.context.url && <span className="truncate max-w-xs">{error.context.url}</span>}
+                          <div>
+                            <h4 className="font-semibold text-sm">{error.message}</h4>
+                            <div className="flex items-center space-x-4 text-xs text-muted-foreground mt-1">
+                              <span className="flex items-center">
+                                <Clock className="mr-1 h-3 w-3" />
+                                {format(error.timestamp, "MMM dd, HH:mm:ss")}
+                              </span>
+                              {error.context.component && (
+                                <span className="flex items-center">
+                                  <Component className="mr-1 h-3 w-3" />
+                                  {error.context.component}
+                                </span>
+                              )}
+                              {error.context.action && <span>Action: {error.context.action}</span>}
+                            </div>
                           </div>
                         </div>
 
-                        <div className="flex gap-2 ml-4">
+                        <div className="flex space-x-2">
                           {!error.resolved && (
                             <Button size="sm" variant="outline" onClick={() => resolveError(error.id)}>
-                              <CheckCircle className="w-4 h-4 mr-1" />
+                              <CheckCircle className="mr-1 h-3 w-3" />
                               Resolve
                             </Button>
                           )}
@@ -294,46 +321,50 @@ export function ErrorMonitoringDashboard() {
           {/* Component Breakdown */}
           <Card>
             <CardHeader>
-              <CardTitle>Errors by Component</CardTitle>
+              <CardTitle className="text-lg">Errors by Component</CardTitle>
               <CardDescription>Distribution of errors across different components</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {Object.entries(stats.byComponent)
-                  .sort(([, a], [, b]) => b - a)
-                  .slice(0, 10)
-                  .map(([component, count]) => (
-                    <div key={component} className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{component}</span>
-                      <div className="flex items-center gap-2">
-                        <div className="w-24 bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full"
-                            style={{
-                              width: `${(count / Math.max(...Object.values(stats.byComponent))) * 100}%`,
-                            }}
-                          />
+              {Object.keys(stats.byComponent).length === 0 ? (
+                <p className="text-muted-foreground text-center py-4">No component data available</p>
+              ) : (
+                <div className="space-y-3">
+                  {Object.entries(stats.byComponent)
+                    .sort(([, a], [, b]) => b - a)
+                    .map(([component, count]) => (
+                      <div key={component} className="flex items-center justify-between">
+                        <span className="font-medium">{component}</span>
+                        <div className="flex items-center space-x-2">
+                          <div className="w-32 bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-blue-600 h-2 rounded-full"
+                              style={{
+                                width: `${(count / Math.max(...Object.values(stats.byComponent))) * 100}%`,
+                              }}
+                            />
+                          </div>
+                          <span className="text-sm font-semibold w-8 text-right">{count}</span>
                         </div>
-                        <span className="text-sm text-gray-600 w-8 text-right">{count}</span>
                       </div>
-                    </div>
-                  ))}
-              </div>
+                    ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Severity Breakdown */}
           <Card>
             <CardHeader>
-              <CardTitle>Errors by Severity</CardTitle>
+              <CardTitle className="text-lg">Errors by Severity</CardTitle>
               <CardDescription>Breakdown of error severity levels</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {Object.entries(stats.bySeverity).map(([severity, count]) => (
+                {(["critical", "high", "medium", "low"] as const).map((severity) => (
                   <div key={severity} className="text-center">
-                    <div className="text-2xl font-bold mb-1">{count}</div>
-                    <div className={`text-sm px-2 py-1 rounded-full ${getSeverityColor(severity)}`}>{severity}</div>
+                    <div className="flex justify-center mb-2">{getSeverityIcon(severity)}</div>
+                    <div className="text-2xl font-bold">{stats.bySeverity[severity] || 0}</div>
+                    <div className="text-sm text-muted-foreground capitalize">{severity}</div>
                   </div>
                 ))}
               </div>

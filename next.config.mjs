@@ -6,9 +6,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  experimental: {
-    serverComponentsExternalPackages: ['bcryptjs'],
-  },
+  serverExternalPackages: ['bcryptjs'],
   images: {
     domains: ['images.unsplash.com', 'via.placeholder.com', 'api.dicebear.com'],
     remotePatterns: [

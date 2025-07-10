@@ -2,27 +2,34 @@
 
 import type React from "react"
 import { Component, type ReactNode } from "react"
-import { AlertTriangle, RefreshCw, Bug, Home } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { AlertTriangle, RefreshCw, Home, Bug, Copy, CheckCircle } from "lucide-react"
 import { reportError } from "@/lib/error-reporting"
 
 interface Props {
   children: ReactNode
   fallback?: ReactNode
-  onError?: (error: Error, errorInfo: React.ErrorInfo) => void
 }
 
 interface State {
   hasError: boolean
   error: Error | null
   errorInfo: React.ErrorInfo | null
+  errorId: string | null
   retryCount: number
+  isRetrying: boolean
+  reportSent: boolean
+  errorCopied: boolean
 }
 
 export class RootErrorBoundary extends Component<Props, State> {
   private retryTimeoutId: NodeJS.Timeout | null = null
+  private maxRetries = 3
+  private retryDelay = 2000
 
   constructor(props: Props) {
     super(props)
@@ -30,7 +37,11 @@ export class RootErrorBoundary extends Component<Props, State> {
       hasError: false,
       error: null,
       errorInfo: null,
+      errorId: null,
       retryCount: 0,
+      isRetrying: false,
+      reportSent: false,
+      errorCopied: false,
     }
   }
 
@@ -42,56 +53,50 @@ export class RootErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    this.setState({
-      error,
-      errorInfo,
-    })
+    console.error("RootErrorBoundary caught an error:", error, errorInfo)
 
-    // Report error
-    reportError(
-      error,
-      {
+    // Report error to service
+    const errorId = reportError(error, {
+      context: {
         component: "RootErrorBoundary",
         action: "componentDidCatch",
         errorInfo: {
           componentStack: errorInfo.componentStack,
-          errorBoundary: true,
         },
       },
-      "critical",
-    )
+      severity: "critical",
+      extra: {
+        componentStack: errorInfo.componentStack,
+        retryCount: this.state.retryCount,
+      },
+    })
 
-    // Call custom error handler
-    if (this.props.onError) {
-      this.props.onError(error, errorInfo)
-    }
-
-    // Auto-retry after 5 seconds for the first 2 attempts
-    if (this.state.retryCount < 2) {
-      this.retryTimeoutId = setTimeout(() => {
-        this.handleRetry()
-      }, 5000)
-    }
-  }
-
-  componentWillUnmount() {
-    if (this.retryTimeoutId) {
-      clearTimeout(this.retryTimeoutId)
-    }
+    this.setState({
+      errorInfo,
+      errorId,
+      reportSent: true,
+    })
   }
 
   handleRetry = () => {
-    if (this.retryTimeoutId) {
-      clearTimeout(this.retryTimeoutId)
-      this.retryTimeoutId = null
+    if (this.state.retryCount >= this.maxRetries) {
+      return
     }
 
-    this.setState((prevState) => ({
-      hasError: false,
-      error: null,
-      errorInfo: null,
-      retryCount: prevState.retryCount + 1,
-    }))
+    this.setState({ isRetrying: true })
+
+    this.retryTimeoutId = setTimeout(() => {
+      this.setState({
+        hasError: false,
+        error: null,
+        errorInfo: null,
+        errorId: null,
+        retryCount: this.state.retryCount + 1,
+        isRetrying: false,
+        reportSent: false,
+        errorCopied: false,
+      })
+    }, this.retryDelay)
   }
 
   handleReload = () => {
@@ -102,29 +107,30 @@ export class RootErrorBoundary extends Component<Props, State> {
     window.location.href = "/"
   }
 
-  handleReportBug = () => {
-    const { error, errorInfo } = this.state
-    const bugReport = {
-      error: error?.message || "Unknown error",
-      stack: error?.stack || "No stack trace",
-      componentStack: errorInfo?.componentStack || "No component stack",
-      url: window.location.href,
-      userAgent: navigator.userAgent,
+  handleCopyError = async () => {
+    const errorDetails = {
+      message: this.state.error?.message,
+      stack: this.state.error?.stack,
+      componentStack: this.state.errorInfo?.componentStack,
       timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+      url: window.location.href,
+      errorId: this.state.errorId,
     }
 
-    // In a real app, you might open a bug report form or send to an endpoint
-    console.log("Bug report:", bugReport)
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(errorDetails, null, 2))
+      this.setState({ errorCopied: true })
+      setTimeout(() => this.setState({ errorCopied: false }), 2000)
+    } catch (err) {
+      console.error("Failed to copy error details:", err)
+    }
+  }
 
-    // For now, copy to clipboard
-    navigator.clipboard
-      .writeText(JSON.stringify(bugReport, null, 2))
-      .then(() => {
-        alert("Bug report copied to clipboard!")
-      })
-      .catch(() => {
-        alert("Failed to copy bug report. Please check the console for details.")
-      })
+  componentWillUnmount() {
+    if (this.retryTimeoutId) {
+      clearTimeout(this.retryTimeoutId)
+    }
   }
 
   render() {
@@ -133,98 +139,140 @@ export class RootErrorBoundary extends Component<Props, State> {
         return this.props.fallback
       }
 
-      const { error, errorInfo, retryCount } = this.state
       const isDevelopment = process.env.NODE_ENV === "development"
+      const canRetry = this.state.retryCount < this.maxRetries
 
       return (
-        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-2xl">
+        <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-2xl shadow-lg">
             <CardHeader className="text-center">
-              <div className="mx-auto w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
+              <div className="flex justify-center mb-4">
+                <div className="p-3 bg-red-100 rounded-full">
+                  <AlertTriangle className="h-8 w-8 text-red-600" />
+                </div>
               </div>
               <CardTitle className="text-2xl font-bold text-gray-900">Something went wrong</CardTitle>
-              <CardDescription className="text-gray-600">
-                We apologize for the inconvenience. The application encountered an unexpected error.
+              <CardDescription className="text-lg">
+                We encountered an unexpected error. Don't worry, we're working to fix it.
               </CardDescription>
             </CardHeader>
 
             <CardContent className="space-y-6">
+              {/* Error Status */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <Badge variant={this.state.reportSent ? "default" : "secondary"}>
+                    {this.state.reportSent ? "Error Reported" : "Reporting..."}
+                  </Badge>
+                  {this.state.errorId && (
+                    <Badge variant="outline" className="font-mono text-xs">
+                      ID: {this.state.errorId.slice(-8)}
+                    </Badge>
+                  )}
+                </div>
+                <div className="text-sm text-gray-500">
+                  Retry {this.state.retryCount}/{this.maxRetries}
+                </div>
+              </div>
+
               {/* Error Message */}
               <Alert>
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>Error:</strong> {error?.message || "An unexpected error occurred"}
+                  <strong>Error:</strong> {this.state.error?.message || "Unknown error occurred"}
                 </AlertDescription>
               </Alert>
 
-              {/* Retry Information */}
-              {retryCount > 0 && (
-                <Alert>
-                  <AlertDescription>
-                    <strong>Retry attempts:</strong> {retryCount}/2
-                    {retryCount < 2 && " (Auto-retry in 5 seconds)"}
-                  </AlertDescription>
-                </Alert>
+              {/* Development Details */}
+              {isDevelopment && this.state.error && (
+                <div className="space-y-3">
+                  <Separator />
+                  <div>
+                    <h4 className="font-semibold text-sm text-gray-700 mb-2">Development Details</h4>
+                    <div className="bg-gray-50 p-3 rounded-md">
+                      <pre className="text-xs text-gray-600 whitespace-pre-wrap break-all">
+                        {this.state.error.stack}
+                      </pre>
+                    </div>
+                  </div>
+
+                  {this.state.errorInfo?.componentStack && (
+                    <div>
+                      <h4 className="font-semibold text-sm text-gray-700 mb-2">Component Stack</h4>
+                      <div className="bg-gray-50 p-3 rounded-md">
+                        <pre className="text-xs text-gray-600 whitespace-pre-wrap">
+                          {this.state.errorInfo.componentStack}
+                        </pre>
+                      </div>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Action Buttons */}
               <div className="flex flex-col sm:flex-row gap-3">
-                <Button onClick={this.handleRetry} className="flex-1" variant="default">
-                  <RefreshCw className="w-4 h-4 mr-2" />
-                  Try Again
-                </Button>
+                {canRetry && (
+                  <Button onClick={this.handleRetry} disabled={this.state.isRetrying} className="flex-1">
+                    {this.state.isRetrying ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Retrying...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Try Again
+                      </>
+                    )}
+                  </Button>
+                )}
 
-                <Button onClick={this.handleReload} className="flex-1 bg-transparent" variant="outline">
-                  <RefreshCw className="w-4 h-4 mr-2" />
+                <Button variant="outline" onClick={this.handleReload} className="flex-1 bg-transparent">
+                  <RefreshCw className="mr-2 h-4 w-4" />
                   Reload Page
                 </Button>
 
-                <Button onClick={this.handleGoHome} className="flex-1 bg-transparent" variant="outline">
-                  <Home className="w-4 h-4 mr-2" />
+                <Button variant="outline" onClick={this.handleGoHome} className="flex-1 bg-transparent">
+                  <Home className="mr-2 h-4 w-4" />
                   Go Home
                 </Button>
               </div>
 
-              {/* Bug Report Button */}
-              <div className="text-center">
-                <Button onClick={this.handleReportBug} variant="ghost" size="sm">
-                  <Bug className="w-4 h-4 mr-2" />
+              {/* Additional Actions */}
+              <div className="flex flex-col sm:flex-row gap-3 pt-3 border-t">
+                <Button variant="ghost" size="sm" onClick={this.handleCopyError} className="flex-1">
+                  {this.state.errorCopied ? (
+                    <>
+                      <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="mr-2 h-4 w-4" />
+                      Copy Error Details
+                    </>
+                  )}
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() =>
+                    window.open(
+                      "mailto:support@coinwayfinder.com?subject=Error Report&body=Error ID: " + this.state.errorId,
+                      "_blank",
+                    )
+                  }
+                  className="flex-1"
+                >
+                  <Bug className="mr-2 h-4 w-4" />
                   Report Bug
                 </Button>
               </div>
 
-              {/* Development Details */}
-              {isDevelopment && error && (
-                <details className="mt-6">
-                  <summary className="cursor-pointer text-sm font-medium text-gray-700 hover:text-gray-900">
-                    Development Details (Click to expand)
-                  </summary>
-                  <div className="mt-4 p-4 bg-gray-100 rounded-lg">
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="font-medium text-gray-900">Error Stack:</h4>
-                        <pre className="mt-2 text-xs text-gray-700 overflow-auto whitespace-pre-wrap">
-                          {error.stack}
-                        </pre>
-                      </div>
-
-                      {errorInfo && (
-                        <div>
-                          <h4 className="font-medium text-gray-900">Component Stack:</h4>
-                          <pre className="mt-2 text-xs text-gray-700 overflow-auto whitespace-pre-wrap">
-                            {errorInfo.componentStack}
-                          </pre>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </details>
-              )}
-
               {/* Help Text */}
               <div className="text-center text-sm text-gray-500">
-                If this problem persists, please contact support with the error details above.
+                If this problem persists, please contact our support team with the error ID above.
               </div>
             </CardContent>
           </Card>
