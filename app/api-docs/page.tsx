@@ -5,679 +5,717 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Code, Copy, Key, Zap, TrendingUp, Activity, Bot, AlertTriangle, CheckCircle, ExternalLink } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Copy, Code, Key, Zap, Shield, Globe } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 
+interface APIEndpoint {
+  method: "GET" | "POST" | "PUT" | "DELETE"
+  path: string
+  description: string
+  parameters?: { name: string; type: string; required: boolean; description: string }[]
+  response: string
+  example: {
+    request?: string
+    response: string
+  }
+}
+
 export default function APIDocsPage() {
-  const [activeEndpoint, setActiveEndpoint] = useState("signals")
+  const [selectedLanguage, setSelectedLanguage] = useState("javascript")
+  const [selectedEndpoint, setSelectedEndpoint] = useState<string | null>("bots") // Updated default value
+
+  const endpoints: { [key: string]: APIEndpoint[] } = {
+    bots: [
+      {
+        method: "GET",
+        path: "/api/bots",
+        description: "Get all trading bots for the authenticated user",
+        response: "Array of bot objects with configuration and statistics",
+        example: {
+          response: `{
+  "success": true,
+  "bots": [
+    {
+      "_id": "bot123",
+      "name": "BTC DCA Bot",
+      "strategy": "dca",
+      "symbol": "BTC/USDT",
+      "status": "running",
+      "config": {
+        "investment": 1000,
+        "riskLevel": 30
+      },
+      "stats": {
+        "totalTrades": 45,
+        "winRate": 73.2,
+        "totalProfit": 234.56
+      }
+    }
+  ]
+}`,
+        },
+      },
+      {
+        method: "POST",
+        path: "/api/bots",
+        description: "Create a new trading bot",
+        parameters: [
+          { name: "name", type: "string", required: true, description: "Bot name" },
+          { name: "strategy", type: "string", required: true, description: "Trading strategy (dca, grid, scalping)" },
+          { name: "symbol", type: "string", required: true, description: "Trading pair (e.g., BTC/USDT)" },
+          { name: "config", type: "object", required: true, description: "Bot configuration parameters" },
+        ],
+        response: "Created bot object",
+        example: {
+          request: `{
+  "name": "My DCA Bot",
+  "strategy": "dca",
+  "symbol": "BTC/USDT",
+  "config": {
+    "investment": 1000,
+    "riskLevel": 30,
+    "interval": "1h"
+  }
+}`,
+          response: `{
+  "success": true,
+  "bot": {
+    "_id": "bot456",
+    "name": "My DCA Bot",
+    "strategy": "dca",
+    "status": "created"
+  }
+}`,
+        },
+      },
+      {
+        method: "POST",
+        path: "/api/bots/{botId}/start",
+        description: "Start a trading bot",
+        parameters: [{ name: "botId", type: "string", required: true, description: "Bot ID" }],
+        response: "Success confirmation",
+        example: {
+          response: `{
+  "success": true,
+  "message": "Bot started successfully"
+}`,
+        },
+      },
+      {
+        method: "POST",
+        path: "/api/bots/{botId}/pause",
+        description: "Pause a running trading bot",
+        parameters: [{ name: "botId", type: "string", required: true, description: "Bot ID" }],
+        response: "Success confirmation",
+        example: {
+          response: `{
+  "success": true,
+  "message": "Bot paused successfully"
+}`,
+        },
+      },
+    ],
+    signals: [
+      {
+        method: "GET",
+        path: "/api/v1/signals",
+        description: "Get AI-generated trading signals",
+        parameters: [
+          { name: "symbol", type: "string", required: false, description: "Filter by trading pair" },
+          { name: "timeframe", type: "string", required: false, description: "Signal timeframe (1h, 4h, 1d)" },
+        ],
+        response: "Array of trading signals",
+        example: {
+          response: `{
+  "success": true,
+  "signals": [
+    {
+      "symbol": "BTC/USDT",
+      "signal": "BUY",
+      "confidence": 0.85,
+      "price": 67234.56,
+      "timestamp": "2024-01-07T14:30:00Z",
+      "reasoning": "Strong bullish momentum with RSI oversold"
+    }
+  ]
+}`,
+        },
+      },
+    ],
+    market: [
+      {
+        method: "GET",
+        path: "/api/crypto/prices",
+        description: "Get real-time cryptocurrency prices",
+        parameters: [
+          { name: "symbols", type: "string", required: false, description: "Comma-separated list of symbols" },
+        ],
+        response: "Array of price data",
+        example: {
+          response: `{
+  "success": true,
+  "data": [
+    {
+      "symbol": "BTC",
+      "current_price": 67234.56,
+      "price_change_percentage_24h": 2.34,
+      "market_cap": 1320000000000,
+      "volume_24h": 28500000000
+    }
+  ]
+}`,
+        },
+      },
+      {
+        method: "GET",
+        path: "/api/crypto/trends",
+        description: "Get market trends and top gainers/losers",
+        response: "Market trend data",
+        example: {
+          response: `{
+  "success": true,
+  "data": {
+    "gainers": [
+      {
+        "symbol": "SOL",
+        "price_change_percentage_24h": 15.67,
+        "current_price": 156.78
+      }
+    ],
+    "losers": [
+      {
+        "symbol": "ADA",
+        "price_change_percentage_24h": -8.45,
+        "current_price": 0.4567
+      }
+    ]
+  }
+}`,
+        },
+      },
+    ],
+    portfolio: [
+      {
+        method: "GET",
+        path: "/api/portfolio",
+        description: "Get user's portfolio overview",
+        response: "Portfolio data with balances and performance",
+        example: {
+          response: `{
+  "success": true,
+  "portfolio": {
+    "totalValue": 45678.32,
+    "totalPnL": 3456.78,
+    "positions": [
+      {
+        "symbol": "BTC",
+        "amount": 0.5,
+        "value": 33617.28,
+        "pnl": 1234.56
+      }
+    ]
+  }
+}`,
+        },
+      },
+    ],
+  }
+
+  const codeExamples = {
+    javascript: {
+      auth: `// Authentication
+const response = await fetch('/api/auth/signin', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    password: 'password123'
+  })
+});
+
+const data = await response.json();
+const token = data.token;`,
+      request: `// Making API requests
+const response = await fetch('/api/bots', {
+  method: 'GET',
+  headers: {
+    'Authorization': \`Bearer \${token}\`,
+    'Content-Type': 'application/json'
+  }
+});
+
+const data = await response.json();
+console.log(data.bots);`,
+    },
+    python: {
+      auth: `# Authentication
+import requests
+
+response = requests.post('/api/auth/signin', json={
+    'email': 'user@example.com',
+    'password': 'password123'
+})
+
+data = response.json()
+token = data['token']`,
+      request: `# Making API requests
+import requests
+
+headers = {
+    'Authorization': f'Bearer {token}',
+    'Content-Type': 'application/json'
+}
+
+response = requests.get('/api/bots', headers=headers)
+data = response.json()
+print(data['bots'])`,
+    },
+    curl: {
+      auth: `# Authentication
+curl -X POST /api/auth/signin \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "email": "user@example.com",
+    "password": "password123"
+  }'`,
+      request: `# Making API requests
+curl -X GET /api/bots \\
+  -H "Authorization: Bearer YOUR_TOKEN" \\
+  -H "Content-Type: application/json"`,
+    },
+  }
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     toast({
-      title: "Copied",
-      description: "Code copied to clipboard",
+      title: "Copied to clipboard",
+      description: "Code example copied successfully",
     })
-  }
-
-  const endpoints = [
-    {
-      id: "signals",
-      name: "Trading Signals",
-      icon: Zap,
-      method: "GET",
-      path: "/api/v1/signals",
-      description: "Get AI-powered trading signals with confidence scores",
-      permission: "signals:read",
-      planRequired: "Free+",
-    },
-    {
-      id: "whales",
-      name: "Whale Tracking",
-      icon: Activity,
-      method: "GET",
-      path: "/api/v1/whales",
-      description: "Track large cryptocurrency transactions and whale movements",
-      permission: "whales:read",
-      planRequired: "Basic+",
-    },
-    {
-      id: "trends",
-      name: "Market Trends",
-      icon: TrendingUp,
-      method: "GET",
-      path: "/api/v1/trends",
-      description: "Get comprehensive market analysis and trending data",
-      permission: "trends:read",
-      planRequired: "Basic+",
-    },
-    {
-      id: "bots",
-      name: "Trading Bots",
-      icon: Bot,
-      method: "GET/POST",
-      path: "/api/v1/bots",
-      description: "Manage your trading bots programmatically",
-      permission: "bots:read, bots:create",
-      planRequired: "Premium+",
-    },
-  ]
-
-  const codeExamples = {
-    javascript: {
-      signals: `// JavaScript/Node.js Example
-const response = await fetch('https://coinwayfinder.com/api/v1/signals?symbol=BTC/USDT&limit=10', {
-  headers: {
-    'Authorization': 'Bearer your_key_id:your_secret',
-    'Content-Type': 'application/json'
-  }
-});
-
-const data = await response.json();
-console.log(data);`,
-      whales: `// JavaScript/Node.js Example
-const response = await fetch('https://coinwayfinder.com/api/v1/whales?minAmount=1000000&limit=20', {
-  headers: {
-    'Authorization': 'Bearer your_key_id:your_secret',
-    'Content-Type': 'application/json'
-  }
-});
-
-const data = await response.json();
-console.log(data);`,
-      trends: `// JavaScript/Node.js Example
-const response = await fetch('https://coinwayfinder.com/api/v1/trends?timeframe=24h', {
-  headers: {
-    'Authorization': 'Bearer your_key_id:your_secret',
-    'Content-Type': 'application/json'
-  }
-});
-
-const data = await response.json();
-console.log(data);`,
-      bots: `// JavaScript/Node.js Example - Get Bots
-const response = await fetch('https://coinwayfinder.com/api/v1/bots', {
-  headers: {
-    'Authorization': 'Bearer your_key_id:your_secret',
-    'Content-Type': 'application/json'
-  }
-});
-
-const data = await response.json();
-console.log(data);
-
-// Create New Bot
-const createBot = await fetch('https://coinwayfinder.com/api/v1/bots', {
-  method: 'POST',
-  headers: {
-    'Authorization': 'Bearer your_key_id:your_secret',
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-    name: 'My Trading Bot',
-    exchange: 'binance',
-    strategy: 'dca',
-    symbol: 'BTC/USDT',
-    apiKey: 'your_exchange_api_key',
-    secretKey: 'your_exchange_secret',
-    investment: 1000,
-    riskLevel: 50
-  })
-});`,
-    },
-    python: {
-      signals: `# Python Example
-import requests
-
-headers = {
-    'Authorization': 'Bearer your_key_id:your_secret',
-    'Content-Type': 'application/json'
-}
-
-response = requests.get(
-    'https://coinwayfinder.com/api/v1/signals',
-    headers=headers,
-    params={'symbol': 'BTC/USDT', 'limit': 10}
-)
-
-data = response.json()
-print(data)`,
-      whales: `# Python Example
-import requests
-
-headers = {
-    'Authorization': 'Bearer your_key_id:your_secret',
-    'Content-Type': 'application/json'
-}
-
-response = requests.get(
-    'https://coinwayfinder.com/api/v1/whales',
-    headers=headers,
-    params={'minAmount': 1000000, 'limit': 20}
-)
-
-data = response.json()
-print(data)`,
-      trends: `# Python Example
-import requests
-
-headers = {
-    'Authorization': 'Bearer your_key_id:your_secret',
-    'Content-Type': 'application/json'
-}
-
-response = requests.get(
-    'https://coinwayfinder.com/api/v1/trends',
-    headers=headers,
-    params={'timeframe': '24h'}
-)
-
-data = response.json()
-print(data)`,
-      bots: `# Python Example
-import requests
-
-headers = {
-    'Authorization': 'Bearer your_key_id:your_secret',
-    'Content-Type': 'application/json'
-}
-
-# Get bots
-response = requests.get(
-    'https://coinwayfinder.com/api/v1/bots',
-    headers=headers
-)
-
-data = response.json()
-print(data)
-
-# Create new bot
-bot_data = {
-    'name': 'My Trading Bot',
-    'exchange': 'binance',
-    'strategy': 'dca',
-    'symbol': 'BTC/USDT',
-    'apiKey': 'your_exchange_api_key',
-    'secretKey': 'your_exchange_secret',
-    'investment': 1000,
-    'riskLevel': 50
-}
-
-create_response = requests.post(
-    'https://coinwayfinder.com/api/v1/bots',
-    headers=headers,
-    json=bot_data
-)`,
-    },
-    curl: {
-      signals: `# cURL Example
-curl -X GET "https://coinwayfinder.com/api/v1/signals?symbol=BTC/USDT&limit=10" \\
-  -H "Authorization: Bearer your_key_id:your_secret" \\
-  -H "Content-Type: application/json"`,
-      whales: `# cURL Example
-curl -X GET "https://coinwayfinder.com/api/v1/whales?minAmount=1000000&limit=20" \\
-  -H "Authorization: Bearer your_key_id:your_secret" \\
-  -H "Content-Type: application/json"`,
-      trends: `# cURL Example
-curl -X GET "https://coinwayfinder.com/api/v1/trends?timeframe=24h" \\
-  -H "Authorization: Bearer your_key_id:your_secret" \\
-  -H "Content-Type: application/json"`,
-      bots: `# cURL Example - Get Bots
-curl -X GET "https://coinwayfinder.com/api/v1/bots" \\
-  -H "Authorization: Bearer your_key_id:your_secret" \\
-  -H "Content-Type: application/json"
-
-# Create New Bot
-curl -X POST "https://coinwayfinder.com/api/v1/bots" \\
-  -H "Authorization: Bearer your_key_id:your_secret" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "name": "My Trading Bot",
-    "exchange": "binance",
-    "strategy": "dca",
-    "symbol": "BTC/USDT",
-    "apiKey": "your_exchange_api_key",
-    "secretKey": "your_exchange_secret",
-    "investment": 1000,
-    "riskLevel": 50
-  }'`,
-    },
-  }
-
-  const responseExamples = {
-    signals: `{
-  "success": true,
-  "data": [
-    {
-      "id": "signal_1704067200_0",
-      "symbol": "BTC/USDT",
-      "timeframe": "1h",
-      "signal": "BUY",
-      "confidence": 85,
-      "price": 47250.50,
-      "timestamp": "2024-01-01T00:00:00.000Z",
-      "indicators": {
-        "rsi": 35,
-        "macd": 125.5,
-        "bollinger": "lower",
-        "volume": 850000
-      },
-      "targets": {
-        "entry": 47250.50,
-        "stopLoss": 46800.00,
-        "takeProfit": 48500.00
-      }
-    }
-  ],
-  "meta": {
-    "symbol": "BTC/USDT",
-    "timeframe": "1h",
-    "count": 1,
-    "timestamp": "2024-01-01T00:00:00.000Z",
-    "subscriptionStatus": "active"
-  }
-}`,
-    whales: `{
-  "success": true,
-  "data": [
-    {
-      "id": "whale_1704067200_0",
-      "hash": "0x1234567890abcdef...",
-      "from": "0xabcdef1234567890...",
-      "to": "0x0987654321fedcba...",
-      "amount": 5000000,
-      "token": "BTC",
-      "exchange": "Binance",
-      "type": "withdrawal",
-      "timestamp": "2024-01-01T00:00:00.000Z",
-      "impact": {
-        "priceChange": -1.2,
-        "volumeSpike": 150
-      }
-    }
-  ],
-  "meta": {
-    "minAmount": 1000000,
-    "count": 1,
-    "timestamp": "2024-01-01T00:00:00.000Z",
-    "subscriptionStatus": "active"
-  }
-}`,
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black">
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-white mb-4">CoinWayFinder API</h1>
-          <p className="text-xl text-gray-400 mb-8">
-            Powerful REST API for cryptocurrency trading, signals, and market analysis
-          </p>
-          <div className="flex items-center justify-center space-x-4">
-            <Badge className="bg-green-500/10 text-green-400">v1.0</Badge>
-            <Badge className="bg-blue-500/10 text-blue-400">REST API</Badge>
-            <Badge className="bg-purple-500/10 text-purple-400">Real-time</Badge>
-          </div>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">API Documentation</h1>
+          <p className="text-gray-400">Complete reference for the CoinWayFinder API</p>
         </div>
 
-        {/* Quick Start */}
-        <Card className="bg-gray-900/50 border-gray-800 mb-8">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Key className="h-5 w-5" />
-              Quick Start
-            </CardTitle>
-            <CardDescription className="text-gray-400">
-              Get started with the CoinWayFinder API in minutes
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="text-center p-4 bg-gray-800/50 rounded-lg">
-                <div className="w-8 h-8 bg-[#30D5C8] rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-black font-bold">1</span>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Sidebar */}
+          <div className="lg:col-span-1">
+            <Card className="bg-gray-900/50 border-gray-800 sticky top-8">
+              <CardHeader>
+                <CardTitle className="text-white flex items-center">
+                  <Code className="w-5 h-5 mr-2 text-[#30D5C8]" />
+                  Quick Start
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center space-x-2">
+                  <Key className="w-4 h-4 text-[#30D5C8]" />
+                  <span className="text-sm text-gray-300">Get API Key</span>
                 </div>
-                <h3 className="text-white font-medium mb-1">Get API Key</h3>
-                <p className="text-gray-400 text-sm">Create an API key in your dashboard</p>
-              </div>
-              <div className="text-center p-4 bg-gray-800/50 rounded-lg">
-                <div className="w-8 h-8 bg-[#30D5C8] rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-black font-bold">2</span>
+                <div className="flex items-center space-x-2">
+                  <Shield className="w-4 h-4 text-[#30D5C8]" />
+                  <span className="text-sm text-gray-300">Authentication</span>
                 </div>
-                <h3 className="text-white font-medium mb-1">Authenticate</h3>
-                <p className="text-gray-400 text-sm">Use Bearer token authentication</p>
-              </div>
-              <div className="text-center p-4 bg-gray-800/50 rounded-lg">
-                <div className="w-8 h-8 bg-[#30D5C8] rounded-full flex items-center justify-center mx-auto mb-2">
-                  <span className="text-black font-bold">3</span>
+                <div className="flex items-center space-x-2">
+                  <Zap className="w-4 h-4 text-[#30D5C8]" />
+                  <span className="text-sm text-gray-300">Rate Limits</span>
                 </div>
-                <h3 className="text-white font-medium mb-1">Start Trading</h3>
-                <p className="text-gray-400 text-sm">Make API calls to access features</p>
-              </div>
-            </div>
+                <div className="flex items-center space-x-2">
+                  <Globe className="w-4 h-4 text-[#30D5C8]" />
+                  <span className="text-sm text-gray-300">Endpoints</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-            <Alert className="border-blue-200 bg-blue-50">
-              <AlertTriangle className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800">
-                <strong>Base URL:</strong> <code>https://coinwayfinder.com</code>
-                <br />
-                <strong>Authentication:</strong> <code>Authorization: Bearer keyId:secret</code>
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
+          {/* Main Content */}
+          <div className="lg:col-span-3">
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-5 bg-gray-800/50 border border-gray-700">
+                <TabsTrigger
+                  value="overview"
+                  className="text-white data-[state=active]:bg-[#30D5C8] data-[state=active]:text-black"
+                >
+                  Overview
+                </TabsTrigger>
+                <TabsTrigger
+                  value="auth"
+                  className="text-white data-[state=active]:bg-[#30D5C8] data-[state=active]:text-black"
+                >
+                  Authentication
+                </TabsTrigger>
+                <TabsTrigger
+                  value="endpoints"
+                  className="text-white data-[state=active]:bg-[#30D5C8] data-[state=active]:text-black"
+                >
+                  Endpoints
+                </TabsTrigger>
+                <TabsTrigger
+                  value="examples"
+                  className="text-white data-[state=active]:bg-[#30D5C8] data-[state=active]:text-black"
+                >
+                  Examples
+                </TabsTrigger>
+                <TabsTrigger
+                  value="errors"
+                  className="text-white data-[state=active]:bg-[#30D5C8] data-[state=active]:text-black"
+                >
+                  Errors
+                </TabsTrigger>
+              </TabsList>
 
-        {/* Authentication */}
-        <Card className="bg-gray-900/50 border-gray-800 mb-8">
-          <CardHeader>
-            <CardTitle className="text-white">Authentication</CardTitle>
-            <CardDescription className="text-gray-400">
-              All API requests require authentication using API keys
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="bg-gray-800 p-4 rounded-lg">
-              <h4 className="text-white font-medium mb-2">Header Format</h4>
-              <code className="text-[#30D5C8] text-sm">Authorization: Bearer your_key_id:your_secret_key</code>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <h4 className="text-white font-medium mb-2">✅ Correct</h4>
-                <pre className="bg-green-900/20 border border-green-800 p-3 rounded text-green-300 text-sm">
-                  {`curl -H "Authorization: Bearer cwf_abc123:def456xyz"`}
-                </pre>
-              </div>
-              <div>
-                <h4 className="text-white font-medium mb-2">❌ Incorrect</h4>
-                <pre className="bg-red-900/20 border border-red-800 p-3 rounded text-red-300 text-sm">
-                  {`curl -H "Authorization: cwf_abc123:def456xyz"`}
-                </pre>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Rate Limits */}
-        <Card className="bg-gray-900/50 border-gray-800 mb-8">
-          <CardHeader>
-            <CardTitle className="text-white">Rate Limits</CardTitle>
-            <CardDescription className="text-gray-400">
-              API usage limits based on your subscription plan
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-700">
-                    <th className="text-left text-white py-2">Plan</th>
-                    <th className="text-left text-white py-2">Per Minute</th>
-                    <th className="text-left text-white py-2">Per Hour</th>
-                    <th className="text-left text-white py-2">Per Day</th>
-                    <th className="text-left text-white py-2">Features</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b border-gray-800">
-                    <td className="py-2 text-gray-300">Free</td>
-                    <td className="py-2 text-gray-300">10</td>
-                    <td className="py-2 text-gray-300">100</td>
-                    <td className="py-2 text-gray-300">500</td>
-                    <td className="py-2 text-gray-300">Signals only</td>
-                  </tr>
-                  <tr className="border-b border-gray-800">
-                    <td className="py-2 text-gray-300">Basic</td>
-                    <td className="py-2 text-gray-300">50</td>
-                    <td className="py-2 text-gray-300">1,000</td>
-                    <td className="py-2 text-gray-300">5,000</td>
-                    <td className="py-2 text-gray-300">Signals, Whales, Trends</td>
-                  </tr>
-                  <tr className="border-b border-gray-800">
-                    <td className="py-2 text-gray-300">Premium</td>
-                    <td className="py-2 text-gray-300">200</td>
-                    <td className="py-2 text-gray-300">5,000</td>
-                    <td className="py-2 text-gray-300">25,000</td>
-                    <td className="py-2 text-gray-300">All features + Bot management</td>
-                  </tr>
-                  <tr>
-                    <td className="py-2 text-gray-300">Enterprise</td>
-                    <td className="py-2 text-gray-300">500</td>
-                    <td className="py-2 text-gray-300">15,000</td>
-                    <td className="py-2 text-gray-300">100,000</td>
-                    <td className="py-2 text-gray-300">Unlimited access</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Endpoints */}
-        <Card className="bg-gray-900/50 border-gray-800 mb-8">
-          <CardHeader>
-            <CardTitle className="text-white">API Endpoints</CardTitle>
-            <CardDescription className="text-gray-400">Available endpoints and their functionality</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 mb-6">
-              {endpoints.map((endpoint) => {
-                const Icon = endpoint.icon
-                return (
-                  <button
-                    key={endpoint.id}
-                    onClick={() => setActiveEndpoint(endpoint.id)}
-                    className={`p-4 rounded-lg border text-left transition-colors ${
-                      activeEndpoint === endpoint.id
-                        ? "bg-[#30D5C8]/10 border-[#30D5C8] text-[#30D5C8]"
-                        : "bg-gray-800/50 border-gray-700 text-gray-300 hover:border-gray-600"
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <Icon className="h-5 w-5" />
-                      <span className="font-medium">{endpoint.name}</span>
+              <TabsContent value="overview" className="mt-6">
+                <Card className="bg-gray-900/50 border-gray-800">
+                  <CardHeader>
+                    <CardTitle className="text-white">API Overview</CardTitle>
+                    <CardDescription className="text-gray-400">
+                      The CoinWayFinder API provides programmatic access to trading bots, market data, and portfolio
+                      management.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-3">Base URL</h3>
+                      <div className="bg-gray-800 p-3 rounded-lg">
+                        <code className="text-[#30D5C8]">https://api.coinwayfinder.com/v1</code>
+                      </div>
                     </div>
-                    <div className="text-xs opacity-75 mb-2">{endpoint.method}</div>
-                    <div className="text-sm opacity-90">{endpoint.description}</div>
-                    <Badge className="mt-2 text-xs" variant="secondary">
-                      {endpoint.planRequired}
-                    </Badge>
-                  </button>
-                )
-              })}
-            </div>
 
-            {/* Endpoint Details */}
-            {endpoints.map((endpoint) => (
-              <div key={endpoint.id} className={activeEndpoint === endpoint.id ? "block" : "hidden"}>
-                <div className="bg-gray-800/50 rounded-lg p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <endpoint.icon className="h-6 w-6 text-[#30D5C8]" />
-                      <h3 className="text-xl font-semibold text-white">{endpoint.name}</h3>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-blue-500/10 text-blue-400">{endpoint.method}</Badge>
-                      <Badge className="bg-purple-500/10 text-purple-400">{endpoint.permission}</Badge>
-                    </div>
-                  </div>
-
-                  <div className="mb-6">
-                    <code className="bg-gray-900 px-3 py-2 rounded text-[#30D5C8] text-sm">
-                      {endpoint.method} {endpoint.path}
-                    </code>
-                  </div>
-
-                  <Tabs defaultValue="javascript" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 bg-gray-700">
-                      <TabsTrigger value="javascript" className="text-white">
-                        JavaScript
-                      </TabsTrigger>
-                      <TabsTrigger value="python" className="text-white">
-                        Python
-                      </TabsTrigger>
-                      <TabsTrigger value="curl" className="text-white">
-                        cURL
-                      </TabsTrigger>
-                    </TabsList>
-
-                    {Object.entries(codeExamples).map(([lang, examples]) => (
-                      <TabsContent key={lang} value={lang}>
-                        <div className="relative">
-                          <pre className="bg-gray-900 p-4 rounded-lg overflow-x-auto text-sm text-gray-300">
-                            <code>{examples[endpoint.id as keyof typeof examples]}</code>
-                          </pre>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="absolute top-2 right-2 text-gray-400 hover:text-white"
-                            onClick={() => copyToClipboard(examples[endpoint.id as keyof typeof examples])}
-                          >
-                            <Copy className="h-4 w-4" />
-                          </Button>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-3">Features</h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="p-4 bg-gray-800/30 rounded-lg">
+                          <h4 className="text-white font-medium mb-2">Trading Bots</h4>
+                          <p className="text-gray-400 text-sm">Create, manage, and monitor automated trading bots</p>
                         </div>
-                      </TabsContent>
-                    ))}
-                  </Tabs>
+                        <div className="p-4 bg-gray-800/30 rounded-lg">
+                          <h4 className="text-white font-medium mb-2">Market Data</h4>
+                          <p className="text-gray-400 text-sm">Real-time prices, trends, and market analysis</p>
+                        </div>
+                        <div className="p-4 bg-gray-800/30 rounded-lg">
+                          <h4 className="text-white font-medium mb-2">AI Signals</h4>
+                          <p className="text-gray-400 text-sm">AI-powered trading signals and recommendations</p>
+                        </div>
+                        <div className="p-4 bg-gray-800/30 rounded-lg">
+                          <h4 className="text-white font-medium mb-2">Portfolio</h4>
+                          <p className="text-gray-400 text-sm">Portfolio tracking and performance analytics</p>
+                        </div>
+                      </div>
+                    </div>
 
-                  {/* Response Example */}
-                  {responseExamples[endpoint.id as keyof typeof responseExamples] && (
-                    <div className="mt-6">
-                      <h4 className="text-white font-medium mb-3">Response Example</h4>
-                      <div className="relative">
-                        <pre className="bg-gray-900 p-4 rounded-lg overflow-x-auto text-sm text-gray-300">
-                          <code>{responseExamples[endpoint.id as keyof typeof responseExamples]}</code>
-                        </pre>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-3">Rate Limits</h3>
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center p-3 bg-gray-800/30 rounded-lg">
+                          <span className="text-gray-300">Free Tier</span>
+                          <Badge variant="outline" className="border-gray-600 text-gray-300">
+                            100 requests/hour
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-800/30 rounded-lg">
+                          <span className="text-gray-300">Pro Tier</span>
+                          <Badge variant="outline" className="border-gray-600 text-gray-300">
+                            1,000 requests/hour
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-gray-800/30 rounded-lg">
+                          <span className="text-gray-300">Enterprise</span>
+                          <Badge variant="outline" className="border-gray-600 text-gray-300">
+                            10,000 requests/hour
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="auth" className="mt-6">
+                <Card className="bg-gray-900/50 border-gray-800">
+                  <CardHeader>
+                    <CardTitle className="text-white">Authentication</CardTitle>
+                    <CardDescription className="text-gray-400">
+                      Secure your API requests with proper authentication
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-3">API Key Authentication</h3>
+                      <p className="text-gray-400 mb-4">
+                        Include your API key in the Authorization header of every request:
+                      </p>
+                      <div className="bg-gray-800 p-4 rounded-lg">
+                        <code className="text-[#30D5C8]">Authorization: Bearer YOUR_API_KEY</code>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-3">Getting Your API Key</h3>
+                      <ol className="list-decimal list-inside space-y-2 text-gray-400">
+                        <li>Sign up for a CoinWayFinder account</li>
+                        <li>Navigate to Dashboard → API Access</li>
+                        <li>Click "Create API Key"</li>
+                        <li>Copy and securely store your key</li>
+                      </ol>
+                    </div>
+
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-3">Security Best Practices</h3>
+                      <ul className="list-disc list-inside space-y-2 text-gray-400">
+                        <li>Never expose API keys in client-side code</li>
+                        <li>Use environment variables to store keys</li>
+                        <li>Rotate keys regularly</li>
+                        <li>Monitor API usage for suspicious activity</li>
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="endpoints" className="mt-6">
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-2xl font-bold text-white">API Endpoints</h2>
+                    <Select value={selectedEndpoint || "bots"} onValueChange={setSelectedEndpoint}>
+                      <SelectTrigger className="w-48 bg-gray-800 border-gray-700 text-white">
+                        <SelectValue placeholder="Select endpoint" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-gray-900 border-gray-700">
+                        <SelectItem value="bots">Bots API</SelectItem>
+                        <SelectItem value="signals">Signals API</SelectItem>
+                        <SelectItem value="market">Market API</SelectItem>
+                        <SelectItem value="portfolio">Portfolio API</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {Object.entries(endpoints).map(([category, categoryEndpoints]) => {
+                    if (selectedEndpoint && selectedEndpoint !== category) return null
+
+                    return (
+                      <Card key={category} className="bg-gray-900/50 border-gray-800">
+                        <CardHeader>
+                          <CardTitle className="text-white capitalize">{category} API</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          {categoryEndpoints.map((endpoint, index) => (
+                            <div key={index} className="p-4 bg-gray-800/30 rounded-lg border border-gray-700">
+                              <div className="flex items-center justify-between mb-3">
+                                <div className="flex items-center space-x-3">
+                                  <Badge
+                                    className={`${
+                                      endpoint.method === "GET"
+                                        ? "bg-green-500/10 text-green-400"
+                                        : endpoint.method === "POST"
+                                          ? "bg-blue-500/10 text-blue-400"
+                                          : endpoint.method === "PUT"
+                                            ? "bg-yellow-500/10 text-yellow-400"
+                                            : "bg-red-500/10 text-red-400"
+                                    }`}
+                                  >
+                                    {endpoint.method}
+                                  </Badge>
+                                  <code className="text-[#30D5C8]">{endpoint.path}</code>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => copyToClipboard(endpoint.path)}
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <Copy className="w-4 h-4" />
+                                </Button>
+                              </div>
+
+                              <p className="text-gray-300 mb-3">{endpoint.description}</p>
+
+                              {endpoint.parameters && (
+                                <div className="mb-3">
+                                  <h4 className="text-white font-medium mb-2">Parameters</h4>
+                                  <div className="space-y-2">
+                                    {endpoint.parameters.map((param, paramIndex) => (
+                                      <div
+                                        key={paramIndex}
+                                        className="flex items-center justify-between p-2 bg-gray-800 rounded"
+                                      >
+                                        <div className="flex items-center space-x-2">
+                                          <code className="text-[#30D5C8]">{param.name}</code>
+                                          <Badge variant="outline" className="border-gray-600 text-gray-300 text-xs">
+                                            {param.type}
+                                          </Badge>
+                                          {param.required && (
+                                            <Badge className="bg-red-500/10 text-red-400 text-xs">required</Badge>
+                                          )}
+                                        </div>
+                                        <span className="text-gray-400 text-sm">{param.description}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              <div>
+                                <h4 className="text-white font-medium mb-2">Response Example</h4>
+                                <div className="bg-gray-800 p-3 rounded-lg overflow-x-auto">
+                                  <pre className="text-[#30D5C8] text-sm">{endpoint.example.response}</pre>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="examples" className="mt-6">
+                <Card className="bg-gray-900/50 border-gray-800">
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-white">Code Examples</CardTitle>
+                        <CardDescription className="text-gray-400">
+                          Ready-to-use code examples in multiple languages
+                        </CardDescription>
+                      </div>
+                      <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                        <SelectTrigger className="w-32 bg-gray-800 border-gray-700 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-gray-900 border-gray-700">
+                          <SelectItem value="javascript">JavaScript</SelectItem>
+                          <SelectItem value="python">Python</SelectItem>
+                          <SelectItem value="curl">cURL</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-lg font-semibold text-white">Authentication</h3>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="absolute top-2 right-2 text-gray-400 hover:text-white"
                           onClick={() =>
-                            copyToClipboard(responseExamples[endpoint.id as keyof typeof responseExamples])
+                            copyToClipboard(codeExamples[selectedLanguage as keyof typeof codeExamples].auth)
                           }
+                          className="h-8 w-8 p-0"
                         >
-                          <Copy className="h-4 w-4" />
+                          <Copy className="w-4 h-4" />
                         </Button>
                       </div>
+                      <div className="bg-gray-800 p-4 rounded-lg overflow-x-auto">
+                        <pre className="text-[#30D5C8] text-sm">
+                          {codeExamples[selectedLanguage as keyof typeof codeExamples].auth}
+                        </pre>
+                      </div>
                     </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
 
-        {/* Error Handling */}
-        <Card className="bg-gray-900/50 border-gray-800 mb-8">
-          <CardHeader>
-            <CardTitle className="text-white">Error Handling</CardTitle>
-            <CardDescription className="text-gray-400">Common error codes and how to handle them</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-red-900/20 border border-red-800 p-4 rounded-lg">
-                  <h4 className="text-red-400 font-medium mb-2">401 Unauthorized</h4>
-                  <p className="text-red-300 text-sm mb-2">Invalid or missing API key</p>
-                  <code className="text-red-200 text-xs">{'{ "error": "Invalid API key" }'}</code>
-                </div>
-                <div className="bg-yellow-900/20 border border-yellow-800 p-4 rounded-lg">
-                  <h4 className="text-yellow-400 font-medium mb-2">402 Payment Required</h4>
-                  <p className="text-yellow-300 text-sm mb-2">Subscription expired</p>
-                  <code className="text-yellow-200 text-xs">
-                    {'{ "error": "Subscription expired", "renewUrl": "/subscription" }'}
-                  </code>
-                </div>
-                <div className="bg-orange-900/20 border border-orange-800 p-4 rounded-lg">
-                  <h4 className="text-orange-400 font-medium mb-2">403 Forbidden</h4>
-                  <p className="text-orange-300 text-sm mb-2">Insufficient permissions</p>
-                  <code className="text-orange-200 text-xs">{'{ "error": "Insufficient permissions" }'}</code>
-                </div>
-                <div className="bg-purple-900/20 border border-purple-800 p-4 rounded-lg">
-                  <h4 className="text-purple-400 font-medium mb-2">429 Too Many Requests</h4>
-                  <p className="text-purple-300 text-sm mb-2">Rate limit exceeded</p>
-                  <code className="text-purple-200 text-xs">
-                    {'{ "error": "Rate limit exceeded", "resetTime": "2024-01-01T01:00:00Z" }'}
-                  </code>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-lg font-semibold text-white">Making Requests</h3>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            copyToClipboard(codeExamples[selectedLanguage as keyof typeof codeExamples].request)
+                          }
+                          className="h-8 w-8 p-0"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      <div className="bg-gray-800 p-4 rounded-lg overflow-x-auto">
+                        <pre className="text-[#30D5C8] text-sm">
+                          {codeExamples[selectedLanguage as keyof typeof codeExamples].request}
+                        </pre>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
 
-        {/* Graceful Expiration Notice */}
-        <Card className="bg-blue-900/20 border-blue-800 mb-8">
-          <CardHeader>
-            <CardTitle className="text-blue-400 flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" />
-              Graceful Expiration Policy
-            </CardTitle>
-            <CardDescription className="text-blue-300">User-friendly subscription handling</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <h4 className="text-white font-medium mb-2">✅ Continues Working</h4>
-                <ul className="text-blue-300 text-sm space-y-1">
-                  <li>• Existing trading bots keep running</li>
-                  <li>• Read-only API access (GET requests)</li>
-                  <li>• Manual bot stopping allowed</li>
-                  <li>• Data export and viewing</li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="text-white font-medium mb-2">❌ Requires Renewal</h4>
-                <ul className="text-red-300 text-sm space-y-1">
-                  <li>• Creating new trading bots</li>
-                  <li>• Modifying bot parameters</li>
-                  <li>• Write operations (POST/PUT/DELETE)</li>
-                  <li>• New API key generation</li>
-                </ul>
-              </div>
-            </div>
-            <Alert className="border-blue-200 bg-blue-50">
-              <AlertTriangle className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-blue-800">
-                When your subscription expires, you'll receive HTTP 402 responses for write operations, but existing
-                bots will continue running until manually stopped or completed.
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
+              <TabsContent value="errors" className="mt-6">
+                <Card className="bg-gray-900/50 border-gray-800">
+                  <CardHeader>
+                    <CardTitle className="text-white">Error Handling</CardTitle>
+                    <CardDescription className="text-gray-400">
+                      Understanding API error responses and status codes
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-3">HTTP Status Codes</h3>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <Badge className="bg-green-500/10 text-green-400">200</Badge>
+                            <span className="text-gray-300">OK</span>
+                          </div>
+                          <span className="text-gray-400 text-sm">Request successful</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <Badge className="bg-red-500/10 text-red-400">400</Badge>
+                            <span className="text-gray-300">Bad Request</span>
+                          </div>
+                          <span className="text-gray-400 text-sm">Invalid request parameters</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <Badge className="bg-red-500/10 text-red-400">401</Badge>
+                            <span className="text-gray-300">Unauthorized</span>
+                          </div>
+                          <span className="text-gray-400 text-sm">Invalid or missing API key</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <Badge className="bg-red-500/10 text-red-400">429</Badge>
+                            <span className="text-gray-300">Rate Limited</span>
+                          </div>
+                          <span className="text-gray-400 text-sm">Too many requests</span>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg">
+                          <div className="flex items-center space-x-3">
+                            <Badge className="bg-red-500/10 text-red-400">500</Badge>
+                            <span className="text-gray-300">Server Error</span>
+                          </div>
+                          <span className="text-gray-400 text-sm">Internal server error</span>
+                        </div>
+                      </div>
+                    </div>
 
-        {/* Support */}
-        <Card className="bg-gray-900/50 border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-white">Support & Resources</CardTitle>
-            <CardDescription className="text-gray-400">Get help and additional resources</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Button variant="outline" className="h-auto p-4 border-gray-700 hover:border-[#30D5C8] bg-transparent">
-                <div className="text-center">
-                  <Code className="h-6 w-6 mx-auto mb-2 text-[#30D5C8]" />
-                  <div className="text-white font-medium">API Status</div>
-                  <div className="text-gray-400 text-sm">Check system status</div>
-                </div>
-              </Button>
-              <Button variant="outline" className="h-auto p-4 border-gray-700 hover:border-[#30D5C8] bg-transparent">
-                <div className="text-center">
-                  <ExternalLink className="h-6 w-6 mx-auto mb-2 text-[#30D5C8]" />
-                  <div className="text-white font-medium">Discord Community</div>
-                  <div className="text-gray-400 text-sm">Join our developers</div>
-                </div>
-              </Button>
-              <Button variant="outline" className="h-auto p-4 border-gray-700 hover:border-[#30D5C8] bg-transparent">
-                <div className="text-center">
-                  <Key className="h-6 w-6 mx-auto mb-2 text-[#30D5C8]" />
-                  <div className="text-white font-medium">Manage API Keys</div>
-                  <div className="text-gray-400 text-sm">Dashboard access</div>
-                </div>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-3">Error Response Format</h3>
+                      <div className="bg-gray-800 p-4 rounded-lg overflow-x-auto">
+                        <pre className="text-[#30D5C8] text-sm">
+                          {`{
+  "success": false,
+  "error": "Invalid API key",
+  "code": "INVALID_API_KEY",
+  "details": {
+    "message": "The provided API key is invalid or expired",
+    "timestamp": "2024-01-07T14:30:00Z"
+  }
+}`}
+                        </pre>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            </Tabs>
+          </div>
+        </div>
       </div>
     </div>
   )
