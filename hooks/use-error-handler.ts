@@ -25,10 +25,8 @@ export function useErrorHandler(): UseErrorHandlerReturn {
     setError(null)
   }, [])
 
-  const handleAsyncOperation = useCallback(async <T>(\
-    operation: () => Promise<T>,\
-    options: ErrorHandlerOptions = {}\
-  ): Promise<T | null> => {\
+  const handleAsyncOperation = useCallback(\
+    async <T>(operation: () => Promise<T>, options: ErrorHandlerOptions = {}): Promise<T | null> => {\
   try {
     setIsLoading(true)
     setError(null)
@@ -57,13 +55,15 @@ export function useErrorHandler(): UseErrorHandlerReturn {
   }
   \
 }
-, [])
+,
+    [],
+  )
 
 return {
     error,
     isLoading,
     clearError,
-    handleAsyncOperation
+    handleAsyncOperation,
   }
 \
 }

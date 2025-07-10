@@ -6,12 +6,12 @@ const redis = new Redis({
 })
 
 export interface CacheOptions {
-  ttl?: number // Time to live in seconds
+  ttl?: number
   prefix?: string
 }
 
 export class CacheManager {
-  private defaultTTL = 3600 // 1 hour default
+  private defaultTTL = 3600
   private keyPrefix = "coinwayfinder:"
 
   constructor(private options: CacheOptions = {}) {
@@ -133,10 +133,7 @@ export class CacheManager {
   }
 }
 
-// Default cache instance
 export const cache = new CacheManager()
-
-// Specialized cache instances
-export const userCache = new CacheManager({ prefix: "user:", ttl: 1800 }) // 30 minutes
-export const apiCache = new CacheManager({ prefix: "api:", ttl: 300 }) // 5 minutes
-export const sessionCache = new CacheManager({ prefix: "session:", ttl: 86400 }) // 24 hours
+export const userCache = new CacheManager({ prefix: "user:", ttl: 1800 })
+export const apiCache = new CacheManager({ prefix: "api:", ttl: 300 })
+export const sessionCache = new CacheManager({ prefix: "session:", ttl: 86400 })
