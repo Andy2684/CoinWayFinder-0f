@@ -1,11 +1,12 @@
 "use client"
 
+import type React from "react"
+
 import { useState } from "react"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -13,329 +14,336 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Plus, TrendingUp, TrendingDown, Bot } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { Calculator, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react"
 
-export function CreateSignalDialog() {
+interface CreateSignalDialogProps {
+  children: React.ReactNode
+}
+
+export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
   const [open, setOpen] = useState(false)
-  const [signalData, setSignalData] = useState({
+  const [formData, setFormData] = useState({
     symbol: "",
-    type: "BUY" as "BUY" | "SELL",
+    type: "",
     strategy: "",
+    exchange: "",
+    timeframe: "",
     entryPrice: "",
     targetPrice: "",
     stopLoss: "",
-    timeframe: "",
     confidence: [75],
-    riskLevel: "MEDIUM" as "LOW" | "MEDIUM" | "HIGH",
-    exchange: "",
-    description: "",
-    aiAnalysis: "",
+    riskLevel: "",
+    analysis: "",
   })
 
-  const handleSubmit = () => {
-    // Here you would typically send the data to your API
-    console.log("Creating signal:", signalData)
-    setOpen(false)
-    // Reset form
-    setSignalData({
-      symbol: "",
-      type: "BUY",
-      strategy: "",
-      entryPrice: "",
-      targetPrice: "",
-      stopLoss: "",
-      timeframe: "",
-      confidence: [75],
-      riskLevel: "MEDIUM",
-      exchange: "",
-      description: "",
-      aiAnalysis: "",
-    })
+  const updateField = (field: string, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
   }
 
   const calculateRiskReward = () => {
-    const entry = Number.parseFloat(signalData.entryPrice)
-    const target = Number.parseFloat(signalData.targetPrice)
-    const stop = Number.parseFloat(signalData.stopLoss)
+    const entry = Number.parseFloat(formData.entryPrice)
+    const target = Number.parseFloat(formData.targetPrice)
+    const stop = Number.parseFloat(formData.stopLoss)
 
     if (!entry || !target || !stop) return null
 
-    const reward = signalData.type === "BUY" ? target - entry : entry - target
-    const risk = signalData.type === "BUY" ? entry - stop : stop - entry
+    const reward = Math.abs(target - entry)
+    const risk = Math.abs(entry - stop)
+    const ratio = reward / risk
 
-    if (risk <= 0) return null
+    return {
+      reward: reward.toFixed(2),
+      risk: risk.toFixed(2),
+      ratio: ratio.toFixed(2),
+    }
+  }
 
-    return (reward / risk).toFixed(2)
+  const riskReward = calculateRiskReward()
+
+  const handleSubmit = () => {
+    // Here you would typically send the data to your API
+    console.log("Creating signal:", formData)
+    setOpen(false)
+    // Reset form
+    setFormData({
+      symbol: "",
+      type: "",
+      strategy: "",
+      exchange: "",
+      timeframe: "",
+      entryPrice: "",
+      targetPrice: "",
+      stopLoss: "",
+      confidence: [75],
+      riskLevel: "",
+      analysis: "",
+    })
   }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="h-4 w-4 mr-2" />
-          Create Signal
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent className="bg-[#1A1B23] border-gray-800 max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New Trading Signal</DialogTitle>
-          <DialogDescription>Generate a new trading signal with AI analysis and risk management</DialogDescription>
+          <DialogTitle className="text-white flex items-center gap-2">
+            <TrendingUp className="w-5 h-5 text-[#30D5C8]" />
+            Create New Signal
+          </DialogTitle>
+          <DialogDescription>Set up a new trading signal with detailed parameters and AI analysis.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Basic Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Basic Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="symbol">Trading Pair</Label>
-                  <Select
-                    value={signalData.symbol}
-                    onValueChange={(value) => setSignalData((prev) => ({ ...prev, symbol: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select pair" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="BTC/USDT">BTC/USDT</SelectItem>
-                      <SelectItem value="ETH/USDT">ETH/USDT</SelectItem>
-                      <SelectItem value="SOL/USDT">SOL/USDT</SelectItem>
-                      <SelectItem value="ADA/USDT">ADA/USDT</SelectItem>
-                      <SelectItem value="MATIC/USDT">MATIC/USDT</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="symbol">Symbol</Label>
+              <Select value={formData.symbol} onValueChange={(value) => updateField("symbol", value)}>
+                <SelectTrigger className="bg-[#0F1015] border-gray-700">
+                  <SelectValue placeholder="Select symbol" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BTC/USDT">BTC/USDT</SelectItem>
+                  <SelectItem value="ETH/USDT">ETH/USDT</SelectItem>
+                  <SelectItem value="SOL/USDT">SOL/USDT</SelectItem>
+                  <SelectItem value="ADA/USDT">ADA/USDT</SelectItem>
+                  <SelectItem value="MATIC/USDT">MATIC/USDT</SelectItem>
+                  <SelectItem value="LINK/USDT">LINK/USDT</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="type">Signal Type</Label>
-                  <Select
-                    value={signalData.type}
-                    onValueChange={(value: "BUY" | "SELL") => setSignalData((prev) => ({ ...prev, type: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="BUY">
-                        <div className="flex items-center">
-                          <TrendingUp className="h-4 w-4 mr-2 text-green-600" />
-                          BUY
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="SELL">
-                        <div className="flex items-center">
-                          <TrendingDown className="h-4 w-4 mr-2 text-red-600" />
-                          SELL
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+            <div>
+              <Label htmlFor="type">Signal Type</Label>
+              <Select value={formData.type} onValueChange={(value) => updateField("type", value)}>
+                <SelectTrigger className="bg-[#0F1015] border-gray-700">
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="BUY">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4 text-green-400" />
+                      BUY
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="SELL">
+                    <div className="flex items-center gap-2">
+                      <TrendingDown className="w-4 h-4 text-red-400" />
+                      SELL
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="strategy">Strategy</Label>
-                  <Select
-                    value={signalData.strategy}
-                    onValueChange={(value) => setSignalData((prev) => ({ ...prev, strategy: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select strategy" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="AI Trend Following">AI Trend Following</SelectItem>
-                      <SelectItem value="Mean Reversion">Mean Reversion</SelectItem>
-                      <SelectItem value="Breakout Scalping">Breakout Scalping</SelectItem>
-                      <SelectItem value="Grid Trading">Grid Trading</SelectItem>
-                      <SelectItem value="DCA Accumulation">DCA Accumulation</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="strategy">Strategy</Label>
+              <Select value={formData.strategy} onValueChange={(value) => updateField("strategy", value)}>
+                <SelectTrigger className="bg-[#0F1015] border-gray-700">
+                  <SelectValue placeholder="Select strategy" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Trend Following">Trend Following</SelectItem>
+                  <SelectItem value="Mean Reversion">Mean Reversion</SelectItem>
+                  <SelectItem value="Breakout">Breakout</SelectItem>
+                  <SelectItem value="Support/Resistance">Support/Resistance</SelectItem>
+                  <SelectItem value="Momentum">Momentum</SelectItem>
+                  <SelectItem value="Scalping">Scalping</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="timeframe">Timeframe</Label>
-                  <Select
-                    value={signalData.timeframe}
-                    onValueChange={(value) => setSignalData((prev) => ({ ...prev, timeframe: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select timeframe" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="15M">15 Minutes</SelectItem>
-                      <SelectItem value="1H">1 Hour</SelectItem>
-                      <SelectItem value="4H">4 Hours</SelectItem>
-                      <SelectItem value="1D">1 Day</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+            <div>
+              <Label htmlFor="exchange">Exchange</Label>
+              <Select value={formData.exchange} onValueChange={(value) => updateField("exchange", value)}>
+                <SelectTrigger className="bg-[#0F1015] border-gray-700">
+                  <SelectValue placeholder="Select exchange" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Binance">Binance</SelectItem>
+                  <SelectItem value="Bybit">Bybit</SelectItem>
+                  <SelectItem value="KuCoin">KuCoin</SelectItem>
+                  <SelectItem value="OKX">OKX</SelectItem>
+                  <SelectItem value="Bitget">Bitget</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="exchange">Exchange</Label>
-                <Select
-                  value={signalData.exchange}
-                  onValueChange={(value) => setSignalData((prev) => ({ ...prev, exchange: value }))}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select exchange" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Binance">Binance</SelectItem>
-                    <SelectItem value="Bybit">Bybit</SelectItem>
-                    <SelectItem value="KuCoin">KuCoin</SelectItem>
-                    <SelectItem value="OKX">OKX</SelectItem>
-                    <SelectItem value="Coinbase Pro">Coinbase Pro</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="timeframe">Timeframe</Label>
+              <Select value={formData.timeframe} onValueChange={(value) => updateField("timeframe", value)}>
+                <SelectTrigger className="bg-[#0F1015] border-gray-700">
+                  <SelectValue placeholder="Select timeframe" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="15M">15 Minutes</SelectItem>
+                  <SelectItem value="30M">30 Minutes</SelectItem>
+                  <SelectItem value="1H">1 Hour</SelectItem>
+                  <SelectItem value="2H">2 Hours</SelectItem>
+                  <SelectItem value="4H">4 Hours</SelectItem>
+                  <SelectItem value="1D">1 Day</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="riskLevel">Risk Level</Label>
+              <Select value={formData.riskLevel} onValueChange={(value) => updateField("riskLevel", value)}>
+                <SelectTrigger className="bg-[#0F1015] border-gray-700">
+                  <SelectValue placeholder="Select risk level" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="LOW">
+                    <Badge className="text-green-400 bg-green-400/10">LOW</Badge>
+                  </SelectItem>
+                  <SelectItem value="MEDIUM">
+                    <Badge className="text-yellow-400 bg-yellow-400/10">MEDIUM</Badge>
+                  </SelectItem>
+                  <SelectItem value="HIGH">
+                    <Badge className="text-red-400 bg-red-400/10">HIGH</Badge>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <Separator className="bg-gray-800" />
 
           {/* Price Levels */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Price Levels</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="entry">Entry Price</Label>
-                  <Input
-                    id="entry"
-                    type="number"
-                    placeholder="0.00"
-                    value={signalData.entryPrice}
-                    onChange={(e) => setSignalData((prev) => ({ ...prev, entryPrice: e.target.value }))}
-                  />
-                </div>
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-white">Price Levels</h3>
 
-                <div className="space-y-2">
-                  <Label htmlFor="target">Target Price</Label>
-                  <Input
-                    id="target"
-                    type="number"
-                    placeholder="0.00"
-                    value={signalData.targetPrice}
-                    onChange={(e) => setSignalData((prev) => ({ ...prev, targetPrice: e.target.value }))}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="stop">Stop Loss</Label>
-                  <Input
-                    id="stop"
-                    type="number"
-                    placeholder="0.00"
-                    value={signalData.stopLoss}
-                    onChange={(e) => setSignalData((prev) => ({ ...prev, stopLoss: e.target.value }))}
-                  />
-                </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <Label htmlFor="entryPrice">Entry Price</Label>
+                <Input
+                  id="entryPrice"
+                  type="number"
+                  placeholder="0.00"
+                  value={formData.entryPrice}
+                  onChange={(e) => updateField("entryPrice", e.target.value)}
+                  className="bg-[#0F1015] border-gray-700"
+                />
               </div>
 
-              {calculateRiskReward() && (
-                <div className="p-3 bg-muted rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium">Risk:Reward Ratio</span>
-                    <Badge variant="outline">1:{calculateRiskReward()}</Badge>
+              <div>
+                <Label htmlFor="targetPrice">Target Price</Label>
+                <Input
+                  id="targetPrice"
+                  type="number"
+                  placeholder="0.00"
+                  value={formData.targetPrice}
+                  onChange={(e) => updateField("targetPrice", e.target.value)}
+                  className="bg-[#0F1015] border-gray-700"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="stopLoss">Stop Loss</Label>
+                <Input
+                  id="stopLoss"
+                  type="number"
+                  placeholder="0.00"
+                  value={formData.stopLoss}
+                  onChange={(e) => updateField("stopLoss", e.target.value)}
+                  className="bg-[#0F1015] border-gray-700"
+                />
+              </div>
+            </div>
+
+            {/* Risk/Reward Calculator */}
+            {riskReward && (
+              <Card className="bg-[#0F1015] border-gray-800">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Calculator className="w-4 h-4 text-[#30D5C8]" />
+                    <h4 className="font-medium text-white">Risk/Reward Analysis</h4>
                   </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-400">Potential Reward</p>
+                      <p className="font-medium text-green-400">${riskReward.reward}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400">Potential Risk</p>
+                      <p className="font-medium text-red-400">${riskReward.risk}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-400">R:R Ratio</p>
+                      <p className="font-medium text-[#30D5C8]">1:{riskReward.ratio}</p>
+                    </div>
+                  </div>
+                  {Number.parseFloat(riskReward.ratio) < 1.5 && (
+                    <div className="flex items-center gap-2 mt-3 p-2 bg-yellow-500/10 rounded border border-yellow-500/20">
+                      <AlertTriangle className="w-4 h-4 text-yellow-400" />
+                      <p className="text-xs text-yellow-400">
+                        Consider improving risk/reward ratio (recommended: 1:1.5 or better)
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
 
-          {/* Risk & Confidence */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Risk Assessment</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label>Confidence Level: {signalData.confidence[0]}%</Label>
-                <Slider
-                  value={signalData.confidence}
-                  onValueChange={(value) => setSignalData((prev) => ({ ...prev, confidence: value }))}
-                  max={100}
-                  min={0}
-                  step={5}
-                  className="w-full"
-                />
-              </div>
+          <Separator className="bg-gray-800" />
 
-              <div className="space-y-2">
-                <Label htmlFor="risk">Risk Level</Label>
-                <Select
-                  value={signalData.riskLevel}
-                  onValueChange={(value: "LOW" | "MEDIUM" | "HIGH") =>
-                    setSignalData((prev) => ({ ...prev, riskLevel: value }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="LOW">
-                      <Badge className="bg-green-100 text-green-800">LOW</Badge>
-                    </SelectItem>
-                    <SelectItem value="MEDIUM">
-                      <Badge className="bg-yellow-100 text-yellow-800">MEDIUM</Badge>
-                    </SelectItem>
-                    <SelectItem value="HIGH">
-                      <Badge className="bg-red-100 text-red-800">HIGH</Badge>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Confidence Level */}
+          <div>
+            <Label className="text-white mb-3 block">Confidence Level: {formData.confidence[0]}%</Label>
+            <Slider
+              value={formData.confidence}
+              onValueChange={(value) => updateField("confidence", value)}
+              max={100}
+              min={0}
+              step={5}
+              className="w-full"
+            />
+            <div className="flex justify-between text-xs text-gray-400 mt-1">
+              <span>Low</span>
+              <span>Medium</span>
+              <span>High</span>
+            </div>
+          </div>
 
-          {/* Analysis */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Analysis</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="description">Signal Description</Label>
-                <Textarea
-                  id="description"
-                  placeholder="Brief description of the trading opportunity..."
-                  value={signalData.description}
-                  onChange={(e) => setSignalData((prev) => ({ ...prev, description: e.target.value }))}
-                />
-              </div>
+          {/* AI Analysis */}
+          <div>
+            <Label htmlFor="analysis">AI Analysis & Reasoning</Label>
+            <Textarea
+              id="analysis"
+              placeholder="Provide detailed analysis and reasoning for this signal..."
+              value={formData.analysis}
+              onChange={(e) => updateField("analysis", e.target.value)}
+              className="bg-[#0F1015] border-gray-700 min-h-[100px]"
+            />
+          </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="ai-analysis">AI Analysis</Label>
-                <Textarea
-                  id="ai-analysis"
-                  placeholder="Detailed AI-powered market analysis..."
-                  value={signalData.aiAnalysis}
-                  onChange={(e) => setSignalData((prev) => ({ ...prev, aiAnalysis: e.target.value }))}
-                />
-              </div>
-            </CardContent>
-          </Card>
+          {/* Action Buttons */}
+          <div className="flex gap-3 pt-4">
+            <Button variant="outline" onClick={() => setOpen(false)} className="flex-1">
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              className="flex-1 bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]"
+              disabled={!formData.symbol || !formData.type || !formData.entryPrice}
+            >
+              Create Signal
+            </Button>
+          </div>
         </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit}>
-            <Bot className="h-4 w-4 mr-2" />
-            Create Signal
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

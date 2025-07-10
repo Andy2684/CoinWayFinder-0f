@@ -3,6 +3,8 @@ export interface Signal {
   symbol: string
   type: "BUY" | "SELL"
   strategy: string
+  exchange: string
+  timeframe: string
   confidence: number
   entryPrice: number
   targetPrice: number
@@ -10,48 +12,79 @@ export interface Signal {
   currentPrice: number
   pnl: number
   pnlPercentage: number
-  status: "ACTIVE" | "COMPLETED" | "STOPPED"
-  timeframe: string
-  createdAt: string
-  description: string
-  aiAnalysis: string
+  progress: number
   riskLevel: "LOW" | "MEDIUM" | "HIGH"
-  exchange: string
+  aiAnalysis: string
+  createdAt: string
+  status: "ACTIVE" | "COMPLETED" | "STOPPED"
 }
 
 export interface SignalFilters {
-  search?: string
-  filter?: string
   symbols?: string[]
   strategies?: string[]
   exchanges?: string[]
   timeframes?: string[]
   riskLevels?: string[]
+  status?: string
   confidenceRange?: [number, number]
   pnlRange?: [number, number]
-  status?: string
 }
 
-export class SignalsAPI {
+export interface SignalPerformance {
+  totalPnl: number
+  winRate: number
+  totalSignals: number
+  activeSignals: number
+  avgReturn: number
+  sharpeRatio: number
+  maxDrawdown: number
+  profitFactor: number
+}
+
+export interface AlertRule {
+  id: string
+  name: string
+  condition: string
+  symbol: string
+  value: number
+  operator: ">" | "<" | "=" | ">=" | "<="
+  enabled: boolean
+  channels: string[]
+  createdAt: string
+  triggeredAt?: string
+  status: "ACTIVE" | "TRIGGERED" | "PAUSED"
+}
+
+class SignalsAPI {
   private baseUrl = "/api/signals"
 
-  async getSignals(filters: SignalFilters = {}, limit = 20, offset = 0) {
+  async getSignals(filters?: SignalFilters): Promise<{ data: Signal[]; total: number }> {
     const params = new URLSearchParams()
 
-    if (filters.search) params.append("search", filters.search)
-    if (filters.filter) params.append("filter", filters.filter)
-    params.append("limit", limit.toString())
-    params.append("offset", offset.toString())
-
-    const response = await fetch(`${this.baseUrl}?${params}`)
-    if (!response.ok) {
-      throw new Error("Failed to fetch signals")
+    if (filters?.symbols?.length) {
+      params.append("symbols", filters.symbols.join(","))
+    }
+    if (filters?.strategies?.length) {
+      params.append("strategies", filters.strategies.join(","))
+    }
+    if (filters?.exchanges?.length) {
+      params.append("exchanges", filters.exchanges.join(","))
+    }
+    if (filters?.status) {
+      params.append("status", filters.status)
     }
 
-    return response.json()
+    const response = await fetch(`${this.baseUrl}?${params}`)
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.error)
+    }
+
+    return { data: result.data, total: result.total }
   }
 
-  async createSignal(signalData: Partial<Signal>) {
+  async createSignal(signalData: Partial<Signal>): Promise<Signal> {
     const response = await fetch(this.baseUrl, {
       method: "POST",
       headers: {
@@ -60,48 +93,193 @@ export class SignalsAPI {
       body: JSON.stringify(signalData),
     })
 
-    if (!response.ok) {
-      throw new Error("Failed to create signal")
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.error)
     }
 
-    return response.json()
+    return result.data
   }
 
-  async updateSignal(id: string, updates: Partial<Signal>) {
-    const response = await fetch(`${this.baseUrl}/${id}`, {
-      method: "PATCH",
+  async updateSignal(id: string, updates: Partial<Signal>): Promise<void> {
+    const response = await fetch(this.baseUrl, {
+      method: "PUT",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(updates),
+      body: JSON.stringify({ id, ...updates }),
     })
 
-    if (!response.ok) {
-      throw new Error("Failed to update signal")
-    }
+    const result = await response.json()
 
-    return response.json()
+    if (!result.success) {
+      throw new Error(result.error)
+    }
   }
 
-  async deleteSignal(id: string) {
-    const response = await fetch(`${this.baseUrl}/${id}`, {
+  async deleteSignal(id: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}?id=${id}`, {
       method: "DELETE",
     })
 
-    if (!response.ok) {
-      throw new Error("Failed to delete signal")
-    }
+    const result = await response.json()
 
-    return response.json()
+    if (!result.success) {
+      throw new Error(result.error)
+    }
   }
 
-  async getSignalPerformance(timeframe = "7d") {
-    const response = await fetch(`${this.baseUrl}/performance?timeframe=${timeframe}`)
-    if (!response.ok) {
-      throw new Error("Failed to fetch signal performance")
+  async getPerformance(): Promise<SignalPerformance> {
+    const response = await fetch(`${this.baseUrl}/performance`)
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.error)
     }
 
-    return response.json()
+    return result.data
+  }
+
+  async getAlerts(): Promise<AlertRule[]> {
+    const response = await fetch(`${this.baseUrl}/alerts`)
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.error)
+    }
+
+    return result.data
+  }
+
+  async createAlert(alertData: Partial<AlertRule>): Promise<AlertRule> {
+    const response = await fetch(`${this.baseUrl}/alerts`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(alertData),
+    })
+
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.error)
+    }
+
+    return result.data
+  }
+
+  async updateAlert(id: string, updates: Partial<AlertRule>): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/alerts`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id, ...updates }),
+    })
+
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.error)
+    }
+  }
+
+  async deleteAlert(id: string): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/alerts?id=${id}`, {
+      method: "DELETE",
+    })
+
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.error)
+    }
+  }
+
+  // Utility functions
+  calculateProgress(signal: Signal): number {
+    const { entryPrice, targetPrice, currentPrice, type } = signal
+
+    if (type === "BUY") {
+      const totalDistance = targetPrice - entryPrice
+      const currentDistance = currentPrice - entryPrice
+      return Math.max(0, Math.min(100, (currentDistance / totalDistance) * 100))
+    } else {
+      const totalDistance = entryPrice - targetPrice
+      const currentDistance = entryPrice - currentPrice
+      return Math.max(0, Math.min(100, (currentDistance / totalDistance) * 100))
+    }
+  }
+
+  calculatePnL(signal: Signal): { pnl: number; pnlPercentage: number } {
+    const { entryPrice, currentPrice, type } = signal
+
+    let pnl: number
+    if (type === "BUY") {
+      pnl = currentPrice - entryPrice
+    } else {
+      pnl = entryPrice - currentPrice
+    }
+
+    const pnlPercentage = (pnl / entryPrice) * 100
+
+    return { pnl, pnlPercentage }
+  }
+
+  getRiskRewardRatio(signal: Signal): number {
+    const { entryPrice, targetPrice, stopLoss, type } = signal
+
+    let reward: number, risk: number
+
+    if (type === "BUY") {
+      reward = targetPrice - entryPrice
+      risk = entryPrice - stopLoss
+    } else {
+      reward = entryPrice - targetPrice
+      risk = stopLoss - entryPrice
+    }
+
+    return reward / risk
+  }
+
+  formatPrice(price: number, decimals = 2): string {
+    return price.toLocaleString("en-US", {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    })
+  }
+
+  formatPercentage(percentage: number, decimals = 2): string {
+    const sign = percentage >= 0 ? "+" : ""
+    return `${sign}${percentage.toFixed(decimals)}%`
+  }
+
+  getSignalStatusColor(status: string): string {
+    switch (status) {
+      case "ACTIVE":
+        return "text-green-400 bg-green-400/10"
+      case "COMPLETED":
+        return "text-blue-400 bg-blue-400/10"
+      case "STOPPED":
+        return "text-red-400 bg-red-400/10"
+      default:
+        return "text-gray-400 bg-gray-400/10"
+    }
+  }
+
+  getRiskLevelColor(risk: string): string {
+    switch (risk) {
+      case "LOW":
+        return "text-green-400 bg-green-400/10"
+      case "MEDIUM":
+        return "text-yellow-400 bg-yellow-400/10"
+      case "HIGH":
+        return "text-red-400 bg-red-400/10"
+      default:
+        return "text-gray-400 bg-gray-400/10"
+    }
   }
 }
 

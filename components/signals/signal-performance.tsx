@@ -2,9 +2,6 @@
 
 import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
 import {
   LineChart,
   Line,
@@ -22,272 +19,246 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts"
-import { TrendingUp, Target, Award, DollarSign } from "lucide-react"
-
-const performanceData = [
-  { date: "2024-01-01", totalPnL: 0, winRate: 0, signals: 0 },
-  { date: "2024-01-02", totalPnL: 150, winRate: 75, signals: 4 },
-  { date: "2024-01-03", totalPnL: 280, winRate: 80, signals: 5 },
-  { date: "2024-01-04", totalPnL: 420, winRate: 70, signals: 10 },
-  { date: "2024-01-05", totalPnL: 380, winRate: 65, signals: 8 },
-  { date: "2024-01-06", totalPnL: 520, winRate: 78, signals: 12 },
-  { date: "2024-01-07", totalPnL: 680, winRate: 82, signals: 15 },
-  { date: "2024-01-08", totalPnL: 750, winRate: 85, signals: 18 },
-  { date: "2024-01-09", totalPnL: 920, winRate: 73, signals: 22 },
-  { date: "2024-01-10", totalPnL: 1150, winRate: 76, signals: 24 },
-]
-
-const strategyPerformance = [
-  { strategy: "AI Trend Following", signals: 45, winRate: 78, avgReturn: 12.4, totalPnL: 558 },
-  { strategy: "Mean Reversion", signals: 32, winRate: 85, avgReturn: 8.7, totalPnL: 278 },
-  { strategy: "Breakout Scalping", signals: 28, winRate: 68, avgReturn: 15.2, totalPnL: 426 },
-  { strategy: "Grid Trading", signals: 25, winRate: 72, avgReturn: 6.8, totalPnL: 170 },
-  { strategy: "DCA Accumulation", signals: 18, winRate: 89, avgReturn: 4.5, totalPnL: 81 },
-  { strategy: "Arbitrage", signals: 8, winRate: 95, avgReturn: 2.1, totalPnL: 17 },
-]
-
-const riskDistribution = [
-  { name: "Low Risk", value: 45, color: "#10B981" },
-  { name: "Medium Risk", value: 35, color: "#F59E0B" },
-  { name: "High Risk", value: 20, color: "#EF4444" },
-]
-
-const timeframeData = [
-  { timeframe: "15M", signals: 28, winRate: 65, avgReturn: 3.2 },
-  { timeframe: "1H", signals: 35, winRate: 72, avgReturn: 5.8 },
-  { timeframe: "4H", signals: 42, winRate: 78, avgReturn: 8.4 },
-  { timeframe: "1D", signals: 25, winRate: 84, avgReturn: 12.1 },
-]
+import { TrendingUp, Target, Shield, DollarSign } from "lucide-react"
 
 export function SignalPerformance() {
-  const [selectedPeriod, setSelectedPeriod] = useState("7d")
+  const [timeframe, setTimeframe] = useState("7d")
+
+  // Mock performance data
+  const performanceData = [
+    { date: "2024-01-08", pnl: 1250, signals: 12, winRate: 75 },
+    { date: "2024-01-09", pnl: 2100, signals: 15, winRate: 80 },
+    { date: "2024-01-10", pnl: 1800, signals: 18, winRate: 72 },
+    { date: "2024-01-11", pnl: 3200, signals: 22, winRate: 82 },
+    { date: "2024-01-12", pnl: 2800, signals: 20, winRate: 78 },
+    { date: "2024-01-13", pnl: 4100, signals: 25, winRate: 84 },
+    { date: "2024-01-14", pnl: 3600, signals: 24, winRate: 79 },
+  ]
+
+  const strategyPerformance = [
+    { strategy: "Trend Following", signals: 45, winRate: 78, pnl: 8420, avgReturn: 3.2 },
+    { strategy: "Mean Reversion", signals: 32, winRate: 82, pnl: 6180, avgReturn: 2.8 },
+    { strategy: "Breakout", signals: 28, winRate: 71, pnl: 4950, avgReturn: 4.1 },
+    { strategy: "Support/Resistance", signals: 38, winRate: 75, pnl: 5670, avgReturn: 2.9 },
+    { strategy: "Momentum", signals: 22, winRate: 86, pnl: 4320, avgReturn: 3.8 },
+  ]
+
+  const riskDistribution = [
+    { name: "Low Risk", value: 45, color: "#10B981" },
+    { name: "Medium Risk", value: 38, color: "#F59E0B" },
+    { name: "High Risk", value: 17, color: "#EF4444" },
+  ]
+
+  const timeframeData = [
+    { timeframe: "15M", signals: 28, winRate: 68, avgReturn: 1.8 },
+    { timeframe: "30M", signals: 35, winRate: 72, avgReturn: 2.1 },
+    { timeframe: "1H", signals: 42, winRate: 76, avgReturn: 2.8 },
+    { timeframe: "2H", signals: 38, winRate: 79, avgReturn: 3.2 },
+    { timeframe: "4H", signals: 32, winRate: 82, avgReturn: 3.9 },
+    { timeframe: "1D", signals: 18, winRate: 85, avgReturn: 4.5 },
+  ]
 
   return (
     <div className="space-y-6">
       {/* Performance Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total P&L</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">+$1,150</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+23.5%</span> this week
-            </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <Card className="bg-[#1A1B23] border-gray-800">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400">Total P&L</p>
+                <p className="text-2xl font-bold text-green-400">+$29,540</p>
+                <p className="text-xs text-green-400">+12.3% this week</p>
+              </div>
+              <DollarSign className="w-8 h-8 text-green-400" />
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-            <Target className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">76%</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+3%</span> from last week
-            </p>
+        <Card className="bg-[#1A1B23] border-gray-800">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400">Win Rate</p>
+                <p className="text-2xl font-bold text-[#30D5C8]">78.4%</p>
+                <p className="text-xs text-green-400">+2.1% this week</p>
+              </div>
+              <Target className="w-8 h-8 text-[#30D5C8]" />
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Return</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">8.7%</div>
-            <p className="text-xs text-muted-foreground">Per winning signal</p>
+        <Card className="bg-[#1A1B23] border-gray-800">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400">Avg Return</p>
+                <p className="text-2xl font-bold text-white">3.2%</p>
+                <p className="text-xs text-green-400">+0.4% this week</p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-white" />
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Best Streak</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">12</div>
-            <p className="text-xs text-muted-foreground">Consecutive wins</p>
+        <Card className="bg-[#1A1B23] border-gray-800">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400">Sharpe Ratio</p>
+                <p className="text-2xl font-bold text-white">2.18</p>
+                <p className="text-xs text-green-400">Excellent</p>
+              </div>
+              <Shield className="w-8 h-8 text-white" />
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="strategies">Strategies</TabsTrigger>
-          <TabsTrigger value="timeframes">Timeframes</TabsTrigger>
-          <TabsTrigger value="risk">Risk Analysis</TabsTrigger>
-        </TabsList>
+      {/* Performance Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-[#1A1B23] border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white">P&L Over Time</CardTitle>
+            <CardDescription>Daily profit and loss performance</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={performanceData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="date" stroke="#9CA3AF" />
+                <YAxis stroke="#9CA3AF" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#1F2937",
+                    border: "1px solid #374151",
+                    borderRadius: "8px",
+                  }}
+                />
+                <Area type="monotone" dataKey="pnl" stroke="#30D5C8" fill="#30D5C8" fillOpacity={0.2} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="overview" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* P&L Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle>P&L Performance</CardTitle>
-                <CardDescription>Cumulative profit and loss over time</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <AreaChart data={performanceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tickFormatter={(value) => new Date(value).toLocaleDateString()} />
-                    <YAxis />
-                    <Tooltip
-                      labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                      formatter={(value: number) => [`$${value}`, "P&L"]}
-                    />
-                    <Area type="monotone" dataKey="totalPnL" stroke="#10B981" fill="#10B981" fillOpacity={0.3} />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
+        <Card className="bg-[#1A1B23] border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white">Win Rate Trend</CardTitle>
+            <CardDescription>Daily win rate percentage</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={performanceData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="date" stroke="#9CA3AF" />
+                <YAxis stroke="#9CA3AF" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#1F2937",
+                    border: "1px solid #374151",
+                    borderRadius: "8px",
+                  }}
+                />
+                <Line type="monotone" dataKey="winRate" stroke="#10B981" strokeWidth={2} dot={{ fill: "#10B981" }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
 
-            {/* Win Rate Chart */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Win Rate Trend</CardTitle>
-                <CardDescription>Success rate percentage over time</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <LineChart data={performanceData}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tickFormatter={(value) => new Date(value).toLocaleDateString()} />
-                    <YAxis domain={[0, 100]} />
-                    <Tooltip
-                      labelFormatter={(value) => new Date(value).toLocaleDateString()}
-                      formatter={(value: number) => [`${value}%`, "Win Rate"]}
-                    />
-                    <Line type="monotone" dataKey="winRate" stroke="#3B82F6" strokeWidth={2} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="strategies" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Strategy Performance Comparison</CardTitle>
-              <CardDescription>Performance metrics by trading strategy</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {strategyPerformance.map((strategy, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                    <div className="flex-1">
-                      <h4 className="font-semibold">{strategy.strategy}</h4>
-                      <div className="flex items-center space-x-4 mt-2 text-sm text-muted-foreground">
-                        <span>{strategy.signals} signals</span>
-                        <Badge variant="outline">{strategy.winRate}% win rate</Badge>
-                        <span className="text-green-600">+{strategy.avgReturn}% avg</span>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-green-600">+${strategy.totalPnL}</div>
-                      <Progress value={strategy.winRate} className="w-20 mt-1" />
-                    </div>
+      {/* Strategy Performance */}
+      <Card className="bg-[#1A1B23] border-gray-800">
+        <CardHeader>
+          <CardTitle className="text-white">Strategy Performance</CardTitle>
+          <CardDescription>Performance breakdown by trading strategy</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {strategyPerformance.map((strategy, index) => (
+              <div
+                key={index}
+                className="flex items-center justify-between p-4 bg-[#0F1015] rounded-lg border border-gray-800"
+              >
+                <div className="flex items-center gap-4">
+                  <div>
+                    <h4 className="font-medium text-white">{strategy.strategy}</h4>
+                    <p className="text-sm text-gray-400">{strategy.signals} signals</p>
                   </div>
-                ))}
+                </div>
+                <div className="flex items-center gap-6">
+                  <div className="text-center">
+                    <p className="text-sm text-gray-400">Win Rate</p>
+                    <p className="font-medium text-[#30D5C8]">{strategy.winRate}%</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-gray-400">P&L</p>
+                    <p className="font-medium text-green-400">+${strategy.pnl.toLocaleString()}</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-sm text-gray-400">Avg Return</p>
+                    <p className="font-medium text-white">{strategy.avgReturn}%</p>
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="timeframes" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Timeframe Analysis</CardTitle>
-              <CardDescription>Performance breakdown by trading timeframe</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={timeframeData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="timeframe" />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-                  <Legend />
-                  <Bar yAxisId="left" dataKey="signals" fill="#3B82F6" name="Signal Count" />
-                  <Bar yAxisId="right" dataKey="winRate" fill="#10B981" name="Win Rate %" />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="risk" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Risk Distribution</CardTitle>
-                <CardDescription>Signal distribution by risk level</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <ResponsiveContainer width="100%" height={300}>
-                  <PieChart>
-                    <Pie
-                      data={riskDistribution}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {riskDistribution.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                  </PieChart>
-                </ResponsiveContainer>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Risk Metrics</CardTitle>
-                <CardDescription>Key risk management statistics</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Max Drawdown</span>
-                  <span className="text-sm text-red-600">-8.5%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Sharpe Ratio</span>
-                  <span className="text-sm">2.34</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Profit Factor</span>
-                  <span className="text-sm text-green-600">1.87</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Average Risk per Trade</span>
-                  <span className="text-sm">2.1%</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Risk-Reward Ratio</span>
-                  <span className="text-sm text-green-600">1:2.8</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">Recovery Factor</span>
-                  <span className="text-sm">13.5</span>
-                </div>
-              </CardContent>
-            </Card>
+            ))}
           </div>
-        </TabsContent>
-      </Tabs>
+        </CardContent>
+      </Card>
+
+      {/* Risk Analysis */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card className="bg-[#1A1B23] border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white">Risk Distribution</CardTitle>
+            <CardDescription>Signal distribution by risk level</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={riskDistribution}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  {riskDistribution.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-[#1A1B23] border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white">Timeframe Analysis</CardTitle>
+            <CardDescription>Performance by trading timeframe</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={timeframeData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                <XAxis dataKey="timeframe" stroke="#9CA3AF" />
+                <YAxis stroke="#9CA3AF" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#1F2937",
+                    border: "1px solid #374151",
+                    borderRadius: "8px",
+                  }}
+                />
+                <Bar dataKey="winRate" fill="#30D5C8" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }

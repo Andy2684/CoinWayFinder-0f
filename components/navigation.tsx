@@ -1,94 +1,146 @@
 "use client"
 
-import { useState } from "react"
 import Link from "next/link"
+import { useState } from "react"
+import { Menu, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Menu, X, TrendingUp } from "lucide-react"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+
+const navItems = [
+  { href: "/", label: "Home" },
+  { href: "/signals", label: "Signals" },
+  { href: "/bots", label: "Bots" },
+  { href: "/dashboard", label: "Dashboard" },
+  { href: "/integrations", label: "Integrations" },
+  { href: "/news", label: "News" },
+]
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
 
-  const navItems = [
-    { href: "/signals", label: "Signals" },
-    { href: "/bots", label: "Bots" },
-    { href: "/pricing", label: "Pricing" },
-    { href: "/blog", label: "Blog" },
-    { href: "/about", label: "About" },
-  ]
-
   return (
-    <nav className="fixed top-0 w-full z-50 bg-[#191A1E]/95 backdrop-blur-sm border-b border-gray-800">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-[#30D5C8] rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-[#191A1E]" />
-            </div>
-            <span className="text-xl font-bold text-white">CoinWayfinder</span>
+    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="container flex h-16 items-center">
+        <div className="mr-4 hidden md:flex">
+          <Link href="/" className="mr-6 flex items-center space-x-2">
+            <TrendingUp className="h-6 w-6" />
+            <span className="hidden font-bold sm:inline-block">CoinWayfinder</span>
           </Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <nav className="flex items-center space-x-6 text-sm font-medium">
             {navItems.map((item) => (
-              <Link key={item.href} href={item.href} className="text-gray-300 hover:text-[#30D5C8] transition-colors">
+              <Link
+                key={item.href}
+                href={item.href}
+                className="transition-colors hover:text-foreground/80 text-foreground/60"
+              >
                 {item.label}
               </Link>
             ))}
-          </div>
-
-          {/* Desktop CTA */}
-          <div className="hidden md:flex items-center space-x-4">
-            <Link href="/dashboard">
-              <Button variant="ghost" className="text-gray-300 hover:text-white">
-                Login
-              </Button>
-            </Link>
-            <Link href="/pricing">
-              <Button className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E] font-semibold">
-                Start Free Trial
-              </Button>
-            </Link>
-          </div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <Button variant="ghost" size="icon" onClick={() => setIsOpen(!isOpen)} className="text-gray-300">
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-            </Button>
-          </div>
+          </nav>
         </div>
 
         {/* Mobile Navigation */}
-        {isOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 bg-[#191A1E] border-t border-gray-800">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className="block px-3 py-2 text-gray-300 hover:text-[#30D5C8] transition-colors"
-                  onClick={() => setIsOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              ))}
-              <div className="pt-4 space-y-2">
-                <Link href="/dashboard" className="block">
-                  <Button variant="ghost" className="w-full text-gray-300 hover:text-white">
-                    Login
-                  </Button>
-                </Link>
-                <Link href="/pricing" className="block">
-                  <Button className="w-full bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E] font-semibold">
-                    Start Free Trial
-                  </Button>
-                </Link>
+        <Sheet open={isOpen} onOpenChange={setIsOpen}>
+          <SheetTrigger asChild>
+            <Button
+              variant="ghost"
+              className="mr-2 px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden"
+            >
+              <Menu className="h-6 w-6" />
+              <span className="sr-only">Toggle Menu</span>
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="left" className="pr-0">
+            <Link href="/" className="flex items-center space-x-2" onClick={() => setIsOpen(false)}>
+              <TrendingUp className="h-6 w-6" />
+              <span className="font-bold">CoinWayfinder</span>
+            </Link>
+            <div className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
+              <div className="flex flex-col space-y-3">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setIsOpen(false)}
+                    className="text-foreground/60 transition-colors hover:text-foreground"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
               </div>
             </div>
+          </SheetContent>
+        </Sheet>
+
+        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
+          <div className="w-full flex-1 md:w-auto md:flex-none">
+            <Link href="/" className="flex items-center space-x-2 md:hidden">
+              <TrendingUp className="h-6 w-6" />
+              <span className="font-bold">CoinWayfinder</span>
+            </Link>
           </div>
-        )}
+          <nav className="flex items-center space-x-2">
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/dashboard">Get Started</Link>
+            </Button>
+          </nav>
+        </div>
       </div>
     </nav>
   )
+}
+
+// Dashboard config for other components that might need it
+export interface MainNavItem {
+  title: string
+  href: string
+  disabled?: boolean
+}
+
+export interface SidebarNavItem {
+  title: string
+  href: string
+  icon: any
+  disabled?: boolean
+}
+
+export interface DashboardConfig {
+  mainNav: MainNavItem[]
+  sidebarNav: SidebarNavItem[]
+}
+
+export const dashboardConfig: DashboardConfig = {
+  mainNav: [
+    {
+      title: "Documentation",
+      href: "/docs",
+    },
+    {
+      title: "Support",
+      href: "/support",
+      disabled: true,
+    },
+  ],
+  sidebarNav: [
+    {
+      title: "Dashboard",
+      href: "/dashboard",
+      icon: "Home",
+    },
+    {
+      title: "Signals",
+      href: "/signals",
+      icon: "TrendingUp",
+    },
+    {
+      title: "Bots",
+      href: "/bots",
+      icon: "ListChecks",
+    },
+    {
+      title: "Integrations",
+      href: "/integrations",
+      icon: "Settings",
+    },
+  ],
 }
