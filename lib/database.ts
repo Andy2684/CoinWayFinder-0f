@@ -1,357 +1,421 @@
-import { createClient } from "@supabase/supabase-js"
+import { neon } from "@neondatabase/serverless"
 
-const supabaseUrl = process.env.SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_ANON_KEY!
+const sql = neon(process.env.DATABASE_URL!)
 
-if (!supabaseUrl || !supabaseKey) {
-  throw new Error("Missing Supabase environment variables")
+export async function connectToDatabase() {
+  // Test the connection
+  try {
+    await sql`SELECT 1`
+    return sql
+  } catch (error) {
+    console.error("Database connection failed:", error)
+    throw error
+  }
 }
-
-const supabase = createClient(supabaseUrl, supabaseKey)
 
 export interface User {
   id: string
   email: string
-  username: string
-  role: "user" | "admin"
-  subscription: {
-    plan: "free" | "starter" | "pro" | "enterprise"
-    status: "active" | "inactive" | "cancelled"
-    expiresAt: string | null
-  }
-  createdAt: string
-  lastLogin: string | null
-  trialStartedAt: string | null
-  trialExpiresAt: string | null
+  name: string
+  created_at: string
+  updated_at: string
+  deleted_at?: string
+  raw_json: any
 }
 
-export interface Bot {
-  id: string
-  userId: string
-  name: string
-  strategy: string
-  symbol: string
-  status: "running" | "paused" | "stopped" | "error"
-  config: {
-    riskLevel: number
-    lotSize: number
-    takeProfit: number
-    stopLoss: number
-    investment: number
-    exchange?: string
+export interface UserDocument {
+  _id: string
+  email: string
+  username: string
+  password: string
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+  lastLogin?: Date
+  subscription: {
+    plan: "free" | "starter" | "pro" | "enterprise"
+    status: "active" | "inactive" | "cancelled" | "past_due"
+    trialEndsAt?: Date
+    currentPeriodEnd?: Date
+    stripeCustomerId?: string
+    stripeSubscriptionId?: string
+  }
+  profile: {
+    firstName?: string
+    lastName?: string
+    avatar?: string
+    timezone?: string
+    notifications: {
+      email: boolean
+      telegram: boolean
+      push: boolean
+    }
+  }
+  settings: {
+    theme: "light" | "dark" | "system"
+    language: string
+    currency: string
+    riskTolerance: "low" | "medium" | "high"
   }
   stats: {
     totalTrades: number
-    winningTrades: number
     totalProfit: number
     totalLoss: number
     winRate: number
-    createdAt: string
-    lastTradeAt?: string
+    lastActiveAt: Date
   }
-  createdAt: string
-  updatedAt: string
 }
 
-export interface ApiKey {
-  id: string
+export interface BotDocument {
+  _id: string
   userId: string
   name: string
-  exchange: string
-  publicKey: string
-  secretKey: string
-  passphrase?: string
-  testnet: boolean
-  permissions: string[]
-  createdAt: string
-  lastUsed?: string
+  description?: string
+  strategy: string
+  status: "active" | "paused" | "stopped" | "error"
+  config: {
+    symbol: string
+    exchange: string
+    amount: number
+    stopLoss?: number
+    takeProfit?: number
+    maxTrades?: number
+    riskPerTrade?: number
+    [key: string]: any
+  }
+  performance: {
+    totalTrades: number
+    winningTrades: number
+    losingTrades: number
+    totalProfit: number
+    totalLoss: number
+    winRate: number
+    maxDrawdown: number
+    sharpeRatio?: number
+  }
+  createdAt: Date
+  updatedAt: Date
+  lastRunAt?: Date
+  nextRunAt?: Date
+  errorMessage?: string
 }
 
-export interface Subscription {
-  id: string
+export interface TradeDocument {
+  _id: string
   userId: string
-  planId: string
-  status: "active" | "inactive" | "cancelled" | "past_due"
-  currentPeriodStart: string
-  currentPeriodEnd: string
-  cancelAtPeriodEnd: boolean
-  stripeCustomerId?: string
-  stripeSubscriptionId?: string
-  createdAt: string
-  updatedAt: string
+  botId: string
+  symbol: string
+  exchange: string
+  type: "buy" | "sell"
+  side: "long" | "short"
+  amount: number
+  price: number
+  fee: number
+  status: "pending" | "filled" | "cancelled" | "failed"
+  timestamp: Date
+  orderId?: string
+  profit?: number
+  loss?: number
+  metadata: {
+    strategy: string
+    signal: string
+    confidence: number
+    [key: string]: any
+  }
 }
 
-class Database {
-  async createUser(userData: Partial<User>): Promise<User> {
-    const { data, error } = await supabase
-      .from("users")
-      .insert([
-        {
-          email: userData.email,
-          username: userData.username,
-          role: userData.role || "user",
-          subscription: userData.subscription || {
-            plan: "free",
-            status: "active",
-            expiresAt: null,
-          },
-          createdAt: new Date().toISOString(),
-          trialStartedAt: new Date().toISOString(),
-          trialExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-        },
-      ])
-      .select()
-      .single()
+export interface ApiKeyDocument {
+  _id: string
+  userId: string
+  name: string
+  keyHash: string
+  permissions: string[]
+  isActive: boolean
+  lastUsedAt?: Date
+  expiresAt?: Date
+  createdAt: Date
+  rateLimit: {
+    requestsPerMinute: number
+    requestsPerHour: number
+    requestsPerDay: number
+  }
+  usage: {
+    totalRequests: number
+    lastRequestAt?: Date
+    requestsToday: number
+    requestsThisHour: number
+    requestsThisMinute: number
+  }
+}
 
-    if (error) throw error
-    return data
+export class Database {
+  private sql = sql
+
+  async connect() {
+    return this.sql
   }
 
-  async createUserWithTrial(userId: string, referralCode?: string): Promise<User> {
-    const trialDays = referralCode ? 14 : 7
-    const userData = {
-      id: userId,
-      email: `user${userId}@example.com`,
-      username: `user${userId}`,
-      role: "user" as const,
-      subscription: {
-        plan: "free" as const,
-        status: "active" as const,
-        expiresAt: null,
-      },
-      createdAt: new Date().toISOString(),
-      trialStartedAt: new Date().toISOString(),
-      trialExpiresAt: new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString(),
-    }
+  // User operations using the existing neon_auth.users_sync table
+  async createUser(userData: Partial<User>): Promise<User> {
+    const userId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const now = new Date().toISOString()
 
-    return this.createUser(userData)
+    const result = await this.sql`
+      INSERT INTO neon_auth.users_sync (id, email, name, created_at, updated_at, raw_json)
+      VALUES (${userId}, ${userData.email}, ${userData.name || userData.email}, ${now}, ${now}, ${JSON.stringify({
+        subscription: {
+          plan: "free",
+          status: "active",
+          trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+        profile: {
+          notifications: {
+            email: true,
+            telegram: false,
+            push: true,
+          },
+        },
+        settings: {
+          theme: "system",
+          language: "en",
+          currency: "USD",
+          riskTolerance: "medium",
+        },
+        stats: {
+          totalTrades: 0,
+          totalProfit: 0,
+          totalLoss: 0,
+          winRate: 0,
+          lastActiveAt: now,
+        },
+      })})
+      RETURNING *
+    `
+
+    return result[0]
   }
 
   async getUserById(userId: string): Promise<User | null> {
-    const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
+    const result = await this.sql`
+      SELECT * FROM neon_auth.users_sync 
+      WHERE id = ${userId} AND deleted_at IS NULL
+    `
 
-    if (error) {
-      if (error.code === "PGRST116") return null
-      throw error
-    }
-    return data
+    return result[0] || null
   }
 
   async getUserByEmail(email: string): Promise<User | null> {
-    const { data, error } = await supabase.from("users").select("*").eq("email", email).single()
+    const result = await this.sql`
+      SELECT * FROM neon_auth.users_sync 
+      WHERE email = ${email} AND deleted_at IS NULL
+    `
 
-    if (error) {
-      if (error.code === "PGRST116") return null
-      throw error
+    return result[0] || null
+  }
+
+  async updateUser(userId: string, updates: Partial<User>): Promise<boolean> {
+    const now = new Date().toISOString()
+
+    const result = await this.sql`
+      UPDATE neon_auth.users_sync 
+      SET 
+        email = COALESCE(${updates.email}, email),
+        name = COALESCE(${updates.name}, name),
+        raw_json = COALESCE(${updates.raw_json ? JSON.stringify(updates.raw_json) : null}, raw_json),
+        updated_at = ${now}
+      WHERE id = ${userId} AND deleted_at IS NULL
+    `
+
+    return result.length > 0
+  }
+
+  async deleteUser(userId: string): Promise<boolean> {
+    const now = new Date().toISOString()
+
+    const result = await this.sql`
+      UPDATE neon_auth.users_sync 
+      SET deleted_at = ${now}, updated_at = ${now}
+      WHERE id = ${userId} AND deleted_at IS NULL
+    `
+
+    return result.length > 0
+  }
+
+  // Mock methods for bots, trades, etc. (since we only have users table)
+  async createBot(botData: Partial<BotDocument>): Promise<BotDocument> {
+    // Mock implementation - in a real app, you'd create a bots table
+    const botId = `bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const now = new Date()
+
+    const bot: BotDocument = {
+      _id: botId,
+      userId: botData.userId!,
+      name: botData.name!,
+      description: botData.description,
+      strategy: botData.strategy!,
+      status: "stopped",
+      config: botData.config!,
+      performance: {
+        totalTrades: 0,
+        winningTrades: 0,
+        losingTrades: 0,
+        totalProfit: 0,
+        totalLoss: 0,
+        winRate: 0,
+        maxDrawdown: 0,
+      },
+      createdAt: now,
+      updatedAt: now,
+      ...botData,
     }
-    return data
-  }
 
-  async updateUser(userId: string, updates: Partial<User>): Promise<User> {
-    const { data, error } = await supabase
-      .from("users")
-      .update({
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      })
-      .eq("id", userId)
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
-  }
-
-  async createBot(botData: Omit<Bot, "id" | "createdAt" | "updatedAt">): Promise<Bot> {
-    const { data, error } = await supabase
-      .from("bots")
-      .insert([
-        {
-          ...botData,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ])
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
-  }
-
-  async getBotsByUserId(userId: string): Promise<Bot[]> {
-    const { data, error } = await supabase
-      .from("bots")
-      .select("*")
-      .eq("userId", userId)
-      .order("createdAt", { ascending: false })
-
-    if (error) throw error
-    return data || []
-  }
-
-  async getBotById(botId: string): Promise<Bot | null> {
-    const { data, error } = await supabase.from("bots").select("*").eq("id", botId).single()
-
-    if (error) {
-      if (error.code === "PGRST116") return null
-      throw error
+    // Store in user's raw_json for now
+    const user = await this.getUserById(botData.userId!)
+    if (user) {
+      const userData = user.raw_json || {}
+      userData.bots = userData.bots || []
+      userData.bots.push(bot)
+      await this.updateUser(botData.userId!, { raw_json: userData })
     }
-    return data
+
+    return bot
   }
 
-  async updateBot(botId: string, updates: Partial<Bot>): Promise<Bot> {
-    const { data, error } = await supabase
-      .from("bots")
-      .update({
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      })
-      .eq("id", botId)
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
+  async getBotById(botId: string): Promise<BotDocument | null> {
+    // Mock implementation
+    return null
   }
 
-  async deleteBot(botId: string): Promise<void> {
-    const { error } = await supabase.from("bots").delete().eq("id", botId)
+  async getBotsByUserId(userId: string): Promise<BotDocument[]> {
+    const user = await this.getUserById(userId)
+    if (!user || !user.raw_json) return []
 
-    if (error) throw error
+    return user.raw_json.bots || []
   }
 
-  async createApiKey(apiKeyData: Omit<ApiKey, "id" | "createdAt">): Promise<ApiKey> {
-    const { data, error } = await supabase
-      .from("api_keys")
-      .insert([
-        {
-          ...apiKeyData,
-          createdAt: new Date().toISOString(),
-        },
-      ])
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
+  async updateBot(botId: string, updates: Partial<BotDocument>): Promise<boolean> {
+    // Mock implementation
+    return true
   }
 
-  async getApiKeysByUserId(userId: string): Promise<ApiKey[]> {
-    const { data, error } = await supabase
-      .from("api_keys")
-      .select("*")
-      .eq("userId", userId)
-      .order("createdAt", { ascending: false })
-
-    if (error) throw error
-    return data || []
+  async deleteBot(botId: string): Promise<boolean> {
+    // Mock implementation
+    return true
   }
 
-  async getApiKeyById(keyId: string): Promise<ApiKey | null> {
-    const { data, error } = await supabase.from("api_keys").select("*").eq("id", keyId).single()
+  // Trade operations (mock)
+  async createTrade(tradeData: Partial<TradeDocument>): Promise<TradeDocument> {
+    const tradeId = `trade_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    const now = new Date()
 
-    if (error) {
-      if (error.code === "PGRST116") return null
-      throw error
+    const trade: TradeDocument = {
+      _id: tradeId,
+      userId: tradeData.userId!,
+      botId: tradeData.botId!,
+      symbol: tradeData.symbol!,
+      exchange: tradeData.exchange!,
+      type: tradeData.type!,
+      side: tradeData.side!,
+      amount: tradeData.amount!,
+      price: tradeData.price!,
+      fee: tradeData.fee || 0,
+      status: "pending",
+      timestamp: now,
+      metadata: tradeData.metadata || {
+        strategy: "",
+        signal: "",
+        confidence: 0,
+      },
+      ...tradeData,
     }
-    return data
+
+    return trade
   }
 
-  async updateApiKey(keyId: string, updates: Partial<ApiKey>): Promise<ApiKey> {
-    const { data, error } = await supabase.from("api_keys").update(updates).eq("id", keyId).select().single()
-
-    if (error) throw error
-    return data
+  async getTradeById(tradeId: string): Promise<TradeDocument | null> {
+    return null
   }
 
-  async deleteApiKey(keyId: string): Promise<void> {
-    const { error } = await supabase.from("api_keys").delete().eq("id", keyId)
-
-    if (error) throw error
+  async getTradesByUserId(userId: string, limit = 100): Promise<TradeDocument[]> {
+    return []
   }
 
-  async createSubscription(
-    subscriptionData: Omit<Subscription, "id" | "createdAt" | "updatedAt">,
-  ): Promise<Subscription> {
-    const { data, error } = await supabase
-      .from("subscriptions")
-      .insert([
-        {
-          ...subscriptionData,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-      ])
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
+  async getTradesByBotId(botId: string, limit = 100): Promise<TradeDocument[]> {
+    return []
   }
 
-  async getSubscriptionByUserId(userId: string): Promise<Subscription | null> {
-    const { data, error } = await supabase
-      .from("subscriptions")
-      .select("*")
-      .eq("userId", userId)
-      .eq("status", "active")
-      .single()
+  async updateTrade(tradeId: string, updates: Partial<TradeDocument>): Promise<boolean> {
+    return true
+  }
 
-    if (error) {
-      if (error.code === "PGRST116") return null
-      throw error
+  // Analytics and statistics
+  async getUserStats(userId: string): Promise<any> {
+    const user = await this.getUserById(userId)
+    if (!user || !user.raw_json) {
+      return {
+        totalTrades: 0,
+        totalBots: 0,
+        activeBots: 0,
+        totalProfit: 0,
+        totalLoss: 0,
+        netProfit: 0,
+        winRate: 0,
+        avgTradeSize: 0,
+      }
     }
-    return data
-  }
 
-  async updateSubscription(subscriptionId: string, updates: Partial<Subscription>): Promise<Subscription> {
-    const { data, error } = await supabase
-      .from("subscriptions")
-      .update({
-        ...updates,
-        updatedAt: new Date().toISOString(),
-      })
-      .eq("id", subscriptionId)
-      .select()
-      .single()
-
-    if (error) throw error
-    return data
-  }
-
-  async getUsageStats(userId: string): Promise<{
-    botsCreated: number
-    tradesExecuted: number
-    apiCallsToday: number
-    storageUsed: number
-  }> {
-    // Get bots count
-    const { count: botsCount } = await supabase
-      .from("bots")
-      .select("*", { count: "exact", head: true })
-      .eq("userId", userId)
-
-    // Get trades count (mock for now)
-    const tradesExecuted = Math.floor(Math.random() * 1000)
-    const apiCallsToday = Math.floor(Math.random() * 500)
-    const storageUsed = Math.floor(Math.random() * 100)
+    const stats = user.raw_json.stats || {}
+    const bots = user.raw_json.bots || []
 
     return {
-      botsCreated: botsCount || 0,
-      tradesExecuted,
-      apiCallsToday,
-      storageUsed,
+      totalTrades: stats.totalTrades || 0,
+      totalBots: bots.length,
+      activeBots: bots.filter((b: any) => b.status === "active").length,
+      totalProfit: stats.totalProfit || 0,
+      totalLoss: stats.totalLoss || 0,
+      netProfit: (stats.totalProfit || 0) - (stats.totalLoss || 0),
+      winRate: stats.winRate || 0,
+      avgTradeSize: 0,
     }
   }
 
-  async isTrialExpired(userId: string): Promise<boolean> {
-    const user = await this.getUserById(userId)
-    if (!user || !user.trialExpiresAt) return false
+  async getSystemStats(): Promise<any> {
+    const result = await this.sql`
+      SELECT COUNT(*) as total_users
+      FROM neon_auth.users_sync 
+      WHERE deleted_at IS NULL
+    `
 
-    return new Date(user.trialExpiresAt) < new Date()
+    const totalUsers = Number.parseInt(result[0]?.total_users || "0")
+
+    return {
+      totalUsers,
+      activeUsers: totalUsers,
+      totalBots: 0,
+      activeBots: 0,
+      totalTrades: 0,
+    }
+  }
+
+  // Health check
+  async healthCheck(): Promise<boolean> {
+    try {
+      await this.sql`SELECT 1`
+      return true
+    } catch (error) {
+      console.error("Database health check failed:", error)
+      return false
+    }
+  }
+
+  // Cleanup operations
+  async cleanup(): Promise<void> {
+    // Neon serverless connections are automatically managed
   }
 }
 
 // Create and export the database instance
 export const database = new Database()
+
+// Export default for backward compatibility
+export default database
