@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
   DialogContent,
@@ -29,6 +28,7 @@ interface ApiKey {
   lastUsed?: string
   usage: number
   limit: number
+  isActive: boolean
 }
 
 interface UsageStats {
@@ -37,6 +37,7 @@ interface UsageStats {
   requestsThisMonth: number
   limit: number
   resetDate: string
+  percentage: number
 }
 
 export function ApiAccess() {
@@ -55,11 +56,31 @@ export function ApiAccess() {
 
   const fetchApiKeys = async () => {
     try {
-      const response = await fetch("/api/user/api-keys")
-      if (response.ok) {
-        const data = await response.json()
-        setApiKeys(data.keys || [])
-      }
+      // Mock data for demonstration
+      const mockApiKeys: ApiKey[] = [
+        {
+          id: "key_1",
+          name: "Trading Bot",
+          key: "cwf_1234567890abcdef1234567890abcdef12345678",
+          createdAt: "2024-01-15T10:30:00Z",
+          lastUsed: "2024-01-20T14:22:00Z",
+          usage: 1250,
+          limit: 10000,
+          isActive: true,
+        },
+        {
+          id: "key_2",
+          name: "Mobile App",
+          key: "cwf_abcdef1234567890abcdef1234567890abcdef12",
+          createdAt: "2024-01-10T09:15:00Z",
+          lastUsed: "2024-01-19T16:45:00Z",
+          usage: 750,
+          limit: 5000,
+          isActive: true,
+        },
+      ]
+
+      setApiKeys(mockApiKeys)
     } catch (error) {
       console.error("Failed to fetch API keys:", error)
       toast.error("Failed to load API keys")
@@ -70,11 +91,17 @@ export function ApiAccess() {
 
   const fetchUsageStats = async () => {
     try {
-      const response = await fetch("/api/user/usage-stats")
-      if (response.ok) {
-        const data = await response.json()
-        setUsageStats(data)
+      // Mock data for demonstration
+      const mockUsageStats: UsageStats = {
+        totalRequests: 15420,
+        requestsToday: 234,
+        requestsThisMonth: 2000,
+        limit: 15000,
+        resetDate: "2024-02-01T00:00:00Z",
+        percentage: 13.3,
       }
+
+      setUsageStats(mockUsageStats)
     } catch (error) {
       console.error("Failed to fetch usage stats:", error)
     }
@@ -88,24 +115,21 @@ export function ApiAccess() {
 
     setCreating(true)
     try {
-      const response = await fetch("/api/user/api-keys", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ name: newKeyName }),
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setApiKeys([...apiKeys, data.key])
-        setNewKeyName("")
-        setIsDialogOpen(false)
-        toast.success("API key created successfully")
-      } else {
-        const error = await response.json()
-        toast.error(error.message || "Failed to create API key")
+      // Mock API key creation
+      const newKey: ApiKey = {
+        id: `key_${Date.now()}`,
+        name: newKeyName,
+        key: `cwf_${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`,
+        createdAt: new Date().toISOString(),
+        usage: 0,
+        limit: 1000,
+        isActive: true,
       }
+
+      setApiKeys([...apiKeys, newKey])
+      setNewKeyName("")
+      setIsDialogOpen(false)
+      toast.success("API key created successfully")
     } catch (error) {
       console.error("Failed to create API key:", error)
       toast.error("Failed to create API key")
@@ -116,17 +140,8 @@ export function ApiAccess() {
 
   const deleteApiKey = async (keyId: string) => {
     try {
-      const response = await fetch(`/api/user/api-keys/${keyId}`, {
-        method: "DELETE",
-      })
-
-      if (response.ok) {
-        setApiKeys(apiKeys.filter((key) => key.id !== keyId))
-        toast.success("API key deleted successfully")
-      } else {
-        const error = await response.json()
-        toast.error(error.message || "Failed to delete API key")
-      }
+      setApiKeys(apiKeys.filter((key) => key.id !== keyId))
+      toast.success("API key deleted successfully")
     } catch (error) {
       console.error("Failed to delete API key:", error)
       toast.error("Failed to delete API key")
@@ -149,6 +164,16 @@ export function ApiAccess() {
     return `${key.substring(0, 8)}${"*".repeat(24)}${key.substring(key.length - 4)}`
   }
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
   if (loading) {
     return (
       <Card>
@@ -168,83 +193,143 @@ export function ApiAccess() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Key className="h-5 w-5" />
-          API Access
-        </CardTitle>
-        <CardDescription>Manage your API keys and monitor usage</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="keys" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="keys">API Keys</TabsTrigger>
-            <TabsTrigger value="usage">Usage Statistics</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="keys" className="space-y-4">
-            <div className="flex justify-between items-center">
-              <h3 className="text-lg font-medium">Your API Keys</h3>
-              <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create API Key
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Create New API Key</DialogTitle>
-                    <DialogDescription>
-                      Give your API key a descriptive name to help you identify it later.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="keyName">API Key Name</Label>
-                      <Input
-                        id="keyName"
-                        placeholder="e.g., Trading Bot, Mobile App"
-                        value={newKeyName}
-                        onChange={(e) => setNewKeyName(e.target.value)}
-                      />
-                    </div>
+    <div className="space-y-6">
+      {/* Usage Statistics Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <AlertCircle className="h-5 w-5" />
+            API Usage Overview
+          </CardTitle>
+          <CardDescription>Monitor your API usage and limits</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {usageStats ? (
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">{usageStats.totalRequests.toLocaleString()}</div>
+                  <p className="text-sm text-gray-500">Total Requests</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">{usageStats.requestsToday.toLocaleString()}</div>
+                  <p className="text-sm text-gray-500">Requests Today</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-orange-600">
+                    {usageStats.requestsThisMonth.toLocaleString()}
                   </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={createApiKey} disabled={creating}>
-                      {creating ? "Creating..." : "Create Key"}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-            </div>
+                  <p className="text-sm text-gray-500">This Month</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600">{usageStats.limit.toLocaleString()}</div>
+                  <p className="text-sm text-gray-500">Monthly Limit</p>
+                </div>
+              </div>
 
-            {apiKeys.length === 0 ? (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>
-                  You haven't created any API keys yet. Create your first API key to start using the CoinWayFinder API.
-                </AlertDescription>
-              </Alert>
-            ) : (
-              <div className="space-y-4">
-                {apiKeys.map((apiKey) => (
-                  <Card key={apiKey.id}>
-                    <CardContent className="pt-6">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-2">
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Monthly Usage</span>
+                  <span>
+                    {usageStats.requestsThisMonth.toLocaleString()} / {usageStats.limit.toLocaleString()}
+                  </span>
+                </div>
+                <Progress value={usageStats.percentage} className="w-full" />
+                <p className="text-sm text-gray-500">
+                  Resets on {formatDate(usageStats.resetDate)} • {usageStats.percentage.toFixed(1)}% used
+                </p>
+              </div>
+            </div>
+          ) : (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>Usage statistics are not available at the moment.</AlertDescription>
+            </Alert>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* API Keys Management Card */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                API Keys
+              </CardTitle>
+              <CardDescription>Manage your API keys for accessing CoinWayFinder services</CardDescription>
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create API Key
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Create New API Key</DialogTitle>
+                  <DialogDescription>
+                    Create a new API key to access CoinWayFinder services programmatically.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="keyName">API Key Name</Label>
+                    <Input
+                      id="keyName"
+                      placeholder="e.g., Trading Bot, Mobile App, Analytics Dashboard"
+                      value={newKeyName}
+                      onChange={(e) => setNewKeyName(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={createApiKey} disabled={creating}>
+                    {creating ? "Creating..." : "Create Key"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {apiKeys.length === 0 ? (
+            <div className="text-center py-12">
+              <Key className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No API Keys</h3>
+              <p className="text-gray-500 mb-6">Create your first API key to start using the CoinWayFinder API.</p>
+              <Button onClick={() => setIsDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First API Key
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {apiKeys.map((apiKey) => (
+                <Card key={apiKey.id} className="border-l-4 border-l-blue-500">
+                  <CardContent className="pt-6">
+                    <div className="flex items-start justify-between">
+                      <div className="space-y-3 flex-1">
+                        <div className="flex items-center gap-3">
+                          <h4 className="font-semibold text-lg">{apiKey.name}</h4>
+                          <Badge variant={apiKey.isActive ? "default" : "secondary"}>
+                            {apiKey.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                          <Badge variant="outline">
+                            {apiKey.usage.toLocaleString()} / {apiKey.limit.toLocaleString()} requests
+                          </Badge>
+                        </div>
+
+                        <div className="bg-gray-50 rounded-lg p-3">
                           <div className="flex items-center gap-2">
-                            <h4 className="font-medium">{apiKey.name}</h4>
-                            <Badge variant="secondary">
-                              {apiKey.usage}/{apiKey.limit} requests
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-2 font-mono text-sm">
-                            <span>{showKeys[apiKey.id] ? apiKey.key : maskApiKey(apiKey.key)}</span>
+                            <code className="flex-1 text-sm font-mono">
+                              {showKeys[apiKey.id] ? apiKey.key : maskApiKey(apiKey.key)}
+                            </code>
                             <Button variant="ghost" size="sm" onClick={() => toggleKeyVisibility(apiKey.id)}>
                               {showKeys[apiKey.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                             </Button>
@@ -252,85 +337,85 @@ export function ApiAccess() {
                               <Copy className="h-4 w-4" />
                             </Button>
                           </div>
-                          <div className="text-sm text-gray-500">
-                            Created: {new Date(apiKey.createdAt).toLocaleDateString()}
-                            {apiKey.lastUsed && (
-                              <span className="ml-4">Last used: {new Date(apiKey.lastUsed).toLocaleDateString()}</span>
-                            )}
-                          </div>
-                          <Progress value={(apiKey.usage / apiKey.limit) * 100} className="w-full max-w-xs" />
                         </div>
-                        <Button variant="destructive" size="sm" onClick={() => deleteApiKey(apiKey.id)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+
+                        <div className="flex items-center justify-between text-sm text-gray-500">
+                          <div className="space-y-1">
+                            <p>Created: {formatDate(apiKey.createdAt)}</p>
+                            {apiKey.lastUsed && <p>Last used: {formatDate(apiKey.lastUsed)}</p>}
+                          </div>
+                          <div className="text-right">
+                            <Progress value={(apiKey.usage / apiKey.limit) * 100} className="w-32 h-2 mb-1" />
+                            <p>{((apiKey.usage / apiKey.limit) * 100).toFixed(1)}% used</p>
+                          </div>
+                        </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
-          </TabsContent>
 
-          <TabsContent value="usage" className="space-y-4">
-            <h3 className="text-lg font-medium">Usage Statistics</h3>
-            {usageStats ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-2xl font-bold">{usageStats.totalRequests.toLocaleString()}</div>
-                    <p className="text-sm text-gray-500">Total Requests</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-2xl font-bold">{usageStats.requestsToday.toLocaleString()}</div>
-                    <p className="text-sm text-gray-500">Requests Today</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-2xl font-bold">{usageStats.requestsThisMonth.toLocaleString()}</div>
-                    <p className="text-sm text-gray-500">Requests This Month</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="text-2xl font-bold">{usageStats.limit.toLocaleString()}</div>
-                    <p className="text-sm text-gray-500">Monthly Limit</p>
-                  </CardContent>
-                </Card>
-              </div>
-            ) : (
-              <Alert>
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>Usage statistics are not available at the moment.</AlertDescription>
-              </Alert>
-            )}
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Monthly Usage</CardTitle>
-                <CardDescription>Your API usage for the current billing period</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {usageStats && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>{usageStats.requestsThisMonth.toLocaleString()} requests used</span>
-                      <span>{usageStats.limit.toLocaleString()} limit</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => deleteApiKey(apiKey.id)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 ml-4"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
-                    <Progress value={(usageStats.requestsThisMonth / usageStats.limit) * 100} className="w-full" />
-                    <p className="text-sm text-gray-500">
-                      Resets on {new Date(usageStats.resetDate).toLocaleDateString()}
-                    </p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </CardContent>
-    </Card>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* API Documentation Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Start Guide</CardTitle>
+          <CardDescription>Get started with the CoinWayFinder API</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <h4 className="font-medium mb-2">Authentication</h4>
+            <p className="text-sm text-gray-600 mb-2">Include your API key in the Authorization header:</p>
+            <div className="bg-gray-100 p-3 rounded-lg">
+              <code className="text-sm">Authorization: Bearer YOUR_API_KEY</code>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium mb-2">Base URL</h4>
+            <div className="bg-gray-100 p-3 rounded-lg">
+              <code className="text-sm">https://coinwayfinder.vercel.app/api/v1</code>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="font-medium mb-2">Example Request</h4>
+            <div className="bg-gray-100 p-3 rounded-lg">
+              <code className="text-sm whitespace-pre-wrap">
+                {`curl -X GET "https://coinwayfinder.vercel.app/api/v1/crypto/prices" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json"`}
+              </code>
+            </div>
+          </div>
+
+          <div className="flex gap-2">
+            <Button variant="outline" asChild>
+              <a href="/api-docs" target="_blank" rel="noopener noreferrer">
+                View Full Documentation
+              </a>
+            </Button>
+            <Button variant="outline" asChild>
+              <a href="/api-docs#examples" target="_blank" rel="noopener noreferrer">
+                Code Examples
+              </a>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
 

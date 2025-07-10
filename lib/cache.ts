@@ -22,18 +22,20 @@ class MemoryCache {
     size: 0,
   }
   private maxSize: number
-  private cleanupInterval: NodeJS.Timeout
+  private cleanupInterval: NodeJS.Timeout | null = null
 
   constructor(maxSize = 1000) {
     this.maxSize = maxSize
 
-    // Cleanup expired items every 5 minutes
-    this.cleanupInterval = setInterval(
-      () => {
-        this.cleanup()
-      },
-      5 * 60 * 1000,
-    )
+    // Only set up cleanup interval in browser environment
+    if (typeof window !== "undefined") {
+      this.cleanupInterval = setInterval(
+        () => {
+          this.cleanup()
+        },
+        5 * 60 * 1000,
+      ) // Cleanup every 5 minutes
+    }
   }
 
   set<T>(key: string, data: T, ttlSeconds = 300): void {
@@ -130,6 +132,7 @@ class MemoryCache {
   destroy(): void {
     if (this.cleanupInterval) {
       clearInterval(this.cleanupInterval)
+      this.cleanupInterval = null
     }
     this.clear()
   }
@@ -137,102 +140,6 @@ class MemoryCache {
 
 // Global memory cache instance
 const memoryCache = new MemoryCache(2000)
-
-// Redis cache functions (fallback to memory cache if Redis unavailable)
-class RedisCache {
-  private redis: any = null
-
-  constructor() {
-    this.initRedis()
-  }
-
-  private async initRedis() {
-    try {
-      if (process.env.REDIS_URL || process.env.KV_REST_API_URL) {
-        // Use Redis if available
-        const Redis = require("ioredis")
-        this.redis = new Redis(
-          process.env.REDIS_URL || {
-            host: process.env.KV_REST_API_URL,
-            token: process.env.KV_REST_API_TOKEN,
-          },
-        )
-      }
-    } catch (error) {
-      console.warn("Redis not available, using memory cache only:", error)
-    }
-  }
-
-  async set(key: string, data: any, ttlSeconds = 300): Promise<void> {
-    try {
-      if (this.redis) {
-        await this.redis.setex(key, ttlSeconds, JSON.stringify(data))
-      }
-    } catch (error) {
-      console.warn("Redis set failed, using memory cache:", error)
-    }
-
-    // Always set in memory cache as fallback
-    memoryCache.set(key, data, ttlSeconds)
-  }
-
-  async get<T>(key: string): Promise<T | null> {
-    // Try memory cache first (fastest)
-    const memoryResult = memoryCache.get<T>(key)
-    if (memoryResult !== null) {
-      return memoryResult
-    }
-
-    // Try Redis if available
-    try {
-      if (this.redis) {
-        const result = await this.redis.get(key)
-        if (result) {
-          const data = JSON.parse(result)
-          // Store in memory cache for faster future access
-          memoryCache.set(key, data, 300)
-          return data
-        }
-      }
-    } catch (error) {
-      console.warn("Redis get failed:", error)
-    }
-
-    return null
-  }
-
-  async delete(key: string): Promise<void> {
-    try {
-      if (this.redis) {
-        await this.redis.del(key)
-      }
-    } catch (error) {
-      console.warn("Redis delete failed:", error)
-    }
-
-    memoryCache.delete(key)
-  }
-
-  async clear(pattern?: string): Promise<void> {
-    try {
-      if (this.redis && pattern) {
-        const keys = await this.redis.keys(pattern)
-        if (keys.length > 0) {
-          await this.redis.del(...keys)
-        }
-      }
-    } catch (error) {
-      console.warn("Redis clear failed:", error)
-    }
-
-    if (!pattern) {
-      memoryCache.clear()
-    }
-  }
-}
-
-// Global Redis cache instance
-const redisCache = new RedisCache()
 
 // Cache key generators
 export const cacheKeys = {
@@ -247,26 +154,40 @@ export const cacheKeys = {
   botPerformance: (botId: string) => `bot:${botId}:performance`,
 }
 
+// TTL constants (in seconds)
+export const cacheTTL = {
+  REAL_TIME: 30, // 30 seconds for real-time data
+  SHORT: 300, // 5 minutes for frequently changing data
+  MEDIUM: 900, // 15 minutes for moderate data
+  LONG: 3600, // 1 hour for stable data
+  VERY_LONG: 86400, // 24 hours for static data
+}
+
 // Main cache interface
 export const cache = {
   // Get from cache
-  async get<T>(key: string): Promise<T | null> {
-    return await redisCache.get<T>(key)
+  get<T>(key: string): T | null {
+    return memoryCache.get<T>(key)
   },
 
   // Set in cache
-  async set<T>(key: string, data: T, ttlSeconds = 300): Promise<void> {
-    await redisCache.set(key, data, ttlSeconds)
+  set<T>(key: string, data: T, ttlSeconds = cacheTTL.SHORT): void {
+    memoryCache.set(key, data, ttlSeconds)
   },
 
   // Delete from cache
-  async delete(key: string): Promise<void> {
-    await redisCache.delete(key)
+  delete(key: string): boolean {
+    return memoryCache.delete(key)
   },
 
-  // Clear cache by pattern
-  async clear(pattern?: string): Promise<void> {
-    await redisCache.clear(pattern)
+  // Clear cache
+  clear(): void {
+    memoryCache.clear()
+  },
+
+  // Check if key exists
+  has(key: string): boolean {
+    return memoryCache.has(key)
   },
 
   // Get cache stats
@@ -275,46 +196,101 @@ export const cache = {
   },
 
   // Cache wrapper function
-  async wrap<T>(key: string, fn: () => Promise<T>, ttlSeconds = 300): Promise<T> {
+  wrap<T>(key: string, fn: () => T | Promise<T>, ttlSeconds = cacheTTL.SHORT): T | Promise<T> {
     // Try to get from cache first
-    const cached = await this.get<T>(key)
+    const cached = this.get<T>(key)
     if (cached !== null) {
       return cached
     }
 
     // Execute function and cache result
-    const result = await fn()
-    await this.set(key, result, ttlSeconds)
-    return result
+    const result = fn()
+
+    // Handle both sync and async functions
+    if (result instanceof Promise) {
+      return result.then((data) => {
+        this.set(key, data, ttlSeconds)
+        return data
+      })
+    } else {
+      this.set(key, result, ttlSeconds)
+      return result
+    }
   },
 
-  // Invalidate user-specific cache
-  async invalidateUser(userId: string): Promise<void> {
-    await this.clear(`user:${userId}:*`)
-  },
-
-  // Invalidate crypto data cache
-  async invalidateCrypto(): Promise<void> {
-    await this.clear("crypto:*")
+  // Invalidate cache by pattern (simple implementation)
+  invalidatePattern(pattern: string): void {
+    const stats = this.getStats()
+    // For simplicity, we'll clear all cache if pattern matching is needed
+    // In a real implementation, you'd iterate through keys and match patterns
+    if (pattern.includes("*")) {
+      this.clear()
+    } else {
+      this.delete(pattern)
+    }
   },
 }
 
 // Performance monitoring decorator
-export function cached(ttlSeconds = 300) {
+export function cached(ttlSeconds = cacheTTL.SHORT) {
   return (target: any, propertyName: string, descriptor: PropertyDescriptor) => {
     const method = descriptor.value
 
-    descriptor.value = async function (...args: any[]) {
+    descriptor.value = function (...args: any[]) {
       const cacheKey = `${target.constructor.name}:${propertyName}:${JSON.stringify(args)}`
 
-      return await cache.wrap(cacheKey, () => method.apply(this, args), ttlSeconds)
+      return cache.wrap(cacheKey, () => method.apply(this, args), ttlSeconds)
     }
+
+    return descriptor
   }
 }
 
-// Cleanup on process exit
-process.on("exit", () => {
-  memoryCache.destroy()
-})
+// Utility functions
+export const cacheUtils = {
+  // Generate cache key with prefix
+  generateKey(prefix: string, ...parts: (string | number)[]): string {
+    return `${prefix}:${parts.join(":")}`
+  },
 
-export { memoryCache, redisCache }
+  // Get cache hit rate
+  getHitRate(): number {
+    const stats = cache.getStats()
+    const total = stats.hits + stats.misses
+    return total > 0 ? (stats.hits / total) * 100 : 0
+  },
+
+  // Get cache size in MB (approximate)
+  getCacheSizeMB(): number {
+    const stats = cache.getStats()
+    // Rough estimation: assume average 1KB per item
+    return (stats.size * 1024) / (1024 * 1024)
+  },
+
+  // Warm cache with common data
+  async warmCache(): Promise<void> {
+    console.log("Warming cache with common data...")
+    // This would typically pre-load frequently accessed data
+    // For now, it's a placeholder
+  },
+}
+
+// Cleanup on process exit (Node.js only)
+if (typeof process !== "undefined") {
+  process.on("exit", () => {
+    memoryCache.destroy()
+  })
+
+  process.on("SIGINT", () => {
+    memoryCache.destroy()
+    process.exit(0)
+  })
+
+  process.on("SIGTERM", () => {
+    memoryCache.destroy()
+    process.exit(0)
+  })
+}
+
+export { memoryCache }
+export default cache
