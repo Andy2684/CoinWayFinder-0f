@@ -1,6 +1,4 @@
-import { Redis } from "ioredis"
-
-// Database interface definitions
+// Simple in-memory database implementation for browser compatibility
 export interface User {
   id: string
   email: string
@@ -22,8 +20,7 @@ export interface Bot {
   userId: string
   name: string
   strategy: string
-  symbol: string
-  isActive: boolean
+  status: "active" | "paused" | "stopped"
   config: Record<string, any>
   createdAt: Date
   updatedAt: Date
@@ -34,12 +31,11 @@ export interface Trade {
   botId: string
   userId: string
   symbol: string
-  side: "buy" | "sell"
+  type: "buy" | "sell"
   amount: number
   price: number
-  status: "pending" | "filled" | "cancelled"
+  status: "pending" | "completed" | "failed"
   createdAt: Date
-  executedAt?: Date
 }
 
 export interface Session {
@@ -48,87 +44,39 @@ export interface Session {
   token: string
   expiresAt: Date
   createdAt: Date
-  lastAccessedAt: Date
 }
 
-export interface ApiKey {
-  id: string
-  userId: string
-  name: string
-  keyId: string
-  hashedKey: string
-  permissions: string[]
-  isActive: boolean
-  lastUsed?: Date
-  expiresAt?: Date
-  createdAt: Date
-}
-
-// Database class implementation
-export class Database {
-  private redis: Redis
-  private static instance: Database
-
-  constructor() {
-    this.redis = new Redis(process.env.Redis_URL || "redis://localhost:6379")
-    this.setupEventHandlers()
-  }
-
-  static getInstance(): Database {
-    if (!Database.instance) {
-      Database.instance = new Database()
-    }
-    return Database.instance
-  }
-
-  private setupEventHandlers(): void {
-    this.redis.on("connect", () => {
-      console.log("✅ Redis connected successfully")
-    })
-
-    this.redis.on("error", (error) => {
-      console.error("❌ Redis connection error:", error)
-    })
-
-    this.redis.on("ready", () => {
-      console.log("🚀 Redis ready for operations")
-    })
-  }
+class InMemoryDatabase {
+  private users: Map<string, User> = new Map()
+  private bots: Map<string, Bot> = new Map()
+  private trades: Map<string, Trade> = new Map()
+  private sessions: Map<string, Session> = new Map()
+  private usersByEmail: Map<string, User> = new Map()
 
   // User operations
-  async createUser(user: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
-    const id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    const now = new Date()
-
-    const newUser: User = {
-      ...user,
-      id,
-      createdAt: now,
-      updatedAt: now,
+  async createUser(userData: Omit<User, "id" | "createdAt" | "updatedAt">): Promise<User> {
+    const user: User = {
+      id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...userData,
     }
 
-    await this.redis.hset("users", id, JSON.stringify(newUser))
-    return newUser
+    this.users.set(user.id, user)
+    this.usersByEmail.set(user.email, user)
+    return user
   }
 
   async getUserById(id: string): Promise<User | null> {
-    const userData = await this.redis.hget("users", id)
-    return userData ? JSON.parse(userData) : null
+    return this.users.get(id) || null
   }
 
   async getUserByEmail(email: string): Promise<User | null> {
-    const users = await this.redis.hgetall("users")
-    for (const userData of Object.values(users)) {
-      const user = JSON.parse(userData)
-      if (user.email === email) {
-        return user
-      }
-    }
-    return null
+    return this.usersByEmail.get(email) || null
   }
 
   async updateUser(id: string, updates: Partial<User>): Promise<User | null> {
-    const user = await this.getUserById(id)
+    const user = this.users.get(id)
     if (!user) return null
 
     const updatedUser = {
@@ -137,45 +85,51 @@ export class Database {
       updatedAt: new Date(),
     }
 
-    await this.redis.hset("users", id, JSON.stringify(updatedUser))
+    this.users.set(id, updatedUser)
+    if (updatedUser.email !== user.email) {
+      this.usersByEmail.delete(user.email)
+      this.usersByEmail.set(updatedUser.email, updatedUser)
+    }
+
     return updatedUser
   }
 
   async deleteUser(id: string): Promise<boolean> {
-    const result = await this.redis.hdel("users", id)
-    return result === 1
+    const user = this.users.get(id)
+    if (!user) return false
+
+    this.users.delete(id)
+    this.usersByEmail.delete(user.email)
+    return true
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values())
   }
 
   // Bot operations
-  async createBot(bot: Omit<Bot, "id" | "createdAt" | "updatedAt">): Promise<Bot> {
-    const id = `bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    const now = new Date()
-
-    const newBot: Bot = {
-      ...bot,
-      id,
-      createdAt: now,
-      updatedAt: now,
+  async createBot(botData: Omit<Bot, "id" | "createdAt" | "updatedAt">): Promise<Bot> {
+    const bot: Bot = {
+      id: `bot_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      ...botData,
     }
 
-    await this.redis.hset("bots", id, JSON.stringify(newBot))
-    return newBot
+    this.bots.set(bot.id, bot)
+    return bot
   }
 
   async getBotById(id: string): Promise<Bot | null> {
-    const botData = await this.redis.hget("bots", id)
-    return botData ? JSON.parse(botData) : null
+    return this.bots.get(id) || null
   }
 
   async getBotsByUserId(userId: string): Promise<Bot[]> {
-    const bots = await this.redis.hgetall("bots")
-    return Object.values(bots)
-      .map((botData) => JSON.parse(botData))
-      .filter((bot) => bot.userId === userId)
+    return Array.from(this.bots.values()).filter((bot) => bot.userId === userId)
   }
 
   async updateBot(id: string, updates: Partial<Bot>): Promise<Bot | null> {
-    const bot = await this.getBotById(id)
+    const bot = this.bots.get(id)
     if (!bot) return null
 
     const updatedBot = {
@@ -184,43 +138,44 @@ export class Database {
       updatedAt: new Date(),
     }
 
-    await this.redis.hset("bots", id, JSON.stringify(updatedBot))
+    this.bots.set(id, updatedBot)
     return updatedBot
   }
 
   async deleteBot(id: string): Promise<boolean> {
-    const result = await this.redis.hdel("bots", id)
-    return result === 1
+    return this.bots.delete(id)
+  }
+
+  async getAllBots(): Promise<Bot[]> {
+    return Array.from(this.bots.values())
   }
 
   // Trade operations
-  async createTrade(trade: Omit<Trade, "id" | "createdAt">): Promise<Trade> {
-    const id = `trade_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
-    const newTrade: Trade = {
-      ...trade,
-      id,
+  async createTrade(tradeData: Omit<Trade, "id" | "createdAt">): Promise<Trade> {
+    const trade: Trade = {
+      id: `trade_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       createdAt: new Date(),
+      ...tradeData,
     }
 
-    await this.redis.hset("trades", id, JSON.stringify(newTrade))
-    return newTrade
+    this.trades.set(trade.id, trade)
+    return trade
   }
 
   async getTradeById(id: string): Promise<Trade | null> {
-    const tradeData = await this.redis.hget("trades", id)
-    return tradeData ? JSON.parse(tradeData) : null
+    return this.trades.get(id) || null
   }
 
   async getTradesByUserId(userId: string): Promise<Trade[]> {
-    const trades = await this.redis.hgetall("trades")
-    return Object.values(trades)
-      .map((tradeData) => JSON.parse(tradeData))
-      .filter((trade) => trade.userId === userId)
+    return Array.from(this.trades.values()).filter((trade) => trade.userId === userId)
+  }
+
+  async getTradesByBotId(botId: string): Promise<Trade[]> {
+    return Array.from(this.trades.values()).filter((trade) => trade.botId === botId)
   }
 
   async updateTrade(id: string, updates: Partial<Trade>): Promise<Trade | null> {
-    const trade = await this.getTradeById(id)
+    const trade = this.trades.get(id)
     if (!trade) return null
 
     const updatedTrade = {
@@ -228,141 +183,119 @@ export class Database {
       ...updates,
     }
 
-    await this.redis.hset("trades", id, JSON.stringify(updatedTrade))
+    this.trades.set(id, updatedTrade)
     return updatedTrade
   }
 
-  // Session operations
-  async createSession(session: Omit<Session, "id" | "createdAt" | "lastAccessedAt">): Promise<Session> {
-    const id = `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-    const now = new Date()
+  async deleteTrade(id: string): Promise<boolean> {
+    return this.trades.delete(id)
+  }
 
-    const newSession: Session = {
-      ...session,
-      id,
-      createdAt: now,
-      lastAccessedAt: now,
+  async getAllTrades(): Promise<Trade[]> {
+    return Array.from(this.trades.values())
+  }
+
+  // Session operations
+  async createSession(sessionData: Omit<Session, "id" | "createdAt">): Promise<Session> {
+    const session: Session = {
+      id: `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      createdAt: new Date(),
+      ...sessionData,
     }
 
-    await this.redis.hset("sessions", id, JSON.stringify(newSession))
-    await this.redis.setex(`session_token:${session.token}`, 86400, id) // 24 hour expiry
-    return newSession
+    this.sessions.set(session.id, session)
+    return session
+  }
+
+  async getSessionById(id: string): Promise<Session | null> {
+    const session = this.sessions.get(id)
+    if (!session) return null
+
+    // Check if session is expired
+    if (session.expiresAt < new Date()) {
+      this.sessions.delete(id)
+      return null
+    }
+
+    return session
   }
 
   async getSessionByToken(token: string): Promise<Session | null> {
-    const sessionId = await this.redis.get(`session_token:${token}`)
-    if (!sessionId) return null
-
-    const sessionData = await this.redis.hget("sessions", sessionId)
-    return sessionData ? JSON.parse(sessionData) : null
-  }
-
-  async updateSessionAccess(id: string): Promise<void> {
-    const session = await this.redis.hget("sessions", id)
-    if (session) {
-      const sessionData = JSON.parse(session)
-      sessionData.lastAccessedAt = new Date()
-      await this.redis.hset("sessions", id, JSON.stringify(sessionData))
+    for (const session of this.sessions.values()) {
+      if (session.token === token) {
+        // Check if session is expired
+        if (session.expiresAt < new Date()) {
+          this.sessions.delete(session.id)
+          return null
+        }
+        return session
+      }
     }
+    return null
   }
 
   async deleteSession(id: string): Promise<boolean> {
-    const session = await this.redis.hget("sessions", id)
-    if (session) {
-      const sessionData = JSON.parse(session)
-      await this.redis.del(`session_token:${sessionData.token}`)
-    }
-    const result = await this.redis.hdel("sessions", id)
-    return result === 1
+    return this.sessions.delete(id)
   }
 
-  // API Key operations
-  async createApiKey(apiKey: Omit<ApiKey, "id" | "createdAt">): Promise<ApiKey> {
-    const id = `apikey_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-
-    const newApiKey: ApiKey = {
-      ...apiKey,
-      id,
-      createdAt: new Date(),
-    }
-
-    await this.redis.hset("api_keys", id, JSON.stringify(newApiKey))
-    return newApiKey
-  }
-
-  async getApiKeyById(id: string): Promise<ApiKey | null> {
-    const apiKeyData = await this.redis.hget("api_keys", id)
-    return apiKeyData ? JSON.parse(apiKeyData) : null
-  }
-
-  async getApiKeysByUserId(userId: string): Promise<ApiKey[]> {
-    const apiKeys = await this.redis.hgetall("api_keys")
-    return Object.values(apiKeys)
-      .map((apiKeyData) => JSON.parse(apiKeyData))
-      .filter((apiKey) => apiKey.userId === userId)
-  }
-
-  async updateApiKey(id: string, updates: Partial<ApiKey>): Promise<ApiKey | null> {
-    const apiKey = await this.getApiKeyById(id)
-    if (!apiKey) return null
-
-    const updatedApiKey = {
-      ...apiKey,
-      ...updates,
-    }
-
-    await this.redis.hset("api_keys", id, JSON.stringify(updatedApiKey))
-    return updatedApiKey
-  }
-
-  async deleteApiKey(id: string): Promise<boolean> {
-    const result = await this.redis.hdel("api_keys", id)
-    return result === 1
-  }
-
-  // Health and maintenance
-  async getHealth(): Promise<{ status: string; connections: number; memory: any }> {
-    try {
-      const info = await this.redis.info("memory")
-      const dbSize = await this.redis.dbsize()
-
-      return {
-        status: "healthy",
-        connections: dbSize,
-        memory: {
-          used: info.match(/used_memory_human:(.+)/)?.[1]?.trim() || "unknown",
-          peak: info.match(/used_memory_peak_human:(.+)/)?.[1]?.trim() || "unknown",
-        },
-      }
-    } catch (error) {
-      return {
-        status: "unhealthy",
-        connections: 0,
-        memory: { used: "unknown", peak: "unknown" },
+  async deleteSessionsByUserId(userId: string): Promise<number> {
+    let deletedCount = 0
+    for (const [id, session] of this.sessions.entries()) {
+      if (session.userId === userId) {
+        this.sessions.delete(id)
+        deletedCount++
       }
     }
+    return deletedCount
   }
 
-  async cleanup(): Promise<void> {
-    // Clean up expired sessions
-    const sessions = await this.redis.hgetall("sessions")
+  async cleanupExpiredSessions(): Promise<number> {
+    let cleanedCount = 0
     const now = new Date()
 
-    for (const [sessionId, sessionData] of Object.entries(sessions)) {
-      const session = JSON.parse(sessionData)
-      if (new Date(session.expiresAt) < now) {
-        await this.deleteSession(sessionId)
+    for (const [id, session] of this.sessions.entries()) {
+      if (session.expiresAt < now) {
+        this.sessions.delete(id)
+        cleanedCount++
       }
+    }
+
+    return cleanedCount
+  }
+
+  // Health check
+  async getHealth(): Promise<{
+    status: "healthy" | "degraded" | "unhealthy"
+    users: number
+    bots: number
+    trades: number
+    sessions: number
+    uptime: number
+  }> {
+    return {
+      status: "healthy",
+      users: this.users.size,
+      bots: this.bots.size,
+      trades: this.trades.size,
+      sessions: this.sessions.size,
+      uptime: Date.now(),
     }
   }
 
-  async disconnect(): Promise<void> {
-    await this.redis.disconnect()
+  // Cleanup old data
+  async cleanup(): Promise<void> {
+    await this.cleanupExpiredSessions()
+    console.log("Database cleanup completed")
   }
 }
 
-// Export singleton instance
-export const database = Database.getInstance()
+// Create singleton instance
+const database = new InMemoryDatabase()
 
-// Export for compatibility
-export const connectToDatabase = () => database
+// Export both the class and instance
+export { InMemoryDatabase, database }
+
+// For backward compatibility
+export async function connectToDatabase() {
+  return database
+}
