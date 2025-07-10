@@ -24,7 +24,6 @@ export function useErrorHandler() {
     }
 
     if (reportToService) {
-      // Report to error service (implement based on your service)
       console.log("Would report error to service:", { error: error.message, severity })
     }
 
