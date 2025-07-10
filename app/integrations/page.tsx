@@ -1,34 +1,25 @@
+import { ProtectedRoute } from "@/components/auth/protected-route"
+import { ApiKeyManager } from "@/components/integrations/api-key-manager"
 import { ExchangeIntegrations } from "@/components/integrations/exchange-integrations"
-import { APIKeyManager } from "@/components/integrations/api-key-manager"
 import { IntegrationStatus } from "@/components/integrations/integration-status"
-import { TradingFeatures } from "@/components/integrations/trading-features"
 import { SecuritySettings } from "@/components/integrations/security-settings"
+import { TradingFeatures } from "@/components/integrations/trading-features"
 
 export default function IntegrationsPage() {
   return (
-    <div className="min-h-screen bg-[#191A1E] pt-20">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">🔗 Exchange Integrations</h1>
-          <p className="text-gray-300">Connect your favorite crypto exchanges and trading platforms</p>
+    <ProtectedRoute>
+      <div className="container mx-auto px-4 py-8 space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-white mb-2">Exchange Integrations</h1>
+          <p className="text-gray-400">Connect and manage your cryptocurrency exchange accounts</p>
         </div>
 
-        {/* Integration Status Overview */}
         <IntegrationStatus />
-
-        {/* Exchange Integrations */}
+        <ApiKeyManager />
         <ExchangeIntegrations />
-
-        {/* API Key Manager */}
-        <APIKeyManager />
-
-        {/* Trading Features */}
         <TradingFeatures />
-
-        {/* Security Settings */}
         <SecuritySettings />
       </div>
-    </div>
+    </ProtectedRoute>
   )
 }

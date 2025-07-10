@@ -34,7 +34,7 @@ interface APIKey {
   encrypted: boolean
 }
 
-export function APIKeyManager() {
+export function ApiKeyManager() {
   const [apiKeys, setApiKeys] = useState<APIKey[]>([
     {
       id: "1",
@@ -562,3 +562,6 @@ export function APIKeyManager() {
     </section>
   )
 }
+
+// Also export as default for compatibility
+export default ApiKeyManager
