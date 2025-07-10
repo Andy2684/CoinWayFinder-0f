@@ -2,9 +2,6 @@
   "functions": {
     "app/api/**/*.ts": {
       "maxDuration": 30
-    },
-    "scripts/**/*.ts": {
-      "maxDuration": 60
     }
   },
   "env": {
