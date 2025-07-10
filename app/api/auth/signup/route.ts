@@ -1,52 +1,32 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { AuthService } from "@/lib/auth"
+import { NextResponse } from "next/server"
+import { sql } from "@vercel/postgres"
+import { simpleHash, generateRandomString } from "../../../lib/security"
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const { email, password, name } = await request.json()
+    const { email, password } = await request.json()
 
-    // Validation
-    if (!email || !password || !name) {
-      return NextResponse.json({ success: false, message: "Email, password, and name are required" }, { status: 400 })
+    if (!email || !password) {
+      return new NextResponse("Missing email or password", { status: 400 })
     }
 
-    // Basic email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ success: false, message: "Invalid email format" }, { status: 400 })
+    const existingUser = await sql`SELECT * FROM users WHERE email = ${email}`
+
+    if (existingUser.rows.length) {
+      return new NextResponse("Email already in use", { status: 400 })
     }
 
-    // Password strength validation
-    if (password.length < 6) {
-      return NextResponse.json(
-        { success: false, message: "Password must be at least 6 characters long" },
-        { status: 400 },
-      )
-    }
+    const salt = generateRandomString(16)
+    const hashedPassword = await simpleHash(password, salt)
 
-    const result = await AuthService.signUp(email, name, password)
+    await sql`
+      INSERT INTO users (email, password, salt)
+      VALUES (${email}, ${hashedPassword}, ${salt})
+    `
 
-    if (result.success && result.user) {
-      // Set auth cookie
-      await AuthService.setUserCookie(result.user)
-
-      return NextResponse.json(
-        {
-          success: true,
-          message: result.message,
-          user: {
-            id: result.user.id,
-            email: result.user.email,
-            username: result.user.username,
-          },
-        },
-        { status: 201 },
-      )
-    } else {
-      return NextResponse.json(result, { status: 400 })
-    }
-  } catch (error) {
-    console.error("Signup error:", error)
-    return NextResponse.json({ success: false, message: "Internal server error" }, { status: 500 })
+    return new NextResponse("User created successfully", { status: 201 })
+  } catch (error: any) {
+    console.error("Signup error", error)
+    return new NextResponse(error.message, { status: 500 })
   }
 }

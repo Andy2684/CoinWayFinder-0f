@@ -1,6 +1,5 @@
 import { simpleHash } from "./security"
 import { database } from "./database"
-import { cookies } from "next/headers"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 const JWT_EXPIRES_IN = "7d"
@@ -134,38 +133,6 @@ export class AuthService {
     }
   }
 
-  async getCurrentUser(): Promise<User | null> {
-    try {
-      const cookieStore = cookies()
-      const token = cookieStore.get("auth-token")?.value
-
-      if (!token) {
-        return null
-      }
-
-      return await this.verifyAuthToken(token)
-    } catch (error) {
-      console.error("Get current user error:", error)
-      return null
-    }
-  }
-
-  async getCurrentAdmin(): Promise<Admin | null> {
-    try {
-      const cookieStore = cookies()
-      const token = cookieStore.get("admin-token")?.value
-
-      if (!token) {
-        return null
-      }
-
-      return await this.verifyAdminToken(token)
-    } catch (error) {
-      console.error("Get current admin error:", error)
-      return null
-    }
-  }
-
   async signUp(email: string, username: string, password: string): Promise<{ user: User; token: string }> {
     // Check if user already exists
     const existingUser = await database.getUserByEmail(email)
@@ -273,12 +240,6 @@ export class AuthService {
     // Default admin is handled in adminSignIn method
     console.log("Default admin available: admin / CoinWayFinder2024!")
   }
-
-  async signOut(): Promise<void> {
-    // In a real implementation, you might want to invalidate the token
-    // For now, we'll just rely on the client removing the cookie
-    console.log("User signed out")
-  }
 }
 
 export class AuthManager {
@@ -320,22 +281,6 @@ export class AuthManager {
 // Export instances
 export const authService = new AuthService()
 export const authManager = new AuthManager()
-
-// Static methods for easier access
-export const AuthUtils = {
-  getCurrentUser: async (): Promise<User | null> => {
-    return await authService.getCurrentUser()
-  },
-  getCurrentAdmin: async (): Promise<Admin | null> => {
-    return await authService.getCurrentAdmin()
-  },
-  verifyAuthToken: async (token: string): Promise<User | null> => {
-    return await authService.verifyAuthToken(token)
-  },
-  verifyAdminToken: async (token: string): Promise<Admin | null> => {
-    return await authService.verifyAdminToken(token)
-  },
-}
 
 // Initialize on module load
 authManager.initialize().catch(console.error)
