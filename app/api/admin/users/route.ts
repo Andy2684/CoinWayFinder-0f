@@ -1,62 +1,114 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { connectToDatabase } from "@/lib/database"
 import { verifyAdminToken } from "@/lib/admin"
-
-// Mock user data for admin panel
-const mockUsers = [
-  {
-    id: "1",
-    email: "user1@example.com",
-    username: "trader_pro",
-    subscription: "premium",
-    activeBots: 5,
-    totalTrades: 234,
-    joinedAt: "2024-01-15",
-    lastActive: "2024-01-20",
-  },
-  {
-    id: "2",
-    email: "user2@example.com",
-    username: "crypto_whale",
-    subscription: "basic",
-    activeBots: 2,
-    totalTrades: 89,
-    joinedAt: "2024-01-10",
-    lastActive: "2024-01-19",
-  },
-  {
-    id: "3",
-    email: "user3@example.com",
-    username: "dca_master",
-    subscription: "pro",
-    activeBots: 8,
-    totalTrades: 567,
-    joinedAt: "2024-01-05",
-    lastActive: "2024-01-20",
-  },
-]
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get("admin-token")?.value
-
-    if (!token) {
-      return NextResponse.json({ error: "No admin token found" }, { status: 401 })
+    const adminUser = await verifyAdminToken(request)
+    if (!adminUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const admin = verifyAdminToken(token)
+    const { db } = await connectToDatabase()
+    const users = await db
+      .collection("users")
+      .find({})
+      .project({ password: 0 })
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .toArray()
 
-    if (!admin) {
-      return NextResponse.json({ error: "Invalid admin token" }, { status: 401 })
-    }
+    const userStats = await db
+      .collection("users")
+      .aggregate([
+        {
+          $group: {
+            _id: null,
+            totalUsers: { $sum: 1 },
+            activeUsers: {
+              $sum: {
+                $cond: [{ $gte: ["$lastLoginAt", new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)] }, 1, 0],
+              },
+            },
+            premiumUsers: {
+              $sum: {
+                $cond: [{ $eq: ["$subscriptionStatus", "active"] }, 1, 0],
+              },
+            },
+          },
+        },
+      ])
+      .toArray()
 
     return NextResponse.json({
-      users: mockUsers,
-      totalUsers: mockUsers.length,
-      activeUsers: mockUsers.filter((u) => u.lastActive === "2024-01-20").length,
-      premiumUsers: mockUsers.filter((u) => u.subscription === "premium" || u.subscription === "pro").length,
+      users,
+      stats: userStats[0] || { totalUsers: 0, activeUsers: 0, premiumUsers: 0 },
     })
   } catch (error) {
-    console.error("Admin users error:", error)
+    console.error("Admin users fetch error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const adminUser = await verifyAdminToken(request)
+    if (!adminUser) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { action, userId, data } = await request.json()
+    const { db } = await connectToDatabase()
+
+    switch (action) {
+      case "suspend":
+        await db.collection("users").updateOne(
+          { _id: userId },
+          {
+            $set: {
+              status: "suspended",
+              suspendedAt: new Date(),
+              suspendedBy: adminUser.id,
+            },
+          },
+        )
+        break
+
+      case "activate":
+        await db.collection("users").updateOne(
+          { _id: userId },
+          {
+            $set: {
+              status: "active",
+            },
+            $unset: {
+              suspendedAt: "",
+              suspendedBy: "",
+            },
+          },
+        )
+        break
+
+      case "updateSubscription":
+        await db.collection("users").updateOne(
+          { _id: userId },
+          {
+            $set: {
+              subscriptionStatus: data.status,
+              subscriptionPlan: data.plan,
+              subscriptionUpdatedAt: new Date(),
+            },
+          },
+        )
+        break
+
+      default:
+        return NextResponse.json({ error: "Invalid action" }, { status: 400 })
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("Admin user action error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

@@ -2,11 +2,13 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Install pnpm
+RUN npm install -g pnpm
+
 # Copy package files
 COPY package.json pnpm-lock.yaml ./
 
-# Install pnpm and dependencies
-RUN npm install -g pnpm
+# Install dependencies
 RUN pnpm install --frozen-lockfile
 
 # Copy source code
@@ -15,8 +17,8 @@ COPY . .
 # Build the application
 RUN pnpm build
 
-# Expose port (for health checks)
-EXPOSE 3001
+# Expose port
+EXPOSE 3000
 
-# Start the bot scheduler
-CMD ["pnpm", "scheduler:prod"]
+# Start the scheduler
+CMD ["node", "scripts/start-bot-scheduler.js"]
