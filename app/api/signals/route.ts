@@ -1,117 +1,166 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// Mock signal data - in production, this would come from your database
+// Mock data for signals
 const mockSignals = [
   {
     id: "1",
     symbol: "BTC/USDT",
     type: "BUY",
-    strategy: "AI Trend Following",
+    strategy: "Trend Following",
+    exchange: "Binance",
+    timeframe: "4H",
     confidence: 87,
     entryPrice: 43250,
     targetPrice: 45800,
     stopLoss: 41900,
-    currentPrice: 44100,
-    pnl: 850,
-    pnlPercentage: 1.97,
-    status: "ACTIVE",
-    timeframe: "4H",
-    createdAt: "2024-01-10T10:30:00Z",
-    description: "Strong bullish momentum detected with RSI oversold recovery",
-    aiAnalysis:
-      "Technical indicators show strong buy signal with 87% confidence. Volume surge confirms breakout above resistance.",
+    currentPrice: 44120,
+    pnl: 870,
+    pnlPercentage: 2.01,
+    progress: 34,
     riskLevel: "MEDIUM",
-    exchange: "Binance",
+    aiAnalysis:
+      "Strong bullish momentum with RSI showing oversold conditions. Volume profile indicates institutional accumulation.",
+    createdAt: "2024-01-15T10:30:00Z",
+    status: "ACTIVE",
   },
-  // Add more mock signals as needed
+  {
+    id: "2",
+    symbol: "ETH/USDT",
+    type: "SELL",
+    strategy: "Mean Reversion",
+    exchange: "Bybit",
+    timeframe: "1H",
+    confidence: 92,
+    entryPrice: 2580,
+    targetPrice: 2420,
+    stopLoss: 2650,
+    currentPrice: 2510,
+    pnl: 70,
+    pnlPercentage: 2.71,
+    progress: 44,
+    riskLevel: "LOW",
+    aiAnalysis: "Overbought conditions on multiple timeframes. Bearish divergence detected on MACD.",
+    createdAt: "2024-01-15T09:15:00Z",
+    status: "ACTIVE",
+  },
 ]
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const search = searchParams.get("search")
-    const filter = searchParams.get("filter")
-    const limit = Number.parseInt(searchParams.get("limit") || "20")
-    const offset = Number.parseInt(searchParams.get("offset") || "0")
+    const symbols = searchParams.get("symbols")?.split(",") || []
+    const strategies = searchParams.get("strategies")?.split(",") || []
+    const exchanges = searchParams.get("exchanges")?.split(",") || []
+    const status = searchParams.get("status")
 
-    let filteredSignals = [...mockSignals]
+    let filteredSignals = mockSignals
 
-    // Apply search filter
-    if (search) {
-      filteredSignals = filteredSignals.filter(
-        (signal) =>
-          signal.symbol.toLowerCase().includes(search.toLowerCase()) ||
-          signal.strategy.toLowerCase().includes(search.toLowerCase()) ||
-          signal.description.toLowerCase().includes(search.toLowerCase()),
-      )
+    // Apply filters
+    if (symbols.length > 0) {
+      filteredSignals = filteredSignals.filter((signal) => symbols.includes(signal.symbol))
     }
 
-    // Apply status filter
-    if (filter && filter !== "all") {
-      filteredSignals = filteredSignals.filter((signal) => {
-        switch (filter) {
-          case "active":
-            return signal.status === "ACTIVE"
-          case "completed":
-            return signal.status === "COMPLETED"
-          case "high-confidence":
-            return signal.confidence >= 80
-          case "scalping":
-            return signal.strategy.toLowerCase().includes("scalping")
-          case "swing":
-            return signal.timeframe === "4H" || signal.timeframe === "1D"
-          default:
-            return true
-        }
-      })
+    if (strategies.length > 0) {
+      filteredSignals = filteredSignals.filter((signal) => strategies.includes(signal.strategy))
     }
 
-    // Apply pagination
-    const paginatedSignals = filteredSignals.slice(offset, offset + limit)
+    if (exchanges.length > 0) {
+      filteredSignals = filteredSignals.filter((signal) => exchanges.includes(signal.exchange))
+    }
+
+    if (status) {
+      filteredSignals = filteredSignals.filter((signal) => signal.status === status)
+    }
 
     return NextResponse.json({
-      signals: paginatedSignals,
+      success: true,
+      data: filteredSignals,
       total: filteredSignals.length,
-      hasMore: offset + limit < filteredSignals.length,
     })
   } catch (error) {
     console.error("Error fetching signals:", error)
-    return NextResponse.json({ error: "Failed to fetch signals" }, { status: 500 })
+    return NextResponse.json({ success: false, error: "Failed to fetch signals" }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const signalData = await request.json()
+    const body = await request.json()
 
     // Validate required fields
-    const requiredFields = ["symbol", "type", "strategy", "entryPrice", "targetPrice", "stopLoss"]
+    const requiredFields = ["symbol", "type", "strategy", "exchange", "entryPrice", "targetPrice", "stopLoss"]
     for (const field of requiredFields) {
-      if (!signalData[field]) {
-        return NextResponse.json({ error: `Missing required field: ${field}` }, { status: 400 })
+      if (!body[field]) {
+        return NextResponse.json({ success: false, error: `Missing required field: ${field}` }, { status: 400 })
       }
     }
 
-    // Create new signal (in production, save to database)
+    // Create new signal
     const newSignal = {
       id: Date.now().toString(),
-      ...signalData,
-      currentPrice: signalData.entryPrice,
+      ...body,
+      currentPrice: body.entryPrice,
       pnl: 0,
       pnlPercentage: 0,
-      status: "ACTIVE",
+      progress: 0,
       createdAt: new Date().toISOString(),
+      status: "ACTIVE",
     }
 
-    // In production, you would:
-    // 1. Save to database
-    // 2. Send notifications to subscribers
-    // 3. Trigger any automated trading systems
-    // 4. Log the signal creation
+    // In a real app, you would save this to a database
+    console.log("Creating new signal:", newSignal)
 
-    return NextResponse.json(newSignal, { status: 201 })
+    return NextResponse.json({
+      success: true,
+      data: newSignal,
+      message: "Signal created successfully",
+    })
   } catch (error) {
     console.error("Error creating signal:", error)
-    return NextResponse.json({ error: "Failed to create signal" }, { status: 500 })
+    return NextResponse.json({ success: false, error: "Failed to create signal" }, { status: 500 })
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { id, ...updates } = body
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: "Signal ID is required" }, { status: 400 })
+    }
+
+    // In a real app, you would update the signal in the database
+    console.log("Updating signal:", id, updates)
+
+    return NextResponse.json({
+      success: true,
+      message: "Signal updated successfully",
+    })
+  } catch (error) {
+    console.error("Error updating signal:", error)
+    return NextResponse.json({ success: false, error: "Failed to update signal" }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get("id")
+
+    if (!id) {
+      return NextResponse.json({ success: false, error: "Signal ID is required" }, { status: 400 })
+    }
+
+    // In a real app, you would delete the signal from the database
+    console.log("Deleting signal:", id)
+
+    return NextResponse.json({
+      success: true,
+      message: "Signal deleted successfully",
+    })
+  } catch (error) {
+    console.error("Error deleting signal:", error)
+    return NextResponse.json({ success: false, error: "Failed to delete signal" }, { status: 500 })
   }
 }

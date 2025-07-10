@@ -1,153 +1,135 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState } from "react"
+import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { SignalFeed } from "@/components/signals/signal-feed"
 import { SignalPerformance } from "@/components/signals/signal-performance"
+import { SignalAlerts } from "@/components/signals/signal-alerts"
 import { SignalFilters } from "@/components/signals/signal-filters"
 import { CreateSignalDialog } from "@/components/signals/create-signal-dialog"
-import { SignalAlerts } from "@/components/signals/signal-alerts"
-import { TrendingUp, Activity, Bell, Search } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Plus, TrendingUp, AlertTriangle, BarChart3 } from "lucide-react"
 
 export default function SignalsPage() {
-  const [activeSignals, setActiveSignals] = useState(0)
-  const [totalSignals, setTotalSignals] = useState(0)
-  const [successRate, setSuccessRate] = useState(0)
-  const [searchQuery, setSearchQuery] = useState("")
-  const [selectedFilter, setSelectedFilter] = useState("all")
-
-  useEffect(() => {
-    // Simulate loading signal stats
-    setActiveSignals(24)
-    setTotalSignals(156)
-    setSuccessRate(73.2)
-  }, [])
+  const [activeTab, setActiveTab] = useState("feed")
+  const [filters, setFilters] = useState({
+    symbols: [],
+    strategies: [],
+    exchanges: [],
+    timeframes: [],
+    confidenceRange: [0, 100],
+    pnlRange: [-100, 100],
+    riskLevels: [],
+  })
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">Trading Signals</h1>
-          <p className="text-muted-foreground">AI-powered trading recommendations and market insights</p>
+    <div className="min-h-screen bg-[#0A0B0F] text-white pt-20">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">Trading Signals</h1>
+            <p className="text-gray-400">AI-powered trading recommendations and market insights</p>
+          </div>
+          <div className="flex gap-3">
+            <CreateSignalDialog>
+              <Button className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Signal
+              </Button>
+            </CreateSignalDialog>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <CreateSignalDialog />
-          <Button variant="outline">
-            <Bell className="h-4 w-4 mr-2" />
-            Alerts
-          </Button>
+
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card className="bg-[#1A1B23] border-gray-800">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-400">Active Signals</p>
+                  <p className="text-2xl font-bold text-white">24</p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-[#30D5C8]" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-[#1A1B23] border-gray-800">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-400">Win Rate</p>
+                  <p className="text-2xl font-bold text-green-400">73.2%</p>
+                </div>
+                <BarChart3 className="w-8 h-8 text-green-400" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-[#1A1B23] border-gray-800">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-400">Total P&L</p>
+                  <p className="text-2xl font-bold text-green-400">+$12,847</p>
+                </div>
+                <TrendingUp className="w-8 h-8 text-green-400" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-[#1A1B23] border-gray-800">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-400">Active Alerts</p>
+                  <p className="text-2xl font-bold text-yellow-400">8</p>
+                </div>
+                <AlertTriangle className="w-8 h-8 text-yellow-400" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Main Content */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="bg-[#1A1B23] border-gray-800">
+            <TabsTrigger value="feed" className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]">
+              Signal Feed
+            </TabsTrigger>
+            <TabsTrigger
+              value="performance"
+              className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]"
+            >
+              Performance
+            </TabsTrigger>
+            <TabsTrigger value="alerts" className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]">
+              Alerts
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="feed" className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              <div className="lg:col-span-1">
+                <SignalFilters filters={filters} onFiltersChange={setFilters} />
+              </div>
+              <div className="lg:col-span-3">
+                <SignalFeed filters={filters} />
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="performance">
+            <SignalPerformance />
+          </TabsContent>
+
+          <TabsContent value="alerts">
+            <SignalAlerts />
+          </TabsContent>
+        </Tabs>
       </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Signals</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{activeSignals}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+12%</span> from last week
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Signals</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalSignals}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+8</span> new today
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{successRate}%</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">+2.1%</span> this month
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg. Return</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">+12.4%</div>
-            <p className="text-xs text-muted-foreground">Per successful signal</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Search and Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search signals by symbol, strategy, or description..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-        <Select value={selectedFilter} onValueChange={setSelectedFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter signals" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Signals</SelectItem>
-            <SelectItem value="active">Active</SelectItem>
-            <SelectItem value="completed">Completed</SelectItem>
-            <SelectItem value="high-confidence">High Confidence</SelectItem>
-            <SelectItem value="scalping">Scalping</SelectItem>
-            <SelectItem value="swing">Swing Trading</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Main Content */}
-      <Tabs defaultValue="feed" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="feed">Signal Feed</TabsTrigger>
-          <TabsTrigger value="performance">Performance</TabsTrigger>
-          <TabsTrigger value="alerts">Alerts</TabsTrigger>
-          <TabsTrigger value="filters">Advanced Filters</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="feed" className="space-y-4">
-          <SignalFeed searchQuery={searchQuery} filter={selectedFilter} />
-        </TabsContent>
-
-        <TabsContent value="performance" className="space-y-4">
-          <SignalPerformance />
-        </TabsContent>
-
-        <TabsContent value="alerts" className="space-y-4">
-          <SignalAlerts />
-        </TabsContent>
-
-        <TabsContent value="filters" className="space-y-4">
-          <SignalFilters />
-        </TabsContent>
-      </Tabs>
     </div>
   )
 }

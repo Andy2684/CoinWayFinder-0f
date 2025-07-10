@@ -1,15 +1,17 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { AlertTriangle } from "lucide-react"
 import { SignalCard } from "./signal-card"
+import { Card, CardContent } from "@/components/ui/card"
+import { Loader2, TrendingUp } from "lucide-react"
 
 interface Signal {
   id: string
   symbol: string
   type: "BUY" | "SELL"
   strategy: string
+  exchange: string
+  timeframe: string
   confidence: number
   entryPrice: number
   targetPrice: number
@@ -17,199 +19,185 @@ interface Signal {
   currentPrice: number
   pnl: number
   pnlPercentage: number
-  status: "ACTIVE" | "COMPLETED" | "STOPPED"
-  timeframe: string
-  createdAt: string
-  description: string
-  aiAnalysis: string
+  progress: number
   riskLevel: "LOW" | "MEDIUM" | "HIGH"
-  exchange: string
+  aiAnalysis: string
+  createdAt: string
+  status: "ACTIVE" | "COMPLETED" | "STOPPED"
 }
 
 interface SignalFeedProps {
-  searchQuery: string
-  filter: string
+  filters: any
 }
 
-export function SignalFeed({ searchQuery, filter }: SignalFeedProps) {
+export function SignalFeed({ filters }: SignalFeedProps) {
   const [signals, setSignals] = useState<Signal[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Mock data for demonstration
   useEffect(() => {
-    // Simulate API call
     const mockSignals: Signal[] = [
       {
         id: "1",
         symbol: "BTC/USDT",
         type: "BUY",
-        strategy: "AI Trend Following",
+        strategy: "Trend Following",
+        exchange: "Binance",
+        timeframe: "4H",
         confidence: 87,
         entryPrice: 43250,
         targetPrice: 45800,
         stopLoss: 41900,
-        currentPrice: 44100,
-        pnl: 850,
-        pnlPercentage: 1.97,
-        status: "ACTIVE",
-        timeframe: "4H",
-        createdAt: "2024-01-10T10:30:00Z",
-        description: "Strong bullish momentum detected with RSI oversold recovery",
-        aiAnalysis:
-          "Technical indicators show strong buy signal with 87% confidence. Volume surge confirms breakout above resistance.",
+        currentPrice: 44120,
+        pnl: 870,
+        pnlPercentage: 2.01,
+        progress: 34,
         riskLevel: "MEDIUM",
-        exchange: "Binance",
+        aiAnalysis:
+          "Strong bullish momentum with RSI showing oversold conditions. Volume profile indicates institutional accumulation.",
+        createdAt: "2024-01-15T10:30:00Z",
+        status: "ACTIVE",
       },
       {
         id: "2",
         symbol: "ETH/USDT",
         type: "SELL",
         strategy: "Mean Reversion",
-        confidence: 92,
-        entryPrice: 2650,
-        targetPrice: 2480,
-        stopLoss: 2720,
-        currentPrice: 2580,
-        pnl: 70,
-        pnlPercentage: 2.64,
-        status: "ACTIVE",
-        timeframe: "1H",
-        createdAt: "2024-01-10T09:15:00Z",
-        description: "Overbought conditions with bearish divergence on RSI",
-        aiAnalysis:
-          "High probability short setup with strong resistance at current levels. Risk-reward ratio favors downside.",
-        riskLevel: "LOW",
         exchange: "Bybit",
+        timeframe: "1H",
+        confidence: 92,
+        entryPrice: 2580,
+        targetPrice: 2420,
+        stopLoss: 2650,
+        currentPrice: 2510,
+        pnl: 70,
+        pnlPercentage: 2.71,
+        progress: 44,
+        riskLevel: "LOW",
+        aiAnalysis: "Overbought conditions on multiple timeframes. Bearish divergence detected on MACD.",
+        createdAt: "2024-01-15T09:15:00Z",
+        status: "ACTIVE",
       },
       {
         id: "3",
         symbol: "SOL/USDT",
         type: "BUY",
-        strategy: "Breakout Scalping",
+        strategy: "Breakout",
+        exchange: "KuCoin",
+        timeframe: "15M",
         confidence: 78,
         entryPrice: 98.5,
-        targetPrice: 102.3,
-        stopLoss: 96.8,
-        currentPrice: 101.2,
-        pnl: 2.7,
-        pnlPercentage: 2.74,
-        status: "COMPLETED",
-        timeframe: "15M",
-        createdAt: "2024-01-10T08:45:00Z",
-        description: "Clean breakout above key resistance with volume confirmation",
-        aiAnalysis: "Successful breakout pattern with strong momentum. Target reached with minimal drawdown.",
+        targetPrice: 105.2,
+        stopLoss: 95.8,
+        currentPrice: 101.3,
+        pnl: 2.8,
+        pnlPercentage: 2.84,
+        progress: 42,
         riskLevel: "HIGH",
-        exchange: "KuCoin",
+        aiAnalysis: "Clean breakout above resistance with strong volume confirmation. Target confluence at 105.20.",
+        createdAt: "2024-01-15T08:45:00Z",
+        status: "ACTIVE",
       },
       {
         id: "4",
         symbol: "ADA/USDT",
         type: "BUY",
-        strategy: "DCA Accumulation",
-        confidence: 65,
+        strategy: "Support/Resistance",
+        exchange: "Binance",
+        timeframe: "2H",
+        confidence: 85,
         entryPrice: 0.485,
         targetPrice: 0.52,
-        stopLoss: 0.46,
-        currentPrice: 0.492,
-        pnl: 0.007,
-        pnlPercentage: 1.44,
+        stopLoss: 0.465,
+        currentPrice: 0.498,
+        pnl: 0.013,
+        pnlPercentage: 2.68,
+        progress: 37,
+        riskLevel: "MEDIUM",
+        aiAnalysis: "Bounce from key support level with bullish engulfing pattern. Good risk-reward ratio.",
+        createdAt: "2024-01-15T07:20:00Z",
         status: "ACTIVE",
-        timeframe: "1D",
-        createdAt: "2024-01-09T16:20:00Z",
-        description: "Long-term accumulation zone with strong support",
-        aiAnalysis: "Dollar-cost averaging strategy in strong support zone. Low risk, moderate reward potential.",
-        riskLevel: "LOW",
-        exchange: "Coinbase Pro",
       },
       {
         id: "5",
         symbol: "MATIC/USDT",
         type: "SELL",
-        strategy: "Grid Trading",
-        confidence: 71,
+        strategy: "Trend Following",
+        exchange: "Bybit",
+        timeframe: "30M",
+        confidence: 81,
         entryPrice: 0.825,
         targetPrice: 0.78,
         stopLoss: 0.85,
-        currentPrice: 0.81,
-        pnl: 0.015,
-        pnlPercentage: 1.82,
-        status: "ACTIVE",
-        timeframe: "2H",
-        createdAt: "2024-01-10T07:30:00Z",
-        description: "Range-bound trading opportunity with clear levels",
-        aiAnalysis: "Grid strategy optimal for current sideways market conditions. Multiple profit opportunities.",
+        currentPrice: 0.805,
+        pnl: 0.02,
+        pnlPercentage: 2.42,
+        progress: 44,
         riskLevel: "MEDIUM",
-        exchange: "OKX",
+        aiAnalysis: "Bearish trend continuation with lower highs and lower lows. Volume supporting the move.",
+        createdAt: "2024-01-15T06:10:00Z",
+        status: "ACTIVE",
+      },
+      {
+        id: "6",
+        symbol: "LINK/USDT",
+        type: "BUY",
+        strategy: "Momentum",
+        exchange: "Binance",
+        timeframe: "1H",
+        confidence: 89,
+        entryPrice: 14.25,
+        targetPrice: 15.8,
+        stopLoss: 13.5,
+        currentPrice: 14.95,
+        pnl: 0.7,
+        pnlPercentage: 4.91,
+        progress: 45,
+        riskLevel: "LOW",
+        aiAnalysis: "Strong momentum breakout with institutional buying pressure. Technical indicators aligned.",
+        createdAt: "2024-01-15T05:30:00Z",
+        status: "ACTIVE",
       },
     ]
 
-    // Filter signals based on search and filter criteria
-    let filteredSignals = mockSignals
-
-    if (searchQuery) {
-      filteredSignals = filteredSignals.filter(
-        (signal) =>
-          signal.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          signal.strategy.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          signal.description.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
-    }
-
-    if (filter !== "all") {
-      filteredSignals = filteredSignals.filter((signal) => {
-        switch (filter) {
-          case "active":
-            return signal.status === "ACTIVE"
-          case "completed":
-            return signal.status === "COMPLETED"
-          case "high-confidence":
-            return signal.confidence >= 80
-          case "scalping":
-            return signal.strategy.toLowerCase().includes("scalping")
-          case "swing":
-            return signal.timeframe === "4H" || signal.timeframe === "1D"
-          default:
-            return true
-        }
-      })
-    }
-
-    setSignals(filteredSignals)
-    setLoading(false)
-  }, [searchQuery, filter])
+    setTimeout(() => {
+      setSignals(mockSignals)
+      setLoading(false)
+    }, 1000)
+  }, [])
 
   if (loading) {
     return (
-      <div className="space-y-4">
-        {[...Array(3)].map((_, i) => (
-          <Card key={i} className="animate-pulse">
-            <CardHeader>
-              <div className="h-4 bg-gray-200 rounded w-1/4"></div>
-              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-            </CardHeader>
-            <CardContent>
-              <div className="h-20 bg-gray-200 rounded"></div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Card className="bg-[#1A1B23] border-gray-800">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-[#30D5C8]" />
+            <span className="ml-2 text-gray-400">Loading signals...</span>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (signals.length === 0) {
+    return (
+      <Card className="bg-[#1A1B23] border-gray-800">
+        <CardContent className="p-6">
+          <div className="text-center py-12">
+            <TrendingUp className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-400 mb-2">No signals found</h3>
+            <p className="text-gray-500">Try adjusting your filters or create a new signal.</p>
+          </div>
+        </CardContent>
+      </Card>
     )
   }
 
   return (
     <div className="space-y-4">
-      {signals.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <AlertTriangle className="h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No signals found</h3>
-            <p className="text-muted-foreground text-center">
-              Try adjusting your search criteria or filters to find more signals.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        signals.map((signal) => <SignalCard key={signal.id} signal={signal} />)
-      )}
+      {signals.map((signal) => (
+        <SignalCard key={signal.id} signal={signal} />
+      ))}
     </div>
   )
 }

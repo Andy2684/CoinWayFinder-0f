@@ -1,390 +1,341 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Slider } from "@/components/ui/slider"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { X, Save } from "lucide-react"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+import { Filter, X, ChevronDown, ChevronUp, Search, Bookmark, BookmarkPlus } from "lucide-react"
 
-export function SignalFilters() {
-  const [filters, setFilters] = useState({
-    symbols: [] as string[],
-    strategies: [] as string[],
-    exchanges: [] as string[],
-    timeframes: [] as string[],
-    riskLevels: [] as string[],
-    confidenceRange: [70, 100],
-    pnlRange: [-100, 100],
-    status: "all",
+interface FilterProps {
+  filters: {
+    symbols: string[]
+    strategies: string[]
+    exchanges: string[]
+    timeframes: string[]
+    confidenceRange: number[]
+    pnlRange: number[]
+    riskLevels: string[]
+  }
+  onFiltersChange: (filters: any) => void
+}
+
+export function SignalFilters({ filters, onFiltersChange }: FilterProps) {
+  const [searchTerm, setSearchTerm] = useState("")
+  const [expandedSections, setExpandedSections] = useState({
+    symbols: true,
+    strategies: true,
+    exchanges: false,
+    timeframes: false,
+    advanced: false,
   })
 
-  const [savedFilters, setSavedFilters] = useState([
-    { id: "1", name: "High Confidence BTC", count: 12 },
-    { id: "2", name: "Scalping Signals", count: 8 },
-    { id: "3", name: "Low Risk Only", count: 15 },
+  const [savedFilters] = useState([
+    { name: "High Confidence BTC", count: 12 },
+    { name: "Scalping Signals", count: 8 },
+    { name: "Swing Trading", count: 15 },
   ])
 
-  const availableSymbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "ADA/USDT", "MATIC/USDT", "DOT/USDT"]
-  const availableStrategies = [
-    "AI Trend Following",
-    "Mean Reversion",
-    "Breakout Scalping",
-    "Grid Trading",
-    "DCA Accumulation",
-    "Arbitrage",
-  ]
-  const availableExchanges = ["Binance", "Bybit", "KuCoin", "OKX", "Coinbase Pro", "Bitget"]
-  const availableTimeframes = ["15M", "1H", "4H", "1D", "1W"]
-  const availableRiskLevels = ["LOW", "MEDIUM", "HIGH"]
+  const symbols = ["BTC/USDT", "ETH/USDT", "SOL/USDT", "ADA/USDT", "MATIC/USDT", "LINK/USDT", "DOT/USDT", "AVAX/USDT"]
+  const strategies = ["Trend Following", "Mean Reversion", "Breakout", "Support/Resistance", "Momentum", "Scalping"]
+  const exchanges = ["Binance", "Bybit", "KuCoin", "OKX", "Bitget", "Gate.io"]
+  const timeframes = ["15M", "30M", "1H", "2H", "4H", "1D"]
+  const riskLevels = ["LOW", "MEDIUM", "HIGH"]
 
-  const toggleArrayFilter = (category: keyof typeof filters, value: string) => {
-    setFilters((prev) => ({
+  const toggleSection = (section: string) => {
+    setExpandedSections((prev) => ({
       ...prev,
-      [category]: (prev[category] as string[]).includes(value)
-        ? (prev[category] as string[]).filter((item) => item !== value)
-        : [...(prev[category] as string[]), value],
+      [section]: !prev[section],
     }))
   }
 
-  const clearFilters = () => {
-    setFilters({
+  const updateFilter = (key: string, value: any) => {
+    onFiltersChange({
+      ...filters,
+      [key]: value,
+    })
+  }
+
+  const toggleArrayFilter = (key: string, value: string) => {
+    const currentArray = filters[key] || []
+    const newArray = currentArray.includes(value)
+      ? currentArray.filter((item) => item !== value)
+      : [...currentArray, value]
+
+    updateFilter(key, newArray)
+  }
+
+  const clearAllFilters = () => {
+    onFiltersChange({
       symbols: [],
       strategies: [],
       exchanges: [],
       timeframes: [],
-      riskLevels: [],
-      confidenceRange: [70, 100],
+      confidenceRange: [0, 100],
       pnlRange: [-100, 100],
-      status: "all",
+      riskLevels: [],
     })
+    setSearchTerm("")
   }
 
-  const saveCurrentFilter = () => {
-    const filterName = prompt("Enter filter name:")
-    if (filterName) {
-      setSavedFilters((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          name: filterName,
-          count: Math.floor(Math.random() * 20) + 1,
-        },
-      ])
-    }
+  const getActiveFilterCount = () => {
+    return (
+      filters.symbols.length +
+      filters.strategies.length +
+      filters.exchanges.length +
+      filters.timeframes.length +
+      filters.riskLevels.length +
+      (filters.confidenceRange[0] !== 0 || filters.confidenceRange[1] !== 100 ? 1 : 0) +
+      (filters.pnlRange[0] !== -100 || filters.pnlRange[1] !== 100 ? 1 : 0)
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h3 className="text-lg font-semibold">Advanced Filters</h3>
-          <p className="text-sm text-muted-foreground">Fine-tune your signal search criteria</p>
-        </div>
-        <div className="flex space-x-2">
-          <Button variant="outline" onClick={clearFilters}>
-            <X className="h-4 w-4 mr-2" />
+    <Card className="bg-[#1A1B23] border-gray-800">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-white flex items-center gap-2">
+            <Filter className="w-5 h-5" />
+            Filters
+            {getActiveFilterCount() > 0 && (
+              <Badge variant="secondary" className="bg-[#30D5C8] text-[#191A1E]">
+                {getActiveFilterCount()}
+              </Badge>
+            )}
+          </CardTitle>
+          <Button variant="ghost" size="sm" onClick={clearAllFilters}>
             Clear All
           </Button>
-          <Button onClick={saveCurrentFilter}>
-            <Save className="h-4 w-4 mr-2" />
-            Save Filter
-          </Button>
         </div>
-      </div>
+      </CardHeader>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <CardContent className="space-y-6">
+        {/* Search */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Input
+            placeholder="Search symbols..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 bg-[#0F1015] border-gray-700"
+          />
+        </div>
+
         {/* Saved Filters */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Saved Filters</CardTitle>
-            <CardDescription>Quick access to your favorite filter combinations</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {savedFilters.map((filter) => (
-              <div
-                key={filter.id}
-                className="flex items-center justify-between p-2 border rounded hover:bg-muted cursor-pointer"
-              >
-                <div>
-                  <p className="font-medium text-sm">{filter.name}</p>
-                  <p className="text-xs text-muted-foreground">{filter.count} signals</p>
+        <div>
+          <div className="flex items-center justify-between mb-3">
+            <Label className="text-sm font-medium text-gray-300">Saved Filters</Label>
+            <Button variant="ghost" size="sm">
+              <BookmarkPlus className="w-4 h-4" />
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {savedFilters.map((saved, index) => (
+              <Button key={index} variant="ghost" size="sm" className="w-full justify-between text-left h-auto p-2">
+                <div className="flex items-center gap-2">
+                  <Bookmark className="w-4 h-4 text-[#30D5C8]" />
+                  <span className="text-sm">{saved.name}</span>
                 </div>
-                <Button variant="ghost" size="sm">
-                  <X className="h-3 w-3" />
-                </Button>
+                <Badge variant="outline" className="text-xs">
+                  {saved.count}
+                </Badge>
+              </Button>
+            ))}
+          </div>
+        </div>
+
+        {/* Active Filters */}
+        {getActiveFilterCount() > 0 && (
+          <div>
+            <Label className="text-sm font-medium text-gray-300 mb-3 block">Active Filters</Label>
+            <div className="flex flex-wrap gap-2">
+              {filters.symbols.map((symbol) => (
+                <Badge key={symbol} variant="secondary" className="bg-[#30D5C8]/20 text-[#30D5C8]">
+                  {symbol}
+                  <X className="w-3 h-3 ml-1 cursor-pointer" onClick={() => toggleArrayFilter("symbols", symbol)} />
+                </Badge>
+              ))}
+              {filters.strategies.map((strategy) => (
+                <Badge key={strategy} variant="secondary" className="bg-blue-500/20 text-blue-400">
+                  {strategy}
+                  <X
+                    className="w-3 h-3 ml-1 cursor-pointer"
+                    onClick={() => toggleArrayFilter("strategies", strategy)}
+                  />
+                </Badge>
+              ))}
+              {filters.riskLevels.map((risk) => (
+                <Badge key={risk} variant="secondary" className="bg-yellow-500/20 text-yellow-400">
+                  {risk}
+                  <X className="w-3 h-3 ml-1 cursor-pointer" onClick={() => toggleArrayFilter("riskLevels", risk)} />
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Symbols */}
+        <Collapsible open={expandedSections.symbols} onOpenChange={() => toggleSection("symbols")}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+              <Label className="text-sm font-medium text-gray-300">Symbols</Label>
+              {expandedSections.symbols ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-2 mt-3">
+            {symbols
+              .filter((symbol) => symbol.toLowerCase().includes(searchTerm.toLowerCase()))
+              .map((symbol) => (
+                <div key={symbol} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={symbol}
+                    checked={filters.symbols.includes(symbol)}
+                    onCheckedChange={() => toggleArrayFilter("symbols", symbol)}
+                  />
+                  <Label htmlFor={symbol} className="text-sm text-gray-300 cursor-pointer">
+                    {symbol}
+                  </Label>
+                </div>
+              ))}
+          </CollapsibleContent>
+        </Collapsible>
+
+        {/* Strategies */}
+        <Collapsible open={expandedSections.strategies} onOpenChange={() => toggleSection("strategies")}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+              <Label className="text-sm font-medium text-gray-300">Strategies</Label>
+              {expandedSections.strategies ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-2 mt-3">
+            {strategies.map((strategy) => (
+              <div key={strategy} className="flex items-center space-x-2">
+                <Checkbox
+                  id={strategy}
+                  checked={filters.strategies.includes(strategy)}
+                  onCheckedChange={() => toggleArrayFilter("strategies", strategy)}
+                />
+                <Label htmlFor={strategy} className="text-sm text-gray-300 cursor-pointer">
+                  {strategy}
+                </Label>
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </CollapsibleContent>
+        </Collapsible>
 
-        {/* Filter Categories */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Symbols */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Trading Pairs</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {availableSymbols.map((symbol) => (
-                  <div key={symbol} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`symbol-${symbol}`}
-                      checked={filters.symbols.includes(symbol)}
-                      onCheckedChange={() => toggleArrayFilter("symbols", symbol)}
-                    />
-                    <Label htmlFor={`symbol-${symbol}`} className="text-sm">
-                      {symbol}
-                    </Label>
-                  </div>
-                ))}
+        {/* Exchanges */}
+        <Collapsible open={expandedSections.exchanges} onOpenChange={() => toggleSection("exchanges")}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+              <Label className="text-sm font-medium text-gray-300">Exchanges</Label>
+              {expandedSections.exchanges ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-2 mt-3">
+            {exchanges.map((exchange) => (
+              <div key={exchange} className="flex items-center space-x-2">
+                <Checkbox
+                  id={exchange}
+                  checked={filters.exchanges.includes(exchange)}
+                  onCheckedChange={() => toggleArrayFilter("exchanges", exchange)}
+                />
+                <Label htmlFor={exchange} className="text-sm text-gray-300 cursor-pointer">
+                  {exchange}
+                </Label>
               </div>
-            </CardContent>
-          </Card>
+            ))}
+          </CollapsibleContent>
+        </Collapsible>
 
-          {/* Strategies */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Trading Strategies</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {availableStrategies.map((strategy) => (
-                  <div key={strategy} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`strategy-${strategy}`}
-                      checked={filters.strategies.includes(strategy)}
-                      onCheckedChange={() => toggleArrayFilter("strategies", strategy)}
-                    />
-                    <Label htmlFor={`strategy-${strategy}`} className="text-sm">
-                      {strategy}
-                    </Label>
-                  </div>
-                ))}
+        {/* Timeframes */}
+        <Collapsible open={expandedSections.timeframes} onOpenChange={() => toggleSection("timeframes")}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+              <Label className="text-sm font-medium text-gray-300">Timeframes</Label>
+              {expandedSections.timeframes ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-2 mt-3">
+            {timeframes.map((timeframe) => (
+              <div key={timeframe} className="flex items-center space-x-2">
+                <Checkbox
+                  id={timeframe}
+                  checked={filters.timeframes.includes(timeframe)}
+                  onCheckedChange={() => toggleArrayFilter("timeframes", timeframe)}
+                />
+                <Label htmlFor={timeframe} className="text-sm text-gray-300 cursor-pointer">
+                  {timeframe}
+                </Label>
               </div>
-            </CardContent>
-          </Card>
+            ))}
+          </CollapsibleContent>
+        </Collapsible>
 
-          {/* Exchanges and Timeframes */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Exchanges</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {availableExchanges.map((exchange) => (
-                    <div key={exchange} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`exchange-${exchange}`}
-                        checked={filters.exchanges.includes(exchange)}
-                        onCheckedChange={() => toggleArrayFilter("exchanges", exchange)}
-                      />
-                      <Label htmlFor={`exchange-${exchange}`} className="text-sm">
-                        {exchange}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Timeframes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {availableTimeframes.map((timeframe) => (
-                    <div key={timeframe} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`timeframe-${timeframe}`}
-                        checked={filters.timeframes.includes(timeframe)}
-                        onCheckedChange={() => toggleArrayFilter("timeframes", timeframe)}
-                      />
-                      <Label htmlFor={`timeframe-${timeframe}`} className="text-sm">
-                        {timeframe}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+        {/* Risk Levels */}
+        <div>
+          <Label className="text-sm font-medium text-gray-300 mb-3 block">Risk Level</Label>
+          <div className="space-y-2">
+            {riskLevels.map((risk) => (
+              <div key={risk} className="flex items-center space-x-2">
+                <Checkbox
+                  id={risk}
+                  checked={filters.riskLevels.includes(risk)}
+                  onCheckedChange={() => toggleArrayFilter("riskLevels", risk)}
+                />
+                <Label htmlFor={risk} className="text-sm text-gray-300 cursor-pointer">
+                  {risk}
+                </Label>
+              </div>
+            ))}
           </div>
-
-          {/* Risk Levels and Ranges */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Risk & Performance Filters</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* Risk Levels */}
-              <div>
-                <Label className="text-sm font-medium">Risk Levels</Label>
-                <div className="flex space-x-4 mt-2">
-                  {availableRiskLevels.map((risk) => (
-                    <div key={risk} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`risk-${risk}`}
-                        checked={filters.riskLevels.includes(risk)}
-                        onCheckedChange={() => toggleArrayFilter("riskLevels", risk)}
-                      />
-                      <Label htmlFor={`risk-${risk}`} className="text-sm">
-                        {risk}
-                      </Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Confidence Range */}
-              <div>
-                <Label className="text-sm font-medium">Confidence Range</Label>
-                <div className="mt-4 px-2">
-                  <Slider
-                    value={filters.confidenceRange}
-                    onValueChange={(value) => setFilters((prev) => ({ ...prev, confidenceRange: value }))}
-                    max={100}
-                    min={0}
-                    step={5}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                    <span>{filters.confidenceRange[0]}%</span>
-                    <span>{filters.confidenceRange[1]}%</span>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* P&L Range */}
-              <div>
-                <Label className="text-sm font-medium">P&L Range (%)</Label>
-                <div className="mt-4 px-2">
-                  <Slider
-                    value={filters.pnlRange}
-                    onValueChange={(value) => setFilters((prev) => ({ ...prev, pnlRange: value }))}
-                    max={100}
-                    min={-100}
-                    step={5}
-                    className="w-full"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                    <span>{filters.pnlRange[0]}%</span>
-                    <span>{filters.pnlRange[1]}%</span>
-                  </div>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Signal Status */}
-              <div>
-                <Label className="text-sm font-medium">Signal Status</Label>
-                <Select
-                  value={filters.status}
-                  onValueChange={(value) => setFilters((prev) => ({ ...prev, status: value }))}
-                >
-                  <SelectTrigger className="mt-2">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Signals</SelectItem>
-                    <SelectItem value="active">Active Only</SelectItem>
-                    <SelectItem value="completed">Completed Only</SelectItem>
-                    <SelectItem value="stopped">Stopped Only</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Active Filters Summary */}
-          {(filters.symbols.length > 0 ||
-            filters.strategies.length > 0 ||
-            filters.exchanges.length > 0 ||
-            filters.timeframes.length > 0 ||
-            filters.riskLevels.length > 0 ||
-            filters.status !== "all") && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Active Filters</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {filters.symbols.map((symbol) => (
-                    <Badge
-                      key={symbol}
-                      variant="secondary"
-                      className="cursor-pointer"
-                      onClick={() => toggleArrayFilter("symbols", symbol)}
-                    >
-                      {symbol} <X className="h-3 w-3 ml-1" />
-                    </Badge>
-                  ))}
-                  {filters.strategies.map((strategy) => (
-                    <Badge
-                      key={strategy}
-                      variant="secondary"
-                      className="cursor-pointer"
-                      onClick={() => toggleArrayFilter("strategies", strategy)}
-                    >
-                      {strategy} <X className="h-3 w-3 ml-1" />
-                    </Badge>
-                  ))}
-                  {filters.exchanges.map((exchange) => (
-                    <Badge
-                      key={exchange}
-                      variant="secondary"
-                      className="cursor-pointer"
-                      onClick={() => toggleArrayFilter("exchanges", exchange)}
-                    >
-                      {exchange} <X className="h-3 w-3 ml-1" />
-                    </Badge>
-                  ))}
-                  {filters.timeframes.map((timeframe) => (
-                    <Badge
-                      key={timeframe}
-                      variant="secondary"
-                      className="cursor-pointer"
-                      onClick={() => toggleArrayFilter("timeframes", timeframe)}
-                    >
-                      {timeframe} <X className="h-3 w-3 ml-1" />
-                    </Badge>
-                  ))}
-                  {filters.riskLevels.map((risk) => (
-                    <Badge
-                      key={risk}
-                      variant="secondary"
-                      className="cursor-pointer"
-                      onClick={() => toggleArrayFilter("riskLevels", risk)}
-                    >
-                      {risk} <X className="h-3 w-3 ml-1" />
-                    </Badge>
-                  ))}
-                  {filters.status !== "all" && (
-                    <Badge
-                      variant="secondary"
-                      className="cursor-pointer"
-                      onClick={() => setFilters((prev) => ({ ...prev, status: "all" }))}
-                    >
-                      Status: {filters.status} <X className="h-3 w-3 ml-1" />
-                    </Badge>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </div>
-      </div>
-    </div>
+
+        {/* Advanced Filters */}
+        <Collapsible open={expandedSections.advanced} onOpenChange={() => toggleSection("advanced")}>
+          <CollapsibleTrigger asChild>
+            <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+              <Label className="text-sm font-medium text-gray-300">Advanced</Label>
+              {expandedSections.advanced ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="space-y-4 mt-3">
+            {/* Confidence Range */}
+            <div>
+              <Label className="text-sm font-medium text-gray-300 mb-2 block">
+                Confidence: {filters.confidenceRange[0]}% - {filters.confidenceRange[1]}%
+              </Label>
+              <Slider
+                value={filters.confidenceRange}
+                onValueChange={(value) => updateFilter("confidenceRange", value)}
+                max={100}
+                min={0}
+                step={5}
+                className="w-full"
+              />
+            </div>
+
+            {/* P&L Range */}
+            <div>
+              <Label className="text-sm font-medium text-gray-300 mb-2 block">
+                P&L: {filters.pnlRange[0]}% - {filters.pnlRange[1]}%
+              </Label>
+              <Slider
+                value={filters.pnlRange}
+                onValueChange={(value) => updateFilter("pnlRange", value)}
+                max={100}
+                min={-100}
+                step={5}
+                className="w-full"
+              />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </CardContent>
+    </Card>
   )
 }
