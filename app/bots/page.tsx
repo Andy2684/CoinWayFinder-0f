@@ -8,8 +8,10 @@ import { CreateBotDialog } from "@/components/bots/create-bot-dialog"
 import { BotPerformance } from "@/components/bots/bot-performance"
 import { BotStrategies } from "@/components/bots/bot-strategies"
 import { ActiveBots } from "@/components/bots/active-bots"
-import { Plus, Bot, Play, Pause, Square, TrendingUp } from "lucide-react"
+import { Bot, Play, Pause, Square, TrendingUp } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { BotErrorBoundary } from "@/components/bot-error-boundary"
+import { BotsOverview } from "@/components/bots/bots-overview"
 
 interface TradingBot {
   id: string
@@ -89,21 +91,13 @@ export default function BotsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-white">Trading Bots</h1>
-            <p className="text-slate-400 mt-1">Create and manage your automated trading strategies</p>
-          </div>
-          <Button onClick={() => setCreateDialogOpen(true)} className="bg-teal-500 hover:bg-teal-600 text-white">
-            <Plus className="w-4 h-4 mr-2" />
-            Create Bot
-          </Button>
+    <BotErrorBoundary>
+      <div className="container mx-auto p-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold tracking-tight">Trading Bots</h1>
+          <p className="text-muted-foreground">Create and manage your automated trading strategies</p>
         </div>
-
-        {/* Bot Statistics */}
+        <BotsOverview />
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <Card className="bg-slate-800/50 border-slate-700">
             <CardContent className="p-4">
@@ -264,6 +258,6 @@ export default function BotsPage() {
 
         <CreateBotDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} onBotCreated={fetchBots} />
       </div>
-    </div>
+    </BotErrorBoundary>
   )
 }

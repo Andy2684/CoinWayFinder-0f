@@ -5,6 +5,7 @@ import "./globals.css"
 import { Navigation } from "@/components/navigation"
 import { Toaster } from "@/components/ui/toaster"
 import { ClientLayout } from "./ClientLayout"
+import { ErrorBoundary } from "@/components/error-boundary"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -24,11 +25,15 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={inter.className}>
-        <ClientLayout>
-          <Navigation />
-          <main className="pt-20">{children}</main>
-          <Toaster />
-        </ClientLayout>
+        <ErrorBoundary>
+          <ClientLayout>
+            <Navigation />
+            <main className="pt-20">
+              <ErrorBoundary>{children}</ErrorBoundary>
+            </main>
+            <Toaster />
+          </ClientLayout>
+        </ErrorBoundary>
       </body>
     </html>
   )
