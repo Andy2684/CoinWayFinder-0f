@@ -1,248 +1,357 @@
-import { MongoClient, type Db, type Collection } from "mongodb"
+import { createClient } from "@supabase/supabase-js"
 
-const MONGODB_URI = process.env.DATABASE_URL || process.env.MONGODB_URI || "mongodb://localhost:27017"
-const DB_NAME = process.env.DB_NAME || "coinwayfinder"
+const supabaseUrl = process.env.SUPABASE_URL!
+const supabaseKey = process.env.SUPABASE_ANON_KEY!
 
-let client: MongoClient | null = null
-let db: Db | null = null
-
-export async function connectToDatabase(): Promise<Db> {
-  if (db) {
-    return db
-  }
-
-  try {
-    if (!client) {
-      client = new MongoClient(MONGODB_URI, {
-        maxPoolSize: 10,
-        serverSelectionTimeoutMS: 5000,
-        socketTimeoutMS: 45000,
-      })
-      await client.connect()
-    }
-
-    db = client.db(DB_NAME)
-    console.log("Connected to MongoDB successfully")
-    return db
-  } catch (error) {
-    console.error("Failed to connect to MongoDB:", error)
-    throw error
-  }
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error("Missing Supabase environment variables")
 }
 
-export class Database {
-  private db: Db | null = null
+const supabase = createClient(supabaseUrl, supabaseKey)
 
-  async connect(): Promise<void> {
-    this.db = await connectToDatabase()
+export interface User {
+  id: string
+  email: string
+  username: string
+  role: "user" | "admin"
+  subscription: {
+    plan: "free" | "starter" | "pro" | "enterprise"
+    status: "active" | "inactive" | "cancelled"
+    expiresAt: string | null
+  }
+  createdAt: string
+  lastLogin: string | null
+  trialStartedAt: string | null
+  trialExpiresAt: string | null
+}
+
+export interface Bot {
+  id: string
+  userId: string
+  name: string
+  strategy: string
+  symbol: string
+  status: "running" | "paused" | "stopped" | "error"
+  config: {
+    riskLevel: number
+    lotSize: number
+    takeProfit: number
+    stopLoss: number
+    investment: number
+    exchange?: string
+  }
+  stats: {
+    totalTrades: number
+    winningTrades: number
+    totalProfit: number
+    totalLoss: number
+    winRate: number
+    createdAt: string
+    lastTradeAt?: string
+  }
+  createdAt: string
+  updatedAt: string
+}
+
+export interface ApiKey {
+  id: string
+  userId: string
+  name: string
+  exchange: string
+  publicKey: string
+  secretKey: string
+  passphrase?: string
+  testnet: boolean
+  permissions: string[]
+  createdAt: string
+  lastUsed?: string
+}
+
+export interface Subscription {
+  id: string
+  userId: string
+  planId: string
+  status: "active" | "inactive" | "cancelled" | "past_due"
+  currentPeriodStart: string
+  currentPeriodEnd: string
+  cancelAtPeriodEnd: boolean
+  stripeCustomerId?: string
+  stripeSubscriptionId?: string
+  createdAt: string
+  updatedAt: string
+}
+
+class Database {
+  async createUser(userData: Partial<User>): Promise<User> {
+    const { data, error } = await supabase
+      .from("users")
+      .insert([
+        {
+          email: userData.email,
+          username: userData.username,
+          role: userData.role || "user",
+          subscription: userData.subscription || {
+            plan: "free",
+            status: "active",
+            expiresAt: null,
+          },
+          createdAt: new Date().toISOString(),
+          trialStartedAt: new Date().toISOString(),
+          trialExpiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+      ])
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
   }
 
-  async getCollection(name: string): Promise<Collection> {
-    if (!this.db) {
-      await this.connect()
-    }
-    return this.db!.collection(name)
-  }
-
-  // User operations
-  async createUser(userData: {
-    email: string
-    username: string
-    password: string
-    referralCode?: string
-  }): Promise<any> {
-    const users = await this.getCollection("users")
-    const userId = new Date().getTime().toString()
-
-    const user = {
-      _id: userId,
-      email: userData.email,
-      username: userData.username,
-      password: userData.password,
-      role: "user",
-      isActive: true,
-      subscription: {
-        plan: "free",
-        status: "active",
-        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days trial
-      },
-      referralCode: userData.referralCode,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }
-
-    await users.insertOne(user)
-    return user
-  }
-
-  async createUserWithTrial(userId: string, referralCode?: string): Promise<any> {
-    const users = await this.getCollection("users")
-
-    const user = {
-      _id: userId,
+  async createUserWithTrial(userId: string, referralCode?: string): Promise<User> {
+    const trialDays = referralCode ? 14 : 7
+    const userData = {
+      id: userId,
       email: `user${userId}@example.com`,
       username: `user${userId}`,
-      role: "user",
-      isActive: true,
+      role: "user" as const,
       subscription: {
-        plan: "trial",
-        status: "active",
-        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days trial
-        createdAt: new Date(),
+        plan: "free" as const,
+        status: "active" as const,
+        expiresAt: null,
       },
-      referralCode,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      createdAt: new Date().toISOString(),
+      trialStartedAt: new Date().toISOString(),
+      trialExpiresAt: new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString(),
     }
 
-    await users.insertOne(user)
-    return user
+    return this.createUser(userData)
   }
 
-  async findUserById(userId: string): Promise<any> {
-    const users = await this.getCollection("users")
-    return users.findOne({ _id: userId })
-  }
+  async getUserById(userId: string): Promise<User | null> {
+    const { data, error } = await supabase.from("users").select("*").eq("id", userId).single()
 
-  async findUserByEmail(email: string): Promise<any> {
-    const users = await this.getCollection("users")
-    return users.findOne({ email })
-  }
-
-  async updateUser(userId: string, updates: any): Promise<any> {
-    const users = await this.getCollection("users")
-    await users.updateOne({ _id: userId }, { $set: { ...updates, updatedAt: new Date() } })
-    return this.findUserById(userId)
-  }
-
-  // Bot operations
-  async createBot(botData: any): Promise<any> {
-    const bots = await this.getCollection("bots")
-    const botId = `bot_${Date.now()}`
-
-    const bot = {
-      _id: botId,
-      ...botData,
-      createdAt: new Date(),
-      updatedAt: new Date(),
+    if (error) {
+      if (error.code === "PGRST116") return null
+      throw error
     }
-
-    await bots.insertOne(bot)
-    return bot
+    return data
   }
 
-  async findBotsByUserId(userId: string): Promise<any[]> {
-    const bots = await this.getCollection("bots")
-    return bots.find({ userId }).toArray()
-  }
+  async getUserByEmail(email: string): Promise<User | null> {
+    const { data, error } = await supabase.from("users").select("*").eq("email", email).single()
 
-  async updateBot(botId: string, updates: any): Promise<any> {
-    const bots = await this.getCollection("bots")
-    await bots.updateOne({ _id: botId }, { $set: { ...updates, updatedAt: new Date() } })
-    return bots.findOne({ _id: botId })
-  }
-
-  // Trade operations
-  async createTrade(tradeData: any): Promise<any> {
-    const trades = await this.getCollection("trades")
-    const tradeId = `trade_${Date.now()}`
-
-    const trade = {
-      _id: tradeId,
-      ...tradeData,
-      timestamp: new Date(),
+    if (error) {
+      if (error.code === "PGRST116") return null
+      throw error
     }
-
-    await trades.insertOne(trade)
-    return trade
+    return data
   }
 
-  async findTradesByUserId(userId: string, limit = 50, offset = 0): Promise<any[]> {
-    const trades = await this.getCollection("trades")
-    return trades.find({ userId }).sort({ timestamp: -1 }).skip(offset).limit(limit).toArray()
+  async updateUser(userId: string, updates: Partial<User>): Promise<User> {
+    const { data, error } = await supabase
+      .from("users")
+      .update({
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq("id", userId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
   }
 
-  // API Key operations
-  async createApiKey(userId: string, keyData: any): Promise<any> {
-    const apiKeys = await this.getCollection("apiKeys")
-    const keyId = `ak_${Math.random().toString(36).substring(2, 18)}`
+  async createBot(botData: Omit<Bot, "id" | "createdAt" | "updatedAt">): Promise<Bot> {
+    const { data, error } = await supabase
+      .from("bots")
+      .insert([
+        {
+          ...botData,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ])
+      .select()
+      .single()
 
-    const apiKey = {
-      _id: keyId,
-      userId,
-      ...keyData,
-      createdAt: new Date(),
-      lastUsed: null,
-      isActive: true,
+    if (error) throw error
+    return data
+  }
+
+  async getBotsByUserId(userId: string): Promise<Bot[]> {
+    const { data, error } = await supabase
+      .from("bots")
+      .select("*")
+      .eq("userId", userId)
+      .order("createdAt", { ascending: false })
+
+    if (error) throw error
+    return data || []
+  }
+
+  async getBotById(botId: string): Promise<Bot | null> {
+    const { data, error } = await supabase.from("bots").select("*").eq("id", botId).single()
+
+    if (error) {
+      if (error.code === "PGRST116") return null
+      throw error
     }
-
-    await apiKeys.insertOne(apiKey)
-    return apiKey
+    return data
   }
 
-  async findApiKeysByUserId(userId: string): Promise<any[]> {
-    const apiKeys = await this.getCollection("apiKeys")
-    return apiKeys.find({ userId, isActive: true }).toArray()
+  async updateBot(botId: string, updates: Partial<Bot>): Promise<Bot> {
+    const { data, error } = await supabase
+      .from("bots")
+      .update({
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq("id", botId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
   }
 
-  async updateApiKey(keyId: string, updates: any): Promise<any> {
-    const apiKeys = await this.getCollection("apiKeys")
-    await apiKeys.updateOne({ _id: keyId }, { $set: { ...updates, updatedAt: new Date() } })
-    return apiKeys.findOne({ _id: keyId })
+  async deleteBot(botId: string): Promise<void> {
+    const { error } = await supabase.from("bots").delete().eq("id", botId)
+
+    if (error) throw error
   }
 
-  // Subscription operations
-  async updateSubscription(userId: string, subscriptionData: any): Promise<any> {
-    const users = await this.getCollection("users")
-    await users.updateOne({ _id: userId }, { $set: { subscription: subscriptionData, updatedAt: new Date() } })
-    return this.findUserById(userId)
+  async createApiKey(apiKeyData: Omit<ApiKey, "id" | "createdAt">): Promise<ApiKey> {
+    const { data, error } = await supabase
+      .from("api_keys")
+      .insert([
+        {
+          ...apiKeyData,
+          createdAt: new Date().toISOString(),
+        },
+      ])
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
   }
 
-  // Admin operations
-  async findAdminByUsername(username: string): Promise<any> {
-    const admins = await this.getCollection("admins")
-    return admins.findOne({ username })
+  async getApiKeysByUserId(userId: string): Promise<ApiKey[]> {
+    const { data, error } = await supabase
+      .from("api_keys")
+      .select("*")
+      .eq("userId", userId)
+      .order("createdAt", { ascending: false })
+
+    if (error) throw error
+    return data || []
   }
 
-  async createAdmin(adminData: any): Promise<any> {
-    const admins = await this.getCollection("admins")
-    const adminId = `admin_${Date.now()}`
+  async getApiKeyById(keyId: string): Promise<ApiKey | null> {
+    const { data, error } = await supabase.from("api_keys").select("*").eq("id", keyId).single()
 
-    const admin = {
-      _id: adminId,
-      ...adminData,
-      createdAt: new Date(),
+    if (error) {
+      if (error.code === "PGRST116") return null
+      throw error
     }
-
-    await admins.insertOne(admin)
-    return admin
+    return data
   }
 
-  // Utility methods
-  async healthCheck(): Promise<boolean> {
-    try {
-      if (!this.db) {
-        await this.connect()
-      }
-      await this.db!.admin().ping()
-      return true
-    } catch (error) {
-      console.error("Database health check failed:", error)
-      return false
+  async updateApiKey(keyId: string, updates: Partial<ApiKey>): Promise<ApiKey> {
+    const { data, error } = await supabase.from("api_keys").update(updates).eq("id", keyId).select().single()
+
+    if (error) throw error
+    return data
+  }
+
+  async deleteApiKey(keyId: string): Promise<void> {
+    const { error } = await supabase.from("api_keys").delete().eq("id", keyId)
+
+    if (error) throw error
+  }
+
+  async createSubscription(
+    subscriptionData: Omit<Subscription, "id" | "createdAt" | "updatedAt">,
+  ): Promise<Subscription> {
+    const { data, error } = await supabase
+      .from("subscriptions")
+      .insert([
+        {
+          ...subscriptionData,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        },
+      ])
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  }
+
+  async getSubscriptionByUserId(userId: string): Promise<Subscription | null> {
+    const { data, error } = await supabase
+      .from("subscriptions")
+      .select("*")
+      .eq("userId", userId)
+      .eq("status", "active")
+      .single()
+
+    if (error) {
+      if (error.code === "PGRST116") return null
+      throw error
+    }
+    return data
+  }
+
+  async updateSubscription(subscriptionId: string, updates: Partial<Subscription>): Promise<Subscription> {
+    const { data, error } = await supabase
+      .from("subscriptions")
+      .update({
+        ...updates,
+        updatedAt: new Date().toISOString(),
+      })
+      .eq("id", subscriptionId)
+      .select()
+      .single()
+
+    if (error) throw error
+    return data
+  }
+
+  async getUsageStats(userId: string): Promise<{
+    botsCreated: number
+    tradesExecuted: number
+    apiCallsToday: number
+    storageUsed: number
+  }> {
+    // Get bots count
+    const { count: botsCount } = await supabase
+      .from("bots")
+      .select("*", { count: "exact", head: true })
+      .eq("userId", userId)
+
+    // Get trades count (mock for now)
+    const tradesExecuted = Math.floor(Math.random() * 1000)
+    const apiCallsToday = Math.floor(Math.random() * 500)
+    const storageUsed = Math.floor(Math.random() * 100)
+
+    return {
+      botsCreated: botsCount || 0,
+      tradesExecuted,
+      apiCallsToday,
+      storageUsed,
     }
   }
 
-  async close(): Promise<void> {
-    if (client) {
-      await client.close()
-      client = null
-      db = null
-      this.db = null
-    }
+  async isTrialExpired(userId: string): Promise<boolean> {
+    const user = await this.getUserById(userId)
+    if (!user || !user.trialExpiresAt) return false
+
+    return new Date(user.trialExpiresAt) < new Date()
   }
 }
 
 // Create and export the database instance
 export const database = new Database()
-
-// Export the connection function for backward compatibility
