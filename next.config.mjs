@@ -1,7 +1,17 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   experimental: {
-    serverComponentsExternalPackages: ['mongodb', 'ioredis']
+    serverComponentsExternalPackages: ['mongodb', 'mongoose'],
+  },
+  images: {
+    domains: ['images.unsplash.com', 'via.placeholder.com'],
+    unoptimized: true,
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
@@ -15,19 +25,19 @@ const nextConfig = {
     }
     return config
   },
-  images: {
-    domains: ['placeholder.com', 'via.placeholder.com'],
-    unoptimized: true
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=300, stale-while-revalidate=600',
+          },
+        ],
+      },
+    ]
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
-  }
 }
 
 export default nextConfig

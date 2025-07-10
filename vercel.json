@@ -4,16 +4,10 @@
       "maxDuration": 30
     }
   },
-  "headers": [
-    {
-      "source": "/api/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "s-maxage=60, stale-while-revalidate"
-        }
-      ]
-    }
-  ],
-  "regions": ["iad1"]
+  "regions": ["iad1"],
+  "env": {
+    "MONGODB_URI": "@mongodb-uri",
+    "REDIS_URL": "@redis-url",
+    "STRIPE_SECRET_KEY": "@stripe-secret-key"
+  }
 }
