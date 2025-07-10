@@ -1,5 +1,6 @@
 import { connectToDatabase } from "./database"
 import { authService } from "./auth"
+import jwt from "jsonwebtoken"
 
 export interface AdminStats {
   totalUsers: number
@@ -337,6 +338,33 @@ export class AdminManager {
   private async calculateUptime(): Promise<number> {
     // Mock implementation - in real app, this would calculate actual uptime
     return 99.9 - Math.random() * 0.5 // 99.4-99.9% uptime
+  }
+}
+
+export async function verifyAdminToken(token: string): Promise<AdminUser | null> {
+  try {
+    if (!token) {
+      return null
+    }
+
+    // Verify JWT token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any
+
+    if (!decoded || decoded.role !== "admin") {
+      return null
+    }
+
+    // Get admin from database
+    const admin = await adminManager.getCurrentAdmin()
+
+    if (!admin || admin.id !== decoded.userId) {
+      return null
+    }
+
+    return admin
+  } catch (error) {
+    console.error("Error verifying admin token:", error)
+    return null
   }
 }
 
