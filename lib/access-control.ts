@@ -1,5 +1,5 @@
-import { subscriptionManager } from "./subscription-manager"
-import { adminManager } from "./admin"
+import { apiKeyManager } from "./api-key-manager"
+import { authService } from "./auth"
 
 export interface Permission {
   resource: string
@@ -10,385 +10,303 @@ export interface Permission {
 export interface Role {
   name: string
   permissions: Permission[]
-  inherits?: string[]
+  subscriptionRequired?: string[]
 }
 
 export interface AccessContext {
-  userId: string
+  userId?: string
   userRole?: string
-  subscription?: any
-  isAdmin?: boolean
-  resourceId?: string
-  resourceType?: string
-}
-
-export const PERMISSIONS = {
-  // Bot permissions
-  BOT_CREATE: "bot:create",
-  BOT_READ: "bot:read",
-  BOT_UPDATE: "bot:update",
-  BOT_DELETE: "bot:delete",
-  BOT_START: "bot:start",
-  BOT_STOP: "bot:stop",
-
-  // Trade permissions
-  TRADE_READ: "trade:read",
-  TRADE_EXECUTE: "trade:execute",
-  TRADE_CANCEL: "trade:cancel",
-
-  // API permissions
-  API_READ: "api:read",
-  API_WRITE: "api:write",
-  API_ADMIN: "api:admin",
-
-  // Subscription permissions
-  SUBSCRIPTION_READ: "subscription:read",
-  SUBSCRIPTION_MANAGE: "subscription:manage",
-
-  // Admin permissions
-  ADMIN_USERS: "admin:users",
-  ADMIN_SYSTEM: "admin:system",
-  ADMIN_ANALYTICS: "admin:analytics",
-
-  // Feature permissions
-  FEATURE_ADVANCED_STRATEGIES: "feature:advanced_strategies",
-  FEATURE_BACKTESTING: "feature:backtesting",
-  FEATURE_WEBHOOKS: "feature:webhooks",
-  FEATURE_TELEGRAM: "feature:telegram",
-  FEATURE_CUSTOM_INDICATORS: "feature:custom_indicators",
-} as const
-
-export const ROLES: Record<string, Role> = {
-  free: {
-    name: "free",
-    permissions: [
-      { resource: "bot", action: "create" },
-      { resource: "bot", action: "read" },
-      { resource: "bot", action: "update" },
-      { resource: "bot", action: "delete" },
-      { resource: "trade", action: "read" },
-      { resource: "subscription", action: "read" },
-    ],
-  },
-  starter: {
-    name: "starter",
-    permissions: [
-      { resource: "bot", action: "create" },
-      { resource: "bot", action: "read" },
-      { resource: "bot", action: "update" },
-      { resource: "bot", action: "delete" },
-      { resource: "bot", action: "start" },
-      { resource: "bot", action: "stop" },
-      { resource: "trade", action: "read" },
-      { resource: "trade", action: "execute" },
-      { resource: "api", action: "read" },
-      { resource: "feature", action: "advanced_strategies" },
-      { resource: "feature", action: "backtesting" },
-      { resource: "feature", action: "telegram" },
-      { resource: "subscription", action: "read" },
-      { resource: "subscription", action: "manage" },
-    ],
-  },
-  pro: {
-    name: "pro",
-    permissions: [
-      { resource: "bot", action: "create" },
-      { resource: "bot", action: "read" },
-      { resource: "bot", action: "update" },
-      { resource: "bot", action: "delete" },
-      { resource: "bot", action: "start" },
-      { resource: "bot", action: "stop" },
-      { resource: "trade", action: "read" },
-      { resource: "trade", action: "execute" },
-      { resource: "trade", action: "cancel" },
-      { resource: "api", action: "read" },
-      { resource: "api", action: "write" },
-      { resource: "feature", action: "advanced_strategies" },
-      { resource: "feature", action: "backtesting" },
-      { resource: "feature", action: "webhooks" },
-      { resource: "feature", action: "telegram" },
-      { resource: "feature", action: "custom_indicators" },
-      { resource: "subscription", action: "read" },
-      { resource: "subscription", action: "manage" },
-    ],
-  },
-  enterprise: {
-    name: "enterprise",
-    permissions: [
-      { resource: "*", action: "*" }, // Full access except admin
-      { resource: "subscription", action: "read" },
-      { resource: "subscription", action: "manage" },
-    ],
-  },
-  admin: {
-    name: "admin",
-    permissions: [
-      { resource: "*", action: "*" }, // Full system access
-      { resource: "admin", action: "users" },
-      { resource: "admin", action: "system" },
-      { resource: "admin", action: "analytics" },
-    ],
-  },
+  subscription?: {
+    plan: string
+    status: string
+    features: string[]
+  }
+  apiKey?: {
+    id: string
+    permissions: string[]
+  }
 }
 
 export class AccessControl {
-  async checkPermission(context: AccessContext, resource: string, action: string): Promise<boolean> {
-    try {
-      // Admin bypass
-      if (context.isAdmin) {
-        const admin = await adminManager.getCurrentAdmin()
-        return !!admin
-      }
+  private roles: Map<string, Role> = new Map()
 
-      // Get user subscription
-      const subscription = context.subscription || (await subscriptionManager.getUserSubscription(context.userId))
-      if (!subscription) {
-        return false
-      }
-
-      // Check subscription status
-      if (subscription.status !== "active" && subscription.status !== "trialing") {
-        return false
-      }
-
-      // Get role permissions
-      const role = ROLES[subscription.plan]
-      if (!role) {
-        return false
-      }
-
-      // Check if permission exists in role
-      return this.hasPermission(role, resource, action)
-    } catch (error) {
-      console.error("Error checking permission:", error)
-      return false
-    }
+  constructor() {
+    this.initializeRoles()
   }
 
-  private hasPermission(role: Role, resource: string, action: string): boolean {
-    return role.permissions.some((permission) => {
-      // Wildcard permissions
-      if (permission.resource === "*" && permission.action === "*") {
-        return true
-      }
+  private initializeRoles() {
+    // Define system roles
+    this.roles.set("admin", {
+      name: "admin",
+      permissions: [
+        { resource: "*", action: "*" }, // Admin has all permissions
+      ],
+    })
 
-      if (permission.resource === "*" && permission.action === action) {
-        return true
-      }
+    this.roles.set("user", {
+      name: "user",
+      permissions: [
+        { resource: "profile", action: "read" },
+        { resource: "profile", action: "update" },
+        { resource: "bots", action: "read" },
+        { resource: "bots", action: "create", conditions: { limit: 1 } },
+        { resource: "trades", action: "read" },
+        { resource: "api-keys", action: "read" },
+        { resource: "api-keys", action: "create", conditions: { limit: 2 } },
+      ],
+      subscriptionRequired: ["free"],
+    })
 
-      if (permission.resource === resource && permission.action === "*") {
-        return true
-      }
+    this.roles.set("starter", {
+      name: "starter",
+      permissions: [
+        { resource: "profile", action: "*" },
+        { resource: "bots", action: "*", conditions: { limit: 3 } },
+        { resource: "trades", action: "*" },
+        { resource: "api-keys", action: "*", conditions: { limit: 5 } },
+        { resource: "integrations", action: "read" },
+        { resource: "integrations", action: "create", conditions: { limit: 2 } },
+        { resource: "news", action: "read" },
+        { resource: "alerts", action: "*", conditions: { limit: 10 } },
+      ],
+      subscriptionRequired: ["starter", "pro", "enterprise"],
+    })
 
-      // Exact match
-      return permission.resource === resource && permission.action === action
+    this.roles.set("pro", {
+      name: "pro",
+      permissions: [
+        { resource: "profile", action: "*" },
+        { resource: "bots", action: "*", conditions: { limit: 10 } },
+        { resource: "trades", action: "*" },
+        { resource: "api-keys", action: "*", conditions: { limit: 10 } },
+        { resource: "integrations", action: "*" },
+        { resource: "news", action: "*" },
+        { resource: "alerts", action: "*", conditions: { limit: 50 } },
+        { resource: "analytics", action: "*" },
+        { resource: "backtesting", action: "*" },
+        { resource: "ai-signals", action: "read" },
+      ],
+      subscriptionRequired: ["pro", "enterprise"],
+    })
+
+    this.roles.set("enterprise", {
+      name: "enterprise",
+      permissions: [
+        { resource: "*", action: "*" }, // Enterprise has all user permissions
+      ],
+      subscriptionRequired: ["enterprise"],
     })
   }
 
-  async checkResourceOwnership(context: AccessContext, resourceType: string, resourceId: string): Promise<boolean> {
-    try {
-      // Admin bypass
-      if (context.isAdmin) {
-        return true
-      }
-
-      // Check if user owns the resource
-      switch (resourceType) {
-        case "bot":
-          return this.checkBotOwnership(context.userId, resourceId)
-        case "trade":
-          return this.checkTradeOwnership(context.userId, resourceId)
-        case "apiKey":
-          return this.checkAPIKeyOwnership(context.userId, resourceId)
-        default:
-          return false
-      }
-    } catch (error) {
-      console.error("Error checking resource ownership:", error)
-      return false
-    }
-  }
-
-  private async checkBotOwnership(userId: string, botId: string): Promise<boolean> {
-    // This would check the database for bot ownership
-    // For now, we'll return true as a placeholder
-    return true
-  }
-
-  private async checkTradeOwnership(userId: string, tradeId: string): Promise<boolean> {
-    // This would check the database for trade ownership
-    // For now, we'll return true as a placeholder
-    return true
-  }
-
-  private async checkAPIKeyOwnership(userId: string, keyId: string): Promise<boolean> {
-    // This would check the database for API key ownership
-    // For now, we'll return true as a placeholder
-    return true
-  }
-
-  async checkRateLimit(context: AccessContext, resource: string, action: string): Promise<boolean> {
-    try {
-      const subscription = context.subscription || (await subscriptionManager.getUserSubscription(context.userId))
-      if (!subscription) {
-        return false
-      }
-
-      // Check subscription-based rate limits
-      switch (resource) {
-        case "api":
-          return subscriptionManager.canMakeApiCall(context.userId)
-        case "trade":
-          return subscriptionManager.canExecuteTrade(context.userId)
-        case "bot":
-          if (action === "create") {
-            return subscriptionManager.canCreateBot(context.userId)
-          }
-          return true
-        default:
-          return true
-      }
-    } catch (error) {
-      console.error("Error checking rate limit:", error)
-      return false
-    }
-  }
-
-  async checkFeatureAccess(context: AccessContext, feature: string): Promise<boolean> {
-    try {
-      // Admin bypass
-      if (context.isAdmin) {
-        return true
-      }
-
-      return subscriptionManager.checkAccess(context.userId, feature)
-    } catch (error) {
-      console.error("Error checking feature access:", error)
-      return false
-    }
-  }
-
-  async getUserPermissions(context: AccessContext): Promise<string[]> {
-    try {
-      // Admin gets all permissions
-      if (context.isAdmin) {
-        return Object.values(PERMISSIONS)
-      }
-
-      const subscription = context.subscription || (await subscriptionManager.getUserSubscription(context.userId))
-      if (!subscription) {
-        return []
-      }
-
-      const role = ROLES[subscription.plan]
-      if (!role) {
-        return []
-      }
-
-      return role.permissions.map((p) => `${p.resource}:${p.action}`)
-    } catch (error) {
-      console.error("Error getting user permissions:", error)
-      return []
-    }
-  }
-
-  async canAccessResource(
+  async checkPermission(
     context: AccessContext,
     resource: string,
     action: string,
-    resourceId?: string,
-  ): Promise<boolean> {
+    resourceData?: any,
+  ): Promise<{ allowed: boolean; reason?: string }> {
     try {
-      // Check basic permission
-      const hasPermission = await this.checkPermission(context, resource, action)
-      if (!hasPermission) {
-        return false
+      // Admin always has access
+      if (context.userRole === "admin") {
+        return { allowed: true }
       }
 
-      // Check resource ownership if resourceId provided
-      if (resourceId && !context.isAdmin) {
-        const ownsResource = await this.checkResourceOwnership(context, resource, resourceId)
-        if (!ownsResource) {
-          return false
+      // Get user role based on subscription
+      const userRole = this.getUserRole(context)
+      const role = this.roles.get(userRole)
+
+      if (!role) {
+        return { allowed: false, reason: "Invalid user role" }
+      }
+
+      // Check subscription requirements
+      if (role.subscriptionRequired && context.subscription) {
+        if (!role.subscriptionRequired.includes(context.subscription.plan)) {
+          return { allowed: false, reason: "Subscription upgrade required" }
+        }
+
+        if (context.subscription.status !== "active") {
+          return { allowed: false, reason: "Active subscription required" }
         }
       }
 
-      // Check rate limits
-      const withinRateLimit = await this.checkRateLimit(context, resource, action)
-      if (!withinRateLimit) {
-        return false
+      // Check permissions
+      for (const permission of role.permissions) {
+        if (this.matchesPermission(permission, resource, action)) {
+          // Check conditions if any
+          if (permission.conditions) {
+            const conditionCheck = await this.checkConditions(permission.conditions, context, resource, resourceData)
+            if (!conditionCheck.allowed) {
+              return conditionCheck
+            }
+          }
+          return { allowed: true }
+        }
       }
 
-      return true
+      return { allowed: false, reason: "Permission denied" }
     } catch (error) {
-      console.error("Error checking resource access:", error)
-      return false
+      console.error("Error checking permission:", error)
+      return { allowed: false, reason: "Permission check failed" }
     }
   }
 
-  async getAccessibleResources(context: AccessContext, resourceType: string): Promise<string[]> {
-    try {
-      // This would return a list of resource IDs the user can access
-      // For now, we'll return an empty array as a placeholder
-      return []
-    } catch (error) {
-      console.error("Error getting accessible resources:", error)
-      return []
+  private getUserRole(context: AccessContext): string {
+    if (context.userRole === "admin") return "admin"
+
+    if (context.subscription) {
+      switch (context.subscription.plan) {
+        case "enterprise":
+          return "enterprise"
+        case "pro":
+          return "pro"
+        case "starter":
+          return "starter"
+        default:
+          return "user"
+      }
     }
+
+    return "user"
   }
 
-  async logAccessAttempt(
+  private matchesPermission(permission: Permission, resource: string, action: string): boolean {
+    const resourceMatch = permission.resource === "*" || permission.resource === resource
+    const actionMatch = permission.action === "*" || permission.action === action
+    return resourceMatch && actionMatch
+  }
+
+  private async checkConditions(
+    conditions: Record<string, any>,
     context: AccessContext,
     resource: string,
-    action: string,
-    allowed: boolean,
-    reason?: string,
-  ): Promise<void> {
-    try {
-      // Log access attempt for audit purposes
-      console.log(`Access attempt: ${context.userId} -> ${resource}:${action} = ${allowed ? "ALLOWED" : "DENIED"}`, {
-        reason,
-        timestamp: new Date(),
-      })
-    } catch (error) {
-      console.error("Error logging access attempt:", error)
+    resourceData?: any,
+  ): Promise<{ allowed: boolean; reason?: string }> {
+    // Check limit conditions
+    if (conditions.limit !== undefined) {
+      const currentCount = await this.getCurrentResourceCount(context.userId!, resource)
+      if (currentCount >= conditions.limit) {
+        return { allowed: false, reason: `${resource} limit exceeded (${conditions.limit})` }
+      }
     }
+
+    // Check ownership conditions
+    if (conditions.owner && resourceData) {
+      if (resourceData.userId !== context.userId) {
+        return { allowed: false, reason: "Resource access denied - not owner" }
+      }
+    }
+
+    // Check feature conditions
+    if (conditions.features && context.subscription) {
+      for (const feature of conditions.features) {
+        if (!context.subscription.features.includes(feature)) {
+          return { allowed: false, reason: `Feature not available: ${feature}` }
+        }
+      }
+    }
+
+    return { allowed: true }
+  }
+
+  private async getCurrentResourceCount(userId: string, resource: string): Promise<number> {
+    // This would query the database to get current resource count
+    // For now, return mock data
+    const mockCounts: Record<string, number> = {
+      bots: 2,
+      "api-keys": 1,
+      integrations: 1,
+      alerts: 5,
+    }
+
+    return mockCounts[resource] || 0
+  }
+
+  async checkApiKeyPermission(
+    apiKey: string,
+    resource: string,
+    action: string,
+  ): Promise<{ allowed: boolean; reason?: string; keyId?: string }> {
+    try {
+      const keyData = await apiKeyManager.validateApiKey(apiKey)
+      if (!keyData) {
+        return { allowed: false, reason: "Invalid API key" }
+      }
+
+      // Check rate limits
+      const rateLimitCheck = await apiKeyManager.checkRateLimit(keyData)
+      if (!rateLimitCheck.allowed) {
+        return { allowed: false, reason: "Rate limit exceeded" }
+      }
+
+      // Check permissions
+      const permissionString = `${resource}:${action}`
+      if (keyData.permissions.includes("*") || keyData.permissions.includes(permissionString)) {
+        return { allowed: true, keyId: keyData.id }
+      }
+
+      return { allowed: false, reason: "API key lacks required permissions" }
+    } catch (error) {
+      console.error("Error checking API key permission:", error)
+      return { allowed: false, reason: "Permission check failed" }
+    }
+  }
+
+  async getAccessContext(request: Request): Promise<AccessContext> {
+    const context: AccessContext = {}
+
+    try {
+      // Check for API key in headers
+      const apiKey = request.headers.get("x-api-key") || request.headers.get("authorization")?.replace("Bearer ", "")
+      if (apiKey) {
+        const keyData = await apiKeyManager.validateApiKey(apiKey)
+        if (keyData) {
+          context.apiKey = {
+            id: keyData.id,
+            permissions: keyData.permissions,
+          }
+          // Get user context from API key
+          const user = await authService.getUserById(keyData.userId)
+          if (user) {
+            context.userId = user.id
+            context.userRole = user.role
+            context.subscription = user.subscription
+          }
+        }
+      } else {
+        // Check for user session
+        const user = await authService.getCurrentUser(request)
+        if (user) {
+          context.userId = user.id
+          context.userRole = user.role
+          context.subscription = user.subscription
+        }
+      }
+    } catch (error) {
+      console.error("Error getting access context:", error)
+    }
+
+    return context
+  }
+
+  getRolePermissions(roleName: string): Permission[] {
+    const role = this.roles.get(roleName)
+    return role ? role.permissions : []
+  }
+
+  getAvailableRoles(): string[] {
+    return Array.from(this.roles.keys())
+  }
+
+  getSubscriptionFeatures(plan: string): string[] {
+    const features: Record<string, string[]> = {
+      free: ["basic-trading", "1-bot", "basic-alerts"],
+      starter: ["advanced-trading", "3-bots", "email-alerts", "basic-analytics"],
+      pro: ["premium-trading", "10-bots", "sms-alerts", "advanced-analytics", "backtesting", "ai-signals"],
+      enterprise: ["unlimited-bots", "priority-support", "custom-strategies", "api-access", "white-label"],
+    }
+
+    return features[plan] || []
   }
 }
 
 export const accessControl = new AccessControl()
-
-// Utility functions for common access checks
-export async function requirePermission(context: AccessContext, resource: string, action: string): Promise<void> {
-  const hasAccess = await accessControl.canAccessResource(context, resource, action)
-  if (!hasAccess) {
-    throw new Error(`Access denied: ${resource}:${action}`)
-  }
-}
-
-export async function requireFeature(context: AccessContext, feature: string): Promise<void> {
-  const hasAccess = await accessControl.checkFeatureAccess(context, feature)
-  if (!hasAccess) {
-    throw new Error(`Feature not available: ${feature}`)
-  }
-}
-
-export async function requireOwnership(
-  context: AccessContext,
-  resourceType: string,
-  resourceId: string,
-): Promise<void> {
-  const ownsResource = await accessControl.checkResourceOwnership(context, resourceType, resourceId)
-  if (!ownsResource && !context.isAdmin) {
-    throw new Error(`Resource not found or access denied: ${resourceType}:${resourceId}`)
-  }
-}
-
-export async function requireAdmin(context: AccessContext): Promise<void> {
-  if (!context.isAdmin) {
-    const admin = await adminManager.getCurrentAdmin()
-    if (!admin) {
-      throw new Error("Admin access required")
-    }
-  }
-}

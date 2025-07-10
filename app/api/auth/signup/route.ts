@@ -1,38 +1,47 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { authService } from "@/lib/auth"
-import { cookies } from "next/headers"
+import { z } from "zod"
+
+const signupSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  username: z.string().min(3, "Username must be at least 3 characters").optional(),
+})
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, username, password } = body
+    const { email, password, username } = signupSchema.parse(body)
 
-    if (!email || !username || !password) {
-      return NextResponse.json({ error: "Email, username, and password are required" }, { status: 400 })
+    const result = await authService.signUp(email, password, username)
+
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 400 })
     }
 
-    const { user, token } = await authService.signUp(email, username, password)
+    const response = NextResponse.json({
+      success: true,
+      user: result.user,
+      message: "Account created successfully",
+    })
 
     // Set HTTP-only cookie
-    const cookieStore = await cookies()
-    cookieStore.set("auth-token", token, {
+    response.cookies.set("auth-token", result.token!, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60, // 7 days
+      path: "/",
     })
 
-    return NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        username: user.username,
-        subscription: user.subscription,
-      },
-      token,
-    })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Sign up failed" }, { status: 400 })
+    return response
+  } catch (error) {
+    console.error("Signup error:", error)
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: "Invalid input", details: error.errors }, { status: 400 })
+    }
+
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

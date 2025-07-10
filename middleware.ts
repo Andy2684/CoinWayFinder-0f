@@ -1,27 +1,22 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
+import { verifyAdminToken } from "./lib/admin"
 import { authService } from "./lib/auth"
 
 // Define protected routes
-const protectedRoutes = [
-  "/dashboard",
-  "/bots",
-  "/integrations",
-  "/profile",
-  "/subscription",
-  "/api/bots",
-  "/api/trades",
-  "/api/user",
-  "/api/subscription",
-]
+const protectedRoutes = ["/dashboard", "/bots", "/integrations", "/profile", "/subscription", "/news"]
 
-const adminRoutes = ["/admin", "/api/admin"]
+const adminRoutes = ["/admin"]
 
 const publicRoutes = [
   "/",
   "/api/auth",
   "/api/stripe/webhook",
-  "/api/v1", // Public API routes
+  "/api/coinbase/webhook",
+  "/api/telegram-webhook",
+  "/api/crypto/prices",
+  "/api/crypto/news",
+  "/api/news",
+  "/api/test-connection",
 ]
 
 export async function middleware(request: NextRequest) {
@@ -58,7 +53,7 @@ export async function middleware(request: NextRequest) {
     }
 
     try {
-      const admin = await authService.verifyAdminToken(adminToken)
+      const admin = await verifyAdminToken(adminToken)
       if (!admin) {
         return NextResponse.redirect(new URL("/", request.url))
       }
@@ -70,16 +65,111 @@ export async function middleware(request: NextRequest) {
     const authToken = request.cookies.get("auth-token")?.value
 
     if (!authToken) {
-      return NextResponse.redirect(new URL("/", request.url))
+      return NextResponse.redirect(new URL("/?auth=signin", request.url))
     }
 
     try {
-      const user = await authService.verifyAuthToken(authToken)
+      const user = await authService.verifyToken(authToken)
       if (!user) {
-        return NextResponse.redirect(new URL("/", request.url))
+        const response = NextResponse.redirect(new URL("/?auth=signin", request.url))
+        response.cookies.delete("auth-token")
+        return response
       }
+
+      // Check if user account is active
+      if (!user.isActive) {
+        const response = NextResponse.redirect(new URL("/?error=account-suspended", request.url))
+        response.cookies.delete("auth-token")
+        return response
+      }
+
+      // Add user info to headers for API routes
+      const response = NextResponse.next()
+      response.headers.set("x-user-id", user.id)
+      response.headers.set("x-user-role", user.role || "user")
+
+      if (user.subscription) {
+        response.headers.set("x-user-subscription", JSON.stringify(user.subscription))
+      }
+
+      return response
     } catch (error) {
-      return NextResponse.redirect(new URL("/", request.url))
+      console.error("Middleware auth error:", error)
+      const response = NextResponse.redirect(new URL("/?auth=signin", request.url))
+      response.cookies.delete("auth-token")
+      return response
+    }
+  } else if (pathname.startsWith("/api/")) {
+    // Skip public API routes
+    const publicApiRoutes = ["/api/crypto/prices", "/api/crypto/news", "/api/news", "/api/test-connection"]
+
+    const isPublicApi = publicApiRoutes.some((route) => pathname.startsWith(route))
+
+    if (!isPublicApi) {
+      // Check for API key or auth token
+      const apiKey = request.headers.get("x-api-key") || request.headers.get("authorization")?.replace("Bearer ", "")
+      const authToken = request.cookies.get("auth-token")?.value
+
+      if (!apiKey && !authToken) {
+        return NextResponse.json({ error: "Authentication required" }, { status: 401 })
+      }
+
+      // If using API key, validate it
+      if (apiKey) {
+        try {
+          const { apiKeyManager } = await import("./lib/api-key-manager")
+          const keyData = await apiKeyManager.validateApiKey(apiKey)
+
+          if (!keyData) {
+            return NextResponse.json({ error: "Invalid API key" }, { status: 401 })
+          }
+
+          // Check rate limits
+          const rateLimitCheck = await apiKeyManager.checkRateLimit(keyData)
+          if (!rateLimitCheck.allowed) {
+            return NextResponse.json(
+              {
+                error: "Rate limit exceeded",
+                resetTime: rateLimitCheck.resetTime,
+              },
+              { status: 429 },
+            )
+          }
+
+          // Add API key info to headers
+          const response = NextResponse.next()
+          response.headers.set("x-api-key-id", keyData.id)
+          response.headers.set("x-user-id", keyData.userId)
+          return response
+        } catch (error) {
+          console.error("API key validation error:", error)
+          return NextResponse.json({ error: "API key validation failed" }, { status: 500 })
+        }
+      }
+
+      // If using auth token, validate it
+      if (authToken) {
+        try {
+          const user = await authService.verifyToken(authToken)
+          if (!user || !user.isActive) {
+            return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 })
+          }
+
+          // Add user info to headers
+          const response = NextResponse.next()
+          response.headers.set("x-user-id", user.id)
+          response.headers.set("x-user-role", user.role || "user")
+
+          if (user.subscription) {
+            response.headers.set("x-user-subscription", JSON.stringify(user.subscription))
+          }
+
+          return response
+        } catch (error) {
+          console.error("Token validation error:", error)
+          return NextResponse.json({ error: "Token validation failed" }, { status: 500 })
+        }
+      }
     }
   }
 
@@ -90,7 +180,6 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except for the ones starting with:
-     * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)

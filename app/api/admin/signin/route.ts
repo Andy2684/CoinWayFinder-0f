@@ -1,37 +1,46 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { authService } from "@/lib/auth"
-import { cookies } from "next/headers"
+import { z } from "zod"
+
+const adminSigninSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+  password: z.string().min(1, "Password is required"),
+})
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { username, password } = body
+    const { username, password } = adminSigninSchema.parse(body)
 
-    if (!username || !password) {
-      return NextResponse.json({ error: "Username and password are required" }, { status: 400 })
+    const result = await authService.adminSignIn(username, password)
+
+    if (!result.success) {
+      return NextResponse.json({ error: result.error }, { status: 401 })
     }
 
-    const { admin, token } = await authService.adminSignIn(username, password)
+    const response = NextResponse.json({
+      success: true,
+      admin: result.admin,
+      message: "Admin signed in successfully",
+    })
 
-    // Set HTTP-only cookie
-    const cookieStore = await cookies()
-    cookieStore.set("admin-token", token, {
+    // Set HTTP-only cookie for admin
+    response.cookies.set("admin-token", result.token!, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 24 * 60 * 60, // 24 hours
+      sameSite: "lax",
+      maxAge: 4 * 60 * 60, // 4 hours
+      path: "/",
     })
 
-    return NextResponse.json({
-      success: true,
-      admin: {
-        id: admin.id,
-        username: admin.username,
-        role: admin.role,
-      },
-      token,
-    })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Admin sign in failed" }, { status: 401 })
+    return response
+  } catch (error) {
+    console.error("Admin signin error:", error)
+
+    if (error instanceof z.ZodError) {
+      return NextResponse.json({ error: "Invalid input", details: error.errors }, { status: 400 })
+    }
+
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

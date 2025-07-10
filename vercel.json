@@ -1,26 +1,28 @@
 {
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
-  "framework": "nextjs",
-  "installCommand": "npm install",
-  "devCommand": "npm run dev",
+  "functions": {
+    "app/api/**/*.ts": {
+      "maxDuration": 30
+    },
+    "scripts/**/*.ts": {
+      "maxDuration": 60
+    }
+  },
   "env": {
     "MONGODB_URI": "@mongodb_uri",
     "JWT_SECRET": "@jwt_secret",
     "STRIPE_SECRET_KEY": "@stripe_secret_key",
     "STRIPE_PUBLISHABLE_KEY": "@stripe_publishable_key",
     "STRIPE_WEBHOOK_SECRET": "@stripe_webhook_secret",
+    "COINBASE_API_KEY": "@coinbase_api_key",
+    "COINBASE_API_SECRET": "@coinbase_api_secret",
+    "TELEGRAM_BOT_TOKEN": "@telegram_bot_token",
+    "REDIS_URL": "@redis_url",
     "NEXT_PUBLIC_BASE_URL": "@next_public_base_url",
     "API_SECRET_KEY": "@api_secret_key",
-    "REDIS_URL": "@redis_url",
-    "XAI_API_KEY": "@xai_api_key",
-    "UPSTASH_VECTOR_REST_TOKEN": "@upstash_vector_rest_token",
-    "UPSTASH_VECTOR_REST_URL": "@upstash_vector_rest_url"
-  },
-  "functions": {
-    "app/api/**/*.ts": {
-      "maxDuration": 30
-    }
+    "SMTP_HOST": "@smtp_host",
+    "SMTP_USER": "@smtp_user",
+    "SMTP_PASS": "@smtp_pass",
+    "XAI_API_KEY": "@xai_api_key"
   },
   "headers": [
     {
@@ -36,7 +38,11 @@
         },
         {
           "key": "Access-Control-Allow-Headers",
-          "value": "Content-Type, Authorization, x-api-key"
+          "value": "Content-Type, Authorization, X-API-Key"
+        },
+        {
+          "key": "Access-Control-Max-Age",
+          "value": "86400"
         }
       ]
     }
@@ -49,16 +55,16 @@
   ],
   "crons": [
     {
-      "path": "/api/cron/cleanup-expired-keys",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/update-subscriptions",
-      "schedule": "0 */6 * * *"
-    },
-    {
-      "path": "/api/cron/bot-health-check",
+      "path": "/api/bots/scheduler",
       "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/crypto/prices",
+      "schedule": "*/1 * * * *"
+    },
+    {
+      "path": "/api/crypto/news",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

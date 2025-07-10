@@ -1,17 +1,16 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { authService } from "@/lib/auth"
-import { cookies } from "next/headers"
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const token = cookieStore.get("auth-token")?.value
+    const token = request.cookies.get("auth-token")?.value
 
     if (!token) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
-    const user = await authService.verifyAuthToken(token)
+    const user = await authService.verifyToken(token)
+
     if (!user) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 })
     }
@@ -22,10 +21,14 @@ export async function GET(request: NextRequest) {
         id: user.id,
         email: user.email,
         username: user.username,
+        role: user.role,
         subscription: user.subscription,
+        createdAt: user.createdAt,
+        lastLogin: user.lastLogin,
       },
     })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Authentication failed" }, { status: 500 })
+  } catch (error) {
+    console.error("Get current user error:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
