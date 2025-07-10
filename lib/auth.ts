@@ -147,7 +147,6 @@ export class AuthService {
       await this.initializeDatabase()
     }
 
-    // Check if user already exists
     const existingUser = await this.db.collection("users").findOne({
       $or: [{ email }, { username }],
     })
@@ -156,10 +155,7 @@ export class AuthService {
       throw new Error("User already exists with this email or username")
     }
 
-    // Hash password
     const hashedPassword = await this.hashPassword(password)
-
-    // Create user
     const userId = new Date().getTime().toString()
     const newUser = {
       _id: userId,
@@ -169,7 +165,7 @@ export class AuthService {
       role: "user",
       subscriptionTier: "free",
       subscriptionStatus: "active",
-      trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days trial
+      trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       isActive: true,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -190,7 +186,6 @@ export class AuthService {
     }
 
     const token = this.generateAuthToken(user)
-
     return { user, token }
   }
 
@@ -199,7 +194,6 @@ export class AuthService {
       await this.initializeDatabase()
     }
 
-    // Find user by email or username
     const user = await this.db.collection("users").findOne({
       $or: [{ email: emailOrUsername }, { username: emailOrUsername }],
       isActive: true,
@@ -209,13 +203,11 @@ export class AuthService {
       throw new Error("Invalid credentials")
     }
 
-    // Verify password
     const isValidPassword = await this.comparePassword(password, user.password)
     if (!isValidPassword) {
       throw new Error("Invalid credentials")
     }
 
-    // Update last login
     await this.db
       .collection("users")
       .updateOne({ _id: user._id }, { $set: { lastLogin: new Date(), updatedAt: new Date() } })
@@ -233,7 +225,6 @@ export class AuthService {
     }
 
     const token = this.generateAuthToken(userResponse)
-
     return { user: userResponse, token }
   }
 
@@ -242,7 +233,6 @@ export class AuthService {
       await this.initializeDatabase()
     }
 
-    // Find admin
     const admin = await this.db.collection("admins").findOne({
       username,
       role: "admin",
@@ -252,13 +242,11 @@ export class AuthService {
       throw new Error("Invalid admin credentials")
     }
 
-    // Verify password
     const isValidPassword = await this.comparePassword(password, admin.password)
     if (!isValidPassword) {
       throw new Error("Invalid admin credentials")
     }
 
-    // Update last login
     await this.db.collection("admins").updateOne({ _id: admin._id }, { $set: { lastLogin: new Date() } })
 
     const adminResponse: Admin = {
@@ -270,7 +258,6 @@ export class AuthService {
     }
 
     const token = this.generateAdminToken(adminResponse)
-
     return { admin: adminResponse, token }
   }
 
@@ -311,12 +298,10 @@ export class AuthService {
       updatedAt: new Date(),
     }
 
-    // Remove sensitive fields
     delete updateData.id
     delete updateData.password
 
     await this.db.collection("users").updateOne({ _id: userId }, { $set: updateData })
-
     return this.getUserById(userId)
   }
 
@@ -330,16 +315,13 @@ export class AuthService {
       throw new Error("User not found")
     }
 
-    // Verify current password
     const isValidPassword = await this.comparePassword(currentPassword, user.password)
     if (!isValidPassword) {
       throw new Error("Current password is incorrect")
     }
 
-    // Hash new password
     const hashedNewPassword = await this.hashPassword(newPassword)
 
-    // Update password
     await this.db
       .collection("users")
       .updateOne({ _id: userId }, { $set: { password: hashedNewPassword, updatedAt: new Date() } })
@@ -353,7 +335,6 @@ export class AuthService {
     }
 
     await this.db.collection("users").updateOne({ _id: userId }, { $set: { isActive: false, updatedAt: new Date() } })
-
     return true
   }
 
@@ -362,13 +343,11 @@ export class AuthService {
       await this.initializeDatabase()
     }
 
-    // Check if admin already exists
     const existingAdmin = await this.db.collection("admins").findOne({ username: "admin" })
     if (existingAdmin) {
       return
     }
 
-    // Create default admin
     const hashedPassword = await this.hashPassword("CoinWayFinder2024!")
     const adminId = new Date().getTime().toString()
 
@@ -428,7 +407,12 @@ export function extractTokenFromHeader(authHeader: string | null): string | null
   return authHeader.substring(7)
 }
 
-function verifyToken(token: string): AuthToken | null {
+// This is the missing export that was causing the deployment error
+export async function verifyToken(token: string): Promise<User | null> {
+  return authService.verifyAuthToken(token)
+}
+
+export function verifyTokenSync(token: string): AuthToken | null {
   try {
     return jwt.verify(token, JWT_SECRET) as AuthToken
   } catch (error) {
@@ -445,7 +429,7 @@ export function getCurrentUser(request: Request): AuthToken | null {
     return null
   }
 
-  return verifyToken(token)
+  return verifyTokenSync(token)
 }
 
 // Export instances

@@ -3,17 +3,26 @@ import { withSentryConfig } from '@sentry/nextjs'
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    instrumentationHook: true,
+    serverComponentsExternalPackages: ['mongodb']
   },
   images: {
-    domains: ['placeholder.svg'],
-    unoptimized: true,
+    domains: ['placeholder.svg', 'images.unsplash.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+    ],
+    unoptimized: true, // Added from updates
+  },
+  env: {
+    CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: true, // Added from updates
   },
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: true, // Added from updates
   },
 }
 
