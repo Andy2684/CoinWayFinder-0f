@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { errorReporting } from "@/lib/error-reporting"
+import { toast } from "@/components/ui/use-toast"
 
 interface ErrorHandlerOptions {
   showToast?: boolean
@@ -24,46 +24,45 @@ export function useErrorHandler() {
     }
 
     if (reportToService) {
-      errorReporting.reportError(error, { severity }).catch((reportingError) => {
-        console.error("Failed to report error:", reportingError)
-      })
+      // Report to error service (implement based on your service)
+      console.log("Would report error to service:", { error: error.message, severity })
     }
 
-    if (showToast && typeof window !== "undefined") {
-      // Show toast notification
-      console.log("Toast would show:", error.message)
+    if (showToast) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      })
     }
   }, [])
 
-  const handleAsyncOperation = useCallback(\
-    async <T>(operation: () => Promise<T>, options: ErrorHandlerOptions = {}): Promise<T | null> => {\
-  try {
-    setIsLoading(true)
-    setError(null)
-    const result = await operation()
-    return result
-  } catch (error) {
-    handleError(error as Error, options)
-    return null
-  } finally {
-    setIsLoading(false)
-  }
-  \
-}
-,
+  const handleAsyncOperation = useCallback(
+    async (operation: () => Promise<any>, options: ErrorHandlerOptions = {}): Promise<any | null> => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        const result = await operation()
+        return result
+      } catch (error) {
+        handleError(error as Error, options)
+        return null
+      } finally {
+        setIsLoading(false)
+      }
+    },
     [handleError],
   )
 
-const clearError = useCallback(() => {
-  setError(null)
-}, [])
+  const clearError = useCallback(() => {
+    setError(null)
+  }, [])
 
-return {
+  return {
     error,
     isLoading,
     handleError,
     handleAsyncOperation,
     clearError,
   }
-\
 }
