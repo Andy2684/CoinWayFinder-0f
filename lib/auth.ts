@@ -11,8 +11,6 @@ export interface User {
   email: string
   name: string
   role: "user" | "admin"
-  createdAt: Date
-  updatedAt: Date
 }
 
 export interface Admin {

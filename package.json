@@ -45,7 +45,7 @@
     "@radix-ui/react-toggle-group": "latest",
     "@radix-ui/react-tooltip": "latest",
     "@sentry/nextjs": "latest",
-    "@upstash/redis": "latest",
+    "@upstash/redis": "^1.34.3",
     "ai": "latest",
     "bcryptjs": "latest",
     "bullmq": "latest",

@@ -25,45 +25,42 @@ export function useErrorHandler(): UseErrorHandlerReturn {
     setError(null)
   }, [])
 
-  const handleAsyncOperation = useCallback(\
-    async <T>(operation: () => Promise<T>, options: ErrorHandlerOptions = {}): Promise<T | null> => {\
-  try {
-    setIsLoading(true)
-    setError(null)
+  const handleAsyncOperation = useCallback(
+    async <T,>(operation: () => Promise<T>, options: ErrorHandlerOptions = {}): Promise<T | null> => {
+      try {
+        setIsLoading(true)
+        setError(null)
 
-    const result = await operation()
-    return result
-  } catch (err) {
-    const error = err instanceof Error ? err : new Error("An unknown error occurred")
-    setError(error)
+        const result = await operation()
+        return result
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error("An unknown error occurred")
+        setError(error)
 
-    if (options.logError !== false) {
-      console.error("Error in async operation:", error)
-    }
+        if (options.logError !== false) {
+          console.error("Error in async operation:", error)
+        }
 
-    if (options.showToast !== false) {
-      toast.error(options.toastMessage || error.message)
-    }
+        if (options.showToast !== false) {
+          toast.error(options.toastMessage || error.message)
+        }
 
-    if (options.onError) {
-      options.onError(error)
-    }
+        if (options.onError) {
+          options.onError(error)
+        }
 
-    return null
-  } finally {
-    setIsLoading(false)
-  }
-  \
-}
-,
+        return null
+      } finally {
+        setIsLoading(false)
+      }
+    },
     [],
   )
 
-return {
+  return {
     error,
     isLoading,
     clearError,
     handleAsyncOperation,
   }
-\
 }

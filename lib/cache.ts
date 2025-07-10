@@ -1,154 +1,72 @@
-import { Redis } from "@upstash/redis"
-
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-})
-
-export interface CacheOptions {
-  ttl?: number // Time to live in seconds
-  prefix?: string
+interface CacheItem<T> {
+  data: T
+  timestamp: number
+  ttl: number
 }
 
-export class CacheManager {
-  private defaultTTL = 3600 // 1 hour
+class MemoryCache {
+  private cache = new Map<string, CacheItem<any>>()
 
-  async get<T>(key: string, options?: CacheOptions): Promise<T | null> {
-    try {
-      const prefixedKey = this.getPrefixedKey(key, options?.prefix)
-      const value = await redis.get(prefixedKey)
-      return value as T
-    } catch (error) {
-      console.error("Cache get error:", error)
+  set<T>(key: string, data: T, ttlSeconds = 300): void {
+    this.cache.set(key, {
+      data,
+      timestamp: Date.now(),
+      ttl: ttlSeconds * 1000,
+    })
+  }
+
+  get<T>(key: string): T | null {
+    const item = this.cache.get(key)
+    if (!item) return null
+
+    const now = Date.now()
+    if (now - item.timestamp > item.ttl) {
+      this.cache.delete(key)
       return null
     }
+
+    return item.data as T
   }
 
-  async set<T>(key: string, value: T, options?: CacheOptions): Promise<boolean> {
-    try {
-      const prefixedKey = this.getPrefixedKey(key, options?.prefix)
-      const ttl = options?.ttl || this.defaultTTL
+  delete(key: string): boolean {
+    return this.cache.delete(key)
+  }
 
-      await redis.setex(prefixedKey, ttl, JSON.stringify(value))
-      return true
-    } catch (error) {
-      console.error("Cache set error:", error)
+  clear(): void {
+    this.cache.clear()
+  }
+
+  has(key: string): boolean {
+    const item = this.cache.get(key)
+    if (!item) return false
+
+    const now = Date.now()
+    if (now - item.timestamp > item.ttl) {
+      this.cache.delete(key)
       return false
     }
+
+    return true
   }
 
-  async del(key: string, options?: CacheOptions): Promise<boolean> {
-    try {
-      const prefixedKey = this.getPrefixedKey(key, options?.prefix)
-      await redis.del(prefixedKey)
-      return true
-    } catch (error) {
-      console.error("Cache delete error:", error)
-      return false
-    }
-  }
-
-  async exists(key: string, options?: CacheOptions): Promise<boolean> {
-    try {
-      const prefixedKey = this.getPrefixedKey(key, options?.prefix)
-      const result = await redis.exists(prefixedKey)
-      return result === 1
-    } catch (error) {
-      console.error("Cache exists error:", error)
-      return false
-    }
-  }
-
-  async flush(prefix?: string): Promise<boolean> {
-    try {
-      if (prefix) {
-        const keys = await redis.keys(`${prefix}:*`)
-        if (keys.length > 0) {
-          await redis.del(...keys)
-        }
-      } else {
-        await redis.flushall()
-      }
-      return true
-    } catch (error) {
-      console.error("Cache flush error:", error)
-      return false
-    }
-  }
-
-  async increment(key: string, options?: CacheOptions): Promise<number> {
-    try {
-      const prefixedKey = this.getPrefixedKey(key, options?.prefix)
-      const result = await redis.incr(prefixedKey)
-
-      if (options?.ttl) {
-        await redis.expire(prefixedKey, options.ttl)
-      }
-
-      return result
-    } catch (error) {
-      console.error("Cache increment error:", error)
-      return 0
-    }
-  }
-
-  async decrement(key: string, options?: CacheOptions): Promise<number> {
-    try {
-      const prefixedKey = this.getPrefixedKey(key, options?.prefix)
-      const result = await redis.decr(prefixedKey)
-
-      if (options?.ttl) {
-        await redis.expire(prefixedKey, options.ttl)
-      }
-
-      return result
-    } catch (error) {
-      console.error("Cache decrement error:", error)
-      return 0
-    }
-  }
-
-  async getOrSet<T>(key: string, fetcher: () => Promise<T>, options?: CacheOptions): Promise<T | null> {
-    try {
-      // Try to get from cache first
-      const cached = await this.get<T>(key, options)
-      if (cached !== null) {
-        return cached
-      }
-
-      // If not in cache, fetch and set
-      const value = await fetcher()
-      await this.set(key, value, options)
-      return value
-    } catch (error) {
-      console.error("Cache getOrSet error:", error)
-      return null
-    }
-  }
-
-  private getPrefixedKey(key: string, prefix?: string): string {
-    return prefix ? `${prefix}:${key}` : key
+  size(): number {
+    return this.cache.size
   }
 }
 
-export const cache = new CacheManager()
+export const cache = new MemoryCache()
 
-// Utility functions for common cache patterns
-export const cacheKeys = {
-  user: (userId: string) => `user:${userId}`,
-  session: (sessionId: string) => `session:${sessionId}`,
-  apiKey: (keyId: string) => `api_key:${keyId}`,
-  rateLimit: (identifier: string) => `rate_limit:${identifier}`,
-  cryptoPrice: (symbol: string) => `crypto_price:${symbol}`,
-  news: (category: string) => `news:${category}`,
-  whaleAlert: (txHash: string) => `whale_alert:${txHash}`,
-  botStatus: (botId: string) => `bot_status:${botId}`,
-  tradingSignal: (signalId: string) => `trading_signal:${signalId}`,
+export function createCacheKey(...parts: (string | number)[]): string {
+  return parts.join(":")
 }
 
-export const cacheTTL = {
-  SHORT: 300, // 5 minutes
-  MEDIUM: 1800, // 30 minutes
-  LONG: 3600, // 1 hour
-  VERY_LONG: 86400, // 24 hours
+export async function getCachedOrFetch<T>(key: string, fetchFn: () => Promise<T>, ttlSeconds = 300): Promise<T> {
+  const cached = cache.get<T>(key)
+  if (cached !== null) {
+    return cached
+  }
+
+  const data = await fetchFn()
+  cache.set(key, data, ttlSeconds)
+  return data
 }
