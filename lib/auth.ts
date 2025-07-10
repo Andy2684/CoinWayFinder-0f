@@ -406,6 +406,16 @@ export class AuthManager {
   }
 }
 
+// Add this function before the export statements at the bottom
+export async function verifyToken(token: string): Promise<User | null> {
+  return authService.verifyAuthToken(token)
+}
+
+// Add this function for admin token verification
+export async function verifyAdminToken(token: string): Promise<Admin | null> {
+  return authService.verifyAdminToken(token)
+}
+
 // Export instances
 export const authService = new AuthService()
 export const authManager = new AuthManager()

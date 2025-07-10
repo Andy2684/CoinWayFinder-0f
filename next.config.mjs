@@ -3,7 +3,7 @@ import { withSentryConfig } from '@sentry/nextjs';
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ['@sentry/nextjs']
+    serverComponentsExternalPackages: ['mongodb']
   },
   images: {
     domains: ['placeholder.svg'],
