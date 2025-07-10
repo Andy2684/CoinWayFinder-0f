@@ -1,331 +1,284 @@
 "use client"
 
-import React from "react"
-import { AlertTriangle, RefreshCw, Home, Bug, Copy, Check, Mail } from "lucide-react"
+import { Component, type ErrorInfo, type ReactNode } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
-import { toast } from "@/components/ui/use-toast"
-import { addBreadcrumb, Sentry } from "@/lib/sentry"
+import { Separator } from "@/components/ui/separator"
+import { AlertTriangle, RefreshCw, Bug, Home, Mail } from "lucide-react"
+import { captureError, addBreadcrumb } from "@/lib/sentry"
+import { reportError } from "@/lib/error-reporting"
 
-interface RootErrorBoundaryState {
+interface Props {
+  children: ReactNode
+  fallback?: ReactNode
+  onError?: (error: Error, errorInfo: ErrorInfo) => void
+}
+
+interface State {
   hasError: boolean
   error: Error | null
-  errorInfo: React.ErrorInfo | null
-  errorId: string
-  eventId: string | null
+  errorInfo: ErrorInfo | null
+  errorId: string | null
   retryCount: number
+  isRetrying: boolean
 }
 
-interface RootErrorBoundaryProps {
-  children: React.ReactNode
-  onError?: (error: Error, errorInfo: React.ErrorInfo) => void
-}
+export class RootErrorBoundary extends Component<Props, State> {
+  private retryTimeoutId: NodeJS.Timeout | null = null
 
-class RootErrorBoundary extends React.Component<RootErrorBoundaryProps, RootErrorBoundaryState> {
-  private maxRetries = 3
-  private retryTimeout: NodeJS.Timeout | null = null
-
-  constructor(props: RootErrorBoundaryProps) {
+  constructor(props: Props) {
     super(props)
     this.state = {
       hasError: false,
       error: null,
       errorInfo: null,
-      errorId: "",
-      eventId: null,
+      errorId: null,
       retryCount: 0,
+      isRetrying: false,
     }
   }
 
-  static getDerivedStateFromError(error: Error): Partial<RootErrorBoundaryState> {
-    const errorId = `root_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  static getDerivedStateFromError(error: Error): Partial<State> {
     return {
       hasError: true,
       error,
-      errorId,
     }
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    const errorId = `root_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    const errorId = `boundary_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+    this.setState({
+      errorInfo,
+      errorId,
+    })
 
     // Add breadcrumb for context
-    addBreadcrumb("Root error boundary caught critical error", "error", "fatal")
+    addBreadcrumb(`Root error boundary caught error: ${error.message}`, "error", "fatal")
 
-    // Capture error with Sentry
-    const eventId = Sentry.captureException(error, {
-      tags: {
-        component: "root-error-boundary",
-        section: "root",
+    // Report to Sentry with full context
+    captureError(error, {
+      errorBoundary: "RootErrorBoundary",
+      errorId,
+      componentStack: errorInfo.componentStack,
+      retryCount: this.state.retryCount,
+      timestamp: new Date().toISOString(),
+      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "unknown",
+      url: typeof window !== "undefined" ? window.location.href : "unknown",
+    })
+
+    // Report to our error reporting service
+    reportError(
+      error,
+      {
+        errorBoundary: "RootErrorBoundary",
         errorId,
-        severity: "critical",
-      },
-      extra: {
-        errorInfo,
         componentStack: errorInfo.componentStack,
         retryCount: this.state.retryCount,
       },
-      contexts: {
-        react: {
-          componentStack: errorInfo.componentStack,
-        },
-      },
-      level: "fatal",
-    })
-
-    this.setState({
-      error,
-      errorInfo,
-      errorId,
-      eventId,
-    })
-
-    // Log error to console
-    console.error("Root Error Boundary caught a critical error:", error, errorInfo)
+      "critical",
+    )
 
     // Call custom error handler if provided
     if (this.props.onError) {
       this.props.onError(error, errorInfo)
     }
 
-    // Auto-retry for certain types of errors
-    if (this.shouldAutoRetry(error) && this.state.retryCount < this.maxRetries) {
-      this.scheduleRetry()
+    // Log to console in development
+    if (process.env.NODE_ENV === "development") {
+      console.error("Root Error Boundary caught an error:", error, errorInfo)
     }
   }
 
-  shouldAutoRetry = (error: Error): boolean => {
-    const retryableErrors = ["ChunkLoadError", "Loading chunk", "NetworkError", "Failed to fetch"]
-    return retryableErrors.some((errorType) => error.message.includes(errorType) || error.name.includes(errorType))
-  }
+  handleRetry = () => {
+    if (this.state.retryCount >= 3) {
+      return
+    }
 
-  scheduleRetry = () => {
-    const delay = Math.min(1000 * Math.pow(2, this.state.retryCount), 10000) // Exponential backoff
+    this.setState({ isRetrying: true })
 
-    this.retryTimeout = setTimeout(() => {
-      addBreadcrumb(`Auto-retry attempt ${this.state.retryCount + 1}`, "navigation", "info")
-      this.setState((prevState) => ({
+    // Add breadcrumb for retry attempt
+    addBreadcrumb(`Retry attempt ${this.state.retryCount + 1} from root error boundary`, "retry", "info")
+
+    this.retryTimeoutId = setTimeout(() => {
+      this.setState({
         hasError: false,
         error: null,
         errorInfo: null,
-        errorId: "",
-        eventId: null,
-        retryCount: prevState.retryCount + 1,
-      }))
-    }, delay)
+        errorId: null,
+        retryCount: this.state.retryCount + 1,
+        isRetrying: false,
+      })
+    }, 1000)
   }
 
-  resetError = () => {
-    if (this.retryTimeout) {
-      clearTimeout(this.retryTimeout)
-      this.retryTimeout = null
+  handleReload = () => {
+    if (typeof window !== "undefined") {
+      window.location.reload()
     }
+  }
 
-    addBreadcrumb("Root error boundary reset by user", "navigation", "info")
-    this.setState({
-      hasError: false,
-      error: null,
-      errorInfo: null,
-      errorId: "",
-      eventId: null,
-      retryCount: 0,
-    })
+  handleGoHome = () => {
+    if (typeof window !== "undefined") {
+      window.location.href = "/"
+    }
+  }
+
+  handleReportIssue = () => {
+    const subject = encodeURIComponent(`Error Report: ${this.state.error?.message || "Unknown Error"}`)
+    const body = encodeURIComponent(`
+Error ID: ${this.state.errorId}
+Error Message: ${this.state.error?.message || "Unknown"}
+Stack Trace: ${this.state.error?.stack || "Not available"}
+Component Stack: ${this.state.errorInfo?.componentStack || "Not available"}
+URL: ${typeof window !== "undefined" ? window.location.href : "Unknown"}
+User Agent: ${typeof navigator !== "undefined" ? navigator.userAgent : "Unknown"}
+Timestamp: ${new Date().toISOString()}
+    `)
+
+    const mailtoUrl = `mailto:support@coinwayfinder.com?subject=${subject}&body=${body}`
+    if (typeof window !== "undefined") {
+      window.open(mailtoUrl)
+    }
   }
 
   componentWillUnmount() {
-    if (this.retryTimeout) {
-      clearTimeout(this.retryTimeout)
+    if (this.retryTimeoutId) {
+      clearTimeout(this.retryTimeoutId)
     }
   }
 
   render() {
     if (this.state.hasError) {
-      return <CriticalErrorFallback {...this.state} resetError={this.resetError} />
+      if (this.props.fallback) {
+        return this.props.fallback
+      }
+
+      const canRetry = this.state.retryCount < 3
+      const errorMessage = this.state.error?.message || "An unexpected error occurred"
+      const isNetworkError =
+        errorMessage.toLowerCase().includes("network") || errorMessage.toLowerCase().includes("fetch")
+
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <Card className="w-full max-w-2xl">
+            <CardHeader className="text-center">
+              <div className="flex justify-center mb-4">
+                <div className="rounded-full bg-red-100 p-3 dark:bg-red-900">
+                  <AlertTriangle className="h-8 w-8 text-red-600 dark:text-red-400" />
+                </div>
+              </div>
+              <CardTitle className="text-2xl">Something went wrong</CardTitle>
+              <CardDescription>We apologize for the inconvenience. An unexpected error has occurred.</CardDescription>
+            </CardHeader>
+
+            <CardContent className="space-y-6">
+              {/* Error Details */}
+              <Alert>
+                <Bug className="h-4 w-4" />
+                <AlertDescription>
+                  <div className="space-y-2">
+                    <p className="font-medium">{errorMessage}</p>
+                    {this.state.errorId && (
+                      <p className="text-sm text-muted-foreground">
+                        Error ID: <code className="bg-muted px-1 rounded">{this.state.errorId}</code>
+                      </p>
+                    )}
+                  </div>
+                </AlertDescription>
+              </Alert>
+
+              {/* Error Type Badge */}
+              <div className="flex justify-center">
+                <Badge variant={isNetworkError ? "secondary" : "destructive"}>
+                  {isNetworkError ? "Network Error" : "Application Error"}
+                </Badge>
+              </div>
+
+              {/* Retry Information */}
+              {this.state.retryCount > 0 && (
+                <Alert>
+                  <AlertDescription>Retry attempts: {this.state.retryCount}/3</AlertDescription>
+                </Alert>
+              )}
+
+              <Separator />
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {canRetry && (
+                  <Button onClick={this.handleRetry} disabled={this.state.isRetrying} className="w-full">
+                    {this.state.isRetrying ? (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Retrying...
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Try Again
+                      </>
+                    )}
+                  </Button>
+                )}
+
+                <Button onClick={this.handleReload} variant="outline" className="w-full bg-transparent">
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Reload Page
+                </Button>
+
+                <Button onClick={this.handleGoHome} variant="outline" className="w-full bg-transparent">
+                  <Home className="mr-2 h-4 w-4" />
+                  Go Home
+                </Button>
+
+                <Button onClick={this.handleReportIssue} variant="outline" className="w-full bg-transparent">
+                  <Mail className="mr-2 h-4 w-4" />
+                  Report Issue
+                </Button>
+              </div>
+
+              {/* Development Details */}
+              {process.env.NODE_ENV === "development" && this.state.error && (
+                <details className="mt-6">
+                  <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
+                    Development Details (Click to expand)
+                  </summary>
+                  <div className="mt-2 space-y-4">
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Error Stack:</h4>
+                      <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">{this.state.error.stack}</pre>
+                    </div>
+                    {this.state.errorInfo?.componentStack && (
+                      <div>
+                        <h4 className="text-sm font-medium mb-2">Component Stack:</h4>
+                        <pre className="text-xs bg-muted p-3 rounded overflow-x-auto">
+                          {this.state.errorInfo.componentStack}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </details>
+              )}
+
+              {/* Help Text */}
+              <div className="text-center text-sm text-muted-foreground">
+                <p>
+                  If this problem persists, please{" "}
+                  <button onClick={this.handleReportIssue} className="underline hover:text-foreground">
+                    report the issue
+                  </button>{" "}
+                  and we'll look into it right away.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )
     }
 
     return this.props.children
   }
 }
-
-const CriticalErrorFallback: React.FC<{
-  error: Error
-  errorInfo: React.ErrorInfo
-  errorId: string
-  eventId: string | null
-  retryCount: number
-  resetError: () => void
-}> = ({ error, errorInfo, errorId, eventId, retryCount, resetError }) => {
-  const [showDetails, setShowDetails] = React.useState(false)
-  const [copied, setCopied] = React.useState(false)
-  const [feedbackSent, setFeedbackSent] = React.useState(false)
-
-  const copyErrorDetails = async () => {
-    const errorDetails = `
-Error ID: ${eventId || errorId}
-Time: ${new Date().toISOString()}
-Message: ${error.message}
-Stack: ${error.stack}
-Component Stack: ${errorInfo.componentStack}
-Retry Count: ${retryCount}
-URL: ${window.location.href}
-User Agent: ${navigator.userAgent}
-    `.trim()
-
-    try {
-      await navigator.clipboard.writeText(errorDetails)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-      toast({
-        title: "Error details copied",
-        description: "Full error details have been copied to your clipboard.",
-      })
-    } catch (err) {
-      console.error("Failed to copy error details:", err)
-    }
-  }
-
-  const sendFeedback = () => {
-    if (eventId && process.env.NODE_ENV === "production") {
-      Sentry.showReportDialog({ eventId })
-      setFeedbackSent(true)
-    }
-  }
-
-  const reloadApplication = () => {
-    addBreadcrumb("User triggered application reload", "navigation", "info")
-    window.location.reload()
-  }
-
-  const goToHome = () => {
-    addBreadcrumb("User navigated to home from error", "navigation", "info")
-    window.location.href = "/"
-  }
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-red-50 to-red-100 dark:from-red-950 dark:to-red-900 flex items-center justify-center p-4">
-      <Card className="w-full max-w-3xl shadow-2xl border-red-200 dark:border-red-800">
-        <CardHeader className="text-center pb-6">
-          <div className="mx-auto mb-6 w-20 h-20 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-            <AlertTriangle className="w-10 h-10 text-red-600 dark:text-red-400" />
-          </div>
-          <CardTitle className="text-3xl font-bold text-red-600 dark:text-red-400 mb-2">
-            Critical Application Error
-          </CardTitle>
-          <CardDescription className="text-lg text-gray-600 dark:text-gray-300">
-            We're sorry, but a critical error has occurred that prevents the application from running properly. Our
-            development team has been automatically notified.
-          </CardDescription>
-          {retryCount > 0 && (
-            <Badge variant="outline" className="mt-2 mx-auto w-fit">
-              Auto-retry attempts: {retryCount}
-            </Badge>
-          )}
-        </CardHeader>
-
-        <CardContent className="space-y-6">
-          <Alert className="border-red-200 dark:border-red-800">
-            <Bug className="h-4 w-4" />
-            <AlertDescription>
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <div>
-                    <strong>Error ID:</strong> {eventId || errorId}
-                  </div>
-                  <div>
-                    <strong>Time:</strong> {new Date().toLocaleString()}
-                  </div>
-                  <div>
-                    <strong>Type:</strong> {error.name}
-                  </div>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={copyErrorDetails}
-                  className="flex items-center gap-2 shrink-0"
-                >
-                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copied ? "Copied!" : "Copy Details"}
-                </Button>
-              </div>
-            </AlertDescription>
-          </Alert>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            <Button onClick={resetError} className="flex items-center gap-2">
-              <RefreshCw className="w-4 h-4" />
-              Try Again
-            </Button>
-            <Button onClick={reloadApplication} variant="outline" className="flex items-center gap-2 bg-transparent">
-              <RefreshCw className="w-4 h-4" />
-              Reload App
-            </Button>
-            <Button onClick={goToHome} variant="outline" className="flex items-center gap-2 bg-transparent">
-              <Home className="w-4 h-4" />
-              Go Home
-            </Button>
-            {eventId && process.env.NODE_ENV === "production" && (
-              <Button
-                onClick={sendFeedback}
-                variant="outline"
-                className="flex items-center gap-2 bg-transparent"
-                disabled={feedbackSent}
-              >
-                <Mail className="w-4 h-4" />
-                {feedbackSent ? "Feedback Sent" : "Send Feedback"}
-              </Button>
-            )}
-          </div>
-
-          {process.env.NODE_ENV === "development" && (
-            <div className="space-y-4 border-t pt-4">
-              <Button onClick={() => setShowDetails(!showDetails)} variant="ghost" className="w-full">
-                {showDetails ? "Hide" : "Show"} Technical Details
-              </Button>
-
-              {showDetails && (
-                <div className="space-y-4 text-sm">
-                  <div>
-                    <strong className="block mb-2">Error Message:</strong>
-                    <pre className="p-3 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-auto border">
-                      {error.message}
-                    </pre>
-                  </div>
-                  <div>
-                    <strong className="block mb-2">Stack Trace:</strong>
-                    <pre className="p-3 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-auto max-h-40 border">
-                      {error.stack}
-                    </pre>
-                  </div>
-                  <div>
-                    <strong className="block mb-2">Component Stack:</strong>
-                    <pre className="p-3 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-auto max-h-40 border">
-                      {errorInfo.componentStack}
-                    </pre>
-                  </div>
-                  {eventId && (
-                    <div>
-                      <strong className="block mb-2">Sentry Event ID:</strong>
-                      <pre className="p-3 bg-gray-100 dark:bg-gray-800 rounded text-xs overflow-auto border">
-                        {eventId}
-                      </pre>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="text-center text-sm text-gray-500 dark:text-gray-400 border-t pt-4">
-            <p>If this problem persists, please contact our support team with the Error ID above.</p>
-            <p className="mt-1">Email: support@coinwayfinder.com</p>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
-}
-
-export { RootErrorBoundary }
