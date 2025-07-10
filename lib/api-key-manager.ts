@@ -1,4 +1,4 @@
-import { randomBytes, createHash } from "crypto"
+import { simpleHash, generateRandomString } from "./security"
 
 export interface ApiKey {
   id: string
@@ -27,7 +27,7 @@ export class ApiKeyManager {
   private static readonly KEY_LENGTH = 32
 
   static generateApiKey(): { key: string; hashedKey: string } {
-    const randomKey = randomBytes(this.KEY_LENGTH).toString("hex")
+    const randomKey = generateRandomString(this.KEY_LENGTH)
     const key = `${this.KEY_PREFIX}${randomKey}`
     const hashedKey = this.hashKey(key)
 
@@ -35,7 +35,7 @@ export class ApiKeyManager {
   }
 
   static hashKey(key: string): string {
-    return createHash("sha256").update(key).digest("hex")
+    return simpleHash(key)
   }
 
   static maskKey(key: string): string {
@@ -207,7 +207,7 @@ export class ApiKeyManager {
   private async storeApiKey(apiKeyData: Omit<ApiKey, "id">): Promise<{ id: string }> {
     // Implementation depends on your database
     // For now, return a mock ID
-    return { id: randomBytes(16).toString("hex") }
+    return { id: generateRandomString(16) }
   }
 
   private async getApiKeyByHash(hashedKey: string): Promise<ApiKey | null> {

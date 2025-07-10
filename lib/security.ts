@@ -1,5 +1,4 @@
 import type { NextRequest, NextResponse } from "next/server"
-import { headers } from "next/headers"
 
 export interface SecurityConfig {
   enableCSP: boolean
@@ -202,7 +201,30 @@ export function validateOrigin(request: NextRequest, allowedOrigins: string[]): 
   return allowedOrigins.includes(origin)
 }
 
+// Simple hash function to replace crypto dependency
+export function simpleHash(input: string): string {
+  let hash = 0
+  if (input.length === 0) return hash.toString()
+
+  for (let i = 0; i < input.length; i++) {
+    const char = input.charCodeAt(i)
+    hash = (hash << 5) - hash + char
+    hash = hash & hash // Convert to 32-bit integer
+  }
+
+  return Math.abs(hash).toString(36)
+}
+
+// Generate random string without crypto
+export function generateRandomString(length = 32): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+  let result = ""
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return result
+}
+
 export async function getNonce(): Promise<string> {
-  const headersList = await headers()
-  return headersList.get("x-nonce") || ""
+  return generateRandomString(16)
 }

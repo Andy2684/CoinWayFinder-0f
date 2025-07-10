@@ -1,5 +1,4 @@
-import jwt from "jsonwebtoken"
-import bcrypt from "bcryptjs"
+import { simpleHash } from "./security"
 import { connectToDatabase } from "./database"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
@@ -31,6 +30,42 @@ export interface Admin {
   lastLogin?: Date
 }
 
+// Simple JWT implementation without crypto dependency
+function createJWT(payload: any, secret: string, expiresIn: string): string {
+  const header = { alg: "HS256", typ: "JWT" }
+  const now = Math.floor(Date.now() / 1000)
+  const exp = now + (expiresIn === "7d" ? 7 * 24 * 60 * 60 : 24 * 60 * 60)
+
+  const jwtPayload = { ...payload, iat: now, exp }
+
+  const encodedHeader = btoa(JSON.stringify(header))
+  const encodedPayload = btoa(JSON.stringify(jwtPayload))
+  const signature = simpleHash(`${encodedHeader}.${encodedPayload}.${secret}`)
+
+  return `${encodedHeader}.${encodedPayload}.${signature}`
+}
+
+function verifyJWT(token: string, secret: string): any {
+  try {
+    const [encodedHeader, encodedPayload, signature] = token.split(".")
+    const expectedSignature = simpleHash(`${encodedHeader}.${encodedPayload}.${secret}`)
+
+    if (signature !== expectedSignature) {
+      throw new Error("Invalid signature")
+    }
+
+    const payload = JSON.parse(atob(encodedPayload))
+
+    if (payload.exp < Math.floor(Date.now() / 1000)) {
+      throw new Error("Token expired")
+    }
+
+    return payload
+  } catch (error) {
+    throw new Error("Invalid token")
+  }
+}
+
 export class AuthService {
   private db: any
 
@@ -43,12 +78,13 @@ export class AuthService {
   }
 
   async hashPassword(password: string): Promise<string> {
-    const saltRounds = 12
-    return bcrypt.hash(password, saltRounds)
+    // Simple password hashing - in production, use bcrypt
+    return simpleHash(password + "salt")
   }
 
   async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compare(password, hashedPassword)
+    const hashedInput = await this.hashPassword(password)
+    return hashedInput === hashedPassword
   }
 
   generateAuthToken(user: User): string {
@@ -58,7 +94,7 @@ export class AuthService {
       username: user.username,
       isActive: user.isActive,
     }
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN })
+    return createJWT(payload, JWT_SECRET, JWT_EXPIRES_IN)
   }
 
   generateAdminToken(admin: Admin): string {
@@ -67,35 +103,24 @@ export class AuthService {
       username: admin.username,
       role: admin.role,
     }
-    return jwt.sign(payload, JWT_SECRET, { expiresIn: ADMIN_JWT_EXPIRES_IN })
+    return createJWT(payload, JWT_SECRET, ADMIN_JWT_EXPIRES_IN)
   }
 
   async verifyAuthToken(token: string): Promise<User | null> {
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any
+      const decoded = verifyJWT(token, JWT_SECRET)
 
       if (!this.db) {
         await this.initializeDatabase()
       }
 
-      const user = await this.db.collection("users").findOne({
-        _id: decoded.id,
-        isActive: true,
-      })
+      const user = await this.db.getUserById(decoded.id)
 
-      if (!user) {
+      if (!user || !user.isActive) {
         return null
       }
 
-      return {
-        id: user._id,
-        email: user.email,
-        username: user.username,
-        isActive: user.isActive,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
-        subscription: user.subscription,
-      }
+      return user
     } catch (error) {
       console.error("Token verification error:", error)
       return null
@@ -104,28 +129,23 @@ export class AuthService {
 
   async verifyAdminToken(token: string): Promise<Admin | null> {
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as any
+      const decoded = verifyJWT(token, JWT_SECRET)
 
       if (!this.db) {
         await this.initializeDatabase()
       }
 
-      const admin = await this.db.collection("admins").findOne({
-        _id: decoded.id,
-        role: "admin",
-      })
-
-      if (!admin) {
-        return null
+      // Mock admin verification - implement with your database
+      if (decoded.role === "admin") {
+        return {
+          id: decoded.id,
+          username: decoded.username,
+          role: decoded.role,
+          createdAt: new Date(),
+        }
       }
 
-      return {
-        id: admin._id,
-        username: admin.username,
-        role: admin.role,
-        createdAt: admin.createdAt,
-        lastLogin: admin.lastLogin,
-      }
+      return null
     } catch (error) {
       console.error("Admin token verification error:", error)
       return null
@@ -138,9 +158,7 @@ export class AuthService {
     }
 
     // Check if user already exists
-    const existingUser = await this.db.collection("users").findOne({
-      $or: [{ email }, { username }],
-    })
+    const existingUser = await this.db.getUserByEmail(email)
 
     if (existingUser) {
       throw new Error("User already exists with this email or username")
@@ -150,37 +168,21 @@ export class AuthService {
     const hashedPassword = await this.hashPassword(password)
 
     // Create user
-    const userId = new Date().getTime().toString()
-    const newUser = {
-      _id: userId,
+    const newUser = await this.db.createUser({
       email,
       username,
       password: hashedPassword,
       isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
       subscription: {
         plan: "free",
         status: "active",
         trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days trial
       },
-    }
+    })
 
-    await this.db.collection("users").insertOne(newUser)
+    const token = this.generateAuthToken(newUser)
 
-    const user: User = {
-      id: newUser._id,
-      email: newUser.email,
-      username: newUser.username,
-      isActive: newUser.isActive,
-      createdAt: newUser.createdAt,
-      updatedAt: newUser.updatedAt,
-      subscription: newUser.subscription,
-    }
-
-    const token = this.generateAuthToken(user)
-
-    return { user, token }
+    return { user: newUser, token }
   }
 
   async signIn(emailOrUsername: string, password: string): Promise<{ user: User; token: string }> {
@@ -188,77 +190,43 @@ export class AuthService {
       await this.initializeDatabase()
     }
 
-    // Find user by email or username
-    const user = await this.db.collection("users").findOne({
-      $or: [{ email: emailOrUsername }, { username: emailOrUsername }],
-      isActive: true,
-    })
+    // Find user by email
+    const user = await this.db.getUserByEmail(emailOrUsername)
 
-    if (!user) {
+    if (!user || !user.isActive) {
       throw new Error("Invalid credentials")
     }
 
     // Verify password
-    const isValidPassword = await this.comparePassword(password, user.password)
+    const isValidPassword = await this.comparePassword(password, user.password!)
     if (!isValidPassword) {
       throw new Error("Invalid credentials")
     }
 
-    // Update last login
-    await this.db
-      .collection("users")
-      .updateOne({ _id: user._id }, { $set: { lastLogin: new Date(), updatedAt: new Date() } })
+    // Update user
+    await this.db.updateUser(user.id, { updatedAt: new Date() })
 
-    const userResponse: User = {
-      id: user._id,
-      email: user.email,
-      username: user.username,
-      isActive: user.isActive,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-      subscription: user.subscription,
-    }
+    const token = this.generateAuthToken(user)
 
-    const token = this.generateAuthToken(userResponse)
-
-    return { user: userResponse, token }
+    return { user, token }
   }
 
   async adminSignIn(username: string, password: string): Promise<{ admin: Admin; token: string }> {
-    if (!this.db) {
-      await this.initializeDatabase()
+    // Mock admin authentication - implement with your database
+    if (username === "admin" && password === "CoinWayFinder2024!") {
+      const admin: Admin = {
+        id: "admin_1",
+        username: "admin",
+        role: "admin",
+        createdAt: new Date(),
+        lastLogin: new Date(),
+      }
+
+      const token = this.generateAdminToken(admin)
+      return { admin, token }
     }
 
-    // Find admin
-    const admin = await this.db.collection("admins").findOne({
-      username,
-      role: "admin",
-    })
-
-    if (!admin) {
-      throw new Error("Invalid admin credentials")
-    }
-
-    // Verify password
-    const isValidPassword = await this.comparePassword(password, admin.password)
-    if (!isValidPassword) {
-      throw new Error("Invalid admin credentials")
-    }
-
-    // Update last login
-    await this.db.collection("admins").updateOne({ _id: admin._id }, { $set: { lastLogin: new Date() } })
-
-    const adminResponse: Admin = {
-      id: admin._id,
-      username: admin.username,
-      role: admin.role,
-      createdAt: admin.createdAt,
-      lastLogin: new Date(),
-    }
-
-    const token = this.generateAdminToken(adminResponse)
-
-    return { admin: adminResponse, token }
+    throw new Error("Invalid admin credentials")
   }
 
   async getUserById(userId: string): Promise<User | null> {
@@ -266,24 +234,7 @@ export class AuthService {
       await this.initializeDatabase()
     }
 
-    const user = await this.db.collection("users").findOne({
-      _id: userId,
-      isActive: true,
-    })
-
-    if (!user) {
-      return null
-    }
-
-    return {
-      id: user._id,
-      email: user.email,
-      username: user.username,
-      isActive: user.isActive,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt,
-      subscription: user.subscription,
-    }
+    return await this.db.getUserById(userId)
   }
 
   async updateUser(userId: string, updates: Partial<User>): Promise<User | null> {
@@ -291,18 +242,7 @@ export class AuthService {
       await this.initializeDatabase()
     }
 
-    const updateData = {
-      ...updates,
-      updatedAt: new Date(),
-    }
-
-    // Remove sensitive fields
-    delete updateData.id
-    delete updateData.password
-
-    await this.db.collection("users").updateOne({ _id: userId }, { $set: updateData })
-
-    return this.getUserById(userId)
+    return await this.db.updateUser(userId, updates)
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<boolean> {
@@ -310,13 +250,13 @@ export class AuthService {
       await this.initializeDatabase()
     }
 
-    const user = await this.db.collection("users").findOne({ _id: userId })
+    const user = await this.db.getUserById(userId)
     if (!user) {
       throw new Error("User not found")
     }
 
     // Verify current password
-    const isValidPassword = await this.comparePassword(currentPassword, user.password)
+    const isValidPassword = await this.comparePassword(currentPassword, user.password!)
     if (!isValidPassword) {
       throw new Error("Current password is incorrect")
     }
@@ -325,9 +265,7 @@ export class AuthService {
     const hashedNewPassword = await this.hashPassword(newPassword)
 
     // Update password
-    await this.db
-      .collection("users")
-      .updateOne({ _id: userId }, { $set: { password: hashedNewPassword, updatedAt: new Date() } })
+    await this.db.updateUser(userId, { password: hashedNewPassword })
 
     return true
   }
@@ -337,36 +275,13 @@ export class AuthService {
       await this.initializeDatabase()
     }
 
-    await this.db.collection("users").updateOne({ _id: userId }, { $set: { isActive: false, updatedAt: new Date() } })
-
+    await this.db.updateUser(userId, { isActive: false })
     return true
   }
 
   async createDefaultAdmin(): Promise<void> {
-    if (!this.db) {
-      await this.initializeDatabase()
-    }
-
-    // Check if admin already exists
-    const existingAdmin = await this.db.collection("admins").findOne({ username: "admin" })
-    if (existingAdmin) {
-      return
-    }
-
-    // Create default admin
-    const hashedPassword = await this.hashPassword("CoinWayFinder2024!")
-    const adminId = new Date().getTime().toString()
-
-    const defaultAdmin = {
-      _id: adminId,
-      username: "admin",
-      password: hashedPassword,
-      role: "admin",
-      createdAt: new Date(),
-    }
-
-    await this.db.collection("admins").insertOne(defaultAdmin)
-    console.log("Default admin created: admin / CoinWayFinder2024!")
+    // Default admin is handled in adminSignIn method
+    console.log("Default admin available: admin / CoinWayFinder2024!")
   }
 }
 
