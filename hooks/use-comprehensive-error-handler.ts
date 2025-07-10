@@ -1,236 +1,183 @@
 "use client"
 
 import { useState, useCallback } from "react"
-import { toast } from "@/hooks/use-toast"
+import { ErrorReportingService } from "@/lib/error-reporting"
 
 export interface ErrorContext {
-  userId?: string
-  action?: string
   component?: string
+  action?: string
+  userId?: string
   metadata?: Record<string, any>
 }
 
 export interface ErrorHandlerOptions {
   maxRetries?: number
   retryDelay?: number
-  showToast?: boolean
-  logToConsole?: boolean
-  reportToService?: boolean
+  enableReporting?: boolean
+  severity?: "low" | "medium" | "high" | "critical"
 }
 
-export interface ErrorReport {
-  error: Error
-  context: ErrorContext
-  timestamp: Date
-  userAgent: string
-  url: string
-  userId?: string
-}
-
-export interface UseErrorHandlerReturn {
+export interface ErrorState {
+  hasError: boolean
   error: Error | null
-  isLoading: boolean
-  retry: () => void
-  clearError: () => void
-  handleError: (error: Error, context?: ErrorContext) => void
-  executeWithErrorHandling: <T>(
-    fn: () => Promise<T>,
-    context?: ErrorContext,
-    options?: ErrorHandlerOptions,
-  ) => Promise<T | null>
+  errorId: string | null
+  retryCount: number
+  isRetrying: boolean
 }
 
-export function useComprehensiveErrorHandler(): UseErrorHandlerReturn {
-  const [error, setError] = useState<Error | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
-  const [retryFunction, setRetryFunction] = useState<(() => void) | null>(null)
+const errorReporting = new ErrorReportingService()
 
-  const reportError = useCallback(async (errorReport: ErrorReport) => {
-    try {
-      await fetch("/api/error-report", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(errorReport),
-      })
-    } catch (reportingError) {
-      console.error("Failed to report error:", reportingError)
-    }
-  }, [])
+export function useComprehensiveErrorHandler() {
+  const [errorState, setErrorState] = useState<ErrorState>({
+    hasError: false,
+    error: null,
+    errorId: null,
+    retryCount: 0,
+    isRetrying: false,
+  })
 
   const handleError = useCallback(
-    (error: Error, context: ErrorContext = {}) => {
-      setError(error)
+    async (error: Error, context: ErrorContext = {}, options: ErrorHandlerOptions = {}) => {
+      const { maxRetries = 3, retryDelay = 1000, enableReporting = true, severity = "medium" } = options
 
-      const errorReport: ErrorReport = {
+      const errorId = `error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+      setErrorState((prev) => ({
+        ...prev,
+        hasError: true,
         error,
-        context,
-        timestamp: new Date(),
-        userAgent: navigator.userAgent,
-        url: window.location.href,
-        userId: context.userId,
+        errorId,
+        retryCount: prev.retryCount + 1,
+      }))
+
+      // Report error if enabled
+      if (enableReporting) {
+        try {
+          await errorReporting.reportError(error, {
+            severity,
+            context: {
+              ...context,
+              retryCount: errorState.retryCount,
+              timestamp: new Date().toISOString(),
+            },
+            userId: context.userId,
+          })
+        } catch (reportingError) {
+          console.warn("Failed to report error:", reportingError)
+        }
       }
 
-      // Log to console
-      console.error("Error occurred:", {
-        message: error.message,
-        stack: error.stack,
-        context,
-      })
-
-      // Report to error service
-      reportError(errorReport)
-
-      // Show toast notification
-      toast({
-        title: "An error occurred",
-        description: error.message || "Something went wrong. Please try again.",
-        variant: "destructive",
-      })
+      // Log error to console in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error handled:", {
+          error,
+          context,
+          errorId,
+          retryCount: errorState.retryCount,
+        })
+      }
     },
-    [reportError],
+    [errorState.retryCount],
   )
 
-  const executeWithErrorHandling = useCallback(async <T>(\
-    fn: () => Promise<T>,\
-    context: ErrorContext = {},\
-    options: ErrorHandlerOptions = {}\
-  ): Promise<T | null> => {\
-  const { maxRetries = 3, retryDelay = 1000, showToast = true, logToConsole = true, reportToService = true } = options
+  const retryOperation = useCallback(
+    async <T>(\
+      operation: () => Promise<T>,\
+      context: ErrorContext = {},\
+      options: ErrorHandlerOptions = {}\
+    ): Promise<T> => {\
+  const { maxRetries = 3, retryDelay = 1000, enableReporting = true, severity = "medium" } = options
 
-  let lastError: Error | null = null
+  let lastError: Error
+  let retryCount = 0
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+  while (retryCount < maxRetries) {
+    setErrorState((prev) => ({
+      ...prev,
+      isRetrying: retryCount > 0,
+      retryCount,
+    }))
+
     try {
-      setIsLoading(true)
-      setError(null)
-
-      const result = await fn()
-      setIsLoading(false)
+      const result = await operation()
+      // Clear error state on success
+      setErrorState({
+        hasError: false,
+        error: null,
+        errorId: null,
+        retryCount: 0,
+        isRetrying: false,
+      })
       return result
     } catch (error) {
       lastError = error as Error
-
-      if (logToConsole) {
-        console.error(`Attempt ${attempt + 1} failed:`, error)
-      }
-
-      if (attempt < maxRetries) {
+      retryCount++
+      if (retryCount < maxRetries) {
         // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, retryDelay * Math.pow(2, attempt)))
+        await new Promise(resolve => setTimeout(resolve, retryDelay * retryCount))
       }
     }
   }
 
-  // All retries failed
-  setIsLoading(false)
-
-  if (lastError) {
-    const errorReport: ErrorReport = {
-      error: lastError,
-      context: {
-        ...context,
-        maxRetries,
-        finalAttempt: true,
-      },
-      timestamp: new Date(),
-      userAgent: navigator.userAgent,
-      url: window.location.href,
-      userId: context.userId,
-    }
-
-    if (reportToService) {
-      reportError(errorReport)
-    }
-
-    if (showToast) {
-      toast({
-        title: "Operation failed",
-        description: `${lastError.message} (after ${maxRetries + 1} attempts)`,
-        variant: "destructive",
-      })
-    }
-
-    setError(lastError)
-    setRetryFunction(() => () => executeWithErrorHandling(fn, context, options))
-  }
-
-  return null
+  // All retries failed, handle the error
+  await handleError(lastError!, context, { ...options, severity })
+  throw lastError!
   \
 }
-, [reportError])
-
-const retry = useCallback(() => {
-  if (retryFunction) {
-    retryFunction()
-  }
-}, [retryFunction])
+,
+    [handleError]
+  )
 
 const clearError = useCallback(() => {
-  setError(null)
-  setRetryFunction(null)
+  setErrorState({
+    hasError: false,
+    error: null,
+    errorId: null,
+    retryCount: 0,
+    isRetrying: false,
+  })
 }, [])
 
+const withErrorHandling = useCallback(
+  <T extends any[], R>(
+    fn: (...args: T) => Promise<R>,
+    context: ErrorContext = {},
+    options: ErrorHandlerOptions = {},
+  ) => {
+    return async (...args: T): Promise<R | null> => {
+      try {
+        return await fn(...args)
+      } catch (error) {
+        await handleError(error as Error, context, options)
+        return null
+      }
+    }
+  },
+  [handleError],
+)
+
+const withRetry = useCallback(
+  <T extends any[], R>(
+    fn: (...args: T) => Promise<R>,
+    context: ErrorContext = {},
+    options: ErrorHandlerOptions = {},
+  ) => {
+    return async (...args: T): Promise<R> => {
+      return retryOperation(() => fn(...args), context, options)
+    }
+  },
+  [retryOperation],
+)
+
 return {
-    error,
-    isLoading,
-    retry,
-    clearError,
+    errorState,
     handleError,
-    executeWithErrorHandling,
+    retryOperation,
+    clearError,
+    withErrorHandling,
+    withRetry,
   }
 \
 }
 
-// Utility function for handling async operations with error handling
-export const withErrorHandling = async <T>(\
-  fn: () => Promise<T>,\
-  context?: ErrorContext,\
-  options?: ErrorHandlerOptions\
-)
-: Promise<T | null> =>
-{
-  const { maxRetries = 3, retryDelay = 1000 } = options || {}
-
-  let lastError: Error | null = null
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn()
-    } catch (error) {
-      lastError = error as Error
-
-      if (attempt < maxRetries) {
-        await new Promise((resolve) => setTimeout(resolve, retryDelay * Math.pow(2, attempt)))
-      }
-    }
-  }
-
-  if (lastError) {
-    const errorReport: ErrorReport = {
-      error: lastError,
-      context: context || {},
-      timestamp: new Date(),
-      userAgent: typeof navigator !== "undefined" ? navigator.userAgent : "Server",
-      url: typeof window !== "undefined" ? window.location.href : "Server",
-    }
-
-    // Report error
-    try {
-      await fetch("/api/error-report", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(errorReport),
-      })
-    } catch (reportingError) {
-      console.error("Failed to report error:", reportingError)
-    }
-
-    throw lastError
-  }
-
-  return null
-}
+export default useComprehensiveErrorHandler
