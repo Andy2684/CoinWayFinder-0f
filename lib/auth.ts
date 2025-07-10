@@ -1,5 +1,5 @@
 import { simpleHash } from "./security"
-import { connectToDatabase } from "./database"
+import { database } from "./database"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 const JWT_EXPIRES_IN = "7d"
@@ -67,16 +67,6 @@ function verifyJWT(token: string, secret: string): any {
 }
 
 export class AuthService {
-  private db: any
-
-  constructor() {
-    this.initializeDatabase()
-  }
-
-  private async initializeDatabase() {
-    this.db = await connectToDatabase()
-  }
-
   async hashPassword(password: string): Promise<string> {
     // Simple password hashing - in production, use bcrypt
     return simpleHash(password + "salt")
@@ -109,12 +99,7 @@ export class AuthService {
   async verifyAuthToken(token: string): Promise<User | null> {
     try {
       const decoded = verifyJWT(token, JWT_SECRET)
-
-      if (!this.db) {
-        await this.initializeDatabase()
-      }
-
-      const user = await this.db.getUserById(decoded.id)
+      const user = await database.getUserById(decoded.id)
 
       if (!user || !user.isActive) {
         return null
@@ -130,10 +115,6 @@ export class AuthService {
   async verifyAdminToken(token: string): Promise<Admin | null> {
     try {
       const decoded = verifyJWT(token, JWT_SECRET)
-
-      if (!this.db) {
-        await this.initializeDatabase()
-      }
 
       // Mock admin verification - implement with your database
       if (decoded.role === "admin") {
@@ -153,12 +134,8 @@ export class AuthService {
   }
 
   async signUp(email: string, username: string, password: string): Promise<{ user: User; token: string }> {
-    if (!this.db) {
-      await this.initializeDatabase()
-    }
-
     // Check if user already exists
-    const existingUser = await this.db.getUserByEmail(email)
+    const existingUser = await database.getUserByEmail(email)
 
     if (existingUser) {
       throw new Error("User already exists with this email or username")
@@ -168,7 +145,7 @@ export class AuthService {
     const hashedPassword = await this.hashPassword(password)
 
     // Create user
-    const newUser = await this.db.createUser({
+    const newUser = await database.createUser({
       email,
       username,
       password: hashedPassword,
@@ -186,12 +163,8 @@ export class AuthService {
   }
 
   async signIn(emailOrUsername: string, password: string): Promise<{ user: User; token: string }> {
-    if (!this.db) {
-      await this.initializeDatabase()
-    }
-
     // Find user by email
-    const user = await this.db.getUserByEmail(emailOrUsername)
+    const user = await database.getUserByEmail(emailOrUsername)
 
     if (!user || !user.isActive) {
       throw new Error("Invalid credentials")
@@ -204,7 +177,7 @@ export class AuthService {
     }
 
     // Update user
-    await this.db.updateUser(user.id, { updatedAt: new Date() })
+    await database.updateUser(user.id, { updatedAt: new Date() })
 
     const token = this.generateAuthToken(user)
 
@@ -230,27 +203,15 @@ export class AuthService {
   }
 
   async getUserById(userId: string): Promise<User | null> {
-    if (!this.db) {
-      await this.initializeDatabase()
-    }
-
-    return await this.db.getUserById(userId)
+    return await database.getUserById(userId)
   }
 
   async updateUser(userId: string, updates: Partial<User>): Promise<User | null> {
-    if (!this.db) {
-      await this.initializeDatabase()
-    }
-
-    return await this.db.updateUser(userId, updates)
+    return await database.updateUser(userId, updates)
   }
 
   async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<boolean> {
-    if (!this.db) {
-      await this.initializeDatabase()
-    }
-
-    const user = await this.db.getUserById(userId)
+    const user = await database.getUserById(userId)
     if (!user) {
       throw new Error("User not found")
     }
@@ -265,17 +226,13 @@ export class AuthService {
     const hashedNewPassword = await this.hashPassword(newPassword)
 
     // Update password
-    await this.db.updateUser(userId, { password: hashedNewPassword })
+    await database.updateUser(userId, { password: hashedNewPassword })
 
     return true
   }
 
   async deactivateUser(userId: string): Promise<boolean> {
-    if (!this.db) {
-      await this.initializeDatabase()
-    }
-
-    await this.db.updateUser(userId, { isActive: false })
+    await database.updateUser(userId, { isActive: false })
     return true
   }
 

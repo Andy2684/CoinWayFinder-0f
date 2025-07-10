@@ -102,7 +102,6 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "url": "latest",
-    "util": "latest",
     "vaul": "latest",
     "zod": "latest"
   },
