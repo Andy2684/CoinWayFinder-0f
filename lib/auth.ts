@@ -1,4 +1,4 @@
-import { simpleHash } from "./security"
+import { simpleHash, generateRandomString } from "./security"
 import { database } from "./database"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
@@ -30,7 +30,6 @@ export interface Admin {
   lastLogin?: Date
 }
 
-// Simple JWT implementation without crypto dependency
 function createJWT(payload: any, secret: string, expiresIn: string): string {
   const header = { alg: "HS256", typ: "JWT" }
   const now = Math.floor(Date.now() / 1000)
@@ -68,7 +67,6 @@ function verifyJWT(token: string, secret: string): any {
 
 export class AuthService {
   async hashPassword(password: string): Promise<string> {
-    // Simple password hashing - in production, use bcrypt
     return simpleHash(password + "salt")
   }
 
@@ -116,7 +114,6 @@ export class AuthService {
     try {
       const decoded = verifyJWT(token, JWT_SECRET)
 
-      // Mock admin verification - implement with your database
       if (decoded.role === "admin") {
         return {
           id: decoded.id,
@@ -134,17 +131,14 @@ export class AuthService {
   }
 
   async signUp(email: string, username: string, password: string): Promise<{ user: User; token: string }> {
-    // Check if user already exists
     const existingUser = await database.getUserByEmail(email)
 
     if (existingUser) {
       throw new Error("User already exists with this email or username")
     }
 
-    // Hash password
     const hashedPassword = await this.hashPassword(password)
 
-    // Create user
     const newUser = await database.createUser({
       email,
       username,
@@ -153,7 +147,7 @@ export class AuthService {
       subscription: {
         plan: "free",
         status: "active",
-        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days trial
+        trialEndsAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     })
 
@@ -163,20 +157,17 @@ export class AuthService {
   }
 
   async signIn(emailOrUsername: string, password: string): Promise<{ user: User; token: string }> {
-    // Find user by email
     const user = await database.getUserByEmail(emailOrUsername)
 
     if (!user || !user.isActive) {
       throw new Error("Invalid credentials")
     }
 
-    // Verify password
     const isValidPassword = await this.comparePassword(password, user.password!)
     if (!isValidPassword) {
       throw new Error("Invalid credentials")
     }
 
-    // Update user
     await database.updateUser(user.id, { updatedAt: new Date() })
 
     const token = this.generateAuthToken(user)
@@ -185,7 +176,6 @@ export class AuthService {
   }
 
   async adminSignIn(username: string, password: string): Promise<{ admin: Admin; token: string }> {
-    // Mock admin authentication - implement with your database
     if (username === "admin" && password === "CoinWayFinder2024!") {
       const admin: Admin = {
         id: "admin_1",
@@ -216,16 +206,13 @@ export class AuthService {
       throw new Error("User not found")
     }
 
-    // Verify current password
     const isValidPassword = await this.comparePassword(currentPassword, user.password!)
     if (!isValidPassword) {
       throw new Error("Current password is incorrect")
     }
 
-    // Hash new password
     const hashedNewPassword = await this.hashPassword(newPassword)
 
-    // Update password
     await database.updateUser(userId, { password: hashedNewPassword })
 
     return true
@@ -237,7 +224,6 @@ export class AuthService {
   }
 
   async createDefaultAdmin(): Promise<void> {
-    // Default admin is handled in adminSignIn method
     console.log("Default admin available: admin / CoinWayFinder2024!")
   }
 }
@@ -276,6 +262,22 @@ export class AuthManager {
   async loginAdmin(username: string, password: string): Promise<{ admin: Admin; token: string }> {
     return this.authService.adminSignIn(username, password)
   }
+}
+
+// Mock lucia export for compatibility
+export const lucia = {
+  validateSession: async (sessionId: string) => {
+    // Mock implementation
+    return { user: null, session: null }
+  },
+  createSession: async (userId: string, attributes: any) => {
+    // Mock implementation
+    return { id: generateRandomString(16) }
+  },
+  invalidateSession: async (sessionId: string) => {
+    // Mock implementation
+    return true
+  },
 }
 
 // Export instances
