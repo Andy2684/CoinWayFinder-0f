@@ -1,6 +1,6 @@
 import * as Sentry from "@sentry/nextjs"
 
-const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN
+const SENTRY_DSN = "https://be9e7174e5ef1dfe96267f9229459d54@o4509641938698240.ingest.us.sentry.io/4509641948921856"
 
 export const initSentry = () => {
   if (SENTRY_DSN) {
@@ -22,6 +22,10 @@ export const initSentry = () => {
             if (error.message.includes("The operation was aborted")) {
               return null
             }
+            // Skip ResizeObserver errors (common browser quirk)
+            if (error.message.includes("ResizeObserver loop limit exceeded")) {
+              return null
+            }
           }
         }
         return event
@@ -29,7 +33,7 @@ export const initSentry = () => {
       integrations: [
         new Sentry.BrowserTracing({
           // Performance monitoring
-          tracingOrigins: ["localhost", process.env.NEXT_PUBLIC_BASE_URL || ""],
+          tracingOrigins: ["localhost", "coinwayfinder.vercel.app", /^\//],
         }),
         new Sentry.Replay({
           // Session replay for debugging
@@ -48,7 +52,7 @@ export const captureError = (error: Error, context?: Record<string, any>) => {
   console.error("Error captured:", error)
 
   if (SENTRY_DSN) {
-    Sentry.captureException(error, {
+    return Sentry.captureException(error, {
       tags: {
         component: "frontend",
         environment: process.env.NODE_ENV,
@@ -56,6 +60,7 @@ export const captureError = (error: Error, context?: Record<string, any>) => {
       extra: context,
     })
   }
+  return null
 }
 
 export const captureMessage = (
@@ -64,7 +69,7 @@ export const captureMessage = (
   context?: Record<string, any>,
 ) => {
   if (SENTRY_DSN) {
-    Sentry.captureMessage(message, {
+    return Sentry.captureMessage(message, {
       level,
       tags: {
         component: "frontend",
@@ -73,6 +78,7 @@ export const captureMessage = (
       extra: context,
     })
   }
+  return null
 }
 
 export const setUserContext = (user: { id: string; email?: string; username?: string }) => {

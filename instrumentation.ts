@@ -14,17 +14,15 @@ export async function onRequestError(error: Error, request: Request) {
   // This function is called when an error occurs during request processing
   const { Sentry } = await import("./lib/sentry")
 
-  if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
-    Sentry.captureException(error, {
-      tags: {
-        component: "server",
-        url: request.url,
-        method: request.method,
-      },
-      extra: {
-        headers: Object.fromEntries(request.headers.entries()),
-        timestamp: new Date().toISOString(),
-      },
-    })
-  }
+  Sentry.captureException(error, {
+    tags: {
+      component: "server",
+      url: request.url,
+      method: request.method,
+    },
+    extra: {
+      headers: Object.fromEntries(request.headers.entries()),
+      timestamp: new Date().toISOString(),
+    },
+  })
 }

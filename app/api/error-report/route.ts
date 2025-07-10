@@ -28,60 +28,57 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Send to Sentry
-    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
-      const eventId = Sentry.captureException(new Error(errorReport.message), {
-        tags: {
-          component: "api-error-report",
-          errorId: errorReport.errorId,
-          context: errorReport.context || "unknown",
-        },
-        extra: {
-          stack: errorReport.stack,
-          componentStack: errorReport.componentStack,
-          userAgent: errorReport.userAgent,
-          url: errorReport.url,
-          timestamp: errorReport.timestamp,
-        },
-        user: errorReport.userId ? { id: errorReport.userId } : undefined,
-      })
-
-      // Add breadcrumb for tracking
-      Sentry.addBreadcrumb({
-        message: `Error reported: ${errorReport.message}`,
-        category: "error-report",
-        level: "error",
-        data: {
-          errorId: errorReport.errorId,
-          context: errorReport.context,
-        },
-      })
-
-      return NextResponse.json({
-        success: true,
-        message: "Error reported successfully",
+    // Send to Sentry with detailed context
+    const eventId = Sentry.captureException(new Error(errorReport.message), {
+      tags: {
+        component: "api-error-report",
         errorId: errorReport.errorId,
+        context: errorReport.context || "unknown",
+        source: "client-side",
+      },
+      extra: {
+        stack: errorReport.stack,
+        componentStack: errorReport.componentStack,
+        userAgent: errorReport.userAgent,
+        url: errorReport.url,
+        timestamp: errorReport.timestamp,
+        originalErrorId: errorReport.errorId,
+      },
+      user: errorReport.userId ? { id: errorReport.userId } : undefined,
+      level: "error",
+    })
+
+    // Add breadcrumb for tracking
+    Sentry.addBreadcrumb({
+      message: `Error reported: ${errorReport.message}`,
+      category: "error-report",
+      level: "error",
+      data: {
+        errorId: errorReport.errorId,
+        context: errorReport.context,
         sentryEventId: eventId,
-      })
-    }
+      },
+    })
 
     return NextResponse.json({
       success: true,
-      message: "Error logged successfully",
+      message: "Error reported successfully",
       errorId: errorReport.errorId,
+      sentryEventId: eventId,
     })
   } catch (error) {
     console.error("Failed to process error report:", error)
 
     // Report the error reporting failure to Sentry
-    if (process.env.NEXT_PUBLIC_SENTRY_DSN) {
-      Sentry.captureException(error, {
-        tags: {
-          component: "api-error-report",
-          operation: "error-report-failure",
-        },
-      })
-    }
+    Sentry.captureException(error, {
+      tags: {
+        component: "api-error-report",
+        operation: "error-report-failure",
+      },
+      extra: {
+        originalRequest: request.url,
+      },
+    })
 
     return NextResponse.json(
       {

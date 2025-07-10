@@ -1,64 +1,161 @@
 "use client"
 
 import React from "react"
-import { WifiOff, RefreshCw, AlertTriangle } from "lucide-react"
+import { AlertTriangle, RefreshCw, Home, Wifi } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ErrorBoundary } from "../error-boundary"
-import type { ErrorFallbackProps } from "../error-boundary"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { addBreadcrumb, Sentry } from "@/lib/sentry"
 
-const APIErrorFallback: React.FC<ErrorFallbackProps> = ({ error, resetError, errorId }) => {
-  const [isRetrying, setIsRetrying] = React.useState(false)
+interface APIErrorBoundaryState {
+  hasError: boolean
+  error: Error | null
+  errorInfo: React.ErrorInfo | null
+  errorId: string
+  eventId: string | null
+}
 
-  const handleRetry = async () => {
-    setIsRetrying(true)
-    try {
-      // Wait a bit before retrying
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      resetError()
-    } finally {
-      setIsRetrying(false)
+interface APIErrorBoundaryProps {
+  children: React.ReactNode
+  onError?: (error: Error, errorInfo: React.ErrorInfo) => void
+}
+
+class APIErrorBoundary extends React.Component<APIErrorBoundaryProps, APIErrorBoundaryState> {
+  constructor(props: APIErrorBoundaryProps) {
+    super(props)
+    this.state = {
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      errorId: "",
+      eventId: null,
     }
   }
 
-  const isNetworkError = error.message.includes("fetch") || error.message.includes("network")
+  static getDerivedStateFromError(error: Error): Partial<APIErrorBoundaryState> {
+    const errorId = `api_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    return {
+      hasError: true,
+      error,
+      errorId,
+    }
+  }
 
-  return (
-    <div className="w-full max-w-md mx-auto">
-      <Card>
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/20 flex items-center justify-center">
-            {isNetworkError ? (
-              <WifiOff className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-            ) : (
-              <AlertTriangle className="w-6 h-6 text-orange-600 dark:text-orange-400" />
-            )}
-          </div>
-          <CardTitle className="text-lg font-bold">{isNetworkError ? "Connection Error" : "API Error"}</CardTitle>
-          <CardDescription>
-            {isNetworkError
-              ? "Unable to connect to our servers. Please check your internet connection."
-              : "There was an issue loading data from our servers."}
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-center space-y-4">
-            <p className="text-xs text-muted-foreground">Error ID: {errorId}</p>
-            <Button onClick={handleRetry} disabled={isRetrying} className="flex items-center gap-2">
-              <RefreshCw className={`w-4 h-4 ${isRetrying ? "animate-spin" : ""}`} />
-              {isRetrying ? "Retrying..." : "Try Again"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    const errorId = `api_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+    // Add breadcrumb for context
+    addBreadcrumb("API error boundary caught error", "error", "error")
+
+    // Capture error with Sentry
+    const eventId = Sentry.captureException(error, {
+      tags: {
+        component: "api-error-boundary",
+        section: "api",
+        errorId,
+      },
+      extra: {
+        errorInfo,
+        componentStack: errorInfo.componentStack,
+      },
+      contexts: {
+        react: {
+          componentStack: errorInfo.componentStack,
+        },
+      },
+    })
+
+    this.setState({
+      error,
+      errorInfo,
+      errorId,
+      eventId,
+    })
+
+    // Log error to console in development
+    if (process.env.NODE_ENV === "development") {
+      console.error("API Error Boundary caught an error:", error, errorInfo)
+    }
+
+    // Call custom error handler if provided
+    if (this.props.onError) {
+      this.props.onError(error, errorInfo)
+    }
+  }
+
+  resetError = () => {
+    addBreadcrumb("API error boundary reset", "navigation", "info")
+    this.setState({
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      errorId: "",
+      eventId: null,
+    })
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <Card className="w-full max-w-2xl">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                <Wifi className="w-8 h-8 text-red-600 dark:text-red-400" />
+              </div>
+              <CardTitle className="text-2xl font-bold text-red-600 dark:text-red-400">API Connection Error</CardTitle>
+              <CardDescription className="text-lg">
+                There was an error connecting to our services. Please check your connection and try again.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Error ID:</strong> {this.state.eventId || this.state.errorId}
+                  <br />
+                  <strong>Time:</strong> {new Date().toLocaleString()}
+                </AlertDescription>
+              </Alert>
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button onClick={this.resetError} variant="default" className="flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4" />
+                  Try Again
+                </Button>
+                <Button onClick={() => window.location.reload()} variant="outline" className="flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4" />
+                  Reload Page
+                </Button>
+                <Button
+                  onClick={() => (window.location.href = "/")}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Home className="w-4 h-4" />
+                  Go Home
+                </Button>
+              </div>
+
+              {this.state.eventId && process.env.NODE_ENV === "production" && (
+                <div className="text-center">
+                  <Button
+                    onClick={() => Sentry.showReportDialog({ eventId: this.state.eventId! })}
+                    variant="ghost"
+                    className="text-sm"
+                  >
+                    Send Feedback About This Error
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
 }
 
-export const APIErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return (
-    <ErrorBoundary fallback={APIErrorFallback} resetOnPropsChange={true}>
-      {children}
-    </ErrorBoundary>
-  )
-}
+export { APIErrorBoundary }

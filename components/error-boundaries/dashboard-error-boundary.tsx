@@ -1,53 +1,161 @@
 "use client"
 
-import type React from "react"
-import { TrendingUp, RefreshCw, AlertTriangle } from "lucide-react"
+import React from "react"
+import { AlertTriangle, RefreshCw, Home, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ErrorBoundary } from "../error-boundary"
-import type { ErrorFallbackProps } from "../error-boundary"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { addBreadcrumb, Sentry } from "@/lib/sentry"
 
-const DashboardErrorFallback: React.FC<ErrorFallbackProps> = ({ error, resetError, errorId }) => {
-  return (
-    <div className="container mx-auto p-6">
-      <Card className="w-full max-w-4xl mx-auto">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-yellow-100 dark:bg-yellow-900/20 flex items-center justify-center">
-            <AlertTriangle className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
-          </div>
-          <CardTitle className="text-xl font-bold">Dashboard Temporarily Unavailable</CardTitle>
-          <CardDescription>
-            We're having trouble loading your dashboard data. This is likely a temporary issue.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-center space-y-4">
-            <p className="text-sm text-muted-foreground">Error ID: {errorId}</p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button onClick={resetError} className="flex items-center gap-2">
-                <RefreshCw className="w-4 h-4" />
-                Retry Dashboard
-              </Button>
-              <Button
-                onClick={() => (window.location.href = "/bots")}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <TrendingUp className="w-4 h-4" />
-                Go to Bots
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  )
+interface DashboardErrorBoundaryState {
+  hasError: boolean
+  error: Error | null
+  errorInfo: React.ErrorInfo | null
+  errorId: string
+  eventId: string | null
 }
 
-export const DashboardErrorBoundary: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  return (
-    <ErrorBoundary fallback={DashboardErrorFallback} resetOnPropsChange={true}>
-      {children}
-    </ErrorBoundary>
-  )
+interface DashboardErrorBoundaryProps {
+  children: React.ReactNode
+  onError?: (error: Error, errorInfo: React.ErrorInfo) => void
 }
+
+class DashboardErrorBoundary extends React.Component<DashboardErrorBoundaryProps, DashboardErrorBoundaryState> {
+  constructor(props: DashboardErrorBoundaryProps) {
+    super(props)
+    this.state = {
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      errorId: "",
+      eventId: null,
+    }
+  }
+
+  static getDerivedStateFromError(error: Error): Partial<DashboardErrorBoundaryState> {
+    const errorId = `dashboard_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+    return {
+      hasError: true,
+      error,
+      errorId,
+    }
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    const errorId = `dashboard_error_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+    // Add breadcrumb for context
+    addBreadcrumb("Dashboard error boundary caught error", "error", "error")
+
+    // Capture error with Sentry
+    const eventId = Sentry.captureException(error, {
+      tags: {
+        component: "dashboard-error-boundary",
+        section: "dashboard",
+        errorId,
+      },
+      extra: {
+        errorInfo,
+        componentStack: errorInfo.componentStack,
+      },
+      contexts: {
+        react: {
+          componentStack: errorInfo.componentStack,
+        },
+      },
+    })
+
+    this.setState({
+      error,
+      errorInfo,
+      errorId,
+      eventId,
+    })
+
+    // Log error to console in development
+    if (process.env.NODE_ENV === "development") {
+      console.error("Dashboard Error Boundary caught an error:", error, errorInfo)
+    }
+
+    // Call custom error handler if provided
+    if (this.props.onError) {
+      this.props.onError(error, errorInfo)
+    }
+  }
+
+  resetError = () => {
+    addBreadcrumb("Dashboard error boundary reset", "navigation", "info")
+    this.setState({
+      hasError: false,
+      error: null,
+      errorInfo: null,
+      errorId: "",
+      eventId: null,
+    })
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <Card className="w-full max-w-2xl">
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                <BarChart3 className="w-8 h-8 text-red-600 dark:text-red-400" />
+              </div>
+              <CardTitle className="text-2xl font-bold text-red-600 dark:text-red-400">Dashboard Error</CardTitle>
+              <CardDescription className="text-lg">
+                There was an error loading your dashboard. Our team has been notified and is working on a fix.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <Alert>
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>
+                  <strong>Error ID:</strong> {this.state.eventId || this.state.errorId}
+                  <br />
+                  <strong>Time:</strong> {new Date().toLocaleString()}
+                </AlertDescription>
+              </Alert>
+
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button onClick={this.resetError} variant="default" className="flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4" />
+                  Try Again
+                </Button>
+                <Button onClick={() => window.location.reload()} variant="outline" className="flex items-center gap-2">
+                  <RefreshCw className="w-4 h-4" />
+                  Reload Dashboard
+                </Button>
+                <Button
+                  onClick={() => (window.location.href = "/")}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Home className="w-4 h-4" />
+                  Go Home
+                </Button>
+              </div>
+
+              {this.state.eventId && process.env.NODE_ENV === "production" && (
+                <div className="text-center">
+                  <Button
+                    onClick={() => Sentry.showReportDialog({ eventId: this.state.eventId! })}
+                    variant="ghost"
+                    className="text-sm"
+                  >
+                    Send Feedback About This Error
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )
+    }
+
+    return this.props.children
+  }
+}
+
+export { DashboardErrorBoundary }
