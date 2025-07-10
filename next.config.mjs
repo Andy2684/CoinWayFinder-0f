@@ -1,7 +1,13 @@
+import { withSentryConfig } from '@sentry/nextjs';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ["@sentry/nextjs"],
+    serverComponentsExternalPackages: ['@sentry/nextjs']
+  },
+  images: {
+    domains: ['placeholder.svg'],
+    unoptimized: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
@@ -9,13 +15,17 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  images: {
-    domains: ["images.unsplash.com", "via.placeholder.com"],
-    unoptimized: true,
-  },
-  env: {
-    CUSTOM_KEY: process.env.CUSTOM_KEY,
-  },
-}
+};
 
-export default nextConfig
+export default withSentryConfig(nextConfig, {
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+  reactComponentAnnotation: {
+    enabled: true
+  },
+  hideSourceMaps: true,
+  disableLogger: true,
+  automaticVercelMonitors: true
+});
