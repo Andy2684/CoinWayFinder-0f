@@ -40,7 +40,6 @@ export function useComprehensiveErrorHandler() {
 
     setErrors((prev) => [...prev, errorInfo])
 
-    // Log to console in development
     if (process.env.NODE_ENV === "development") {
       console.error("Error logged:", errorInfo)
     }
@@ -72,7 +71,6 @@ export function useComprehensiveErrorHandler() {
           lastError = error as Error
 
           if (attempt < maxRetries) {
-            // Wait before retrying
             await new Promise((resolve) => setTimeout(resolve, retryDelay * Math.pow(2, attempt)))
           }
         }
@@ -96,7 +94,6 @@ export function useComprehensiveErrorHandler() {
         }
 
         if (reportToService) {
-          // Report to error tracking service
           try {
             await fetch("/api/error-report", {
               method: "POST",
@@ -131,3 +128,5 @@ export function useComprehensiveErrorHandler() {
     removeError,
   }
 }
+
+export default useComprehensiveErrorHandler

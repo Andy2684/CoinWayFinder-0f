@@ -5,8 +5,8 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatDate(date: Date | string | number): string {
-  const d = new Date(date)
+export function formatDate(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date
   return d.toLocaleDateString("en-US", {
     year: "numeric",
     month: "short",
@@ -14,8 +14,8 @@ export function formatDate(date: Date | string | number): string {
   })
 }
 
-export function formatDateTime(date: Date | string | number): string {
-  const d = new Date(date)
+export function formatDateTime(date: Date | string): string {
+  const d = typeof date === "string" ? new Date(date) : date
   return d.toLocaleString("en-US", {
     year: "numeric",
     month: "short",
@@ -33,7 +33,7 @@ export function formatCurrency(amount: number, currency = "USD"): string {
 }
 
 export function formatPercentage(value: number, decimals = 2): string {
-  return `${(value * 100).toFixed(decimals)}%`
+  return `${value.toFixed(decimals)}%`
 }
 
 export function formatNumber(value: number, decimals = 2): string {
@@ -92,7 +92,7 @@ export function generatePassword(length = 12): string {
     .join("")
 }
 
-export function validateEmail(email: string): boolean {
+export function isValidEmail(email: string): boolean {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   return emailRegex.test(email)
 }
@@ -130,22 +130,15 @@ export function validatePassword(password: string): {
 }
 
 export function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
-  let timeout: NodeJS.Timeout | null = null
-
+  let timeout: NodeJS.Timeout
   return (...args: Parameters<T>) => {
-    if (timeout) {
-      clearTimeout(timeout)
-    }
-
-    timeout = setTimeout(() => {
-      func(...args)
-    }, wait)
+    clearTimeout(timeout)
+    timeout = setTimeout(() => func(...args), wait)
   }
 }
 
 export function throttle<T extends (...args: any[]) => any>(func: T, limit: number): (...args: Parameters<T>) => void {
-  let inThrottle = false
-
+  let inThrottle: boolean
   return (...args: Parameters<T>) => {
     if (!inThrottle) {
       func(...args)
@@ -367,4 +360,9 @@ export function getRelativeTime(date: Date): string {
   if (diffInSeconds < 2592000) return `${Math.floor(diffInSeconds / 86400)}d ago`
   if (diffInSeconds < 31536000) return `${Math.floor(diffInSeconds / 2592000)}mo ago`
   return `${Math.floor(diffInSeconds / 31536000)}y ago`
+}
+
+export function truncateText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text
+  return text.substr(0, maxLength) + "..."
 }

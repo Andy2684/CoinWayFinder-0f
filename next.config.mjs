@@ -6,7 +6,7 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  serverExternalPackages: ['bcryptjs'],
+  serverExternalPackages: ['bcryptjs', '@upstash/redis'],
   images: {
     domains: ['images.unsplash.com', 'via.placeholder.com', 'api.dicebear.com'],
     remotePatterns: [
@@ -73,6 +73,9 @@ const nextConfig = {
         destination: '/api/:path*',
       },
     ]
+  },
+  env: {
+    CUSTOM_KEY: process.env.CUSTOM_KEY,
   },
 }
 
