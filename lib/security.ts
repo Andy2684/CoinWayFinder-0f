@@ -1,207 +1,14 @@
-import type { NextRequest, NextResponse } from "next/server"
+// Browser-compatible security utilities without crypto dependency
 
-export interface SecurityConfig {
-  enableCSP: boolean
-  enableHSTS: boolean
-  enableXSSProtection: boolean
-  enableFrameOptions: boolean
-  enableContentTypeOptions: boolean
-  enableReferrerPolicy: boolean
-  enablePermissionsPolicy: boolean
+export function generateRandomString(length = 32): string {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+  let result = ""
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return result
 }
 
-export const defaultSecurityConfig: SecurityConfig = {
-  enableCSP: true,
-  enableHSTS: true,
-  enableXSSProtection: true,
-  enableFrameOptions: true,
-  enableContentTypeOptions: true,
-  enableReferrerPolicy: true,
-  enablePermissionsPolicy: true,
-}
-
-export class SecurityHeaders {
-  private config: SecurityConfig
-
-  constructor(config: SecurityConfig = defaultSecurityConfig) {
-    this.config = config
-  }
-
-  generateCSP(nonce?: string): string {
-    const cspDirectives = [
-      "default-src 'self'",
-      `script-src 'self' ${nonce ? `'nonce-${nonce}'` : ""} 'strict-dynamic' https://js.stripe.com https://checkout.stripe.com`,
-      `style-src 'self' ${nonce ? `'nonce-${nonce}'` : ""} 'unsafe-inline' https://fonts.googleapis.com`,
-      "img-src 'self' blob: data: https: *.coinbase.com *.coingecko.com *.coinmarketcap.com",
-      "font-src 'self' https://fonts.gstatic.com",
-      "connect-src 'self' https://api.stripe.com https://api.coinbase.com https://api.coingecko.com https://pro-api.coinmarketcap.com wss:",
-      "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'none'",
-      "upgrade-insecure-requests",
-    ]
-
-    return cspDirectives.join("; ")
-  }
-
-  getSecurityHeaders(nonce?: string): Record<string, string> {
-    const headers: Record<string, string> = {}
-
-    if (this.config.enableCSP) {
-      headers["Content-Security-Policy"] = this.generateCSP(nonce)
-    }
-
-    if (this.config.enableHSTS) {
-      headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
-    }
-
-    if (this.config.enableXSSProtection) {
-      headers["X-XSS-Protection"] = "1; mode=block"
-    }
-
-    if (this.config.enableFrameOptions) {
-      headers["X-Frame-Options"] = "DENY"
-    }
-
-    if (this.config.enableContentTypeOptions) {
-      headers["X-Content-Type-Options"] = "nosniff"
-    }
-
-    if (this.config.enableReferrerPolicy) {
-      headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-    }
-
-    if (this.config.enablePermissionsPolicy) {
-      headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=(self)"
-    }
-
-    // Additional security headers
-    headers["Cross-Origin-Embedder-Policy"] = "require-corp"
-    headers["Cross-Origin-Opener-Policy"] = "same-origin"
-    headers["Cross-Origin-Resource-Policy"] = "same-origin"
-
-    return headers
-  }
-
-  applyToResponse(response: NextResponse, nonce?: string): NextResponse {
-    const securityHeaders = this.getSecurityHeaders(nonce)
-
-    Object.entries(securityHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value)
-    })
-
-    return response
-  }
-}
-
-export const securityHeaders = new SecurityHeaders()
-
-// Rate limiting utilities
-export interface RateLimitConfig {
-  windowMs: number
-  maxRequests: number
-  skipSuccessfulRequests?: boolean
-  skipFailedRequests?: boolean
-}
-
-export class RateLimiter {
-  private requests: Map<string, { count: number; resetTime: number }> = new Map()
-
-  constructor(private config: RateLimitConfig) {}
-
-  isAllowed(identifier: string): boolean {
-    const now = Date.now()
-    const record = this.requests.get(identifier)
-
-    if (!record || now > record.resetTime) {
-      this.requests.set(identifier, {
-        count: 1,
-        resetTime: now + this.config.windowMs,
-      })
-      return true
-    }
-
-    if (record.count >= this.config.maxRequests) {
-      return false
-    }
-
-    record.count++
-    return true
-  }
-
-  getRemainingRequests(identifier: string): number {
-    const record = this.requests.get(identifier)
-    if (!record || Date.now() > record.resetTime) {
-      return this.config.maxRequests
-    }
-    return Math.max(0, this.config.maxRequests - record.count)
-  }
-
-  getResetTime(identifier: string): number {
-    const record = this.requests.get(identifier)
-    if (!record || Date.now() > record.resetTime) {
-      return Date.now() + this.config.windowMs
-    }
-    return record.resetTime
-  }
-
-  cleanup(): void {
-    const now = Date.now()
-    for (const [key, record] of this.requests.entries()) {
-      if (now > record.resetTime) {
-        this.requests.delete(key)
-      }
-    }
-  }
-}
-
-// Create rate limiters for different endpoints
-export const apiRateLimiter = new RateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 100,
-})
-
-export const authRateLimiter = new RateLimiter({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 5,
-})
-
-export const strictRateLimiter = new RateLimiter({
-  windowMs: 60 * 1000, // 1 minute
-  maxRequests: 10,
-})
-
-// Security validation utilities
-export function validateSecurityHeaders(request: NextRequest): boolean {
-  const requiredHeaders = [
-    "Content-Security-Policy",
-    "Strict-Transport-Security",
-    "X-Frame-Options",
-    "X-Content-Type-Options",
-    "X-XSS-Protection",
-  ]
-
-  return requiredHeaders.every((header) => request.headers.has(header.toLowerCase()))
-}
-
-export function sanitizeInput(input: string): string {
-  return input
-    .replace(/[<>]/g, "") // Remove potential HTML tags
-    .replace(/javascript:/gi, "") // Remove javascript: protocol
-    .replace(/on\w+=/gi, "") // Remove event handlers
-    .trim()
-}
-
-export function validateOrigin(request: NextRequest, allowedOrigins: string[]): boolean {
-  const origin = request.headers.get("origin")
-  if (!origin) return true // Allow requests without origin (same-origin)
-
-  return allowedOrigins.includes(origin)
-}
-
-// Simple hash function to replace crypto dependency
 export function simpleHash(input: string): string {
   let hash = 0
   if (input.length === 0) return hash.toString()
@@ -215,16 +22,166 @@ export function simpleHash(input: string): string {
   return Math.abs(hash).toString(36)
 }
 
-// Generate random string without crypto
-export function generateRandomString(length = 32): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-  let result = ""
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return result
+export function generateSecureToken(): string {
+  return generateRandomString(64)
 }
 
-export async function getNonce(): Promise<string> {
+export function generateApiKey(): string {
+  const prefix = "cwf_"
+  const key = generateRandomString(40)
+  return prefix + key
+}
+
+export function validateEmail(email: string): boolean {
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(email)
+}
+
+export function validatePassword(password: string): {
+  isValid: boolean
+  errors: string[]
+} {
+  const errors: string[] = []
+
+  if (password.length < 8) {
+    errors.push("Password must be at least 8 characters long")
+  }
+
+  if (!/[A-Z]/.test(password)) {
+    errors.push("Password must contain at least one uppercase letter")
+  }
+
+  if (!/[a-z]/.test(password)) {
+    errors.push("Password must contain at least one lowercase letter")
+  }
+
+  if (!/\d/.test(password)) {
+    errors.push("Password must contain at least one number")
+  }
+
+  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+    errors.push("Password must contain at least one special character")
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  }
+}
+
+export function sanitizeInput(input: string): string {
+  return input
+    .replace(/[<>]/g, "") // Remove potential HTML tags
+    .replace(/['"]/g, "") // Remove quotes
+    .trim()
+}
+
+export function generateNonce(): string {
   return generateRandomString(16)
+}
+
+export function isValidUrl(url: string): boolean {
+  try {
+    new URL(url)
+    return true
+  } catch {
+    return false
+  }
+}
+
+export function maskSensitiveData(data: string, visibleChars = 4): string {
+  if (data.length <= visibleChars * 2) {
+    return "*".repeat(data.length)
+  }
+
+  const start = data.substring(0, visibleChars)
+  const end = data.substring(data.length - visibleChars)
+  const middle = "*".repeat(data.length - visibleChars * 2)
+
+  return start + middle + end
+}
+
+export function generateCSRFToken(): string {
+  return generateRandomString(32)
+}
+
+export function validateCSRFToken(token: string, expectedToken: string): boolean {
+  return token === expectedToken
+}
+
+export function rateLimit(
+  key: string,
+  limit: number,
+  windowMs: number,
+): {
+  allowed: boolean
+  remaining: number
+  resetTime: number
+} {
+  // Simple in-memory rate limiting
+  const now = Date.now()
+  const windowStart = Math.floor(now / windowMs) * windowMs
+
+  if (!rateLimitStore.has(key)) {
+    rateLimitStore.set(key, { count: 0, windowStart })
+  }
+
+  const record = rateLimitStore.get(key)!
+
+  if (record.windowStart < windowStart) {
+    record.count = 0
+    record.windowStart = windowStart
+  }
+
+  record.count++
+
+  return {
+    allowed: record.count <= limit,
+    remaining: Math.max(0, limit - record.count),
+    resetTime: windowStart + windowMs,
+  }
+}
+
+// Simple in-memory store for rate limiting
+const rateLimitStore = new Map<string, { count: number; windowStart: number }>()
+
+export function cleanupRateLimit(): void {
+  const now = Date.now()
+  const oneHourAgo = now - 60 * 60 * 1000
+
+  for (const [key, record] of rateLimitStore.entries()) {
+    if (record.windowStart < oneHourAgo) {
+      rateLimitStore.delete(key)
+    }
+  }
+}
+
+// Security headers
+export const securityHeaders = {
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "X-XSS-Protection": "1; mode=block",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+  "Strict-Transport-Security": "max-age=31536000; includeSubDomains",
+}
+
+export function generateContentSecurityPolicy(nonce?: string): string {
+  const basePolicy = [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self'",
+    "connect-src 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ]
+
+  if (nonce) {
+    basePolicy[1] = `script-src 'self' 'nonce-${nonce}'`
+  }
+
+  return basePolicy.join("; ")
 }

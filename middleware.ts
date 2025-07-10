@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { authService } from "./lib/auth"
-import { generateRandomString } from "./lib/security"
+import { generateRandomString, securityHeaders, generateContentSecurityPolicy } from "./lib/security"
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
@@ -8,53 +8,20 @@ export async function middleware(request: NextRequest) {
   // Generate a nonce for CSP using our custom function
   const nonce = generateRandomString(16)
 
-  // Define comprehensive security headers
-  const securityHeaders = {
-    // Content Security Policy
-    "Content-Security-Policy": `
-      default-src 'self';
-      script-src 'self' 'nonce-${nonce}' 'strict-dynamic' https://js.stripe.com https://checkout.stripe.com;
-      style-src 'self' 'nonce-${nonce}' 'unsafe-inline' https://fonts.googleapis.com;
-      img-src 'self' blob: data: https: *.coinbase.com *.coingecko.com *.coinmarketcap.com;
-      font-src 'self' https://fonts.gstatic.com;
-      connect-src 'self' https://api.stripe.com https://api.coinbase.com https://api.coingecko.com https://pro-api.coinmarketcap.com wss:;
-      frame-src 'self' https://js.stripe.com https://hooks.stripe.com;
-      object-src 'none';
-      base-uri 'self';
-      form-action 'self';
-      frame-ancestors 'none';
-      upgrade-insecure-requests;
-    `
-      .replace(/\s{2,}/g, " ")
-      .trim(),
+  // Create response with security headers
+  const response = NextResponse.next()
 
-    // Strict Transport Security
-    "Strict-Transport-Security": "max-age=31536000; includeSubDomains; preload",
+  // Add all security headers
+  Object.entries(securityHeaders).forEach(([key, value]) => {
+    response.headers.set(key, value)
+  })
 
-    // X-Frame-Options
-    "X-Frame-Options": "DENY",
+  // Add CSP header with nonce
+  response.headers.set("Content-Security-Policy", generateContentSecurityPolicy(nonce))
 
-    // X-Content-Type-Options
-    "X-Content-Type-Options": "nosniff",
-
-    // X-XSS-Protection
-    "X-XSS-Protection": "1; mode=block",
-
-    // Referrer Policy
-    "Referrer-Policy": "strict-origin-when-cross-origin",
-
-    // Permissions Policy
-    "Permissions-Policy": "camera=(), microphone=(), geolocation=(), payment=(self)",
-
-    // Cross-Origin Embedder Policy
-    "Cross-Origin-Embedder-Policy": "require-corp",
-
-    // Cross-Origin Opener Policy
-    "Cross-Origin-Opener-Policy": "same-origin",
-
-    // Cross-Origin Resource Policy
-    "Cross-Origin-Resource-Policy": "same-origin",
-  }
+  // Add nonce to request headers for use in components
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set("x-nonce", nonce)
 
   // Public routes that don't require authentication
   const publicRoutes = [
@@ -76,17 +43,8 @@ export async function middleware(request: NextRequest) {
   // API routes that require authentication
   const protectedApiRoutes = ["/api/bots", "/api/trades", "/api/portfolio", "/api/user", "/api/subscription"]
 
-  // Create response with security headers
-  const response = NextResponse.next()
-
-  // Add all security headers
-  Object.entries(securityHeaders).forEach(([key, value]) => {
-    response.headers.set(key, value)
-  })
-
-  // Add nonce to request headers for use in components
-  const requestHeaders = new Headers(request.headers)
-  requestHeaders.set("x-nonce", nonce)
+  // Protected routes that require authentication
+  const protectedRoutes = ["/dashboard", "/bots", "/profile", "/subscription", "/integrations"]
 
   // Check if route is public
   if (publicRoutes.some((route) => pathname.startsWith(route))) {
@@ -101,7 +59,9 @@ export async function middleware(request: NextRequest) {
       if (pathname.startsWith("/api/admin")) {
         return NextResponse.json({ error: "Admin authentication required" }, { status: 401 })
       }
-      return NextResponse.redirect(new URL("/", request.url))
+      const loginUrl = new URL("/admin/login", request.url)
+      loginUrl.searchParams.set("redirect", pathname)
+      return NextResponse.redirect(loginUrl)
     }
 
     const admin = await authService.verifyAdminToken(adminToken)
@@ -109,7 +69,9 @@ export async function middleware(request: NextRequest) {
       if (pathname.startsWith("/api/admin")) {
         return NextResponse.json({ error: "Invalid admin token" }, { status: 401 })
       }
-      return NextResponse.redirect(new URL("/", request.url))
+      const loginUrl = new URL("/admin/login", request.url)
+      loginUrl.searchParams.set("redirect", pathname)
+      return NextResponse.redirect(loginUrl)
     }
 
     return NextResponse.next({
@@ -126,7 +88,9 @@ export async function middleware(request: NextRequest) {
     if (protectedApiRoutes.some((route) => pathname.startsWith(route))) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 })
     }
-    return NextResponse.redirect(new URL("/", request.url))
+    const loginUrl = new URL("/login", request.url)
+    loginUrl.searchParams.set("redirect", pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   const user = await authService.verifyAuthToken(authToken)
@@ -134,13 +98,25 @@ export async function middleware(request: NextRequest) {
     if (protectedApiRoutes.some((route) => pathname.startsWith(route))) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 })
     }
-    return NextResponse.redirect(new URL("/", request.url))
+    const loginUrl = new URL("/login", request.url)
+    loginUrl.searchParams.set("redirect", pathname)
+    return NextResponse.redirect(loginUrl)
   }
 
   // Add user info to headers for API routes
   if (pathname.startsWith("/api/")) {
     requestHeaders.set("x-user-id", user.id)
     requestHeaders.set("x-user-email", user.email)
+
+    // Add CORS headers for API routes
+    response.headers.set("Access-Control-Allow-Origin", "*")
+    response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+    response.headers.set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
+    // Handle preflight requests
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 200, headers: response.headers })
+    }
   }
 
   return NextResponse.next({
