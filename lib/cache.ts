@@ -7,23 +7,16 @@ const redis = new Redis({
 
 export interface CacheOptions {
   ttl?: number // Time to live in seconds
-  tags?: string[]
+  prefix?: string
 }
 
 export class CacheManager {
-  private static instance: CacheManager
   private defaultTTL = 3600 // 1 hour
 
-  static getInstance(): CacheManager {
-    if (!CacheManager.instance) {
-      CacheManager.instance = new CacheManager()
-    }
-    return CacheManager.instance
-  }
-
-  async get<T>(key: string): Promise<T | null> {
+  async get<T>(key: string, options?: CacheOptions): Promise<T | null> {
     try {
-      const value = await redis.get(key)
+      const prefixedKey = this.getPrefixedKey(key, options?.prefix)
+      const value = await redis.get(prefixedKey)
       return value as T
     } catch (error) {
       console.error("Cache get error:", error)
@@ -31,15 +24,12 @@ export class CacheManager {
     }
   }
 
-  async set<T>(key: string, value: T, options: CacheOptions = {}): Promise<boolean> {
+  async set<T>(key: string, value: T, options?: CacheOptions): Promise<boolean> {
     try {
-      const ttl = options.ttl || this.defaultTTL
-      await redis.setex(key, ttl, JSON.stringify(value))
+      const prefixedKey = this.getPrefixedKey(key, options?.prefix)
+      const ttl = options?.ttl || this.defaultTTL
 
-      if (options.tags) {
-        await this.addToTags(key, options.tags)
-      }
-
+      await redis.setex(prefixedKey, ttl, JSON.stringify(value))
       return true
     } catch (error) {
       console.error("Cache set error:", error)
@@ -47,9 +37,10 @@ export class CacheManager {
     }
   }
 
-  async delete(key: string): Promise<boolean> {
+  async del(key: string, options?: CacheOptions): Promise<boolean> {
     try {
-      await redis.del(key)
+      const prefixedKey = this.getPrefixedKey(key, options?.prefix)
+      await redis.del(prefixedKey)
       return true
     } catch (error) {
       console.error("Cache delete error:", error)
@@ -57,23 +48,27 @@ export class CacheManager {
     }
   }
 
-  async invalidateByTag(tag: string): Promise<boolean> {
+  async exists(key: string, options?: CacheOptions): Promise<boolean> {
     try {
-      const keys = await redis.smembers(`tag:${tag}`)
-      if (keys.length > 0) {
-        await redis.del(...keys)
-        await redis.del(`tag:${tag}`)
-      }
-      return true
+      const prefixedKey = this.getPrefixedKey(key, options?.prefix)
+      const result = await redis.exists(prefixedKey)
+      return result === 1
     } catch (error) {
-      console.error("Cache invalidate by tag error:", error)
+      console.error("Cache exists error:", error)
       return false
     }
   }
 
-  async flush(): Promise<boolean> {
+  async flush(prefix?: string): Promise<boolean> {
     try {
-      await redis.flushall()
+      if (prefix) {
+        const keys = await redis.keys(`${prefix}:*`)
+        if (keys.length > 0) {
+          await redis.del(...keys)
+        }
+      } else {
+        await redis.flushall()
+      }
       return true
     } catch (error) {
       console.error("Cache flush error:", error)
@@ -81,54 +76,79 @@ export class CacheManager {
     }
   }
 
-  private async addToTags(key: string, tags: string[]): Promise<void> {
-    for (const tag of tags) {
-      await redis.sadd(`tag:${tag}`, key)
-    }
-  }
-
-  // Utility methods for common cache patterns
-  async remember<T>(key: string, callback: () => Promise<T>, options: CacheOptions = {}): Promise<T> {
-    const cached = await this.get<T>(key)
-    if (cached !== null) {
-      return cached
-    }
-
-    const value = await callback()
-    await this.set(key, value, options)
-    return value
-  }
-
-  async increment(key: string, amount = 1): Promise<number> {
+  async increment(key: string, options?: CacheOptions): Promise<number> {
     try {
-      return await redis.incrby(key, amount)
+      const prefixedKey = this.getPrefixedKey(key, options?.prefix)
+      const result = await redis.incr(prefixedKey)
+
+      if (options?.ttl) {
+        await redis.expire(prefixedKey, options.ttl)
+      }
+
+      return result
     } catch (error) {
       console.error("Cache increment error:", error)
       return 0
     }
   }
 
-  async decrement(key: string, amount = 1): Promise<number> {
+  async decrement(key: string, options?: CacheOptions): Promise<number> {
     try {
-      return await redis.decrby(key, amount)
+      const prefixedKey = this.getPrefixedKey(key, options?.prefix)
+      const result = await redis.decr(prefixedKey)
+
+      if (options?.ttl) {
+        await redis.expire(prefixedKey, options.ttl)
+      }
+
+      return result
     } catch (error) {
       console.error("Cache decrement error:", error)
       return 0
     }
   }
+
+  async getOrSet<T>(key: string, fetcher: () => Promise<T>, options?: CacheOptions): Promise<T | null> {
+    try {
+      // Try to get from cache first
+      const cached = await this.get<T>(key, options)
+      if (cached !== null) {
+        return cached
+      }
+
+      // If not in cache, fetch and set
+      const value = await fetcher()
+      await this.set(key, value, options)
+      return value
+    } catch (error) {
+      console.error("Cache getOrSet error:", error)
+      return null
+    }
+  }
+
+  private getPrefixedKey(key: string, prefix?: string): string {
+    return prefix ? `${prefix}:${key}` : key
+  }
 }
 
-export const cache = CacheManager.getInstance()
+export const cache = new CacheManager()
 
-// Helper functions for common cache keys
+// Utility functions for common cache patterns
 export const cacheKeys = {
-  user: (id: string) => `user:${id}`,
-  userProfile: (id: string) => `user:profile:${id}`,
-  cryptoPrice: (symbol: string) => `crypto:price:${symbol}`,
-  cryptoNews: () => "crypto:news",
-  marketData: () => "market:data",
-  whaleAlerts: () => "whale:alerts",
-  botPerformance: (botId: string) => `bot:performance:${botId}`,
-  userBots: (userId: string) => `user:bots:${userId}`,
-  subscription: (userId: string) => `subscription:${userId}`,
+  user: (userId: string) => `user:${userId}`,
+  session: (sessionId: string) => `session:${sessionId}`,
+  apiKey: (keyId: string) => `api_key:${keyId}`,
+  rateLimit: (identifier: string) => `rate_limit:${identifier}`,
+  cryptoPrice: (symbol: string) => `crypto_price:${symbol}`,
+  news: (category: string) => `news:${category}`,
+  whaleAlert: (txHash: string) => `whale_alert:${txHash}`,
+  botStatus: (botId: string) => `bot_status:${botId}`,
+  tradingSignal: (signalId: string) => `trading_signal:${signalId}`,
+}
+
+export const cacheTTL = {
+  SHORT: 300, // 5 minutes
+  MEDIUM: 1800, // 30 minutes
+  LONG: 3600, // 1 hour
+  VERY_LONG: 86400, // 24 hours
 }
