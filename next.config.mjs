@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ['bcryptjs'],
+    instrumentationHook: true,
   },
   eslint: {
     ignoreDuringBuilds: true,
@@ -10,14 +10,40 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   images: {
-    domains: ['placeholder.svg'],
+    domains: ['images.unsplash.com', 'api.dicebear.com'],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.dicebear.com',
+      }
+    ],
     unoptimized: true,
   },
-  env: {
-    JWT_SECRET: process.env.JWT_SECRET || 'your-secret-key-change-in-production',
-    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY || 'sk_test_51Rj1tARG8pNq5FjpZxVCMfptuZ1SLQo3PsmtmtPs4LwdBv3KlBBD24FHJfKnnarcKBDRl7LTcjdTBKMtYKp6JDbU00gnNTd0Bq',
-    STRIPE_PUBLISHABLE_KEY: process.env.STRIPE_PUBLISHABLE_KEY || 'pk_test_51Rj1tARG8pNq5FjpZxVCMfptuZ1SLQo3PsmtmtPs4LwdBv3KlBBD24FHJfKnnarcKBDRl7LTcjdTBKMtYKp6JDbU00gnNTd0Bq',
+  // Optimize bundle size
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Reduce client bundle size
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      }
+    }
+    return config
   },
+  // Performance optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  // Enable SWC minification
+  swcMinify: true,
+  // Reduce memory usage during builds
+  outputFileTracing: true,
 }
 
 export default nextConfig

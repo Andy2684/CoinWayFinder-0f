@@ -1,194 +1,293 @@
-import { Redis } from "@upstash/redis"
+import Redis from "ioredis"
 
-// Initialize Redis client
-const redis = new Redis({
-  url: process.env.UPSTASH_REDIS_REST_URL!,
-  token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-})
+// Types
+interface CacheOptions {
+  ttl?: number // Time to live in seconds
+  prefix?: string
+  serialize?: boolean
+  compress?: boolean
+}
 
-// In-memory cache for client-side caching
+interface CacheEntry<T> {
+  data: T
+  timestamp: number
+  ttl: number
+}
+
+interface CacheStats {
+  hits: number
+  misses: number
+  sets: number
+  deletes: number
+  size: number
+}
+
+// Cache configuration
+const CACHE_CONFIG = {
+  DEFAULT_TTL: 300, // 5 minutes
+  MAX_MEMORY_SIZE: 50 * 1024 * 1024, // 50MB
+  COMPRESSION_THRESHOLD: 1024, // 1KB
+  PREFIXES: {
+    CRYPTO_PRICES: "crypto:prices:",
+    NEWS: "news:",
+    USER_DATA: "user:",
+    MARKET_DATA: "market:",
+    BOT_DATA: "bot:",
+  },
+}
+
+// Redis client (server-side only)
+let redisClient: Redis | null = null
+
+if (typeof window === "undefined" && process.env.UPSTASH_REDIS_REST_URL) {
+  redisClient = new Redis({
+    host: process.env.UPSTASH_REDIS_REST_URL?.replace("https://", ""),
+    port: 6379,
+    password: process.env.UPSTASH_REDIS_REST_TOKEN,
+    retryDelayOnFailover: 100,
+    maxRetriesPerRequest: 3,
+    lazyConnect: true,
+  })
+}
+
+// Memory cache for client-side
 class MemoryCache {
-  private cache = new Map<string, { data: any; expires: number }>()
-  private maxSize = 1000
+  private cache = new Map<string, CacheEntry<any>>()
+  private stats: CacheStats = { hits: 0, misses: 0, sets: 0, deletes: 0, size: 0 }
+  private maxSize: number
 
-  set(key: string, data: any, ttlSeconds = 300) {
-    // Clean up expired entries if cache is getting large
-    if (this.cache.size >= this.maxSize) {
+  constructor(maxSize = CACHE_CONFIG.MAX_MEMORY_SIZE) {
+    this.maxSize = maxSize
+    this.startCleanupInterval()
+  }
+
+  set<T>(key: string, value: T, options: CacheOptions = {}): void {
+    const ttl = options.ttl || CACHE_CONFIG.DEFAULT_TTL
+    const prefixedKey = this.getPrefixedKey(key, options.prefix)
+
+    // Remove expired entries if cache is full
+    if (this.getCurrentSize() > this.maxSize * 0.9) {
       this.cleanup()
     }
 
-    const expires = Date.now() + ttlSeconds * 1000
-    this.cache.set(key, { data, expires })
+    const entry: CacheEntry<T> = {
+      data: value,
+      timestamp: Date.now(),
+      ttl: ttl * 1000, // Convert to milliseconds
+    }
+
+    this.cache.set(prefixedKey, entry)
+    this.stats.sets++
+    this.updateSize()
   }
 
-  get(key: string) {
-    const entry = this.cache.get(key)
-    if (!entry) return null
+  get<T>(key: string, options: CacheOptions = {}): T | null {
+    const prefixedKey = this.getPrefixedKey(key, options.prefix)
+    const entry = this.cache.get(prefixedKey) as CacheEntry<T> | undefined
 
-    if (Date.now() > entry.expires) {
-      this.cache.delete(key)
+    if (!entry) {
+      this.stats.misses++
       return null
     }
 
+    // Check if expired
+    if (Date.now() - entry.timestamp > entry.ttl) {
+      this.cache.delete(prefixedKey)
+      this.stats.misses++
+      this.updateSize()
+      return null
+    }
+
+    this.stats.hits++
     return entry.data
   }
 
-  delete(key: string) {
-    this.cache.delete(key)
+  delete(key: string, prefix?: string): boolean {
+    const prefixedKey = this.getPrefixedKey(key, prefix)
+    const deleted = this.cache.delete(prefixedKey)
+    if (deleted) {
+      this.stats.deletes++
+      this.updateSize()
+    }
+    return deleted
   }
 
-  clear() {
-    this.cache.clear()
+  clear(prefix?: string): void {
+    if (prefix) {
+      const keysToDelete = Array.from(this.cache.keys()).filter((key) => key.startsWith(prefix))
+      keysToDelete.forEach((key) => this.cache.delete(key))
+    } else {
+      this.cache.clear()
+    }
+    this.updateSize()
   }
 
-  private cleanup() {
+  getStats(): CacheStats {
+    return { ...this.stats }
+  }
+
+  private getPrefixedKey(key: string, prefix?: string): string {
+    return prefix ? `${prefix}${key}` : key
+  }
+
+  private getCurrentSize(): number {
+    return JSON.stringify(Array.from(this.cache.entries())).length
+  }
+
+  private updateSize(): void {
+    this.stats.size = this.getCurrentSize()
+  }
+
+  private cleanup(): void {
     const now = Date.now()
+    const keysToDelete: string[] = []
+
     for (const [key, entry] of this.cache.entries()) {
-      if (now > entry.expires) {
-        this.cache.delete(key)
+      if (now - entry.timestamp > entry.ttl) {
+        keysToDelete.push(key)
       }
     }
+
+    keysToDelete.forEach((key) => this.cache.delete(key))
+    this.updateSize()
   }
 
-  getStats() {
-    return {
-      size: this.cache.size,
-      maxSize: this.maxSize,
+  private startCleanupInterval(): void {
+    if (typeof window !== "undefined") {
+      setInterval(() => this.cleanup(), 60000) // Cleanup every minute
     }
   }
 }
 
+// Global memory cache instance
 const memoryCache = new MemoryCache()
 
-export interface CacheOptions {
-  ttl?: number // Time to live in seconds
-  useMemoryCache?: boolean
-  useRedisCache?: boolean
-  prefix?: string
-}
-
+// Cache manager class
 export class CacheManager {
-  private defaultTTL = 300 // 5 minutes
+  static async set<T>(key: string, value: T, options: CacheOptions = {}): Promise<void> {
+    const ttl = options.ttl || CACHE_CONFIG.DEFAULT_TTL
 
-  async get<T>(key: string, options: CacheOptions = {}): Promise<T | null> {
-    const { useMemoryCache = true, useRedisCache = true, prefix = "cwf" } = options
+    // Set in memory cache
+    memoryCache.set(key, value, options)
 
-    const fullKey = `${prefix}:${key}`
+    // Set in Redis (server-side only)
+    if (redisClient) {
+      try {
+        const prefixedKey = options.prefix ? `${options.prefix}${key}` : key
+        const serializedValue = options.serialize !== false ? JSON.stringify(value) : (value as string)
 
-    // Try memory cache first (fastest)
-    if (useMemoryCache) {
-      const memoryResult = memoryCache.get(fullKey)
-      if (memoryResult !== null) {
-        return memoryResult
+        await redisClient.setex(prefixedKey, ttl, serializedValue)
+      } catch (error) {
+        console.warn("Redis cache set failed:", error)
       }
     }
+  }
 
-    // Try Redis cache (server-side)
-    if (useRedisCache) {
+  static async get<T>(key: string, options: CacheOptions = {}): Promise<T | null> {
+    // Try memory cache first
+    const memoryValue = memoryCache.get<T>(key, options)
+    if (memoryValue !== null) {
+      return memoryValue
+    }
+
+    // Try Redis (server-side only)
+    if (redisClient) {
       try {
-        const redisResult = await redis.get(fullKey)
-        if (redisResult !== null) {
-          // Store in memory cache for next time
-          if (useMemoryCache) {
-            memoryCache.set(fullKey, redisResult, options.ttl || this.defaultTTL)
-          }
-          return redisResult as T
+        const prefixedKey = options.prefix ? `${options.prefix}${key}` : key
+        const value = await redisClient.get(prefixedKey)
+
+        if (value !== null) {
+          const parsedValue = options.serialize !== false ? JSON.parse(value) : (value as T)
+
+          // Cache in memory for faster subsequent access
+          memoryCache.set(key, parsedValue, options)
+          return parsedValue
         }
       } catch (error) {
-        console.error("Redis cache error:", error)
+        console.warn("Redis cache get failed:", error)
       }
     }
 
     return null
   }
 
-  async set<T>(key: string, data: T, options: CacheOptions = {}): Promise<void> {
-    const { ttl = this.defaultTTL, useMemoryCache = true, useRedisCache = true, prefix = "cwf" } = options
-
-    const fullKey = `${prefix}:${key}`
-
-    // Store in memory cache
-    if (useMemoryCache) {
-      memoryCache.set(fullKey, data, ttl)
-    }
-
-    // Store in Redis cache
-    if (useRedisCache) {
-      try {
-        await redis.setex(fullKey, ttl, JSON.stringify(data))
-      } catch (error) {
-        console.error("Redis cache set error:", error)
-      }
-    }
-  }
-
-  async delete(key: string, options: CacheOptions = {}): Promise<void> {
-    const { useMemoryCache = true, useRedisCache = true, prefix = "cwf" } = options
-
-    const fullKey = `${prefix}:${key}`
-
+  static async delete(key: string, prefix?: string): Promise<void> {
     // Delete from memory cache
-    if (useMemoryCache) {
-      memoryCache.delete(fullKey)
-    }
+    memoryCache.delete(key, prefix)
 
-    // Delete from Redis cache
-    if (useRedisCache) {
+    // Delete from Redis
+    if (redisClient) {
       try {
-        await redis.del(fullKey)
+        const prefixedKey = prefix ? `${prefix}${key}` : key
+        await redisClient.del(prefixedKey)
       } catch (error) {
-        console.error("Redis cache delete error:", error)
+        console.warn("Redis cache delete failed:", error)
       }
     }
   }
 
-  async invalidatePattern(pattern: string, options: CacheOptions = {}): Promise<void> {
-    const { prefix = "cwf" } = options
-    const fullPattern = `${prefix}:${pattern}`
+  static async clear(prefix?: string): Promise<void> {
+    // Clear memory cache
+    memoryCache.clear(prefix)
 
-    try {
-      const keys = await redis.keys(fullPattern)
-      if (keys.length > 0) {
-        await redis.del(...keys)
+    // Clear Redis by pattern
+    if (redisClient && prefix) {
+      try {
+        const keys = await redisClient.keys(`${prefix}*`)
+        if (keys.length > 0) {
+          await redisClient.del(...keys)
+        }
+      } catch (error) {
+        console.warn("Redis cache clear failed:", error)
       }
-    } catch (error) {
-      console.error("Redis pattern invalidation error:", error)
     }
-
-    // Clear memory cache (simple approach - clear all)
-    memoryCache.clear()
   }
 
-  async getOrSet<T>(key: string, fetcher: () => Promise<T>, options: CacheOptions = {}): Promise<T> {
-    // Try to get from cache first
+  static getStats(): CacheStats {
+    return memoryCache.getStats()
+  }
+
+  // Helper methods for common cache patterns
+  static async getOrSet<T>(key: string, fetcher: () => Promise<T>, options: CacheOptions = {}): Promise<T> {
     const cached = await this.get<T>(key, options)
     if (cached !== null) {
       return cached
     }
 
-    // Fetch fresh data
-    const data = await fetcher()
-
-    // Store in cache
-    await this.set(key, data, options)
-
-    return data
+    const fresh = await fetcher()
+    await this.set(key, fresh, options)
+    return fresh
   }
 
-  getMemoryStats() {
-    return memoryCache.getStats()
+  static async invalidatePattern(pattern: string): Promise<void> {
+    if (redisClient) {
+      try {
+        const keys = await redisClient.keys(pattern)
+        if (keys.length > 0) {
+          await redisClient.del(...keys)
+        }
+      } catch (error) {
+        console.warn("Cache invalidation failed:", error)
+      }
+    }
+
+    // For memory cache, we need to iterate and match
+    if (typeof window !== "undefined") {
+      memoryCache.clear() // Simple approach - clear all for patterns
+    }
   }
 }
 
-// Export singleton instance
-export const cache = new CacheManager()
+// Export cache prefixes for consistent usage
+export const CACHE_PREFIXES = CACHE_CONFIG.PREFIXES
 
-// Predefined cache configurations for different data types
-export const CacheConfigs = {
-  CRYPTO_PRICES: { ttl: 30, prefix: "prices" }, // 30 seconds for real-time data
-  NEWS: { ttl: 300, prefix: "news" }, // 5 minutes for news
-  MARKET_TRENDS: { ttl: 60, prefix: "trends" }, // 1 minute for trends
-  USER_DATA: { ttl: 600, prefix: "user" }, // 10 minutes for user data
-  BOT_DATA: { ttl: 120, prefix: "bots" }, // 2 minutes for bot data
-  API_KEYS: { ttl: 3600, prefix: "apikeys" }, // 1 hour for API keys
-}
+// Export TTL constants
+export const CACHE_TTL = {
+  VERY_SHORT: 30, // 30 seconds - real-time data
+  SHORT: 60, // 1 minute - frequently changing
+  MEDIUM: 300, // 5 minutes - market data
+  LONG: 1800, // 30 minutes - news/analysis
+  VERY_LONG: 3600, // 1 hour - static data
+} as const
+
+export default CacheManager

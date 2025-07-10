@@ -513,5 +513,6 @@ export function ApiAccess() {
   )
 }
 
-// Also export as APIAccess for backward compatibility
+// Export both named and default
 export { ApiAccess as APIAccess }
+export default ApiAccess
