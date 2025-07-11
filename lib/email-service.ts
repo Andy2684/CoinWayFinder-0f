@@ -6,12 +6,11 @@ interface EmailOptions {
   html: string
   text?: string
 }
-
 class EmailService {
-  private transporter: nodemailer.Transporter
+  private transporter: nodemailer.Transporter;
 
   constructor() {
-    this.transporter = nodemailer.createTransporter({
+    this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: Number.parseInt(process.env.SMTP_PORT || "587"),
       secure: false, // true for 465, false for other ports
@@ -19,7 +18,7 @@ class EmailService {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
-    })
+    });
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
