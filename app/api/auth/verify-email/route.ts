@@ -1,8 +1,10 @@
 import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
+import { emailService } from "@/lib/email-service"
 
-// Mock user database - replace with real database
+// Import the users arrays (in production, use database)
 const users: any[] = []
+const pendingUsers: any[] = []
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,32 +15,55 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Verification token is required" }, { status: 400 })
     }
 
-    try {
-      // Verify the token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key") as any
+    // Find user with this token
+    const userIndex = pendingUsers.findIndex(
+      (user) => user.verificationToken === token && user.tokenExpiry > new Date(),
+    )
 
-      // Find user by email
-      const user = users.find((u) => u.email === decoded.email)
-      if (!user) {
-        return NextResponse.json({ error: "User not found" }, { status: 404 })
-      }
-
-      // Check if already verified
-      if (user.isEmailVerified) {
-        return NextResponse.json({ error: "Email already verified" }, { status: 400 })
-      }
-
-      // Verify the email
-      user.isEmailVerified = true
-      user.emailVerificationToken = null
-
-      return NextResponse.json({
-        success: true,
-        message: "Email verified successfully. You can now log in.",
-      })
-    } catch (jwtError) {
+    if (userIndex === -1) {
       return NextResponse.json({ error: "Invalid or expired verification token" }, { status: 400 })
     }
+
+    // Move user from pending to active users
+    const user = pendingUsers[userIndex]
+    user.isVerified = true
+    user.verificationToken = null
+    user.tokenExpiry = null
+    user.verifiedAt = new Date()
+
+    users.push(user)
+    pendingUsers.splice(userIndex, 1)
+
+    // Send welcome email
+    await emailService.sendWelcomeEmail(user.email, user.firstName)
+
+    // Generate JWT token for auto-login
+    const authToken = jwt.sign(
+      {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        plan: user.plan,
+      },
+      process.env.JWT_SECRET || "your-secret-key",
+      { expiresIn: "7d" },
+    )
+
+    return NextResponse.json({
+      success: true,
+      message: "Email verified successfully! You are now logged in.",
+      token: authToken,
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+        role: user.role,
+        plan: user.plan,
+        isVerified: user.isVerified,
+      },
+    })
   } catch (error) {
     console.error("Email verification error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -53,30 +78,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Email is required" }, { status: 400 })
     }
 
-    // Find user
-    const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase())
+    // Find pending user
+    const user = pendingUsers.find((u) => u.email === email)
     if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
+      return NextResponse.json({ error: "No pending verification found for this email" }, { status: 404 })
     }
 
-    // Check if already verified
-    if (user.isEmailVerified) {
-      return NextResponse.json({ error: "Email already verified" }, { status: 400 })
+    // Check rate limiting (prevent spam)
+    const lastResent = user.lastResent || new Date(0)
+    const timeSinceLastResent = Date.now() - lastResent.getTime()
+    if (timeSinceLastResent < 60000) {
+      // 1 minute
+      return NextResponse.json({ error: "Please wait before requesting another verification email" }, { status: 429 })
     }
 
-    // Generate new verification token
-    const newToken = jwt.sign({ email: user.email }, process.env.JWT_SECRET || "your-secret-key", {
-      expiresIn: "24h",
-    })
+    // Update last resent time
+    user.lastResent = new Date()
 
-    user.emailVerificationToken = newToken
+    // Resend verification email
+    const emailSent = await emailService.sendVerificationEmail(user.email, user.verificationToken, user.firstName)
 
-    // In a real app, you would send an email here
-    console.log(`New email verification link: /auth/verify-email?token=${newToken}`)
+    if (!emailSent) {
+      return NextResponse.json({ error: "Failed to send verification email" }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,
-      message: "Verification email sent successfully.",
+      message: "Verification email resent successfully!",
     })
   } catch (error) {
     console.error("Resend verification error:", error)

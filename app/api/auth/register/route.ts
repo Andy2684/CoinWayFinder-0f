@@ -1,99 +1,73 @@
 import { type NextRequest, NextResponse } from "next/server"
-import bcrypt from "bcryptjs"
-import jwt from "jsonwebtoken"
+import { emailService } from "@/lib/email-service"
+import crypto from "crypto"
 
-// Mock user database - replace with real database
+// In-memory storage for demo (use database in production)
 const users: any[] = []
+const pendingUsers: any[] = []
 
 export async function POST(request: NextRequest) {
   try {
-    const { firstName, lastName, username, email, password, dateOfBirth, acceptTerms } = await request.json()
+    const { email, password, firstName, lastName, username, dateOfBirth, acceptTerms } = await request.json()
 
-    // Validate required fields
-    if (!firstName || !lastName || !username || !email || !password || !dateOfBirth) {
+    if (!email || !password || !firstName || !lastName || !username || !dateOfBirth || !acceptTerms) {
       return NextResponse.json({ error: "All fields are required" }, { status: 400 })
     }
 
-    if (!acceptTerms) {
-      return NextResponse.json({ error: "You must accept the terms and conditions" }, { status: 400 })
-    }
+    // Check if user already exists
+    const existingUser = users.find((u) => u.email === email || u.username === username)
+    const existingPendingUser = pendingUsers.find((u) => u.email === email || u.username === username)
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: "Invalid email format" }, { status: 400 })
-    }
-
-    // Validate password strength
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/
-    if (!passwordRegex.test(password)) {
-      return NextResponse.json(
-        { error: "Password must be at least 6 characters with uppercase, lowercase, and number" },
-        { status: 400 },
-      )
+    if (existingUser || existingPendingUser) {
+      return NextResponse.json({ error: "User with this email or username already exists" }, { status: 409 })
     }
 
     // Validate age (must be 18+)
     const birthDate = new Date(dateOfBirth)
-    const today = new Date()
-    let age = today.getFullYear() - birthDate.getFullYear()
-    const monthDiff = today.getMonth() - birthDate.getMonth()
+    const eighteenYearsAgo = new Date()
+    eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18)
 
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--
-    }
-
-    if (age < 18) {
+    if (birthDate > eighteenYearsAgo) {
       return NextResponse.json({ error: "You must be at least 18 years old" }, { status: 400 })
     }
 
-    // Check if user already exists
-    const existingUser = users.find(
-      (u) => u.email.toLowerCase() === email.toLowerCase() || u.username.toLowerCase() === username.toLowerCase(),
-    )
+    // Generate verification token
+    const verificationToken = crypto.randomBytes(32).toString("hex")
+    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
 
-    if (existingUser) {
-      if (existingUser.email.toLowerCase() === email.toLowerCase()) {
-        return NextResponse.json({ error: "Email already registered" }, { status: 409 })
-      }
-      if (existingUser.username.toLowerCase() === username.toLowerCase()) {
-        return NextResponse.json({ error: "Username already taken" }, { status: 409 })
-      }
-    }
-
-    // Hash password
-    const saltRounds = 12
-    const hashedPassword = await bcrypt.hash(password, saltRounds)
-
-    // Create new user
-    const newUser = {
+    // Create pending user
+    const pendingUser = {
       id: Date.now().toString(),
+      email,
+      password, // In production, hash this password
       firstName,
       lastName,
       username,
-      email: email.toLowerCase(),
-      password: hashedPassword,
       dateOfBirth,
       role: "user",
       plan: "free",
-      isEmailVerified: false,
-      isActive: true,
-      createdAt: new Date().toISOString(),
-      emailVerificationToken: jwt.sign({ email: email.toLowerCase() }, process.env.JWT_SECRET || "your-secret-key", {
-        expiresIn: "24h",
-      }),
+      isVerified: false,
+      verificationToken,
+      tokenExpiry,
+      createdAt: new Date(),
     }
 
-    // Add user to mock database
-    users.push(newUser)
+    pendingUsers.push(pendingUser)
 
-    // In a real app, you would send an email verification here
-    console.log(`Email verification link: /auth/verify-email?token=${newUser.emailVerificationToken}`)
+    // Send verification email
+    const emailSent = await emailService.sendVerificationEmail(email, verificationToken, firstName)
+
+    if (!emailSent) {
+      // Remove from pending users if email fails
+      const index = pendingUsers.findIndex((u) => u.email === email)
+      if (index > -1) pendingUsers.splice(index, 1)
+      return NextResponse.json({ error: "Failed to send verification email" }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,
-      message: "Registration successful. Please check your email to verify your account.",
-      userId: newUser.id,
+      message: "Registration successful! Please check your email to verify your account.",
+      email: email,
     })
   } catch (error) {
     console.error("Registration error:", error)
