@@ -14,7 +14,17 @@ export interface User {
   isActive: boolean
   avatar?: string
   plan: "free" | "pro" | "enterprise"
+  role: "user" | "admin" | "owner"
   createdAt: string
+  permissions?: {
+    fullAccess?: boolean
+    manageUsers?: boolean
+    systemSettings?: boolean
+    allExchanges?: boolean
+    unlimitedBots?: boolean
+    advancedAnalytics?: boolean
+    prioritySupport?: boolean
+  }
 }
 
 export interface SignupData {
@@ -34,6 +44,9 @@ interface AuthContextType {
   logout: () => void
   updateUser: (data: Partial<User>) => Promise<{ success: boolean; error?: string }>
   isLoading: boolean
+  isAuthenticated: boolean
+  isAdmin: boolean
+  hasPermission: (permission: string) => boolean
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -167,6 +180,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const isAuthenticated = !!user
+  const isAdmin = user?.role === "admin" || user?.role === "owner"
+
+  const hasPermission = (permission: string): boolean => {
+    if (!user) return false
+    if (user.role === "owner") return true // Owner has all permissions
+    if (user.permissions?.fullAccess) return true
+
+    switch (permission) {
+      case "manageUsers":
+        return user.permissions?.manageUsers || false
+      case "systemSettings":
+        return user.permissions?.systemSettings || false
+      case "allExchanges":
+        return user.permissions?.allExchanges || user.plan !== "free"
+      case "unlimitedBots":
+        return user.permissions?.unlimitedBots || user.plan === "enterprise"
+      case "advancedAnalytics":
+        return user.permissions?.advancedAnalytics || user.plan !== "free"
+      case "prioritySupport":
+        return user.permissions?.prioritySupport || user.plan === "enterprise"
+      default:
+        return false
+    }
+  }
+
   const value = {
     user,
     login,
@@ -174,6 +213,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     updateUser,
     isLoading,
+    isAuthenticated,
+    isAdmin,
+    hasPermission,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

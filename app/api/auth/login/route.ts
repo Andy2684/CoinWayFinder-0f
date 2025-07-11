@@ -2,105 +2,98 @@ import { type NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 
-// Admin/Owner account - replace with your actual credentials
-const adminUsers = [
+// Mock user database - replace with real database
+const users = [
   {
-    id: "admin-001",
-    email: "admin@coinwayfinder.com", // Change this to your email
-    password: "$2a$12$LQv3c1yqBwlVHpPjrU3HvOAnqh9CX6oj6oIrklb3OqHJ7S1o.s1yW", // "AdminPass123!" - Change this
+    id: "1",
+    email: "admin@coinwayfinder.com",
+    password: "$2a$12$LQv3c1yqBWVHxkd0LQ4YCOdHrADFeKuqNF8gYiBvSUedpQgKj9A2.", // AdminPass123!
     firstName: "Admin",
     lastName: "User",
     username: "admin",
-    dateOfBirth: "1990-01-01",
+    role: "owner",
+    plan: "enterprise",
     isEmailVerified: true,
     isActive: true,
-    role: "owner",
-    plan: "enterprise" as const,
-    permissions: [
-      "full_access",
-      "admin_panel",
-      "user_management",
-      "system_settings",
-      "all_exchanges",
-      "unlimited_bots",
-      "advanced_analytics",
-      "priority_support",
-    ],
+    dateOfBirth: "1990-01-01",
     createdAt: "2024-01-01T00:00:00Z",
+    permissions: {
+      fullAccess: true,
+      manageUsers: true,
+      systemSettings: true,
+      allExchanges: true,
+      unlimitedBots: true,
+      advancedAnalytics: true,
+      prioritySupport: true,
+    },
+  },
+  {
+    id: "2",
+    email: "user@example.com",
+    password: "$2a$12$LQv3c1yqBWVHxkd0LQ4YCOdHrADFeKuqNF8gYiBvSUedpQgKj9A2.", // UserPass123!
+    firstName: "John",
+    lastName: "Doe",
+    username: "johndoe",
+    role: "user",
+    plan: "free",
+    isEmailVerified: true,
+    isActive: true,
+    dateOfBirth: "1995-05-15",
+    createdAt: "2024-01-15T00:00:00Z",
   },
 ]
-
-// Regular users database
-const users: any[] = []
 
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
+    // Validate input
     if (!email || !password) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
     }
 
-    // Check admin users first
-    const adminUser = adminUsers.find((u) => u.email === email)
-    if (adminUser) {
-      const isValidPassword = await bcrypt.compare(password, adminUser.password)
-      if (!isValidPassword) {
-        return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
-      }
-
-      // Generate JWT token for admin
-      const token = jwt.sign(
-        {
-          userId: adminUser.id,
-          email: adminUser.email,
-          role: adminUser.role,
-          permissions: adminUser.permissions,
-        },
-        process.env.JWT_SECRET || "your-secret-key",
-        { expiresIn: "30d" }, // Longer session for admin
-      )
-
-      const { password: _, ...userWithoutPassword } = adminUser
-
-      return NextResponse.json({
-        success: true,
-        token,
-        user: userWithoutPassword,
-      })
-    }
-
-    // Check regular users
-    const user = users.find((u) => u.email === email && u.isEmailVerified && u.isActive)
+    // Find user
+    const user = users.find((u) => u.email.toLowerCase() === email.toLowerCase())
     if (!user) {
-      return NextResponse.json({ error: "Invalid credentials or account not verified" }, { status: 401 })
+      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
-    // Check password for regular users
+    // Check if user is active
+    if (!user.isActive) {
+      return NextResponse.json({ error: "Account is deactivated" }, { status: 401 })
+    }
+
+    // Check if email is verified
+    if (!user.isEmailVerified) {
+      return NextResponse.json({ error: "Please verify your email before logging in" }, { status: 401 })
+    }
+
+    // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password)
     if (!isValidPassword) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
     }
 
-    // Generate JWT token for regular user
+    // Generate JWT token
+    const tokenExpiry = user.role === "owner" ? "30d" : "7d" // Owner gets longer sessions
     const token = jwt.sign(
       {
         userId: user.id,
         email: user.email,
-        role: user.role || "user",
-        permissions: user.permissions || ["basic_access"],
+        role: user.role,
       },
       process.env.JWT_SECRET || "your-secret-key",
-      { expiresIn: "7d" },
+      { expiresIn: tokenExpiry },
     )
 
-    // Return user data (without password)
+    // Remove password from user object
     const { password: _, ...userWithoutPassword } = user
 
     return NextResponse.json({
       success: true,
       token,
       user: userWithoutPassword,
+      message: "Login successful",
     })
   } catch (error) {
     console.error("Login error:", error)

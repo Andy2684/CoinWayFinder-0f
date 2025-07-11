@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -11,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, CheckCircle, XCircle, User, Mail, Calendar, Lock, Shield } from "lucide-react"
+import { Eye, EyeOff, CheckCircle, XCircle, User, Mail, Calendar, Lock, Shield, Loader2 } from "lucide-react"
 import { useAuth } from "./auth-provider"
 
 interface FormErrors {
@@ -565,7 +564,14 @@ export function SignupForm() {
           </div>
 
           <Button type="submit" className="w-full" disabled={isLoading || Object.keys(errors).length > 0}>
-            {isLoading ? "Creating Account..." : "Create Account"}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating Account...
+              </>
+            ) : (
+              "Create Account"
+            )}
           </Button>
         </form>
 
@@ -581,3 +587,5 @@ export function SignupForm() {
     </Card>
   )
 }
+
+export default SignupForm
