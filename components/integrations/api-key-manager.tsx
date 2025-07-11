@@ -1,340 +1,590 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Eye, EyeOff, Plus, Trash2, Edit, Key, AlertCircle, Copy } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { Key, Eye, EyeOff, Plus, Trash2, Shield, AlertTriangle, CheckCircle, Copy } from "lucide-react"
 
-interface ApiKey {
+interface APIKey {
   id: string
-  name: string
   exchange: string
-  publicKey: string
+  name: string
+  apiKey: string
   secretKey: string
   passphrase?: string
   permissions: string[]
+  isTestnet: boolean
   status: "active" | "inactive" | "expired"
   createdAt: string
-  lastUsed?: string
+  lastUsed: string
+  ipWhitelist: string[]
 }
 
-const mockApiKeys: ApiKey[] = [
-  {
-    id: "1",
-    name: "Binance Main",
-    exchange: "binance",
-    publicKey: "abc123...xyz789",
-    secretKey: "***hidden***",
-    permissions: ["spot", "futures"],
-    status: "active",
-    createdAt: "2024-01-01T00:00:00Z",
-    lastUsed: "2024-01-15T10:30:00Z",
-  },
-  {
-    id: "2",
-    name: "Coinbase Pro",
-    exchange: "coinbase",
-    publicKey: "def456...uvw012",
-    secretKey: "***hidden***",
-    passphrase: "***hidden***",
-    permissions: ["trade", "view"],
-    status: "active",
-    createdAt: "2024-01-02T00:00:00Z",
-    lastUsed: "2024-01-14T15:45:00Z",
-  },
-]
+export function APIKeyManager() {
+  const [apiKeys, setApiKeys] = useState<APIKey[]>([
+    {
+      id: "1",
+      exchange: "Binance",
+      name: "Main Trading Account",
+      apiKey: "abc123...xyz789",
+      secretKey: "***hidden***",
+      permissions: ["spot", "futures", "margin"],
+      isTestnet: false,
+      status: "active",
+      createdAt: "2024-01-15",
+      lastUsed: "2 minutes ago",
+      ipWhitelist: ["192.168.1.100", "203.0.113.0/24"],
+    },
+    {
+      id: "2",
+      exchange: "Bybit",
+      name: "Derivatives Trading",
+      apiKey: "def456...uvw012",
+      secretKey: "***hidden***",
+      permissions: ["spot", "derivatives"],
+      isTestnet: false,
+      status: "active",
+      createdAt: "2024-01-10",
+      lastUsed: "5 minutes ago",
+      ipWhitelist: ["192.168.1.100"],
+    },
+    {
+      id: "3",
+      exchange: "KuCoin",
+      name: "Test Account",
+      apiKey: "ghi789...rst345",
+      secretKey: "***hidden***",
+      passphrase: "***hidden***",
+      permissions: ["spot"],
+      isTestnet: true,
+      status: "inactive",
+      createdAt: "2024-01-05",
+      lastUsed: "2 days ago",
+      ipWhitelist: [],
+    },
+  ])
 
-export function ApiKeyManager() {
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>(mockApiKeys)
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({})
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
-  const [newApiKey, setNewApiKey] = useState({
-    name: "",
+  const [isAddingKey, setIsAddingKey] = useState(false)
+  const [newKeyData, setNewKeyData] = useState({
     exchange: "",
-    publicKey: "",
+    name: "",
+    apiKey: "",
     secretKey: "",
     passphrase: "",
+    isTestnet: false,
+    permissions: [] as string[],
   })
-  const { toast } = useToast()
 
   const toggleSecretVisibility = (keyId: string) => {
-    setShowSecrets((prev) => ({
-      ...prev,
-      [keyId]: !prev[keyId],
-    }))
+    setShowSecrets((prev) => ({ ...prev, [keyId]: !prev[keyId] }))
   }
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    toast({
-      title: "Copied to clipboard",
-      description: "API key copied successfully",
-    })
-  }
-
-  const handleAddApiKey = () => {
-    if (!newApiKey.name || !newApiKey.exchange || !newApiKey.publicKey || !newApiKey.secretKey) {
-      toast({
-        title: "Error",
-        description: "Please fill in all required fields",
-        variant: "destructive",
-      })
-      return
-    }
-
-    const apiKey: ApiKey = {
+  const handleAddKey = () => {
+    const newKey: APIKey = {
       id: Date.now().toString(),
-      name: newApiKey.name,
-      exchange: newApiKey.exchange,
-      publicKey: newApiKey.publicKey,
-      secretKey: newApiKey.secretKey,
-      passphrase: newApiKey.passphrase || undefined,
-      permissions: ["spot", "trade"],
+      ...newKeyData,
       status: "active",
-      createdAt: new Date().toISOString(),
+      createdAt: new Date().toISOString().split("T")[0],
+      lastUsed: "Never",
+      ipWhitelist: [],
     }
-
-    setApiKeys((prev) => [...prev, apiKey])
-    setNewApiKey({ name: "", exchange: "", publicKey: "", secretKey: "", passphrase: "" })
-    setIsAddDialogOpen(false)
-
-    toast({
-      title: "Success",
-      description: "API key added successfully",
+    setApiKeys((prev) => [...prev, newKey])
+    setIsAddingKey(false)
+    setNewKeyData({
+      exchange: "",
+      name: "",
+      apiKey: "",
+      secretKey: "",
+      passphrase: "",
+      isTestnet: false,
+      permissions: [],
     })
   }
 
-  const handleDeleteApiKey = (keyId: string) => {
+  const handleDeleteKey = (keyId: string) => {
     setApiKeys((prev) => prev.filter((key) => key.id !== keyId))
-    toast({
-      title: "Success",
-      description: "API key deleted successfully",
-    })
   }
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive"> = {
-      active: "default",
-      inactive: "secondary",
-      expired: "destructive",
-    }
-    return <Badge variant={variants[status] || "secondary"}>{status}</Badge>
+  const toggleKeyStatus = (keyId: string) => {
+    setApiKeys((prev) =>
+      prev.map((key) => (key.id === keyId ? { ...key, status: key.status === "active" ? "inactive" : "active" } : key)),
+    )
   }
 
-  const getExchangeBadge = (exchange: string) => {
-    const colors: Record<string, string> = {
-      binance: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-      coinbase: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-      kraken: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  const testConnection = async (keyId: string) => {
+    const key = apiKeys.find((k) => k.id === keyId)
+    if (!key) return
+
+    // Simulate API test
+    try {
+      const response = await fetch("/api/integrations/test-connection", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          exchangeId: key.exchange.toLowerCase(),
+          credentials: {
+            apiKey: key.apiKey,
+            secretKey: key.secretKey,
+            passphrase: key.passphrase,
+          },
+          testnet: key.isTestnet,
+        }),
+      })
+
+      const result = await response.json()
+      if (result.success) {
+        alert("Connection test successful!")
+      } else {
+        alert(`Connection test failed: ${result.error}`)
+      }
+    } catch (error) {
+      alert("Connection test failed: Network error")
     }
-    return <Badge className={colors[exchange] || "bg-gray-500/10 text-gray-400 border-gray-500/20"}>{exchange}</Badge>
   }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "active":
+        return "bg-green-500/10 text-green-400"
+      case "inactive":
+        return "bg-gray-500/10 text-gray-400"
+      case "expired":
+        return "bg-red-500/10 text-red-400"
+      default:
+        return "bg-gray-500/10 text-gray-400"
+    }
+  }
+
+  const exchangeOptions = [
+    { id: "binance", name: "Binance", requiresPassphrase: false },
+    { id: "bybit", name: "Bybit", requiresPassphrase: false },
+    { id: "kucoin", name: "KuCoin", requiresPassphrase: true },
+    { id: "okx", name: "OKX", requiresPassphrase: true },
+    { id: "coinbase", name: "Coinbase Pro", requiresPassphrase: true },
+    { id: "kraken", name: "Kraken", requiresPassphrase: false },
+  ]
+
+  const permissionOptions = ["spot", "futures", "margin", "options", "staking", "lending"]
 
   return (
-    <Card className="bg-gray-900 border-gray-800">
-      <CardHeader>
-        <CardTitle className="text-white flex items-center justify-between">
-          <span className="flex items-center">
-            <Key className="w-5 h-5 mr-2" />
-            API Key Management
-          </span>
-          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]">
-                <Plus className="w-4 h-4 mr-2" />
-                Add API Key
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="bg-gray-900 border-gray-800">
-              <DialogHeader>
-                <DialogTitle className="text-white">Add New API Key</DialogTitle>
-                <DialogDescription className="text-gray-400">
-                  Add your exchange API keys to enable automated trading
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="text-white">
-                    Name
-                  </Label>
-                  <Input
-                    id="name"
-                    placeholder="e.g., Binance Main"
-                    value={newApiKey.name}
-                    onChange={(e) => setNewApiKey((prev) => ({ ...prev, name: e.target.value }))}
-                    className="bg-gray-800 border-gray-700 text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="exchange" className="text-white">
-                    Exchange
-                  </Label>
-                  <Input
-                    id="exchange"
-                    placeholder="e.g., binance, coinbase, kraken"
-                    value={newApiKey.exchange}
-                    onChange={(e) => setNewApiKey((prev) => ({ ...prev, exchange: e.target.value }))}
-                    className="bg-gray-800 border-gray-700 text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="publicKey" className="text-white">
-                    API Key (Public)
-                  </Label>
-                  <Input
-                    id="publicKey"
-                    placeholder="Your API public key"
-                    value={newApiKey.publicKey}
-                    onChange={(e) => setNewApiKey((prev) => ({ ...prev, publicKey: e.target.value }))}
-                    className="bg-gray-800 border-gray-700 text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="secretKey" className="text-white">
-                    Secret Key
-                  </Label>
-                  <Input
-                    id="secretKey"
-                    type="password"
-                    placeholder="Your API secret key"
-                    value={newApiKey.secretKey}
-                    onChange={(e) => setNewApiKey((prev) => ({ ...prev, secretKey: e.target.value }))}
-                    className="bg-gray-800 border-gray-700 text-white"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="passphrase" className="text-white">
-                    Passphrase (Optional)
-                  </Label>
-                  <Input
-                    id="passphrase"
-                    type="password"
-                    placeholder="Passphrase if required"
-                    value={newApiKey.passphrase}
-                    onChange={(e) => setNewApiKey((prev) => ({ ...prev, passphrase: e.target.value }))}
-                    className="bg-gray-800 border-gray-700 text-white"
-                  />
-                </div>
-              </div>
-              <Alert className="border-yellow-500/20 bg-yellow-500/10">
-                <AlertCircle className="h-4 w-4 text-yellow-400" />
-                <AlertDescription className="text-yellow-300">
-                  Your API keys are encrypted and stored securely. Never share your secret keys with anyone.
-                </AlertDescription>
-              </Alert>
-              <DialogFooter>
-                <Button
-                  variant="outline"
-                  onClick={() => setIsAddDialogOpen(false)}
-                  className="border-gray-700 text-gray-400 hover:bg-gray-800"
-                >
-                  Cancel
-                </Button>
-                <Button onClick={handleAddApiKey} className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]">
+    <div className="space-y-6">
+      {/* Header */}
+      <Card className="bg-gray-900/50 border-gray-800">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-white text-xl">🔑 API Key Management</CardTitle>
+              <p className="text-gray-400 text-sm">Securely manage your exchange API credentials</p>
+            </div>
+            <Dialog open={isAddingKey} onOpenChange={setIsAddingKey}>
+              <DialogTrigger asChild>
+                <Button className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]">
+                  <Plus className="w-4 h-4 mr-2" />
                   Add API Key
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </CardTitle>
-        <CardDescription className="text-gray-400">Manage your exchange API keys for automated trading</CardDescription>
-      </CardHeader>
-
-      <CardContent>
-        <div className="rounded-md border border-gray-800">
-          <Table>
-            <TableHeader>
-              <TableRow className="border-gray-800">
-                <TableHead className="text-gray-400">Name</TableHead>
-                <TableHead className="text-gray-400">Exchange</TableHead>
-                <TableHead className="text-gray-400">Public Key</TableHead>
-                <TableHead className="text-gray-400">Status</TableHead>
-                <TableHead className="text-gray-400">Last Used</TableHead>
-                <TableHead className="text-gray-400">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {apiKeys.map((apiKey) => (
-                <TableRow key={apiKey.id} className="border-gray-800">
-                  <TableCell className="text-white font-medium">{apiKey.name}</TableCell>
-                  <TableCell>{getExchangeBadge(apiKey.exchange)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      <code className="text-sm text-gray-400 bg-gray-800 px-2 py-1 rounded">
-                        {showSecrets[apiKey.id] ? apiKey.publicKey : apiKey.publicKey.slice(0, 8) + "..."}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => toggleSecretVisibility(apiKey.id)}
-                        className="text-gray-400 hover:text-white"
+              </DialogTrigger>
+              <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Add New API Key</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="exchange">Exchange</Label>
+                      <select
+                        id="exchange"
+                        className="w-full mt-1 p-2 bg-gray-800 border border-gray-700 rounded-md text-white"
+                        value={newKeyData.exchange}
+                        onChange={(e) => setNewKeyData((prev) => ({ ...prev, exchange: e.target.value }))}
                       >
-                        {showSecrets[apiKey.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(apiKey.publicKey)}
-                        className="text-gray-400 hover:text-white"
-                      >
-                        <Copy className="w-4 h-4" />
-                      </Button>
+                        <option value="">Select Exchange</option>
+                        {exchangeOptions.map((exchange) => (
+                          <option key={exchange.id} value={exchange.name}>
+                            {exchange.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
-                  </TableCell>
-                  <TableCell>{getStatusBadge(apiKey.status)}</TableCell>
-                  <TableCell className="text-gray-400">
-                    {apiKey.lastUsed ? new Date(apiKey.lastUsed).toLocaleDateString() : "Never"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteApiKey(apiKey.id)}
-                        className="text-red-400 hover:text-red-300"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                    <div>
+                      <Label htmlFor="name">Key Name</Label>
+                      <Input
+                        id="name"
+                        placeholder="e.g., Main Trading Account"
+                        value={newKeyData.name}
+                        onChange={(e) => setNewKeyData((prev) => ({ ...prev, name: e.target.value }))}
+                        className="bg-gray-800 border-gray-700 text-white"
+                      />
                     </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+                  </div>
 
-        {apiKeys.length === 0 && (
-          <div className="text-center py-12">
-            <Key className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-            <p className="text-gray-400 mb-4">No API keys configured</p>
-            <Button
-              onClick={() => setIsAddDialogOpen(true)}
-              className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Your First API Key
-            </Button>
+                  <div>
+                    <Label htmlFor="apiKey">API Key</Label>
+                    <Input
+                      id="apiKey"
+                      placeholder="Enter your API key"
+                      value={newKeyData.apiKey}
+                      onChange={(e) => setNewKeyData((prev) => ({ ...prev, apiKey: e.target.value }))}
+                      className="bg-gray-800 border-gray-700 text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="secretKey">Secret Key</Label>
+                    <Input
+                      id="secretKey"
+                      type="password"
+                      placeholder="Enter your secret key"
+                      value={newKeyData.secretKey}
+                      onChange={(e) => setNewKeyData((prev) => ({ ...prev, secretKey: e.target.value }))}
+                      className="bg-gray-800 border-gray-700 text-white"
+                    />
+                  </div>
+
+                  {exchangeOptions.find((ex) => ex.name === newKeyData.exchange)?.requiresPassphrase && (
+                    <div>
+                      <Label htmlFor="passphrase">Passphrase</Label>
+                      <Input
+                        id="passphrase"
+                        type="password"
+                        placeholder="Enter your passphrase"
+                        value={newKeyData.passphrase}
+                        onChange={(e) => setNewKeyData((prev) => ({ ...prev, passphrase: e.target.value }))}
+                        className="bg-gray-800 border-gray-700 text-white"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <Label>Permissions</Label>
+                    <div className="grid grid-cols-3 gap-2 mt-2">
+                      {permissionOptions.map((permission) => (
+                        <label key={permission} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={newKeyData.permissions.includes(permission)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setNewKeyData((prev) => ({
+                                  ...prev,
+                                  permissions: [...prev.permissions, permission],
+                                }))
+                              } else {
+                                setNewKeyData((prev) => ({
+                                  ...prev,
+                                  permissions: prev.permissions.filter((p) => p !== permission),
+                                }))
+                              }
+                            }}
+                            className="rounded"
+                          />
+                          <span className="text-sm capitalize">{permission}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Switch
+                      checked={newKeyData.isTestnet}
+                      onCheckedChange={(checked) => setNewKeyData((prev) => ({ ...prev, isTestnet: checked }))}
+                    />
+                    <Label>Use Testnet</Label>
+                  </div>
+
+                  <Alert>
+                    <Shield className="h-4 w-4" />
+                    <AlertDescription>
+                      Your API keys are encrypted and stored securely. Never share your secret keys with anyone.
+                    </AlertDescription>
+                  </Alert>
+
+                  <div className="flex justify-end space-x-2">
+                    <Button variant="outline" onClick={() => setIsAddingKey(false)}>
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleAddKey}
+                      className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]"
+                      disabled={!newKeyData.exchange || !newKeyData.name || !newKeyData.apiKey || !newKeyData.secretKey}
+                    >
+                      Add Key
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </CardHeader>
+      </Card>
+
+      {/* API Keys List */}
+      <div className="grid grid-cols-1 gap-6">
+        {apiKeys.map((apiKey) => (
+          <Card key={apiKey.id} className="bg-gray-900/50 border-gray-800">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-[#30D5C8]/20 rounded-lg flex items-center justify-center">
+                    <Key className="w-6 h-6 text-[#30D5C8]" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-white text-lg">{apiKey.name}</CardTitle>
+                    <div className="flex items-center space-x-2 mt-1">
+                      <Badge variant="outline" className="border-gray-600 text-gray-300">
+                        {apiKey.exchange}
+                      </Badge>
+                      {apiKey.isTestnet && <Badge className="bg-yellow-500/10 text-yellow-400">Testnet</Badge>}
+                      <Badge className={getStatusColor(apiKey.status)}>
+                        {apiKey.status.charAt(0).toUpperCase() + apiKey.status.slice(1)}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Switch checked={apiKey.status === "active"} onCheckedChange={() => toggleKeyStatus(apiKey.id)} />
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => testConnection(apiKey.id)}
+                    className="text-[#30D5C8] hover:bg-[#30D5C8]/10"
+                  >
+                    Test
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleDeleteKey(apiKey.id)}
+                    className="text-red-400 hover:bg-red-400/10"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Tabs defaultValue="credentials" className="space-y-4">
+                <TabsList className="bg-gray-800/50">
+                  <TabsTrigger value="credentials">Credentials</TabsTrigger>
+                  <TabsTrigger value="permissions">Permissions</TabsTrigger>
+                  <TabsTrigger value="security">Security</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="credentials" className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-gray-400">API Key</Label>
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          value={showSecrets[apiKey.id] ? apiKey.apiKey : apiKey.apiKey.replace(/./g, "*")}
+                          readOnly
+                          className="bg-gray-800/50 border-gray-700 text-white font-mono"
+                        />
+                        <Button variant="ghost" size="sm" onClick={() => toggleSecretVisibility(apiKey.id)}>
+                          {showSecrets[apiKey.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </Button>
+                        <Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(apiKey.apiKey)}>
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-gray-400">Secret Key</Label>
+                      <div className="flex items-center space-x-2">
+                        <Input
+                          value={showSecrets[apiKey.id] ? apiKey.secretKey : "***hidden***"}
+                          readOnly
+                          className="bg-gray-800/50 border-gray-700 text-white font-mono"
+                        />
+                        <Button variant="ghost" size="sm" onClick={() => toggleSecretVisibility(apiKey.id)}>
+                          {showSecrets[apiKey.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </Button>
+                      </div>
+                    </div>
+
+                    {apiKey.passphrase && (
+                      <div className="space-y-2">
+                        <Label className="text-gray-400">Passphrase</Label>
+                        <div className="flex items-center space-x-2">
+                          <Input
+                            value={showSecrets[apiKey.id] ? apiKey.passphrase : "***hidden***"}
+                            readOnly
+                            className="bg-gray-800/50 border-gray-700 text-white font-mono"
+                          />
+                          <Button variant="ghost" size="sm" onClick={() => toggleSecretVisibility(apiKey.id)}>
+                            {showSecrets[apiKey.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label className="text-gray-400">Created</Label>
+                      <div className="text-white">{apiKey.createdAt}</div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-gray-400">Last Used</Label>
+                      <div className="text-white">{apiKey.lastUsed}</div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="permissions" className="space-y-4">
+                  <div>
+                    <Label className="text-gray-400 mb-3 block">Granted Permissions</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {apiKey.permissions.map((permission) => (
+                        <Badge key={permission} className="bg-[#30D5C8]/10 text-[#30D5C8]">
+                          {permission.charAt(0).toUpperCase() + permission.slice(1)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Alert>
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertDescription>
+                      Only grant the minimum permissions required for your trading strategy. You can modify permissions
+                      by creating a new API key on the exchange.
+                    </AlertDescription>
+                  </Alert>
+                </TabsContent>
+
+                <TabsContent value="security" className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-gray-400">IP Whitelist</Label>
+                      <div className="space-y-1">
+                        {apiKey.ipWhitelist.length > 0 ? (
+                          apiKey.ipWhitelist.map((ip, index) => (
+                            <div key={index} className="flex items-center justify-between p-2 bg-gray-800/50 rounded">
+                              <span className="text-white font-mono text-sm">{ip}</span>
+                              <Button variant="ghost" size="sm" className="text-red-400 hover:bg-red-400/10">
+                                <Trash2 className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="text-gray-400 text-sm">No IP restrictions</div>
+                        )}
+                      </div>
+                      <Button variant="outline" size="sm" className="border-gray-600 text-white bg-transparent">
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add IP
+                      </Button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded">
+                        <div>
+                          <div className="text-white font-medium">Two-Factor Authentication</div>
+                          <div className="text-gray-400 text-sm">Additional security layer</div>
+                        </div>
+                        <CheckCircle className="w-5 h-5 text-green-400" />
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded">
+                        <div>
+                          <div className="text-white font-medium">Withdrawal Restrictions</div>
+                          <div className="text-gray-400 text-sm">API cannot withdraw funds</div>
+                        </div>
+                        <CheckCircle className="w-5 h-5 text-green-400" />
+                      </div>
+
+                      <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded">
+                        <div>
+                          <div className="text-white font-medium">Rate Limiting</div>
+                          <div className="text-gray-400 text-sm">Automatic request throttling</div>
+                        </div>
+                        <CheckCircle className="w-5 h-5 text-green-400" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <Alert>
+                    <Shield className="h-4 w-4" />
+                    <AlertDescription>
+                      For maximum security, enable IP whitelisting and disable withdrawal permissions for trading-only
+                      API keys.
+                    </AlertDescription>
+                  </Alert>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Security Recommendations */}
+      <Card className="bg-gray-900/50 border-gray-800">
+        <CardHeader>
+          <CardTitle className="text-white">🛡️ Security Best Practices</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <h4 className="text-white font-medium">✅ Recommended</h4>
+              <ul className="space-y-2 text-sm text-gray-300">
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                  <span>Use separate API keys for different strategies</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                  <span>Enable IP whitelisting when possible</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                  <span>Disable withdrawal permissions for trading bots</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                  <span>Regularly rotate API keys</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <CheckCircle className="w-4 h-4 text-green-400 mt-0.5 flex-shrink-0" />
+                  <span>Monitor API key usage and activity</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="text-white font-medium">⚠️ Avoid</h4>
+              <ul className="space-y-2 text-sm text-gray-300">
+                <li className="flex items-start space-x-2">
+                  <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                  <span>Never share API keys or secret keys</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                  <span>Don't store keys in plain text files</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                  <span>Avoid using keys with full account permissions</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                  <span>Don't use the same key across multiple platforms</span>
+                </li>
+                <li className="flex items-start space-x-2">
+                  <AlertTriangle className="w-4 h-4 text-red-400 mt-0.5 flex-shrink-0" />
+                  <span>Never commit API keys to version control</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
