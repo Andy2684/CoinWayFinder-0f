@@ -2,31 +2,27 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
-import { TrendingUp, TrendingDown, DollarSign, Activity, RefreshCw, ArrowUpDown } from "lucide-react"
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts"
+import { TrendingUp, DollarSign, Activity, RefreshCw } from "lucide-react"
 
-interface MarketData {
-  symbol: string
-  name: string
-  price: number
-  change24h: number
-  volume24h: number
-  marketCap: number
-  dominance: number
-  rank: number
-}
-
-interface MarketMetrics {
+interface MarketOverview {
   totalMarketCap: number
   totalVolume: number
   btcDominance: number
   ethDominance: number
-  altcoinIndex: number
-  fearGreedIndex: number
+  marketCapChange24h: number
+  volumeChange24h: number
+}
+
+interface SectorData {
+  name: string
+  marketCap: number
+  change24h: number
+  dominance: number
+  topCoins: string[]
 }
 
 interface CorrelationData {
@@ -35,89 +31,78 @@ interface CorrelationData {
   correlation: number
 }
 
+interface DominanceData {
+  date: string
+  btc: number
+  eth: number
+  others: number
+}
+
 export function MarketAnalysis() {
-  const [marketData, setMarketData] = useState<MarketData[]>([])
-  const [metrics, setMetrics] = useState<MarketMetrics>({
-    totalMarketCap: 0,
-    totalVolume: 0,
-    btcDominance: 0,
-    ethDominance: 0,
-    altcoinIndex: 0,
-    fearGreedIndex: 0,
-  })
-  const [correlations, setCorrelations] = useState<CorrelationData[]>([])
-  const [selectedMetric, setSelectedMetric] = useState("marketCap")
+  const [marketOverview, setMarketOverview] = useState<MarketOverview | null>(null)
+  const [sectorData, setSectorData] = useState<SectorData[]>([])
+  const [correlationData, setCorrelationData] = useState<CorrelationData[]>([])
+  const [dominanceData, setDominanceData] = useState<DominanceData[]>([])
+  const [selectedTimeframe, setSelectedTimeframe] = useState("7d")
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    fetchMarketData()
-  }, [])
+  const timeframes = [
+    { value: "24h", label: "24 Hours" },
+    { value: "7d", label: "7 Days" },
+    { value: "30d", label: "30 Days" },
+    { value: "90d", label: "90 Days" },
+  ]
 
   const fetchMarketData = async () => {
     setLoading(true)
     try {
       // Mock data for demonstration
-      const mockMarketData: MarketData[] = [
-        {
-          symbol: "BTC",
-          name: "Bitcoin",
-          price: 42000,
-          change24h: 2.5,
-          volume24h: 15000000000,
-          marketCap: 820000000000,
-          dominance: 52.3,
-          rank: 1,
-        },
-        {
-          symbol: "ETH",
-          name: "Ethereum",
-          price: 2500,
-          change24h: -1.2,
-          volume24h: 8000000000,
-          marketCap: 300000000000,
-          dominance: 19.1,
-          rank: 2,
-        },
-        {
-          symbol: "BNB",
-          name: "BNB",
-          price: 320,
-          change24h: 3.8,
-          volume24h: 1200000000,
-          marketCap: 50000000000,
-          dominance: 3.2,
-          rank: 3,
-        },
-        {
-          symbol: "ADA",
-          name: "Cardano",
-          price: 0.5,
-          change24h: -2.1,
-          volume24h: 800000000,
-          marketCap: 17000000000,
-          dominance: 1.1,
-          rank: 4,
-        },
-        {
-          symbol: "SOL",
-          name: "Solana",
-          price: 100,
-          change24h: 5.2,
-          volume24h: 1500000000,
-          marketCap: 45000000000,
-          dominance: 2.9,
-          rank: 5,
-        },
-      ]
-
-      const mockMetrics: MarketMetrics = {
-        totalMarketCap: 1570000000000,
+      const mockOverview: MarketOverview = {
+        totalMarketCap: 1650000000000,
         totalVolume: 45000000000,
         btcDominance: 52.3,
-        ethDominance: 19.1,
-        altcoinIndex: 1250,
-        fearGreedIndex: 68,
+        ethDominance: 17.8,
+        marketCapChange24h: 2.4,
+        volumeChange24h: -8.2,
       }
+
+      const mockSectors: SectorData[] = [
+        {
+          name: "Layer 1",
+          marketCap: 850000000000,
+          change24h: 3.2,
+          dominance: 51.5,
+          topCoins: ["BTC", "ETH", "ADA", "SOL", "AVAX"],
+        },
+        {
+          name: "DeFi",
+          marketCap: 120000000000,
+          change24h: -1.8,
+          dominance: 7.3,
+          topCoins: ["UNI", "AAVE", "COMP", "MKR", "SNX"],
+        },
+        {
+          name: "Layer 2",
+          marketCap: 85000000000,
+          change24h: 5.7,
+          dominance: 5.2,
+          topCoins: ["MATIC", "OP", "ARB", "LRC", "IMX"],
+        },
+        {
+          name: "NFT & Gaming",
+          marketCap: 45000000000,
+          change24h: -3.4,
+          dominance: 2.7,
+          topCoins: ["AXS", "SAND", "MANA", "ENJ", "FLOW"],
+        },
+        {
+          name: "Meme Coins",
+          marketCap: 35000000000,
+          change24h: 12.8,
+          dominance: 2.1,
+          topCoins: ["DOGE", "SHIB", "PEPE", "FLOKI", "BONK"],
+        },
+      ]
 
       const mockCorrelations: CorrelationData[] = [
         { asset1: "BTC", asset2: "ETH", correlation: 0.85 },
@@ -125,12 +110,20 @@ export function MarketAnalysis() {
         { asset1: "BTC", asset2: "SOL", correlation: 0.68 },
         { asset1: "ETH", asset2: "ADA", correlation: 0.79 },
         { asset1: "ETH", asset2: "SOL", correlation: 0.74 },
-        { asset1: "ADA", asset2: "SOL", correlation: 0.81 },
+        { asset1: "ADA", asset2: "SOL", correlation: 0.71 },
       ]
 
-      setMarketData(mockMarketData)
-      setMetrics(mockMetrics)
-      setCorrelations(mockCorrelations)
+      const mockDominance: DominanceData[] = Array.from({ length: 30 }, (_, i) => ({
+        date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+        btc: 50 + Math.random() * 8,
+        eth: 16 + Math.random() * 4,
+        others: 30 + Math.random() * 8,
+      }))
+
+      setMarketOverview(mockOverview)
+      setSectorData(mockSectors)
+      setCorrelationData(mockCorrelations)
+      setDominanceData(mockDominance)
     } catch (error) {
       console.error("Error fetching market data:", error)
     } finally {
@@ -138,307 +131,210 @@ export function MarketAnalysis() {
     }
   }
 
-  const getMetricData = () => {
-    return marketData.map((item) => ({
-      name: item.symbol,
-      value:
-        selectedMetric === "marketCap"
-          ? item.marketCap / 1000000000
-          : selectedMetric === "volume"
-            ? item.volume24h / 1000000000
-            : item.change24h,
-    }))
+  useEffect(() => {
+    fetchMarketData()
+  }, [selectedTimeframe])
+
+  const formatMarketCap = (value: number) => {
+    if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`
+    if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`
+    if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`
+    return `$${value.toLocaleString()}`
+  }
+
+  const getChangeColor = (change: number) => {
+    return change >= 0 ? "text-green-600" : "text-red-600"
   }
 
   const getCorrelationColor = (correlation: number) => {
-    if (correlation > 0.8) return "bg-red-100 text-red-800"
-    if (correlation > 0.6) return "bg-yellow-100 text-yellow-800"
-    return "bg-green-100 text-green-800"
+    if (correlation >= 0.8) return "bg-red-100 text-red-800"
+    if (correlation >= 0.6) return "bg-yellow-100 text-yellow-800"
+    if (correlation >= 0.4) return "bg-blue-100 text-blue-800"
+    return "bg-gray-100 text-gray-800"
   }
+
+  const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6"]
+
+  if (!marketOverview) return null
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            Market Analysis
-            <Button variant="outline" size="sm" onClick={fetchMarketData} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-          </CardTitle>
-          <CardDescription>Comprehensive cryptocurrency market analysis and metrics</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-6 md:grid-cols-4">
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <DollarSign className="h-4 w-4 text-blue-600" />
-                  <span className="text-sm font-medium">Total Market Cap</span>
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Market Analysis</h2>
+          <p className="text-muted-foreground">Comprehensive cryptocurrency market overview</p>
+        </div>
+        <div className="flex gap-4">
+          <Select value={selectedTimeframe} onValueChange={setSelectedTimeframe}>
+            <SelectTrigger className="w-32">
+              <SelectValue placeholder="Timeframe" />
+            </SelectTrigger>
+            <SelectContent>
+              {timeframes.map((timeframe) => (
+                <SelectItem key={timeframe.value} value={timeframe.value}>
+                  {timeframe.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={fetchMarketData} disabled={loading} variant="outline">
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Market Cap</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatMarketCap(marketOverview.totalMarketCap)}</div>
+            <p className={`text-xs ${getChangeColor(marketOverview.marketCapChange24h)}`}>
+              {marketOverview.marketCapChange24h >= 0 ? "+" : ""}
+              {marketOverview.marketCapChange24h.toFixed(2)}% (24h)
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">24h Volume</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatMarketCap(marketOverview.totalVolume)}</div>
+            <p className={`text-xs ${getChangeColor(marketOverview.volumeChange24h)}`}>
+              {marketOverview.volumeChange24h >= 0 ? "+" : ""}
+              {marketOverview.volumeChange24h.toFixed(2)}% (24h)
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">BTC Dominance</CardTitle>
+            <TrendingUp className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{marketOverview.btcDominance.toFixed(1)}%</div>
+            <p className="text-xs text-muted-foreground">Bitcoin market share</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">ETH Dominance</CardTitle>
+            <TrendingUp className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{marketOverview.ethDominance.toFixed(1)}%</div>
+            <p className="text-xs text-muted-foreground">Ethereum market share</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Market Dominance Over Time</CardTitle>
+            <CardDescription>BTC and ETH dominance trends</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={dominanceData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tickFormatter={(value) => new Date(value).toLocaleDateString()} />
+                  <YAxis />
+                  <Tooltip
+                    labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                    formatter={(value: number, name: string) => [`${value.toFixed(1)}%`, name.toUpperCase()]}
+                  />
+                  <Line type="monotone" dataKey="btc" stroke="#f59e0b" strokeWidth={2} name="BTC" />
+                  <Line type="monotone" dataKey="eth" stroke="#2563eb" strokeWidth={2} name="ETH" />
+                  <Line type="monotone" dataKey="others" stroke="#10b981" strokeWidth={2} name="Others" />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Sector Performance</CardTitle>
+            <CardDescription>Performance by crypto sectors</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sectorData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" />
+                  <YAxis />
+                  <Tooltip formatter={(value: number) => [`${value.toFixed(2)}%`, "24h Change"]} />
+                  <Bar dataKey="change24h" fill="#2563eb" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Sector Breakdown</CardTitle>
+            <CardDescription>Market cap distribution by sector</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {sectorData.map((sector, index) => (
+              <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center gap-3">
+                  <div className={`w-3 h-3 rounded-full`} style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                  <div>
+                    <div className="font-medium">{sector.name}</div>
+                    <div className="text-sm text-muted-foreground">{sector.topCoins.slice(0, 3).join(", ")}</div>
+                  </div>
                 </div>
-                <div className="text-2xl font-bold">${(metrics.totalMarketCap / 1000000000000).toFixed(2)}T</div>
-                <div className="text-sm text-muted-foreground">Global crypto market</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <Activity className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium">24h Volume</span>
-                </div>
-                <div className="text-2xl font-bold">${(metrics.totalVolume / 1000000000).toFixed(1)}B</div>
-                <div className="text-sm text-muted-foreground">Trading volume</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <TrendingUp className="h-4 w-4 text-orange-600" />
-                  <span className="text-sm font-medium">BTC Dominance</span>
-                </div>
-                <div className="text-2xl font-bold">{metrics.btcDominance}%</div>
-                <div className="text-sm text-muted-foreground">Market share</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <ArrowUpDown className="h-4 w-4 text-purple-600" />
-                  <span className="text-sm font-medium">Fear & Greed</span>
-                </div>
-                <div className="text-2xl font-bold">{metrics.fearGreedIndex}</div>
-                <div className="text-sm text-muted-foreground">Market sentiment</div>
-              </CardContent>
-            </Card>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="overview">Market Overview</TabsTrigger>
-          <TabsTrigger value="dominance">Dominance</TabsTrigger>
-          <TabsTrigger value="correlation">Correlation</TabsTrigger>
-          <TabsTrigger value="sectors">Sectors</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Top Cryptocurrencies
-                <Select value={selectedMetric} onValueChange={setSelectedMetric}>
-                  <SelectTrigger className="w-40">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="marketCap">Market Cap</SelectItem>
-                    <SelectItem value="volume">Volume</SelectItem>
-                    <SelectItem value="change">24h Change</SelectItem>
-                  </SelectContent>
-                </Select>
-              </CardTitle>
-              <CardDescription>Market data for top cryptocurrencies by market capitalization</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-6 md:grid-cols-2">
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={getMetricData()}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <Tooltip
-                      formatter={(value: number) => [
-                        selectedMetric === "change" ? `${value.toFixed(2)}%` : `${value.toFixed(2)}B`,
-                        selectedMetric === "marketCap"
-                          ? "Market Cap"
-                          : selectedMetric === "volume"
-                            ? "Volume"
-                            : "24h Change",
-                      ]}
-                    />
-                    <Bar dataKey="value" fill="#8884d8" />
-                  </BarChart>
-                </ResponsiveContainer>
-
-                <div className="space-y-3">
-                  {marketData.map((crypto, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                          <span className="text-xs font-bold">{crypto.symbol}</span>
-                        </div>
-                        <div>
-                          <div className="font-medium">{crypto.name}</div>
-                          <div className="text-sm text-muted-foreground">#{crypto.rank}</div>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="font-bold">${crypto.price.toLocaleString()}</div>
-                        <div className={`text-sm ${crypto.change24h >= 0 ? "text-green-600" : "text-red-600"}`}>
-                          {crypto.change24h >= 0 ? "+" : ""}
-                          {crypto.change24h}%
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="dominance" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Market Dominance</CardTitle>
-              <CardDescription>Market share distribution among top cryptocurrencies</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-4">
-                  {marketData.map((crypto, index) => (
-                    <div key={index} className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="font-medium">{crypto.name}</span>
-                        <span className="text-sm">{crypto.dominance}%</span>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div className="bg-blue-600 h-2 rounded-full" style={{ width: `${crypto.dominance}%` }}></div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="space-y-4">
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-orange-600">{metrics.btcDominance}%</div>
-                        <div className="text-sm text-muted-foreground">Bitcoin Dominance</div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-blue-600">{metrics.ethDominance}%</div>
-                        <div className="text-sm text-muted-foreground">Ethereum Dominance</div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardContent className="p-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-purple-600">
-                          {(100 - metrics.btcDominance - metrics.ethDominance).toFixed(1)}%
-                        </div>
-                        <div className="text-sm text-muted-foreground">Altcoin Dominance</div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                <div className="text-right">
+                  <div className="font-medium">{formatMarketCap(sector.marketCap)}</div>
+                  <div className={`text-sm ${getChangeColor(sector.change24h)}`}>
+                    {sector.change24h >= 0 ? "+" : ""}
+                    {sector.change24h.toFixed(2)}%
+                  </div>
+                  <div className="text-xs text-muted-foreground">{sector.dominance.toFixed(1)}%</div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+            ))}
+          </CardContent>
+        </Card>
 
-        <TabsContent value="correlation" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Asset Correlation Matrix</CardTitle>
-              <CardDescription>Correlation coefficients between major cryptocurrencies</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {correlations.map((corr, index) => (
-                  <Card key={index}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium">
-                          {corr.asset1} vs {corr.asset2}
-                        </span>
-                        <Badge className={getCorrelationColor(corr.correlation)}>{corr.correlation.toFixed(2)}</Badge>
-                      </div>
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div
-                          className="bg-blue-600 h-2 rounded-full"
-                          style={{ width: `${corr.correlation * 100}%` }}
-                        ></div>
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {corr.correlation > 0.8
-                          ? "High correlation"
-                          : corr.correlation > 0.6
-                            ? "Moderate correlation"
-                            : "Low correlation"}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+        <Card>
+          <CardHeader>
+            <CardTitle>Asset Correlations</CardTitle>
+            <CardDescription>Correlation matrix between major cryptocurrencies</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {correlationData.map((correlation, index) => (
+              <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="font-medium">
+                  {correlation.asset1} vs {correlation.asset2}
+                </div>
+                <Badge variant="outline" className={getCorrelationColor(correlation.correlation)}>
+                  {correlation.correlation.toFixed(2)}
+                </Badge>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="sectors" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Sector Performance</CardTitle>
-              <CardDescription>Performance analysis by cryptocurrency sectors</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {[
-                  { name: "DeFi", change: 5.2, volume: "2.1B", projects: 45 },
-                  { name: "Layer 1", change: 2.8, volume: "8.5B", projects: 12 },
-                  { name: "Layer 2", change: 8.1, volume: "1.2B", projects: 8 },
-                  { name: "NFT", change: -3.4, volume: "450M", projects: 23 },
-                  { name: "Gaming", change: 12.5, volume: "320M", projects: 67 },
-                  { name: "Metaverse", change: -1.2, volume: "180M", projects: 34 },
-                ].map((sector, index) => (
-                  <Card key={index}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="font-medium">{sector.name}</span>
-                        <div
-                          className={`flex items-center gap-1 ${sector.change >= 0 ? "text-green-600" : "text-red-600"}`}
-                        >
-                          {sector.change >= 0 ? (
-                            <TrendingUp className="h-3 w-3" />
-                          ) : (
-                            <TrendingDown className="h-3 w-3" />
-                          )}
-                          <span className="text-sm font-bold">
-                            {sector.change >= 0 ? "+" : ""}
-                            {sector.change}%
-                          </span>
-                        </div>
-                      </div>
-                      <div className="space-y-1 text-sm text-muted-foreground">
-                        <div className="flex justify-between">
-                          <span>Volume:</span>
-                          <span>${sector.volume}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Projects:</span>
-                          <span>{sector.projects}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            ))}
+            <div className="text-xs text-muted-foreground mt-4">
+              <p>Correlation ranges from -1 (inverse) to +1 (perfect correlation)</p>
+              <p>Values above 0.8 indicate high correlation</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
