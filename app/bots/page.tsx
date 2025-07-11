@@ -1,9 +1,9 @@
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { BotsOverview } from "@/components/bots/bots-overview"
-import { ActiveBots } from "@/components/bots/active-bots"
+import { AIActiveBots } from "@/components/bots/ai-active-bots"
 import { BotPerformance } from "@/components/bots/bot-performance"
 import { BotStrategies } from "@/components/bots/bot-strategies"
-import { CreateBotDialog } from "@/components/bots/create-bot-dialog"
+import { AIBotCreator } from "@/components/bots/ai-bot-creator"
 
 export default function BotsPage() {
   return (
@@ -11,17 +11,17 @@ export default function BotsPage() {
       <div className="container mx-auto px-4 py-8 space-y-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-white">Trading Bots</h1>
-            <p className="text-gray-400 mt-2">Automated trading strategies and bot management</p>
+            <h1 className="text-3xl font-bold text-white">AI Trading Bots</h1>
+            <p className="text-gray-400 mt-2">Advanced AI-powered automated trading strategies</p>
           </div>
-          <CreateBotDialog />
+          <AIBotCreator />
         </div>
 
         <BotsOverview />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           <div className="space-y-8">
-            <ActiveBots />
+            <AIActiveBots />
             <BotStrategies />
           </div>
 
