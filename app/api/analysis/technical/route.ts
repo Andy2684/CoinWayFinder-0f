@@ -6,54 +6,33 @@ export async function GET(request: NextRequest) {
     const symbol = searchParams.get("symbol") || "BTC"
     const timeframe = searchParams.get("timeframe") || "1h"
 
-    // In a real implementation, you would:
-    // 1. Fetch real market data from APIs like CoinGecko, Binance, etc.
-    // 2. Calculate technical indicators using libraries like tulind or talib
-    // 3. Store and retrieve historical data from a database
-
     // Mock technical analysis data
     const technicalData = {
       symbol,
       timeframe,
       indicators: {
-        rsi: 65.4,
+        rsi: 65.4 + Math.random() * 20 - 10,
         macd: {
-          macd: 0.0012,
-          signal: 0.0008,
-          histogram: 0.0004,
+          value: 0.0023 + Math.random() * 0.01 - 0.005,
+          signal: Math.random() > 0.5 ? "BUY" : "SELL",
         },
-        sma: {
-          sma20: 42150.5,
-          sma50: 41980.2,
-          sma200: 40500.8,
+        sma20: 43250.5 + Math.random() * 1000 - 500,
+        ema12: 43180.2 + Math.random() * 1000 - 500,
+        stochastic: 72.1 + Math.random() * 20 - 10,
+        bollingerBands: {
+          upper: 44000 + Math.random() * 500,
+          lower: 42000 + Math.random() * 500,
+          position: 0.85,
         },
-        ema: {
-          ema12: 42200.1,
-          ema26: 42050.3,
-        },
-        bollinger: {
-          upper: 43500.0,
-          middle: 42000.0,
-          lower: 40500.0,
-        },
-        stochastic: {
-          k: 72.3,
-          d: 68.9,
-        },
-      },
-      signals: {
-        overall: "buy",
-        strength: 7.2,
-        confidence: 0.85,
       },
       priceData: Array.from({ length: 24 }, (_, i) => ({
-        timestamp: new Date(Date.now() - (23 - i) * 3600000).toISOString(),
-        open: 41800 + Math.random() * 400,
-        high: 42200 + Math.random() * 400,
-        low: 41600 + Math.random() * 400,
-        close: 42000 + Math.random() * 400,
-        volume: 1000000 + Math.random() * 500000,
+        timestamp: new Date(Date.now() - (23 - i) * 60 * 60 * 1000).toISOString(),
+        price: 43000 + Math.random() * 2000 - 1000,
+        volume: Math.random() * 1000000,
+        rsi: 30 + Math.random() * 40,
+        macd: -0.01 + Math.random() * 0.02,
       })),
+      overallSignal: Math.random() > 0.6 ? "BUY" : Math.random() > 0.3 ? "SELL" : "NEUTRAL",
     }
 
     return NextResponse.json(technicalData)

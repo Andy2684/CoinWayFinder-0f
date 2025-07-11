@@ -2,537 +2,436 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Brain, TrendingUp, TrendingDown, AlertTriangle, Target, Zap, RefreshCw } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Brain, TrendingUp, TrendingDown, AlertCircle, RefreshCw, Target, Zap } from "lucide-react"
 
 interface AIInsight {
-  id: string
-  type: "bullish" | "bearish" | "neutral" | "warning"
   title: string
-  description: string
+  content: string
   confidence: number
-  timeframe: string
-  asset: string
-  impact: "high" | "medium" | "low"
+  category: "bullish" | "bearish" | "neutral"
   timestamp: string
 }
 
 interface TradingSignal {
-  asset: string
-  action: "buy" | "sell" | "hold"
+  symbol: string
+  action: "BUY" | "SELL" | "HOLD"
   confidence: number
   targetPrice: number
-  stopLoss: number
+  currentPrice: number
   reasoning: string
   timeframe: string
 }
 
-interface MarketPrediction {
-  asset: string
-  currentPrice: number
-  predicted1h: number
-  predicted24h: number
-  predicted7d: number
+interface PricePrediction {
+  symbol: string
+  current: number
+  predictions: {
+    "1h": { price: number; change: number }
+    "24h": { price: number; change: number }
+    "7d": { price: number; change: number }
+  }
   confidence: number
-  trend: "up" | "down" | "sideways"
 }
 
-export function AiInsights() {
+interface MarketStructure {
+  trend: "bullish" | "bearish" | "sideways"
+  strength: number
+  support: number
+  resistance: number
+  keyLevels: number[]
+  analysis: string
+}
+
+export function AIInsights() {
+  const [selectedCrypto, setSelectedCrypto] = useState("BTC")
   const [insights, setInsights] = useState<AIInsight[]>([])
-  const [signals, setSignals] = useState<TradingSignal[]>([])
-  const [predictions, setPredictions] = useState<MarketPrediction[]>([])
+  const [tradingSignals, setTradingSignals] = useState<TradingSignal[]>([])
+  const [pricePredictions, setPricePredictions] = useState<PricePrediction[]>([])
+  const [marketStructure, setMarketStructure] = useState<MarketStructure | null>(null)
   const [loading, setLoading] = useState(false)
 
-  useEffect(() => {
-    fetchAIData()
-  }, [])
+  const cryptos = [
+    { value: "BTC", label: "Bitcoin (BTC)" },
+    { value: "ETH", label: "Ethereum (ETH)" },
+    { value: "ADA", label: "Cardano (ADA)" },
+    { value: "SOL", label: "Solana (SOL)" },
+    { value: "DOT", label: "Polkadot (DOT)" },
+  ]
 
-  const fetchAIData = async () => {
+  const fetchAIInsights = async () => {
     setLoading(true)
     try {
       // Mock data for demonstration
       const mockInsights: AIInsight[] = [
         {
-          id: "1",
-          type: "bullish",
-          title: "Bitcoin Breaking Resistance",
-          description:
-            "BTC has successfully broken through the $41,500 resistance level with strong volume, indicating potential continuation to $45,000.",
+          title: "Strong Bullish Momentum Detected",
+          content:
+            "Technical indicators show strong bullish momentum with RSI breaking above 70 and MACD showing positive divergence. Volume confirmation suggests sustained upward movement.",
           confidence: 85,
-          timeframe: "4h",
-          asset: "BTC",
-          impact: "high",
+          category: "bullish",
           timestamp: "2 minutes ago",
         },
         {
-          id: "2",
-          type: "warning",
-          title: "Ethereum Divergence Alert",
-          description:
-            "ETH price is showing bearish divergence with RSI while approaching key resistance. Watch for potential reversal.",
-          confidence: 72,
-          timeframe: "1h",
-          asset: "ETH",
-          impact: "medium",
+          title: "Institutional Accumulation Pattern",
+          content:
+            "On-chain analysis reveals large wallet addresses accumulating positions over the past 48 hours. This typically precedes significant price movements.",
+          confidence: 78,
+          category: "bullish",
           timestamp: "15 minutes ago",
         },
         {
-          id: "3",
-          type: "bullish",
-          title: "Altcoin Season Indicators",
-          description:
-            "Multiple altcoins showing synchronized breakouts. Altcoin dominance increasing, suggesting rotation from BTC.",
-          confidence: 78,
-          timeframe: "1d",
-          asset: "ALTS",
-          impact: "high",
+          title: "Resistance Level Approaching",
+          content:
+            "Price is approaching a critical resistance level at $44,200. Historical data shows this level has been tested 3 times in the past month.",
+          confidence: 72,
+          category: "neutral",
           timestamp: "1 hour ago",
         },
         {
-          id: "4",
-          type: "bearish",
-          title: "Market Sentiment Cooling",
-          description:
-            "Social sentiment metrics showing decline in bullish mentions. Fear & Greed index dropping from extreme greed.",
+          title: "Market Sentiment Shift",
+          content:
+            "Social sentiment analysis indicates a shift from fear to greed over the past 24 hours. Fear & Greed index moved from 35 to 58.",
           confidence: 68,
-          timeframe: "24h",
-          asset: "MARKET",
-          impact: "medium",
+          category: "bullish",
           timestamp: "2 hours ago",
         },
       ]
 
       const mockSignals: TradingSignal[] = [
         {
-          asset: "BTC",
-          action: "buy",
+          symbol: "BTC",
+          action: "BUY",
           confidence: 82,
-          targetPrice: 45000,
-          stopLoss: 40000,
-          reasoning: "Strong breakout above resistance with high volume. RSI reset from overbought levels.",
-          timeframe: "4h-1d",
+          targetPrice: 45500,
+          currentPrice: 43200,
+          reasoning: "Breakout above key resistance with high volume confirmation",
+          timeframe: "4h",
         },
         {
-          asset: "ETH",
-          action: "hold",
+          symbol: "ETH",
+          action: "HOLD",
           confidence: 65,
-          targetPrice: 2800,
-          stopLoss: 2200,
-          reasoning: "Mixed signals. Bullish fundamentals but technical showing weakness near resistance.",
-          timeframe: "1h-4h",
+          targetPrice: 2350,
+          currentPrice: 2280,
+          reasoning: "Consolidation phase, waiting for clear direction",
+          timeframe: "1d",
         },
         {
-          asset: "ADA",
-          action: "buy",
-          confidence: 75,
-          targetPrice: 0.65,
-          stopLoss: 0.45,
-          reasoning: "Oversold bounce expected. Strong support holding and development activity increasing.",
-          timeframe: "1d-1w",
+          symbol: "ADA",
+          action: "SELL",
+          confidence: 71,
+          targetPrice: 0.58,
+          currentPrice: 0.65,
+          reasoning: "Bearish divergence on RSI with declining volume",
+          timeframe: "4h",
         },
       ]
 
-      const mockPredictions: MarketPrediction[] = [
+      const mockPredictions: PricePrediction[] = [
         {
-          asset: "BTC",
-          currentPrice: 42000,
-          predicted1h: 42150,
-          predicted24h: 43200,
-          predicted7d: 45500,
-          confidence: 78,
-          trend: "up",
+          symbol: "BTC",
+          current: 43200,
+          predictions: {
+            "1h": { price: 43450, change: 0.58 },
+            "24h": { price: 44800, change: 3.7 },
+            "7d": { price: 46200, change: 6.9 },
+          },
+          confidence: 76,
         },
         {
-          asset: "ETH",
-          currentPrice: 2500,
-          predicted1h: 2485,
-          predicted24h: 2520,
-          predicted7d: 2650,
-          confidence: 72,
-          trend: "sideways",
-        },
-        {
-          asset: "SOL",
-          currentPrice: 100,
-          predicted1h: 102,
-          predicted24h: 108,
-          predicted7d: 125,
-          confidence: 85,
-          trend: "up",
+          symbol: "ETH",
+          current: 2280,
+          predictions: {
+            "1h": { price: 2285, change: 0.22 },
+            "24h": { price: 2340, change: 2.6 },
+            "7d": { price: 2420, change: 6.1 },
+          },
+          confidence: 71,
         },
       ]
+
+      const mockStructure: MarketStructure = {
+        trend: "bullish",
+        strength: 78,
+        support: 42800,
+        resistance: 44200,
+        keyLevels: [41500, 42800, 44200, 45500, 47000],
+        analysis:
+          "Market structure shows a clear bullish bias with higher highs and higher lows. Key support at $42,800 has held multiple tests, while resistance at $44,200 is the next major hurdle. A break above this level could target $45,500 and potentially $47,000.",
+      }
 
       setInsights(mockInsights)
-      setSignals(mockSignals)
-      setPredictions(mockPredictions)
+      setTradingSignals(mockSignals)
+      setPricePredictions(mockPredictions)
+      setMarketStructure(mockStructure)
     } catch (error) {
-      console.error("Error fetching AI data:", error)
+      console.error("Error fetching AI insights:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  const getInsightIcon = (type: string) => {
-    switch (type) {
-      case "bullish":
-        return <TrendingUp className="h-4 w-4 text-green-600" />
-      case "bearish":
-        return <TrendingDown className="h-4 w-4 text-red-600" />
-      case "warning":
-        return <AlertTriangle className="h-4 w-4 text-yellow-600" />
-      default:
-        return <Brain className="h-4 w-4 text-blue-600" />
-    }
+  useEffect(() => {
+    fetchAIInsights()
+  }, [selectedCrypto])
+
+  const getConfidenceColor = (confidence: number) => {
+    if (confidence >= 80) return "text-green-600"
+    if (confidence >= 60) return "text-yellow-600"
+    return "text-red-600"
   }
 
-  const getInsightColor = (type: string) => {
-    switch (type) {
+  const getConfidenceBg = (confidence: number) => {
+    if (confidence >= 80) return "bg-green-100"
+    if (confidence >= 60) return "bg-yellow-100"
+    return "bg-red-100"
+  }
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
       case "bullish":
-        return "border-green-200 bg-green-50"
+        return "bg-green-100 text-green-800 border-green-200"
       case "bearish":
-        return "border-red-200 bg-red-50"
-      case "warning":
-        return "border-yellow-200 bg-yellow-50"
+        return "bg-red-100 text-red-800 border-red-200"
       default:
-        return "border-blue-200 bg-blue-50"
+        return "bg-gray-100 text-gray-800 border-gray-200"
     }
   }
 
   const getActionColor = (action: string) => {
     switch (action) {
-      case "buy":
-        return "bg-green-100 text-green-800"
-      case "sell":
-        return "bg-red-100 text-red-800"
+      case "BUY":
+        return "bg-green-100 text-green-800 border-green-200"
+      case "SELL":
+        return "bg-red-100 text-red-800 border-red-200"
       default:
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-gray-100 text-gray-800 border-gray-200"
     }
   }
 
   const getTrendIcon = (trend: string) => {
     switch (trend) {
-      case "up":
+      case "bullish":
         return <TrendingUp className="h-4 w-4 text-green-600" />
-      case "down":
+      case "bearish":
         return <TrendingDown className="h-4 w-4 text-red-600" />
       default:
-        return <Target className="h-4 w-4 text-yellow-600" />
+        return <AlertCircle className="h-4 w-4 text-yellow-600" />
     }
   }
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Brain className="h-5 w-5 text-purple-600" />
-              AI-Powered Market Insights
-            </div>
-            <Button variant="outline" size="sm" onClick={fetchAIData} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-          </CardTitle>
-          <CardDescription>
-            Advanced AI analysis providing market insights, trading signals, and price predictions
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card className="border-purple-200 bg-purple-50">
-              <CardContent className="p-4 text-center">
-                <Zap className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-purple-800">{insights.length}</div>
-                <div className="text-sm text-purple-600">Active Insights</div>
-              </CardContent>
-            </Card>
+      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Brain className="h-8 w-8 text-blue-600" />
+          <div>
+            <h2 className="text-2xl font-bold">AI Market Insights</h2>
+            <p className="text-muted-foreground">AI-powered analysis and predictions</p>
+          </div>
+        </div>
+        <div className="flex gap-4">
+          <Select value={selectedCrypto} onValueChange={setSelectedCrypto}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="Select cryptocurrency" />
+            </SelectTrigger>
+            <SelectContent>
+              {cryptos.map((crypto) => (
+                <SelectItem key={crypto.value} value={crypto.value}>
+                  {crypto.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button onClick={fetchAIInsights} disabled={loading} variant="outline">
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
+        </div>
+      </div>
 
-            <Card className="border-blue-200 bg-blue-50">
-              <CardContent className="p-4 text-center">
-                <Target className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-blue-800">{signals.length}</div>
-                <div className="text-sm text-blue-600">Trading Signals</div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-green-200 bg-green-50">
-              <CardContent className="p-4 text-center">
-                <Brain className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                <div className="text-2xl font-bold text-green-800">
-                  {Math.round(predictions.reduce((acc, p) => acc + p.confidence, 0) / predictions.length)}%
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-yellow-600" />
+              Latest AI Insights
+            </CardTitle>
+            <CardDescription>Real-time market analysis powered by AI</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {insights.map((insight, index) => (
+              <div key={index} className="p-4 border rounded-lg space-y-3">
+                <div className="flex items-start justify-between">
+                  <h4 className="font-medium">{insight.title}</h4>
+                  <Badge variant="outline" className={getCategoryColor(insight.category)}>
+                    {insight.category}
+                  </Badge>
                 </div>
-                <div className="text-sm text-green-600">Avg Confidence</div>
-              </CardContent>
-            </Card>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Tabs defaultValue="insights" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="insights">Market Insights</TabsTrigger>
-          <TabsTrigger value="signals">Trading Signals</TabsTrigger>
-          <TabsTrigger value="predictions">Price Predictions</TabsTrigger>
-          <TabsTrigger value="analysis">Deep Analysis</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="insights" className="space-y-4">
-          <div className="grid gap-4">
-            {insights.map((insight) => (
-              <Card key={insight.id} className={`border ${getInsightColor(insight.type)}`}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      {getInsightIcon(insight.type)}
-                      <h4 className="font-semibold">{insight.title}</h4>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge
-                        variant={
-                          insight.impact === "high"
-                            ? "destructive"
-                            : insight.impact === "medium"
-                              ? "default"
-                              : "secondary"
-                        }
-                      >
-                        {insight.impact} impact
-                      </Badge>
-                      <Badge variant="outline">{insight.asset}</Badge>
-                    </div>
+                <p className="text-sm text-muted-foreground">{insight.content}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">Confidence:</span>
+                    <Badge
+                      variant="outline"
+                      className={`${getConfidenceBg(insight.confidence)} ${getConfidenceColor(insight.confidence)} border-current`}
+                    >
+                      {insight.confidence}%
+                    </Badge>
                   </div>
-
-                  <p className="text-sm text-muted-foreground mb-3">{insight.description}</p>
-
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4 text-sm">
-                      <span>
-                        Confidence: <strong>{insight.confidence}%</strong>
-                      </span>
-                      <span>
-                        Timeframe: <strong>{insight.timeframe}</strong>
-                      </span>
-                    </div>
-                    <span className="text-xs text-muted-foreground">{insight.timestamp}</span>
-                  </div>
-
-                  <div className="mt-2">
-                    <Progress value={insight.confidence} className="h-1" />
-                  </div>
-                </CardContent>
-              </Card>
+                  <span className="text-xs text-muted-foreground">{insight.timestamp}</span>
+                </div>
+              </div>
             ))}
-          </div>
-        </TabsContent>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="signals" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            {signals.map((signal, index) => (
-              <Card key={index}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-xs font-bold">{signal.asset}</span>
-                      </div>
-                      <span className="font-semibold">{signal.asset}</span>
-                    </div>
-                    <Badge className={getActionColor(signal.action)}>{signal.action.toUpperCase()}</Badge>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-blue-600" />
+              Trading Signals
+            </CardTitle>
+            <CardDescription>AI-generated trading recommendations</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {tradingSignals.map((signal, index) => (
+              <div key={index} className="p-4 border rounded-lg space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium">{signal.symbol}</span>
+                    <Badge variant="outline" className={getActionColor(signal.action)}>
+                      {signal.action}
+                    </Badge>
                   </div>
-
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span>Target Price:</span>
-                      <span className="font-medium">${signal.targetPrice.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Stop Loss:</span>
-                      <span className="font-medium">${signal.stopLoss.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Timeframe:</span>
-                      <span className="font-medium">{signal.timeframe}</span>
-                    </div>
+                  <span className="text-sm text-muted-foreground">{signal.timeframe}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Current:</span>
+                    <span className="ml-2 font-medium">${signal.currentPrice.toLocaleString()}</span>
                   </div>
-
-                  <div className="mt-3">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>Confidence</span>
-                      <span>{signal.confidence}%</span>
-                    </div>
-                    <Progress value={signal.confidence} className="h-2" />
+                  <div>
+                    <span className="text-muted-foreground">Target:</span>
+                    <span className="ml-2 font-medium">${signal.targetPrice.toLocaleString()}</span>
                   </div>
-
-                  <div className="mt-3 p-2 bg-gray-50 rounded text-xs">
-                    <strong>Reasoning:</strong> {signal.reasoning}
-                  </div>
-                </CardContent>
-              </Card>
+                </div>
+                <p className="text-sm text-muted-foreground">{signal.reasoning}</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Confidence:</span>
+                  <Progress value={signal.confidence} className="flex-1 h-2" />
+                  <span className="text-xs font-medium">{signal.confidence}%</span>
+                </div>
+              </div>
             ))}
-          </div>
-        </TabsContent>
+          </CardContent>
+        </Card>
+      </div>
 
-        <TabsContent value="predictions" className="space-y-4">
-          <div className="grid gap-4">
-            {predictions.map((prediction, index) => (
-              <Card key={index}>
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-xs font-bold">{prediction.asset}</span>
-                      </div>
-                      <span className="font-semibold">{prediction.asset}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {getTrendIcon(prediction.trend)}
-                      <Badge variant="outline">{prediction.confidence}% confidence</Badge>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-4 gap-4 text-center">
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">Current</div>
-                      <div className="font-bold">${prediction.currentPrice.toLocaleString()}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">1 Hour</div>
-                      <div
-                        className={`font-bold ${prediction.predicted1h > prediction.currentPrice ? "text-green-600" : "text-red-600"}`}
-                      >
-                        ${prediction.predicted1h.toLocaleString()}
-                      </div>
-                      <div className="text-xs">
-                        {(((prediction.predicted1h - prediction.currentPrice) / prediction.currentPrice) * 100).toFixed(
-                          2,
-                        )}
-                        %
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Price Predictions</CardTitle>
+            <CardDescription>AI-powered price forecasts</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {pricePredictions.map((prediction, index) => (
+              <div key={index} className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-medium">{prediction.symbol}</h4>
+                  <Badge
+                    variant="outline"
+                    className={`${getConfidenceBg(prediction.confidence)} ${getConfidenceColor(prediction.confidence)} border-current`}
+                  >
+                    {prediction.confidence}% confidence
+                  </Badge>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Current Price:{" "}
+                  <span className="font-medium text-foreground">${prediction.current.toLocaleString()}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  {Object.entries(prediction.predictions).map(([timeframe, pred]) => (
+                    <div key={timeframe} className="text-center p-3 border rounded-lg">
+                      <div className="text-xs text-muted-foreground mb-1">{timeframe}</div>
+                      <div className="font-medium">${pred.price.toLocaleString()}</div>
+                      <div className={`text-xs ${pred.change >= 0 ? "text-green-600" : "text-red-600"}`}>
+                        {pred.change >= 0 ? "+" : ""}
+                        {pred.change.toFixed(1)}%
                       </div>
                     </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">24 Hours</div>
-                      <div
-                        className={`font-bold ${prediction.predicted24h > prediction.currentPrice ? "text-green-600" : "text-red-600"}`}
-                      >
-                        ${prediction.predicted24h.toLocaleString()}
-                      </div>
-                      <div className="text-xs">
-                        {(
-                          ((prediction.predicted24h - prediction.currentPrice) / prediction.currentPrice) *
-                          100
-                        ).toFixed(2)}
-                        %
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-xs text-muted-foreground mb-1">7 Days</div>
-                      <div
-                        className={`font-bold ${prediction.predicted7d > prediction.currentPrice ? "text-green-600" : "text-red-600"}`}
-                      >
-                        ${prediction.predicted7d.toLocaleString()}
-                      </div>
-                      <div className="text-xs">
-                        {(((prediction.predicted7d - prediction.currentPrice) / prediction.currentPrice) * 100).toFixed(
-                          2,
-                        )}
-                        %
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span>Prediction Confidence</span>
-                      <span>{prediction.confidence}%</span>
-                    </div>
-                    <Progress value={prediction.confidence} className="h-2" />
-                  </div>
-                </CardContent>
-              </Card>
+                  ))}
+                </div>
+              </div>
             ))}
-          </div>
-        </TabsContent>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="analysis" className="space-y-4">
+        {marketStructure && (
           <Card>
             <CardHeader>
-              <CardTitle>Deep Market Analysis</CardTitle>
-              <CardDescription>Comprehensive AI-driven market analysis and recommendations</CardDescription>
+              <CardTitle className="flex items-center gap-2">
+                Market Structure Analysis
+                {getTrendIcon(marketStructure.trend)}
+              </CardTitle>
+              <CardDescription>Deep analysis of market structure and key levels</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="space-y-6">
-                <div className="p-4 border rounded-lg">
-                  <h4 className="font-semibold mb-2 flex items-center gap-2">
-                    <Brain className="h-4 w-4 text-purple-600" />
-                    Market Structure Analysis
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    The current market structure shows a bullish bias with Bitcoin leading the charge. Key resistance
-                    levels have been broken with strong volume, indicating institutional participation.
-                  </p>
-                  <div className="grid grid-cols-3 gap-4 text-sm">
-                    <div className="text-center p-2 bg-green-50 rounded">
-                      <div className="font-bold text-green-800">Bullish</div>
-                      <div className="text-green-600">Market Trend</div>
-                    </div>
-                    <div className="text-center p-2 bg-blue-50 rounded">
-                      <div className="font-bold text-blue-800">High</div>
-                      <div className="text-blue-600">Volume</div>
-                    </div>
-                    <div className="text-center p-2 bg-purple-50 rounded">
-                      <div className="font-bold text-purple-800">Strong</div>
-                      <div className="text-purple-600">Momentum</div>
-                    </div>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 border rounded-lg text-center">
+                  <div className="text-xs text-muted-foreground mb-1">Trend</div>
+                  <div
+                    className={`font-medium capitalize ${
+                      marketStructure.trend === "bullish"
+                        ? "text-green-600"
+                        : marketStructure.trend === "bearish"
+                          ? "text-red-600"
+                          : "text-yellow-600"
+                    }`}
+                  >
+                    {marketStructure.trend}
                   </div>
                 </div>
+                <div className="p-3 border rounded-lg text-center">
+                  <div className="text-xs text-muted-foreground mb-1">Strength</div>
+                  <div className="font-medium">{marketStructure.strength}%</div>
+                </div>
+              </div>
 
-                <div className="p-4 border rounded-lg">
-                  <h4 className="font-semibold mb-2 flex items-center gap-2">
-                    <Target className="h-4 w-4 text-blue-600" />
-                    Risk Assessment
-                  </h4>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Current risk levels are moderate with some concerns around overextended positions in certain
-                    altcoins. Recommended position sizing should account for increased volatility.
-                  </p>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Overall Risk Level</span>
-                      <Badge variant="default">Moderate</Badge>
-                    </div>
-                    <Progress value={60} className="h-2" />
-                  </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 border rounded-lg text-center">
+                  <div className="text-xs text-muted-foreground mb-1">Support</div>
+                  <div className="font-medium text-green-600">${marketStructure.support.toLocaleString()}</div>
                 </div>
+                <div className="p-3 border rounded-lg text-center">
+                  <div className="text-xs text-muted-foreground mb-1">Resistance</div>
+                  <div className="font-medium text-red-600">${marketStructure.resistance.toLocaleString()}</div>
+                </div>
+              </div>
 
-                <div className="p-4 border rounded-lg">
-                  <h4 className="font-semibold mb-2 flex items-center gap-2">
-                    <Zap className="h-4 w-4 text-yellow-600" />
-                    Trading Recommendations
-                  </h4>
-                  <div className="space-y-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span>Consider increasing exposure to Layer 1 protocols on pullbacks</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                      <span>Monitor DeFi tokens for potential rotation opportunities</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                      <span>Reduce exposure to overextended meme coins</span>
-                    </div>
-                  </div>
+              <div>
+                <div className="text-sm font-medium mb-2">Key Levels</div>
+                <div className="flex flex-wrap gap-2">
+                  {marketStructure.keyLevels.map((level, index) => (
+                    <Badge key={index} variant="outline" className="text-xs">
+                      ${level.toLocaleString()}
+                    </Badge>
+                  ))}
                 </div>
+              </div>
+
+              <div>
+                <div className="text-sm font-medium mb-2">Analysis</div>
+                <p className="text-sm text-muted-foreground">{marketStructure.analysis}</p>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
     </div>
   )
 }

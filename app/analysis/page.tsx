@@ -6,18 +6,18 @@ import { TechnicalAnalysis } from "@/components/analysis/technical-analysis"
 import { SentimentAnalysis } from "@/components/analysis/sentiment-analysis"
 import { PortfolioAnalysis } from "@/components/analysis/portfolio-analysis"
 import { MarketAnalysis } from "@/components/analysis/market-analysis"
-import { AiInsights } from "@/components/analysis/ai-insights"
+import { AIInsights } from "@/components/analysis/ai-insights"
 import { CryptoScreener } from "@/components/analysis/crypto-screener"
-import { BarChart3, Brain, TrendingUp, PieChart, Activity, Search } from "lucide-react"
+import { BarChart3, Brain, TrendingUp, PieChart, Globe, Search } from "lucide-react"
 
 export default function AnalysisPage() {
   const [activeTab, setActiveTab] = useState("technical")
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-4">Crypto Analysis Tools</h1>
-        <p className="text-lg text-muted-foreground">
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex flex-col space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight">Crypto Analysis Tools</h1>
+        <p className="text-muted-foreground">
           Comprehensive analysis tools for cryptocurrency trading and investment decisions
         </p>
       </div>
@@ -25,11 +25,11 @@ export default function AnalysisPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="technical" className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
+            <BarChart3 className="h-4 w-4" />
             Technical
           </TabsTrigger>
           <TabsTrigger value="sentiment" className="flex items-center gap-2">
-            <Activity className="h-4 w-4" />
+            <TrendingUp className="h-4 w-4" />
             Sentiment
           </TabsTrigger>
           <TabsTrigger value="portfolio" className="flex items-center gap-2">
@@ -37,7 +37,7 @@ export default function AnalysisPage() {
             Portfolio
           </TabsTrigger>
           <TabsTrigger value="market" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
+            <Globe className="h-4 w-4" />
             Market
           </TabsTrigger>
           <TabsTrigger value="ai" className="flex items-center gap-2">
@@ -67,7 +67,7 @@ export default function AnalysisPage() {
         </TabsContent>
 
         <TabsContent value="ai" className="space-y-6">
-          <AiInsights />
+          <AIInsights />
         </TabsContent>
 
         <TabsContent value="screener" className="space-y-6">
