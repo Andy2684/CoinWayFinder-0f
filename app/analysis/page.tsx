@@ -1,28 +1,42 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TechnicalAnalysis } from "@/components/analysis/technical-analysis"
-import { SentimentAnalysis } from "@/components/analysis/sentiment-analysis"
-import { PortfolioAnalysis } from "@/components/analysis/portfolio-analysis"
-import { MarketAnalysis } from "@/components/analysis/market-analysis"
-import { AIInsights } from "@/components/analysis/ai-insights"
-import { CryptoScreener } from "@/components/analysis/crypto-screener"
-import { BarChart3, Brain, TrendingUp, PieChart, Globe, Search } from "lucide-react"
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TechnicalAnalysis } from "@/components/analysis/technical-analysis";
+import { SentimentAnalysis } from "@/components/analysis/sentiment-analysis";
+import { PortfolioAnalysis } from "@/components/analysis/portfolio-analysis";
+import { MarketAnalysis } from "@/components/analysis/market-analysis";
+import { AIInsights } from "@/components/analysis/ai-insights";
+import { CryptoScreener } from "@/components/analysis/crypto-screener";
+import {
+  BarChart3,
+  Brain,
+  TrendingUp,
+  PieChart,
+  Globe,
+  Search,
+} from "lucide-react";
 
 export default function AnalysisPage() {
-  const [activeTab, setActiveTab] = useState("technical")
+  const [activeTab, setActiveTab] = useState("technical");
 
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Crypto Analysis Tools</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          Crypto Analysis Tools
+        </h1>
         <p className="text-muted-foreground">
-          Comprehensive analysis tools for cryptocurrency trading and investment decisions
+          Comprehensive analysis tools for cryptocurrency trading and investment
+          decisions
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="space-y-6"
+      >
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="technical" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
@@ -75,5 +89,5 @@ export default function AnalysisPage() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

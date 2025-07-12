@@ -1,5 +1,5 @@
-import { LiveNewsFeed } from "@/components/live-news-feed"
-import { TrendingUp } from "lucide-react"
+import { LiveNewsFeed } from "@/components/live-news-feed";
+import { TrendingUp } from "lucide-react";
 
 export default function NewsPage() {
   return (
@@ -9,14 +9,19 @@ export default function NewsPage() {
         <div className="text-center mb-12">
           <div className="inline-flex items-center px-4 py-2 rounded-full bg-[#30D5C8]/10 border border-[#30D5C8]/20 mb-6">
             <TrendingUp className="w-4 h-4 text-[#30D5C8] mr-2" />
-            <span className="text-[#30D5C8] text-sm font-medium">Real-Time Market Intelligence</span>
+            <span className="text-[#30D5C8] text-sm font-medium">
+              Real-Time Market Intelligence
+            </span>
           </div>
 
-          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">📢 Live Market News</h1>
+          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-4">
+            📢 Live Market News
+          </h1>
 
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            Stay ahead of the markets with AI-powered news analysis covering crypto, stocks, and global finance. Get
-            instant insights and sentiment analysis to make informed trading decisions.
+            Stay ahead of the markets with AI-powered news analysis covering
+            crypto, stocks, and global finance. Get instant insights and
+            sentiment analysis to make informed trading decisions.
           </p>
         </div>
 
@@ -24,5 +29,5 @@ export default function NewsPage() {
         <LiveNewsFeed variant="full" />
       </div>
     </div>
-  )
+  );
 }

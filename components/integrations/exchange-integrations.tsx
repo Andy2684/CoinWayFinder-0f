@@ -1,48 +1,54 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import { Settings, CheckCircle, XCircle, AlertCircle, ExternalLink } from "lucide-react"
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import {
+  Settings,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+  ExternalLink,
+} from "lucide-react";
 
 interface Exchange {
-  id: string
-  name: string
-  logo: string
-  description: string
-  status: "connected" | "disconnected" | "error" | "pending"
-  region: string[]
+  id: string;
+  name: string;
+  logo: string;
+  description: string;
+  status: "connected" | "disconnected" | "error" | "pending";
+  region: string[];
   features: {
-    spotTrading: boolean
-    futuresTrading: boolean
-    marginTrading: boolean
-    staking: boolean
-    lending: boolean
-    nft: boolean
-    p2p: boolean
-    fiat: boolean
-  }
+    spotTrading: boolean;
+    futuresTrading: boolean;
+    marginTrading: boolean;
+    staking: boolean;
+    lending: boolean;
+    nft: boolean;
+    p2p: boolean;
+    fiat: boolean;
+  };
   fees: {
-    maker: string
-    taker: string
-    withdrawal: string
-  }
-  supportedPairs: number
-  volume24h: string
-  established: string
+    maker: string;
+    taker: string;
+    withdrawal: string;
+  };
+  supportedPairs: number;
+  volume24h: string;
+  established: string;
   security: {
-    rating: number
-    features: string[]
-  }
+    rating: number;
+    features: string[];
+  };
   apiLimits: {
-    requests: string
-    orders: string
-    websocket: string
-  }
-  documentation: string
-  testnet: boolean
+    requests: string;
+    orders: string;
+    websocket: string;
+  };
+  documentation: string;
+  testnet: boolean;
 }
 
 export function ExchangeIntegrations() {
@@ -443,49 +449,57 @@ export function ExchangeIntegrations() {
       documentation: "https://exchange-docs.crypto.com/",
       testnet: true,
     },
-  ])
+  ]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "connected":
-        return <CheckCircle className="w-5 h-5 text-green-400" />
+        return <CheckCircle className="w-5 h-5 text-green-400" />;
       case "error":
-        return <XCircle className="w-5 h-5 text-red-400" />
+        return <XCircle className="w-5 h-5 text-red-400" />;
       case "pending":
-        return <AlertCircle className="w-5 h-5 text-yellow-400" />
+        return <AlertCircle className="w-5 h-5 text-yellow-400" />;
       default:
-        return <XCircle className="w-5 h-5 text-gray-400" />
+        return <XCircle className="w-5 h-5 text-gray-400" />;
     }
-  }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "connected":
-        return "bg-green-500/10 text-green-400"
+        return "bg-green-500/10 text-green-400";
       case "error":
-        return "bg-red-500/10 text-red-400"
+        return "bg-red-500/10 text-red-400";
       case "pending":
-        return "bg-yellow-500/10 text-yellow-400"
+        return "bg-yellow-500/10 text-yellow-400";
       default:
-        return "bg-gray-500/10 text-gray-400"
+        return "bg-gray-500/10 text-gray-400";
     }
-  }
+  };
 
   const toggleConnection = (exchangeId: string) => {
     setExchanges(
       exchanges.map((exchange) =>
         exchange.id === exchangeId
-          ? { ...exchange, status: exchange.status === "connected" ? "disconnected" : "pending" }
+          ? {
+              ...exchange,
+              status:
+                exchange.status === "connected" ? "disconnected" : "pending",
+            }
           : exchange,
       ),
-    )
-  }
+    );
+  };
 
   return (
     <section className="mb-12">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-white mb-2">🏢 Supported Exchanges</h2>
-        <p className="text-gray-300">Connect to major cryptocurrency exchanges worldwide</p>
+        <h2 className="text-2xl font-bold text-white mb-2">
+          🏢 Supported Exchanges
+        </h2>
+        <p className="text-gray-300">
+          Connect to major cryptocurrency exchanges worldwide
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -499,8 +513,12 @@ export function ExchangeIntegrations() {
                 <div className="flex items-center space-x-3">
                   <div className="text-2xl">{exchange.logo}</div>
                   <div>
-                    <CardTitle className="text-white text-lg">{exchange.name}</CardTitle>
-                    <p className="text-gray-400 text-sm">{exchange.description}</p>
+                    <CardTitle className="text-white text-lg">
+                      {exchange.name}
+                    </CardTitle>
+                    <p className="text-gray-400 text-sm">
+                      {exchange.description}
+                    </p>
                   </div>
                 </div>
                 {getStatusIcon(exchange.status)}
@@ -508,7 +526,8 @@ export function ExchangeIntegrations() {
 
               <div className="flex items-center justify-between mt-4">
                 <Badge className={getStatusColor(exchange.status)}>
-                  {exchange.status.charAt(0).toUpperCase() + exchange.status.slice(1)}
+                  {exchange.status.charAt(0).toUpperCase() +
+                    exchange.status.slice(1)}
                 </Badge>
                 <div className="flex items-center space-x-2">
                   <Switch
@@ -527,11 +546,15 @@ export function ExchangeIntegrations() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-gray-400 mb-1">24h Volume</p>
-                  <p className="text-sm font-semibold text-white">{exchange.volume24h}</p>
+                  <p className="text-sm font-semibold text-white">
+                    {exchange.volume24h}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-400 mb-1">Trading Pairs</p>
-                  <p className="text-sm font-semibold text-white">{exchange.supportedPairs.toLocaleString()}</p>
+                  <p className="text-sm font-semibold text-white">
+                    {exchange.supportedPairs.toLocaleString()}
+                  </p>
                 </div>
               </div>
 
@@ -555,27 +578,42 @@ export function ExchangeIntegrations() {
                 <p className="text-xs text-gray-400 mb-2">Available Features</p>
                 <div className="flex flex-wrap gap-1">
                   {exchange.features.spotTrading && (
-                    <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
+                    <Badge
+                      variant="outline"
+                      className="text-xs border-gray-600 text-gray-300"
+                    >
                       Spot
                     </Badge>
                   )}
                   {exchange.features.futuresTrading && (
-                    <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
+                    <Badge
+                      variant="outline"
+                      className="text-xs border-gray-600 text-gray-300"
+                    >
                       Futures
                     </Badge>
                   )}
                   {exchange.features.marginTrading && (
-                    <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
+                    <Badge
+                      variant="outline"
+                      className="text-xs border-gray-600 text-gray-300"
+                    >
                       Margin
                     </Badge>
                   )}
                   {exchange.features.staking && (
-                    <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
+                    <Badge
+                      variant="outline"
+                      className="text-xs border-gray-600 text-gray-300"
+                    >
                       Staking
                     </Badge>
                   )}
                   {exchange.features.fiat && (
-                    <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
+                    <Badge
+                      variant="outline"
+                      className="text-xs border-gray-600 text-gray-300"
+                    >
                       Fiat
                     </Badge>
                   )}
@@ -592,17 +630,24 @@ export function ExchangeIntegrations() {
                         <div
                           key={i}
                           className={`w-2 h-2 rounded-full ${
-                            i < exchange.security.rating ? "bg-[#30D5C8]" : "bg-gray-700"
+                            i < exchange.security.rating
+                              ? "bg-[#30D5C8]"
+                              : "bg-gray-700"
                           }`}
                         />
                       ))}
                     </div>
-                    <span className="text-sm text-white">{exchange.security.rating}/10</span>
+                    <span className="text-sm text-white">
+                      {exchange.security.rating}/10
+                    </span>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   {exchange.testnet && (
-                    <Badge variant="outline" className="text-xs border-[#30D5C8]/20 text-[#30D5C8]">
+                    <Badge
+                      variant="outline"
+                      className="text-xs border-[#30D5C8]/20 text-[#30D5C8]"
+                    >
                       Testnet
                     </Badge>
                   )}
@@ -623,7 +668,11 @@ export function ExchangeIntegrations() {
                   className="border-gray-600 text-white hover:bg-gray-800 bg-transparent"
                   asChild
                 >
-                  <a href={exchange.documentation} target="_blank" rel="noopener noreferrer">
+                  <a
+                    href={exchange.documentation}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
                     <ExternalLink className="w-4 h-4" />
                   </a>
                 </Button>
@@ -633,5 +682,5 @@ export function ExchangeIntegrations() {
         ))}
       </div>
     </section>
-  )
+  );
 }

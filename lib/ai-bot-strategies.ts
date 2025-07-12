@@ -1,40 +1,47 @@
 // Advanced AI-powered trading bot strategies
 
 export interface AIBotStrategy {
-  id: string
-  name: string
-  description: string
-  category: "ai-dca" | "ai-scalping" | "ai-long-short" | "ai-trend" | "ai-grid" | "ai-arbitrage"
-  aiFeatures: string[]
-  difficulty: "Beginner" | "Intermediate" | "Advanced" | "Expert"
-  riskLevel: "Low" | "Medium" | "Medium-High" | "High"
-  timeframe: string
-  minInvestment: number
-  avgReturn: string
-  successRate: number
-  features: string[]
-  aiModels: string[]
-  parameters: AIBotParameter[]
+  id: string;
+  name: string;
+  description: string;
+  category:
+    | "ai-dca"
+    | "ai-scalping"
+    | "ai-long-short"
+    | "ai-trend"
+    | "ai-grid"
+    | "ai-arbitrage";
+  aiFeatures: string[];
+  difficulty: "Beginner" | "Intermediate" | "Advanced" | "Expert";
+  riskLevel: "Low" | "Medium" | "Medium-High" | "High";
+  timeframe: string;
+  minInvestment: number;
+  avgReturn: string;
+  successRate: number;
+  features: string[];
+  aiModels: string[];
+  parameters: AIBotParameter[];
 }
 
 export interface AIBotParameter {
-  key: string
-  name: string
-  type: "number" | "percentage" | "boolean" | "select" | "ai-model"
-  defaultValue: any
-  min?: number
-  max?: number
-  step?: number
-  options?: string[]
-  aiOptimized?: boolean
-  description: string
+  key: string;
+  name: string;
+  type: "number" | "percentage" | "boolean" | "select" | "ai-model";
+  defaultValue: any;
+  min?: number;
+  max?: number;
+  step?: number;
+  options?: string[];
+  aiOptimized?: boolean;
+  description: string;
 }
 
 export const aiBotStrategies: AIBotStrategy[] = [
   {
     id: "ai-dca-plus",
     name: "AI-Enhanced DCA",
-    description: "Smart DCA with AI-powered timing optimization and market sentiment analysis",
+    description:
+      "Smart DCA with AI-powered timing optimization and market sentiment analysis",
     category: "ai-dca",
     aiFeatures: [
       "Market sentiment analysis",
@@ -56,7 +63,11 @@ export const aiBotStrategies: AIBotStrategy[] = [
       "Multi-factor analysis",
       "Risk-adjusted positioning",
     ],
-    aiModels: ["LSTM Neural Network", "Sentiment Analyzer", "Market Regime Detector"],
+    aiModels: [
+      "LSTM Neural Network",
+      "Sentiment Analyzer",
+      "Market Regime Detector",
+    ],
     parameters: [
       {
         key: "baseInterval",
@@ -90,7 +101,8 @@ export const aiBotStrategies: AIBotStrategy[] = [
   {
     id: "ai-scalping-pro",
     name: "AI Scalping Pro",
-    description: "Ultra-fast AI scalping with microsecond execution and pattern recognition",
+    description:
+      "Ultra-fast AI scalping with microsecond execution and pattern recognition",
     category: "ai-scalping",
     aiFeatures: [
       "Real-time pattern recognition",
@@ -112,7 +124,11 @@ export const aiBotStrategies: AIBotStrategy[] = [
       "Liquidity-aware sizing",
       "Multi-exchange arbitrage",
     ],
-    aiModels: ["CNN Pattern Detector", "Reinforcement Learning Agent", "Order Flow Predictor"],
+    aiModels: [
+      "CNN Pattern Detector",
+      "Reinforcement Learning Agent",
+      "Order Flow Predictor",
+    ],
     parameters: [
       {
         key: "patternConfidence",
@@ -149,7 +165,8 @@ export const aiBotStrategies: AIBotStrategy[] = [
   {
     id: "ai-long-short",
     name: "AI Long/Short Master",
-    description: "Advanced AI strategy for both long and short positions with market regime detection",
+    description:
+      "Advanced AI strategy for both long and short positions with market regime detection",
     category: "ai-long-short",
     aiFeatures: [
       "Market regime classification",
@@ -206,7 +223,8 @@ export const aiBotStrategies: AIBotStrategy[] = [
   {
     id: "ai-trend-master",
     name: "AI Trend Master",
-    description: "Advanced trend following with AI-powered trend strength and reversal prediction",
+    description:
+      "Advanced trend following with AI-powered trend strength and reversal prediction",
     category: "ai-trend",
     aiFeatures: [
       "Trend strength quantification",
@@ -263,7 +281,8 @@ export const aiBotStrategies: AIBotStrategy[] = [
   {
     id: "ai-grid-adaptive",
     name: "AI Adaptive Grid",
-    description: "Self-adjusting grid trading with AI-powered range detection and volatility adaptation",
+    description:
+      "Self-adjusting grid trading with AI-powered range detection and volatility adaptation",
     category: "ai-grid",
     aiFeatures: [
       "Dynamic range detection",
@@ -320,7 +339,8 @@ export const aiBotStrategies: AIBotStrategy[] = [
   {
     id: "ai-arbitrage-hunter",
     name: "AI Arbitrage Hunter",
-    description: "Cross-exchange arbitrage with AI-powered opportunity detection and execution optimization",
+    description:
+      "Cross-exchange arbitrage with AI-powered opportunity detection and execution optimization",
     category: "ai-arbitrage",
     aiFeatures: [
       "Cross-exchange price prediction",
@@ -374,10 +394,10 @@ export const aiBotStrategies: AIBotStrategy[] = [
       },
     ],
   },
-]
+];
 
 export function getAIBotStrategy(id: string): AIBotStrategy | undefined {
-  return aiBotStrategies.find((strategy) => strategy.id === id)
+  return aiBotStrategies.find((strategy) => strategy.id === id);
 }
 
 export function calculateAIEstimatedReturns(
@@ -385,112 +405,145 @@ export function calculateAIEstimatedReturns(
   investment: number,
   timeframe: "1m" | "3m" | "6m" | "1y",
   aiOptimization = true,
-): { conservative: number; realistic: number; optimistic: number; aiBonus: number } {
+): {
+  conservative: number;
+  realistic: number;
+  optimistic: number;
+  aiBonus: number;
+} {
   const baseReturns = {
     "ai-dca-plus": { conservative: 0.08, realistic: 0.2, optimistic: 0.3 },
     "ai-scalping-pro": { conservative: 0.15, realistic: 0.45, optimistic: 0.7 },
     "ai-long-short": { conservative: 0.12, realistic: 0.35, optimistic: 0.55 },
-    "ai-trend-master": { conservative: 0.1, realistic: 0.275, optimistic: 0.45 },
-    "ai-grid-adaptive": { conservative: 0.09, realistic: 0.24, optimistic: 0.4 },
-    "ai-arbitrage-hunter": { conservative: 0.05, realistic: 0.13, optimistic: 0.22 },
-  }
+    "ai-trend-master": {
+      conservative: 0.1,
+      realistic: 0.275,
+      optimistic: 0.45,
+    },
+    "ai-grid-adaptive": {
+      conservative: 0.09,
+      realistic: 0.24,
+      optimistic: 0.4,
+    },
+    "ai-arbitrage-hunter": {
+      conservative: 0.05,
+      realistic: 0.13,
+      optimistic: 0.22,
+    },
+  };
 
   const timeMultiplier = {
     "1m": 1 / 12,
     "3m": 3 / 12,
     "6m": 6 / 12,
     "1y": 1,
-  }
+  };
 
-  const returns = baseReturns[strategy as keyof typeof baseReturns] || baseReturns["ai-dca-plus"]
-  const multiplier = timeMultiplier[timeframe]
-  const aiBonus = aiOptimization ? 0.15 : 0 // 15% AI optimization bonus
+  const returns =
+    baseReturns[strategy as keyof typeof baseReturns] ||
+    baseReturns["ai-dca-plus"];
+  const multiplier = timeMultiplier[timeframe];
+  const aiBonus = aiOptimization ? 0.15 : 0; // 15% AI optimization bonus
 
   return {
-    conservative: investment * (1 + (returns.conservative + aiBonus * 0.3) * multiplier) - investment,
-    realistic: investment * (1 + (returns.realistic + aiBonus * 0.5) * multiplier) - investment,
-    optimistic: investment * (1 + (returns.optimistic + aiBonus * 0.7) * multiplier) - investment,
+    conservative:
+      investment * (1 + (returns.conservative + aiBonus * 0.3) * multiplier) -
+      investment,
+    realistic:
+      investment * (1 + (returns.realistic + aiBonus * 0.5) * multiplier) -
+      investment,
+    optimistic:
+      investment * (1 + (returns.optimistic + aiBonus * 0.7) * multiplier) -
+      investment,
     aiBonus: investment * aiBonus * multiplier,
-  }
+  };
 }
 
 export interface AIBotConfig {
-  strategyId: string
-  name: string
-  investment: number
-  parameters: Record<string, any>
-  aiOptimization: boolean
+  strategyId: string;
+  name: string;
+  investment: number;
+  parameters: Record<string, any>;
+  aiOptimization: boolean;
   riskManagement: {
-    stopLoss: number
-    takeProfit: number
-    maxDrawdown: number
-    positionSizing: "fixed" | "kelly" | "ai-optimized"
-  }
+    stopLoss: number;
+    takeProfit: number;
+    maxDrawdown: number;
+    positionSizing: "fixed" | "kelly" | "ai-optimized";
+  };
   notifications: {
-    email: boolean
-    telegram: boolean
-    discord: boolean
-  }
+    email: boolean;
+    telegram: boolean;
+    discord: boolean;
+  };
 }
 
 export class AIBotManager {
-  private activeBots: Map<string, AIBotConfig> = new Map()
+  private activeBots: Map<string, AIBotConfig> = new Map();
 
   createBot(config: AIBotConfig): string {
-    const botId = `ai-bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-    this.activeBots.set(botId, config)
-    return botId
+    const botId = `ai-bot-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    this.activeBots.set(botId, config);
+    return botId;
   }
 
   getBotConfig(botId: string): AIBotConfig | undefined {
-    return this.activeBots.get(botId)
+    return this.activeBots.get(botId);
   }
 
   updateBotConfig(botId: string, updates: Partial<AIBotConfig>): boolean {
-    const existing = this.activeBots.get(botId)
-    if (!existing) return false
+    const existing = this.activeBots.get(botId);
+    if (!existing) return false;
 
-    this.activeBots.set(botId, { ...existing, ...updates })
-    return true
+    this.activeBots.set(botId, { ...existing, ...updates });
+    return true;
   }
 
   getAllBots(): Array<{ id: string; config: AIBotConfig }> {
-    return Array.from(this.activeBots.entries()).map(([id, config]) => ({ id, config }))
+    return Array.from(this.activeBots.entries()).map(([id, config]) => ({
+      id,
+      config,
+    }));
   }
 
   deleteBot(botId: string): boolean {
-    return this.activeBots.delete(botId)
+    return this.activeBots.delete(botId);
   }
 
-  optimizeParameters(strategyId: string, marketConditions: any): Record<string, any> {
+  optimizeParameters(
+    strategyId: string,
+    marketConditions: any,
+  ): Record<string, any> {
     // AI parameter optimization based on current market conditions
-    const strategy = getAIBotStrategy(strategyId)
-    if (!strategy) return {}
+    const strategy = getAIBotStrategy(strategyId);
+    if (!strategy) return {};
 
-    const optimizedParams: Record<string, any> = {}
+    const optimizedParams: Record<string, any> = {};
 
     strategy.parameters.forEach((param) => {
       if (param.aiOptimized) {
         // Simulate AI optimization
         switch (param.type) {
           case "percentage":
-            const range = (param.max || 100) - (param.min || 0)
-            const volatilityAdjustment = marketConditions?.volatility || 0.5
-            optimizedParams[param.key] = param.defaultValue + range * 0.1 * (volatilityAdjustment - 0.5)
-            break
+            const range = (param.max || 100) - (param.min || 0);
+            const volatilityAdjustment = marketConditions?.volatility || 0.5;
+            optimizedParams[param.key] =
+              param.defaultValue + range * 0.1 * (volatilityAdjustment - 0.5);
+            break;
           case "boolean":
-            optimizedParams[param.key] = marketConditions?.trend === "strong" ? true : param.defaultValue
-            break
+            optimizedParams[param.key] =
+              marketConditions?.trend === "strong" ? true : param.defaultValue;
+            break;
           default:
-            optimizedParams[param.key] = param.defaultValue
+            optimizedParams[param.key] = param.defaultValue;
         }
       } else {
-        optimizedParams[param.key] = param.defaultValue
+        optimizedParams[param.key] = param.defaultValue;
       }
-    })
+    });
 
-    return optimizedParams
+    return optimizedParams;
   }
 }
 
-export const aiBotManager = new AIBotManager()
+export const aiBotManager = new AIBotManager();

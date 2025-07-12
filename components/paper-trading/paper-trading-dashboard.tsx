@@ -1,68 +1,77 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Switch } from "@/components/ui/switch"
-import { Progress } from "@/components/ui/progress"
-import { RotateCcw, TrendingUp, TrendingDown, DollarSign, Target, BarChart3, Settings, TestTube } from "lucide-react"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Progress } from "@/components/ui/progress";
+import {
+  RotateCcw,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Target,
+  BarChart3,
+  Settings,
+  TestTube,
+} from "lucide-react";
 
 interface PaperAccount {
-  id: string
-  name: string
-  initialBalance: number
-  currentBalance: number
-  totalPnL: number
-  totalPnLPercentage: number
-  totalTrades: number
-  winningTrades: number
-  losingTrades: number
-  winRate: number
-  maxDrawdown: number
-  sharpeRatio: number
-  createdAt: string
-  isActive: boolean
+  id: string;
+  name: string;
+  initialBalance: number;
+  currentBalance: number;
+  totalPnL: number;
+  totalPnLPercentage: number;
+  totalTrades: number;
+  winningTrades: number;
+  losingTrades: number;
+  winRate: number;
+  maxDrawdown: number;
+  sharpeRatio: number;
+  createdAt: string;
+  isActive: boolean;
 }
 
 interface PaperPosition {
-  id: string
-  symbol: string
-  side: "LONG" | "SHORT"
-  entryPrice: number
-  currentPrice: number
-  quantity: number
-  unrealizedPnL: number
-  unrealizedPnLPercentage: number
-  entryTime: string
-  strategy: string
-  stopLoss?: number
-  takeProfit?: number
+  id: string;
+  symbol: string;
+  side: "LONG" | "SHORT";
+  entryPrice: number;
+  currentPrice: number;
+  quantity: number;
+  unrealizedPnL: number;
+  unrealizedPnLPercentage: number;
+  entryTime: string;
+  strategy: string;
+  stopLoss?: number;
+  takeProfit?: number;
 }
 
 interface PaperTrade {
-  id: string
-  symbol: string
-  side: "BUY" | "SELL"
-  entryPrice: number
-  exitPrice: number
-  quantity: number
-  pnl: number
-  pnlPercentage: number
-  fees: number
-  entryTime: string
-  exitTime: string
-  strategy: string
-  duration: string
+  id: string;
+  symbol: string;
+  side: "BUY" | "SELL";
+  entryPrice: number;
+  exitPrice: number;
+  quantity: number;
+  pnl: number;
+  pnlPercentage: number;
+  fees: number;
+  entryTime: string;
+  exitTime: string;
+  strategy: string;
+  duration: string;
 }
 
 export function PaperTradingDashboard() {
-  const [paperAccount, setPaperAccount] = useState<PaperAccount | null>(null)
-  const [positions, setPositions] = useState<PaperPosition[]>([])
-  const [trades, setTrades] = useState<PaperTrade[]>([])
-  const [isSimulating, setIsSimulating] = useState(false)
-  const [selectedStrategy, setSelectedStrategy] = useState("all")
+  const [paperAccount, setPaperAccount] = useState<PaperAccount | null>(null);
+  const [positions, setPositions] = useState<PaperPosition[]>([]);
+  const [trades, setTrades] = useState<PaperTrade[]>([]);
+  const [isSimulating, setIsSimulating] = useState(false);
+  const [selectedStrategy, setSelectedStrategy] = useState("all");
 
   useEffect(() => {
     // Initialize mock paper trading account
@@ -81,7 +90,7 @@ export function PaperTradingDashboard() {
       sharpeRatio: 1.85,
       createdAt: "2024-01-01T00:00:00Z",
       isActive: true,
-    }
+    };
 
     const mockPositions: PaperPosition[] = [
       {
@@ -126,7 +135,7 @@ export function PaperTradingDashboard() {
         stopLoss: 95.8,
         takeProfit: 105.2,
       },
-    ]
+    ];
 
     const mockTrades: PaperTrade[] = [
       {
@@ -174,55 +183,61 @@ export function PaperTradingDashboard() {
         strategy: "MACD Crossover",
         duration: "8h 25m",
       },
-    ]
+    ];
 
-    setPaperAccount(mockAccount)
-    setPositions(mockPositions)
-    setTrades(mockTrades)
-  }, [])
+    setPaperAccount(mockAccount);
+    setPositions(mockPositions);
+    setTrades(mockTrades);
+  }, []);
 
   // Simulate real-time price updates
   useEffect(() => {
-    if (!isSimulating) return
+    if (!isSimulating) return;
 
     const interval = setInterval(() => {
       setPositions((prev) =>
         prev.map((position) => {
-          const priceChange = (Math.random() - 0.5) * position.currentPrice * 0.01
-          const newPrice = Math.max(0, position.currentPrice + priceChange)
+          const priceChange =
+            (Math.random() - 0.5) * position.currentPrice * 0.01;
+          const newPrice = Math.max(0, position.currentPrice + priceChange);
 
           const pnl =
             position.side === "LONG"
               ? (newPrice - position.entryPrice) * position.quantity
-              : (position.entryPrice - newPrice) * position.quantity
+              : (position.entryPrice - newPrice) * position.quantity;
 
-          const pnlPercentage = (pnl / (position.entryPrice * position.quantity)) * 100
+          const pnlPercentage =
+            (pnl / (position.entryPrice * position.quantity)) * 100;
 
           return {
             ...position,
             currentPrice: newPrice,
             unrealizedPnL: pnl,
             unrealizedPnLPercentage: pnlPercentage,
-          }
+          };
         }),
-      )
+      );
 
       // Update account balance based on position changes
       setPaperAccount((prev) => {
-        if (!prev) return prev
+        if (!prev) return prev;
 
-        const totalUnrealizedPnL = positions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
-        const newBalance = prev.initialBalance + prev.totalPnL + totalUnrealizedPnL
+        const totalUnrealizedPnL = positions.reduce(
+          (sum, pos) => sum + pos.unrealizedPnL,
+          0,
+        );
+        const newBalance =
+          prev.initialBalance + prev.totalPnL + totalUnrealizedPnL;
 
         return {
           ...prev,
           currentBalance: newBalance,
-        }
-      })
-    }, 2000)
+        };
+      });
+    }, 2000);
 
-    return () => clearInterval(interval)
-  }, [isSimulating, positions])
+    return () => clearInterval(interval);
+  }, [isSimulating, positions]);
 
   const resetAccount = () => {
     if (paperAccount) {
@@ -237,32 +252,43 @@ export function PaperTradingDashboard() {
         winRate: 0,
         maxDrawdown: 0,
         sharpeRatio: 0,
-      })
-      setPositions([])
-      setTrades([])
+      });
+      setPositions([]);
+      setTrades([]);
     }
-  }
+  };
 
-  const totalUnrealizedPnL = positions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0)
-  const totalRealizedPnL = trades.reduce((sum, trade) => sum + trade.pnl, 0)
-  const recentTrades = trades.slice(0, 5)
+  const totalUnrealizedPnL = positions.reduce(
+    (sum, pos) => sum + pos.unrealizedPnL,
+    0,
+  );
+  const totalRealizedPnL = trades.reduce((sum, trade) => sum + trade.pnl, 0);
+  const recentTrades = trades.slice(0, 5);
 
-  if (!paperAccount) return null
+  if (!paperAccount) return null;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">🧪 Paper Trading</h1>
-          <p className="text-gray-300">Test strategies with simulated trading environment</p>
+          <h1 className="text-3xl font-bold text-white mb-2">
+            🧪 Paper Trading
+          </h1>
+          <p className="text-gray-300">
+            Test strategies with simulated trading environment
+          </p>
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
             <Switch checked={isSimulating} onCheckedChange={setIsSimulating} />
             <span className="text-sm text-gray-300">Live Simulation</span>
           </div>
-          <Button variant="outline" onClick={resetAccount} className="border-gray-600 hover:bg-gray-800 bg-transparent">
+          <Button
+            variant="outline"
+            onClick={resetAccount}
+            className="border-gray-600 hover:bg-gray-800 bg-transparent"
+          >
             <RotateCcw className="w-4 h-4 mr-2" />
             Reset Account
           </Button>
@@ -280,8 +306,12 @@ export function PaperTradingDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Account Balance</p>
-                <p className="text-2xl font-bold text-white">${paperAccount.currentBalance.toLocaleString()}</p>
-                <p className="text-xs text-gray-400 mt-1">Initial: ${paperAccount.initialBalance.toLocaleString()}</p>
+                <p className="text-2xl font-bold text-white">
+                  ${paperAccount.currentBalance.toLocaleString()}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Initial: ${paperAccount.initialBalance.toLocaleString()}
+                </p>
               </div>
               <DollarSign className="w-8 h-8 text-[#30D5C8]" />
             </div>
@@ -293,8 +323,11 @@ export function PaperTradingDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Total P&L</p>
-                <p className={`text-2xl font-bold ${paperAccount.totalPnL >= 0 ? "text-green-400" : "text-red-400"}`}>
-                  {paperAccount.totalPnL >= 0 ? "+" : ""}${paperAccount.totalPnL.toFixed(2)}
+                <p
+                  className={`text-2xl font-bold ${paperAccount.totalPnL >= 0 ? "text-green-400" : "text-red-400"}`}
+                >
+                  {paperAccount.totalPnL >= 0 ? "+" : ""}$
+                  {paperAccount.totalPnL.toFixed(2)}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
                   {paperAccount.totalPnLPercentage >= 0 ? "+" : ""}
@@ -311,7 +344,9 @@ export function PaperTradingDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Win Rate</p>
-                <p className="text-2xl font-bold text-white">{paperAccount.winRate.toFixed(1)}%</p>
+                <p className="text-2xl font-bold text-white">
+                  {paperAccount.winRate.toFixed(1)}%
+                </p>
                 <p className="text-xs text-gray-400 mt-1">
                   {paperAccount.winningTrades}W / {paperAccount.losingTrades}L
                 </p>
@@ -326,8 +361,12 @@ export function PaperTradingDashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Sharpe Ratio</p>
-                <p className="text-2xl font-bold text-white">{paperAccount.sharpeRatio.toFixed(2)}</p>
-                <p className="text-xs text-gray-400 mt-1">Max DD: {paperAccount.maxDrawdown.toFixed(1)}%</p>
+                <p className="text-2xl font-bold text-white">
+                  {paperAccount.sharpeRatio.toFixed(2)}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">
+                  Max DD: {paperAccount.maxDrawdown.toFixed(1)}%
+                </p>
               </div>
               <BarChart3 className="w-8 h-8 text-purple-400" />
             </div>
@@ -337,8 +376,12 @@ export function PaperTradingDashboard() {
 
       <Tabs defaultValue="positions" className="space-y-6">
         <TabsList className="bg-[#1A1B23] border-gray-800">
-          <TabsTrigger value="positions">Open Positions ({positions.length})</TabsTrigger>
-          <TabsTrigger value="trades">Trade History ({trades.length})</TabsTrigger>
+          <TabsTrigger value="positions">
+            Open Positions ({positions.length})
+          </TabsTrigger>
+          <TabsTrigger value="trades">
+            Trade History ({trades.length})
+          </TabsTrigger>
           <TabsTrigger value="performance">Performance</TabsTrigger>
           <TabsTrigger value="strategies">Strategy Testing</TabsTrigger>
         </TabsList>
@@ -355,7 +398,9 @@ export function PaperTradingDashboard() {
                       <TrendingDown className="w-5 h-5 text-red-400" />
                     )}
                     <div>
-                      <h3 className="text-lg font-semibold text-white">{position.symbol}</h3>
+                      <h3 className="text-lg font-semibold text-white">
+                        {position.symbol}
+                      </h3>
                       <p className="text-sm text-gray-400">
                         {position.strategy} • {position.side}
                       </p>
@@ -365,7 +410,8 @@ export function PaperTradingDashboard() {
                     <p
                       className={`text-lg font-bold ${position.unrealizedPnL >= 0 ? "text-green-400" : "text-red-400"}`}
                     >
-                      {position.unrealizedPnL >= 0 ? "+" : ""}${position.unrealizedPnL.toFixed(2)}
+                      {position.unrealizedPnL >= 0 ? "+" : ""}$
+                      {position.unrealizedPnL.toFixed(2)}
                     </p>
                     <p
                       className={`text-sm ${position.unrealizedPnLPercentage >= 0 ? "text-green-400" : "text-red-400"}`}
@@ -381,26 +427,36 @@ export function PaperTradingDashboard() {
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Entry Price</p>
-                    <p className="text-sm font-medium text-white">${position.entryPrice.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-white">
+                      ${position.entryPrice.toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Current Price</p>
-                    <p className="text-sm font-medium text-white">${position.currentPrice.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-white">
+                      ${position.currentPrice.toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Quantity</p>
-                    <p className="text-sm font-medium text-white">{position.quantity}</p>
+                    <p className="text-sm font-medium text-white">
+                      {position.quantity}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Stop Loss</p>
                     <p className="text-sm font-medium text-red-400">
-                      {position.stopLoss ? `$${position.stopLoss.toLocaleString()}` : "None"}
+                      {position.stopLoss
+                        ? `$${position.stopLoss.toLocaleString()}`
+                        : "None"}
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Take Profit</p>
                     <p className="text-sm font-medium text-green-400">
-                      {position.takeProfit ? `$${position.takeProfit.toLocaleString()}` : "None"}
+                      {position.takeProfit
+                        ? `$${position.takeProfit.toLocaleString()}`
+                        : "None"}
                     </p>
                   </div>
                 </div>
@@ -409,12 +465,17 @@ export function PaperTradingDashboard() {
                   <div>
                     <p className="text-xs text-gray-400">Position Value</p>
                     <p className="text-sm font-medium text-white">
-                      ${(position.currentPrice * position.quantity).toLocaleString()}
+                      $
+                      {(
+                        position.currentPrice * position.quantity
+                      ).toLocaleString()}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-xs text-gray-400">Entry Time</p>
-                    <p className="text-sm text-white">{new Date(position.entryTime).toLocaleString()}</p>
+                    <p className="text-sm text-white">
+                      {new Date(position.entryTime).toLocaleString()}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -426,7 +487,9 @@ export function PaperTradingDashboard() {
               <CardContent className="p-8 text-center">
                 <TestTube className="w-12 h-12 text-gray-600 mx-auto mb-4" />
                 <p className="text-gray-400">No open positions</p>
-                <p className="text-sm text-gray-500 mt-2">Start testing strategies to see positions here</p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Start testing strategies to see positions here
+                </p>
               </CardContent>
             </Card>
           )}
@@ -453,10 +516,14 @@ export function PaperTradingDashboard() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`font-medium ${trade.pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    <p
+                      className={`font-medium ${trade.pnl >= 0 ? "text-green-400" : "text-red-400"}`}
+                    >
                       {trade.pnl >= 0 ? "+" : ""}${trade.pnl.toFixed(2)}
                     </p>
-                    <p className={`text-xs ${trade.pnlPercentage >= 0 ? "text-green-400" : "text-red-400"}`}>
+                    <p
+                      className={`text-xs ${trade.pnlPercentage >= 0 ? "text-green-400" : "text-red-400"}`}
+                    >
                       {trade.pnlPercentage >= 0 ? "+" : ""}
                       {trade.pnlPercentage.toFixed(2)}%
                     </p>
@@ -466,11 +533,15 @@ export function PaperTradingDashboard() {
                 <div className="grid grid-cols-4 gap-4 mt-3 pt-3 border-t border-gray-800">
                   <div>
                     <p className="text-xs text-gray-400">Entry</p>
-                    <p className="text-sm text-white">${trade.entryPrice.toLocaleString()}</p>
+                    <p className="text-sm text-white">
+                      ${trade.entryPrice.toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">Exit</p>
-                    <p className="text-sm text-white">${trade.exitPrice.toLocaleString()}</p>
+                    <p className="text-sm text-white">
+                      ${trade.exitPrice.toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">Quantity</p>
@@ -478,7 +549,9 @@ export function PaperTradingDashboard() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">Fees</p>
-                    <p className="text-sm text-white">${trade.fees.toFixed(2)}</p>
+                    <p className="text-sm text-white">
+                      ${trade.fees.toFixed(2)}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -490,7 +563,9 @@ export function PaperTradingDashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card className="bg-[#1A1B23] border-gray-800">
               <CardHeader>
-                <CardTitle className="text-white">Performance Metrics</CardTitle>
+                <CardTitle className="text-white">
+                  Performance Metrics
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
@@ -504,19 +579,27 @@ export function PaperTradingDashboard() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Sharpe Ratio</span>
-                  <span className="text-white font-medium">{paperAccount.sharpeRatio.toFixed(2)}</span>
+                  <span className="text-white font-medium">
+                    {paperAccount.sharpeRatio.toFixed(2)}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Max Drawdown</span>
-                  <span className="text-red-400 font-medium">{paperAccount.maxDrawdown.toFixed(2)}%</span>
+                  <span className="text-red-400 font-medium">
+                    {paperAccount.maxDrawdown.toFixed(2)}%
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Win Rate</span>
-                  <span className="text-white font-medium">{paperAccount.winRate.toFixed(1)}%</span>
+                  <span className="text-white font-medium">
+                    {paperAccount.winRate.toFixed(1)}%
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Total Trades</span>
-                  <span className="text-white font-medium">{paperAccount.totalTrades}</span>
+                  <span className="text-white font-medium">
+                    {paperAccount.totalTrades}
+                  </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Avg Trade Duration</span>
@@ -533,19 +616,31 @@ export function PaperTradingDashboard() {
                 <div className="flex justify-between">
                   <span className="text-gray-400">Current Exposure</span>
                   <span className="text-white font-medium">
-                    ${positions.reduce((sum, pos) => sum + pos.currentPrice * pos.quantity, 0).toLocaleString()}
+                    $
+                    {positions
+                      .reduce(
+                        (sum, pos) => sum + pos.currentPrice * pos.quantity,
+                        0,
+                      )
+                      .toLocaleString()}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Unrealized P&L</span>
-                  <span className={`font-medium ${totalUnrealizedPnL >= 0 ? "text-green-400" : "text-red-400"}`}>
-                    {totalUnrealizedPnL >= 0 ? "+" : ""}${totalUnrealizedPnL.toFixed(2)}
+                  <span
+                    className={`font-medium ${totalUnrealizedPnL >= 0 ? "text-green-400" : "text-red-400"}`}
+                  >
+                    {totalUnrealizedPnL >= 0 ? "+" : ""}$
+                    {totalUnrealizedPnL.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Realized P&L</span>
-                  <span className={`font-medium ${totalRealizedPnL >= 0 ? "text-green-400" : "text-red-400"}`}>
-                    {totalRealizedPnL >= 0 ? "+" : ""}${totalRealizedPnL.toFixed(2)}
+                  <span
+                    className={`font-medium ${totalRealizedPnL >= 0 ? "text-green-400" : "text-red-400"}`}
+                  >
+                    {totalRealizedPnL >= 0 ? "+" : ""}$
+                    {totalRealizedPnL.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -568,34 +663,76 @@ export function PaperTradingDashboard() {
         <TabsContent value="strategies" className="space-y-4">
           <Card className="bg-[#1A1B23] border-gray-800">
             <CardHeader>
-              <CardTitle className="text-white">Strategy Performance Comparison</CardTitle>
+              <CardTitle className="text-white">
+                Strategy Performance Comparison
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {[
-                  { name: "RSI Divergence", trades: 12, winRate: 75, pnl: 450, sharpe: 2.1 },
-                  { name: "MACD Crossover", trades: 8, winRate: 62.5, pnl: 320, sharpe: 1.8 },
-                  { name: "Bollinger Squeeze", trades: 15, winRate: 60, pnl: 280, sharpe: 1.6 },
-                  { name: "AI Pattern", trades: 10, winRate: 70, pnl: 200, sharpe: 1.4 },
+                  {
+                    name: "RSI Divergence",
+                    trades: 12,
+                    winRate: 75,
+                    pnl: 450,
+                    sharpe: 2.1,
+                  },
+                  {
+                    name: "MACD Crossover",
+                    trades: 8,
+                    winRate: 62.5,
+                    pnl: 320,
+                    sharpe: 1.8,
+                  },
+                  {
+                    name: "Bollinger Squeeze",
+                    trades: 15,
+                    winRate: 60,
+                    pnl: 280,
+                    sharpe: 1.6,
+                  },
+                  {
+                    name: "AI Pattern",
+                    trades: 10,
+                    winRate: 70,
+                    pnl: 200,
+                    sharpe: 1.4,
+                  },
                 ].map((strategy) => (
-                  <div key={strategy.name} className="p-4 bg-[#0F1015] rounded-lg">
+                  <div
+                    key={strategy.name}
+                    className="p-4 bg-[#0F1015] rounded-lg"
+                  >
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-white">{strategy.name}</h4>
-                      <Badge className="text-[#30D5C8] bg-[#30D5C8]/10">{strategy.trades} trades</Badge>
+                      <h4 className="font-medium text-white">
+                        {strategy.name}
+                      </h4>
+                      <Badge className="text-[#30D5C8] bg-[#30D5C8]/10">
+                        {strategy.trades} trades
+                      </Badge>
                     </div>
                     <div className="grid grid-cols-3 gap-4">
                       <div>
                         <p className="text-xs text-gray-400">Win Rate</p>
-                        <p className="text-sm font-medium text-white">{strategy.winRate}%</p>
-                        <Progress value={strategy.winRate} className="h-1 mt-1" />
+                        <p className="text-sm font-medium text-white">
+                          {strategy.winRate}%
+                        </p>
+                        <Progress
+                          value={strategy.winRate}
+                          className="h-1 mt-1"
+                        />
                       </div>
                       <div>
                         <p className="text-xs text-gray-400">P&L</p>
-                        <p className="text-sm font-medium text-green-400">+${strategy.pnl}</p>
+                        <p className="text-sm font-medium text-green-400">
+                          +${strategy.pnl}
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-400">Sharpe</p>
-                        <p className="text-sm font-medium text-white">{strategy.sharpe}</p>
+                        <p className="text-sm font-medium text-white">
+                          {strategy.sharpe}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -606,5 +743,5 @@ export function PaperTradingDashboard() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

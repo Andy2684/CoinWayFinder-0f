@@ -1,12 +1,18 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Slider } from "@/components/ui/slider"
-import { Switch } from "@/components/ui/switch"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -14,19 +20,35 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Bot, Brain, Zap, TrendingUp, BarChart3, ArrowUpDown, Target, Sparkles, Shield, Settings } from "lucide-react"
-import { aiBotStrategies, calculateAIEstimatedReturns, type AIBotStrategy } from "@/lib/ai-bot-strategies"
-import { toast } from "@/hooks/use-toast"
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  Bot,
+  Brain,
+  Zap,
+  TrendingUp,
+  BarChart3,
+  ArrowUpDown,
+  Target,
+  Sparkles,
+  Shield,
+  Settings,
+} from "lucide-react";
+import {
+  aiBotStrategies,
+  calculateAIEstimatedReturns,
+  type AIBotStrategy,
+} from "@/lib/ai-bot-strategies";
+import { toast } from "@/hooks/use-toast";
 
 export function AIBotCreator() {
-  const [open, setOpen] = useState(false)
-  const [selectedStrategy, setSelectedStrategy] = useState<AIBotStrategy | null>(null)
-  const [isCreating, setIsCreating] = useState(false)
+  const [open, setOpen] = useState(false);
+  const [selectedStrategy, setSelectedStrategy] =
+    useState<AIBotStrategy | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const [botConfig, setBotConfig] = useState({
     name: "",
     investment: 1000,
@@ -43,65 +65,65 @@ export function AIBotCreator() {
       telegram: false,
       discord: false,
     },
-  })
+  });
 
   const getStrategyIcon = (category: string) => {
     switch (category) {
       case "ai-dca":
-        return TrendingUp
+        return TrendingUp;
       case "ai-scalping":
-        return Zap
+        return Zap;
       case "ai-long-short":
-        return ArrowUpDown
+        return ArrowUpDown;
       case "ai-trend":
-        return BarChart3
+        return BarChart3;
       case "ai-grid":
-        return Target
+        return Target;
       case "ai-arbitrage":
-        return ArrowUpDown
+        return ArrowUpDown;
       default:
-        return Bot
+        return Bot;
     }
-  }
+  };
 
   const getStrategyColor = (category: string) => {
     switch (category) {
       case "ai-dca":
-        return "bg-blue-500/10 text-blue-400 border-blue-500/20"
+        return "bg-blue-500/10 text-blue-400 border-blue-500/20";
       case "ai-scalping":
-        return "bg-red-500/10 text-red-400 border-red-500/20"
+        return "bg-red-500/10 text-red-400 border-red-500/20";
       case "ai-long-short":
-        return "bg-purple-500/10 text-purple-400 border-purple-500/20"
+        return "bg-purple-500/10 text-purple-400 border-purple-500/20";
       case "ai-trend":
-        return "bg-green-500/10 text-green-400 border-green-500/20"
+        return "bg-green-500/10 text-green-400 border-green-500/20";
       case "ai-grid":
-        return "bg-[#30D5C8]/10 text-[#30D5C8] border-[#30D5C8]/20"
+        return "bg-[#30D5C8]/10 text-[#30D5C8] border-[#30D5C8]/20";
       case "ai-arbitrage":
-        return "bg-orange-500/10 text-orange-400 border-orange-500/20"
+        return "bg-orange-500/10 text-orange-400 border-orange-500/20";
       default:
-        return "bg-gray-500/10 text-gray-400 border-gray-500/20"
+        return "bg-gray-500/10 text-gray-400 border-gray-500/20";
     }
-  }
+  };
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
       case "Low":
-        return "bg-green-500/10 text-green-400"
+        return "bg-green-500/10 text-green-400";
       case "Medium":
-        return "bg-yellow-500/10 text-yellow-400"
+        return "bg-yellow-500/10 text-yellow-400";
       case "Medium-High":
-        return "bg-orange-500/10 text-orange-400"
+        return "bg-orange-500/10 text-orange-400";
       case "High":
-        return "bg-red-500/10 text-red-400"
+        return "bg-red-500/10 text-red-400";
       default:
-        return "bg-gray-500/10 text-gray-400"
+        return "bg-gray-500/10 text-gray-400";
     }
-  }
+  };
 
   const handleCreateBot = async () => {
-    if (!selectedStrategy) return
+    if (!selectedStrategy) return;
 
-    setIsCreating(true)
+    setIsCreating(true);
 
     const config = {
       strategyId: selectedStrategy.id,
@@ -111,23 +133,23 @@ export function AIBotCreator() {
       aiOptimization: botConfig.aiOptimization,
       riskManagement: botConfig.riskManagement,
       notifications: botConfig.notifications,
-    }
+    };
 
     try {
       const response = await fetch("/api/bots/ai-create", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(config),
-      })
+      });
 
-      const result = await response.json()
+      const result = await response.json();
 
       if (response.ok) {
         toast({
           title: "AI Bot Created Successfully!",
           description: `Your ${selectedStrategy.name} bot "${botConfig.name}" is now active.`,
-        })
-        setOpen(false)
+        });
+        setOpen(false);
         // Reset form
         setBotConfig({
           name: "",
@@ -145,30 +167,36 @@ export function AIBotCreator() {
             telegram: false,
             discord: false,
           },
-        })
-        setSelectedStrategy(null)
+        });
+        setSelectedStrategy(null);
       } else {
         toast({
           title: "Failed to Create Bot",
-          description: result.error || "An error occurred while creating your AI bot.",
+          description:
+            result.error || "An error occurred while creating your AI bot.",
           variant: "destructive",
-        })
+        });
       }
     } catch (error) {
-      console.error("Failed to create AI bot:", error)
+      console.error("Failed to create AI bot:", error);
       toast({
         title: "Network Error",
         description: "Failed to connect to the server. Please try again.",
         variant: "destructive",
-      })
+      });
     } finally {
-      setIsCreating(false)
+      setIsCreating(false);
     }
-  }
+  };
 
   const estimatedReturns = selectedStrategy
-    ? calculateAIEstimatedReturns(selectedStrategy.id, botConfig.investment, "1y", botConfig.aiOptimization)
-    : null
+    ? calculateAIEstimatedReturns(
+        selectedStrategy.id,
+        botConfig.investment,
+        "1y",
+        botConfig.aiOptimization,
+      )
+    : null;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -185,25 +213,41 @@ export function AIBotCreator() {
             Create AI-Powered Trading Bot
           </DialogTitle>
           <DialogDescription className="text-gray-400">
-            Configure your AI trading bot with advanced machine learning strategies
+            Configure your AI trading bot with advanced machine learning
+            strategies
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="strategy" className="w-full">
           <TabsList className="grid w-full grid-cols-5 bg-gray-800">
-            <TabsTrigger value="strategy" className="text-gray-300 data-[state=active]:text-white">
+            <TabsTrigger
+              value="strategy"
+              className="text-gray-300 data-[state=active]:text-white"
+            >
               AI Strategy
             </TabsTrigger>
-            <TabsTrigger value="config" className="text-gray-300 data-[state=active]:text-white">
+            <TabsTrigger
+              value="config"
+              className="text-gray-300 data-[state=active]:text-white"
+            >
               Configuration
             </TabsTrigger>
-            <TabsTrigger value="ai-params" className="text-gray-300 data-[state=active]:text-white">
+            <TabsTrigger
+              value="ai-params"
+              className="text-gray-300 data-[state=active]:text-white"
+            >
               AI Parameters
             </TabsTrigger>
-            <TabsTrigger value="risk" className="text-gray-300 data-[state=active]:text-white">
+            <TabsTrigger
+              value="risk"
+              className="text-gray-300 data-[state=active]:text-white"
+            >
               Risk Management
             </TabsTrigger>
-            <TabsTrigger value="preview" className="text-gray-300 data-[state=active]:text-white">
+            <TabsTrigger
+              value="preview"
+              className="text-gray-300 data-[state=active]:text-white"
+            >
               Preview
             </TabsTrigger>
           </TabsList>
@@ -212,7 +256,7 @@ export function AIBotCreator() {
           <TabsContent value="strategy" className="space-y-4">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {aiBotStrategies.map((strategy) => {
-                const IconComponent = getStrategyIcon(strategy.category)
+                const IconComponent = getStrategyIcon(strategy.category);
                 return (
                   <Card
                     key={strategy.id}
@@ -222,8 +266,8 @@ export function AIBotCreator() {
                         : "border-gray-800 bg-gray-900/50 hover:border-gray-700 hover:bg-gray-900/70"
                     }`}
                     onClick={() => {
-                      setSelectedStrategy(strategy)
-                      setBotConfig((prev) => ({ ...prev, parameters: {} }))
+                      setSelectedStrategy(strategy);
+                      setBotConfig((prev) => ({ ...prev, parameters: {} }));
                     }}
                   >
                     <CardHeader className="pb-3">
@@ -239,23 +283,37 @@ export function AIBotCreator() {
                               {strategy.name}
                               <Sparkles className="w-4 h-4 ml-2 text-[#30D5C8]" />
                             </CardTitle>
-                            <p className="text-sm text-gray-400 mt-1">{strategy.description}</p>
+                            <p className="text-sm text-gray-400 mt-1">
+                              {strategy.description}
+                            </p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className="text-sm text-[#30D5C8] font-semibold">{strategy.successRate}%</div>
-                          <div className="text-xs text-gray-400">Success Rate</div>
+                          <div className="text-sm text-[#30D5C8] font-semibold">
+                            {strategy.successRate}%
+                          </div>
+                          <div className="text-xs text-gray-400">
+                            Success Rate
+                          </div>
                         </div>
                       </div>
                     </CardHeader>
 
                     <CardContent className="space-y-4">
                       <div className="flex flex-wrap gap-2">
-                        <Badge className={getRiskColor(strategy.riskLevel)}>{strategy.riskLevel} Risk</Badge>
-                        <Badge variant="outline" className="border-gray-600 text-gray-300">
+                        <Badge className={getRiskColor(strategy.riskLevel)}>
+                          {strategy.riskLevel} Risk
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className="border-gray-600 text-gray-300"
+                        >
                           {strategy.difficulty}
                         </Badge>
-                        <Badge variant="outline" className="border-[#30D5C8]/30 text-[#30D5C8]">
+                        <Badge
+                          variant="outline"
+                          className="border-[#30D5C8]/30 text-[#30D5C8]"
+                        >
                           AI-Powered
                         </Badge>
                       </div>
@@ -263,28 +321,39 @@ export function AIBotCreator() {
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-gray-400">Min Investment:</span>
-                          <span className="text-white font-semibold ml-2">${strategy.minInvestment}</span>
+                          <span className="text-white font-semibold ml-2">
+                            ${strategy.minInvestment}
+                          </span>
                         </div>
                         <div>
                           <span className="text-gray-400">Avg Return:</span>
-                          <span className="text-[#30D5C8] font-semibold ml-2">{strategy.avgReturn}</span>
+                          <span className="text-[#30D5C8] font-semibold ml-2">
+                            {strategy.avgReturn}
+                          </span>
                         </div>
                       </div>
 
                       <div>
-                        <p className="text-xs font-medium text-[#30D5C8] mb-2">🤖 AI Features</p>
+                        <p className="text-xs font-medium text-[#30D5C8] mb-2">
+                          🤖 AI Features
+                        </p>
                         <div className="grid grid-cols-1 gap-1">
-                          {strategy.aiFeatures.slice(0, 3).map((feature, index) => (
-                            <div key={index} className="flex items-center text-xs text-gray-300">
-                              <div className="w-1 h-1 bg-[#30D5C8] rounded-full mr-2"></div>
-                              {feature}
-                            </div>
-                          ))}
+                          {strategy.aiFeatures
+                            .slice(0, 3)
+                            .map((feature, index) => (
+                              <div
+                                key={index}
+                                className="flex items-center text-xs text-gray-300"
+                              >
+                                <div className="w-1 h-1 bg-[#30D5C8] rounded-full mr-2"></div>
+                                {feature}
+                              </div>
+                            ))}
                         </div>
                       </div>
                     </CardContent>
                   </Card>
-                )
+                );
               })}
             </div>
           </TabsContent>
@@ -301,7 +370,9 @@ export function AIBotCreator() {
                     id="botName"
                     placeholder="My AI Trading Bot"
                     value={botConfig.name}
-                    onChange={(e) => setBotConfig({ ...botConfig, name: e.target.value })}
+                    onChange={(e) =>
+                      setBotConfig({ ...botConfig, name: e.target.value })
+                    }
                     className="bg-gray-800 border-gray-700 text-white"
                   />
                 </div>
@@ -314,7 +385,12 @@ export function AIBotCreator() {
                     id="investment"
                     type="number"
                     value={botConfig.investment}
-                    onChange={(e) => setBotConfig({ ...botConfig, investment: Number(e.target.value) })}
+                    onChange={(e) =>
+                      setBotConfig({
+                        ...botConfig,
+                        investment: Number(e.target.value),
+                      })
+                    }
                     className="bg-gray-800 border-gray-700 text-white"
                   />
                 </div>
@@ -326,7 +402,9 @@ export function AIBotCreator() {
                   <Switch
                     id="aiOptimization"
                     checked={botConfig.aiOptimization}
-                    onCheckedChange={(checked) => setBotConfig({ ...botConfig, aiOptimization: checked })}
+                    onCheckedChange={(checked) =>
+                      setBotConfig({ ...botConfig, aiOptimization: checked })
+                    }
                   />
                 </div>
               </div>
@@ -342,7 +420,9 @@ export function AIBotCreator() {
                   <CardContent>
                     <div className="space-y-3">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Pattern Recognition</span>
+                        <span className="text-gray-400">
+                          Pattern Recognition
+                        </span>
                         <span className="text-[#30D5C8]">Advanced</span>
                       </div>
                       <div className="flex justify-between text-sm">
@@ -360,25 +440,35 @@ export function AIBotCreator() {
                 {estimatedReturns && (
                   <Card className="bg-gray-800/50 border-gray-700">
                     <CardHeader>
-                      <CardTitle className="text-white text-sm">Estimated Returns (1 Year)</CardTitle>
+                      <CardTitle className="text-white text-sm">
+                        Estimated Returns (1 Year)
+                      </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Conservative:</span>
-                        <span className="text-green-400">+${estimatedReturns.conservative.toFixed(0)}</span>
+                        <span className="text-green-400">
+                          +${estimatedReturns.conservative.toFixed(0)}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Realistic:</span>
-                        <span className="text-[#30D5C8]">+${estimatedReturns.realistic.toFixed(0)}</span>
+                        <span className="text-[#30D5C8]">
+                          +${estimatedReturns.realistic.toFixed(0)}
+                        </span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-gray-400">Optimistic:</span>
-                        <span className="text-blue-400">+${estimatedReturns.optimistic.toFixed(0)}</span>
+                        <span className="text-blue-400">
+                          +${estimatedReturns.optimistic.toFixed(0)}
+                        </span>
                       </div>
                       {botConfig.aiOptimization && (
                         <div className="flex justify-between text-sm border-t border-gray-700 pt-2">
                           <span className="text-[#30D5C8]">AI Bonus:</span>
-                          <span className="text-[#30D5C8]">+${estimatedReturns.aiBonus.toFixed(0)}</span>
+                          <span className="text-[#30D5C8]">
+                            +${estimatedReturns.aiBonus.toFixed(0)}
+                          </span>
                         </div>
                       )}
                     </CardContent>
@@ -402,7 +492,10 @@ export function AIBotCreator() {
                   <CardContent>
                     <div className="space-y-3">
                       {selectedStrategy.aiModels.map((model, index) => (
-                        <div key={index} className="flex items-center space-x-3">
+                        <div
+                          key={index}
+                          className="flex items-center space-x-3"
+                        >
                           <div className="w-2 h-2 bg-[#30D5C8] rounded-full"></div>
                           <span className="text-gray-300 text-sm">{model}</span>
                         </div>
@@ -415,9 +508,14 @@ export function AIBotCreator() {
                   {selectedStrategy.parameters.map((param) => (
                     <div key={param.key} className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label className="text-white text-sm">{param.name}</Label>
+                        <Label className="text-white text-sm">
+                          {param.name}
+                        </Label>
                         {param.aiOptimized && (
-                          <Badge variant="outline" className="border-[#30D5C8]/30 text-[#30D5C8] text-xs">
+                          <Badge
+                            variant="outline"
+                            className="border-[#30D5C8]/30 text-[#30D5C8] text-xs"
+                          >
                             AI Optimized
                           </Badge>
                         )}
@@ -426,11 +524,17 @@ export function AIBotCreator() {
                       {param.type === "percentage" && (
                         <div className="space-y-2">
                           <Slider
-                            value={[botConfig.parameters[param.key] || param.defaultValue]}
+                            value={[
+                              botConfig.parameters[param.key] ||
+                                param.defaultValue,
+                            ]}
                             onValueChange={(value) =>
                               setBotConfig((prev) => ({
                                 ...prev,
-                                parameters: { ...prev.parameters, [param.key]: value[0] },
+                                parameters: {
+                                  ...prev.parameters,
+                                  [param.key]: value[0],
+                                },
                               }))
                             }
                             max={param.max || 100}
@@ -441,7 +545,9 @@ export function AIBotCreator() {
                           <div className="flex justify-between text-xs text-gray-400">
                             <span>{param.min || 0}%</span>
                             <span className="text-[#30D5C8]">
-                              {botConfig.parameters[param.key] || param.defaultValue}%
+                              {botConfig.parameters[param.key] ||
+                                param.defaultValue}
+                              %
                             </span>
                             <span>{param.max || 100}%</span>
                           </div>
@@ -451,11 +557,17 @@ export function AIBotCreator() {
                       {param.type === "number" && (
                         <Input
                           type="number"
-                          value={botConfig.parameters[param.key] || param.defaultValue}
+                          value={
+                            botConfig.parameters[param.key] ||
+                            param.defaultValue
+                          }
                           onChange={(e) =>
                             setBotConfig((prev) => ({
                               ...prev,
-                              parameters: { ...prev.parameters, [param.key]: Number(e.target.value) },
+                              parameters: {
+                                ...prev.parameters,
+                                [param.key]: Number(e.target.value),
+                              },
                             }))
                           }
                           min={param.min}
@@ -467,11 +579,17 @@ export function AIBotCreator() {
 
                       {param.type === "select" && (
                         <Select
-                          value={botConfig.parameters[param.key] || param.defaultValue}
+                          value={
+                            botConfig.parameters[param.key] ||
+                            param.defaultValue
+                          }
                           onValueChange={(value) =>
                             setBotConfig((prev) => ({
                               ...prev,
-                              parameters: { ...prev.parameters, [param.key]: value },
+                              parameters: {
+                                ...prev.parameters,
+                                [param.key]: value,
+                              },
                             }))
                           }
                         >
@@ -490,17 +608,25 @@ export function AIBotCreator() {
 
                       {param.type === "boolean" && (
                         <Switch
-                          checked={botConfig.parameters[param.key] ?? param.defaultValue}
+                          checked={
+                            botConfig.parameters[param.key] ??
+                            param.defaultValue
+                          }
                           onCheckedChange={(checked) =>
                             setBotConfig((prev) => ({
                               ...prev,
-                              parameters: { ...prev.parameters, [param.key]: checked },
+                              parameters: {
+                                ...prev.parameters,
+                                [param.key]: checked,
+                              },
                             }))
                           }
                         />
                       )}
 
-                      <p className="text-xs text-gray-400">{param.description}</p>
+                      <p className="text-xs text-gray-400">
+                        {param.description}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -508,7 +634,9 @@ export function AIBotCreator() {
             ) : (
               <div className="text-center py-12">
                 <Brain className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-400">Select an AI strategy to configure parameters</p>
+                <p className="text-gray-400">
+                  Select an AI strategy to configure parameters
+                </p>
               </div>
             )}
           </TabsContent>
@@ -525,13 +653,18 @@ export function AIBotCreator() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label className="text-white">Stop Loss: {botConfig.riskManagement.stopLoss}%</Label>
+                    <Label className="text-white">
+                      Stop Loss: {botConfig.riskManagement.stopLoss}%
+                    </Label>
                     <Slider
                       value={[botConfig.riskManagement.stopLoss]}
                       onValueChange={(value) =>
                         setBotConfig((prev) => ({
                           ...prev,
-                          riskManagement: { ...prev.riskManagement, stopLoss: value[0] },
+                          riskManagement: {
+                            ...prev.riskManagement,
+                            stopLoss: value[0],
+                          },
                         }))
                       }
                       max={20}
@@ -542,13 +675,18 @@ export function AIBotCreator() {
                   </div>
 
                   <div>
-                    <Label className="text-white">Take Profit: {botConfig.riskManagement.takeProfit}%</Label>
+                    <Label className="text-white">
+                      Take Profit: {botConfig.riskManagement.takeProfit}%
+                    </Label>
                     <Slider
                       value={[botConfig.riskManagement.takeProfit]}
                       onValueChange={(value) =>
                         setBotConfig((prev) => ({
                           ...prev,
-                          riskManagement: { ...prev.riskManagement, takeProfit: value[0] },
+                          riskManagement: {
+                            ...prev.riskManagement,
+                            takeProfit: value[0],
+                          },
                         }))
                       }
                       max={50}
@@ -559,13 +697,18 @@ export function AIBotCreator() {
                   </div>
 
                   <div>
-                    <Label className="text-white">Max Drawdown: {botConfig.riskManagement.maxDrawdown}%</Label>
+                    <Label className="text-white">
+                      Max Drawdown: {botConfig.riskManagement.maxDrawdown}%
+                    </Label>
                     <Slider
                       value={[botConfig.riskManagement.maxDrawdown]}
                       onValueChange={(value) =>
                         setBotConfig((prev) => ({
                           ...prev,
-                          riskManagement: { ...prev.riskManagement, maxDrawdown: value[0] },
+                          riskManagement: {
+                            ...prev.riskManagement,
+                            maxDrawdown: value[0],
+                          },
                         }))
                       }
                       max={25}
@@ -579,10 +722,15 @@ export function AIBotCreator() {
                     <Label className="text-white">Position Sizing</Label>
                     <Select
                       value={botConfig.riskManagement.positionSizing}
-                      onValueChange={(value: "fixed" | "kelly" | "ai-optimized") =>
+                      onValueChange={(
+                        value: "fixed" | "kelly" | "ai-optimized",
+                      ) =>
                         setBotConfig((prev) => ({
                           ...prev,
-                          riskManagement: { ...prev.riskManagement, positionSizing: value },
+                          riskManagement: {
+                            ...prev.riskManagement,
+                            positionSizing: value,
+                          },
                         }))
                       }
                     >
@@ -592,7 +740,9 @@ export function AIBotCreator() {
                       <SelectContent className="bg-gray-900 border-gray-700">
                         <SelectItem value="fixed">Fixed Size</SelectItem>
                         <SelectItem value="kelly">Kelly Criterion</SelectItem>
-                        <SelectItem value="ai-optimized">AI Optimized</SelectItem>
+                        <SelectItem value="ai-optimized">
+                          AI Optimized
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -611,7 +761,10 @@ export function AIBotCreator() {
                       onCheckedChange={(checked) =>
                         setBotConfig((prev) => ({
                           ...prev,
-                          notifications: { ...prev.notifications, email: checked },
+                          notifications: {
+                            ...prev.notifications,
+                            email: checked,
+                          },
                         }))
                       }
                     />
@@ -623,7 +776,10 @@ export function AIBotCreator() {
                       onCheckedChange={(checked) =>
                         setBotConfig((prev) => ({
                           ...prev,
-                          notifications: { ...prev.notifications, telegram: checked },
+                          notifications: {
+                            ...prev.notifications,
+                            telegram: checked,
+                          },
                         }))
                       }
                     />
@@ -635,7 +791,10 @@ export function AIBotCreator() {
                       onCheckedChange={(checked) =>
                         setBotConfig((prev) => ({
                           ...prev,
-                          notifications: { ...prev.notifications, discord: checked },
+                          notifications: {
+                            ...prev.notifications,
+                            discord: checked,
+                          },
                         }))
                       }
                     />
@@ -651,30 +810,48 @@ export function AIBotCreator() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card className="bg-gray-800/50 border-gray-700">
                   <CardHeader>
-                    <CardTitle className="text-white">Bot Configuration Summary</CardTitle>
+                    <CardTitle className="text-white">
+                      Bot Configuration Summary
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex justify-between">
                       <span className="text-gray-400">Strategy:</span>
-                      <span className="text-white">{selectedStrategy.name}</span>
+                      <span className="text-white">
+                        {selectedStrategy.name}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Investment:</span>
-                      <span className="text-white">${botConfig.investment}</span>
+                      <span className="text-white">
+                        ${botConfig.investment}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">AI Optimization:</span>
-                      <span className={botConfig.aiOptimization ? "text-[#30D5C8]" : "text-gray-400"}>
+                      <span
+                        className={
+                          botConfig.aiOptimization
+                            ? "text-[#30D5C8]"
+                            : "text-gray-400"
+                        }
+                      >
                         {botConfig.aiOptimization ? "Enabled" : "Disabled"}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Risk Level:</span>
-                      <Badge className={getRiskColor(selectedStrategy.riskLevel)}>{selectedStrategy.riskLevel}</Badge>
+                      <Badge
+                        className={getRiskColor(selectedStrategy.riskLevel)}
+                      >
+                        {selectedStrategy.riskLevel}
+                      </Badge>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-gray-400">Success Rate:</span>
-                      <span className="text-[#30D5C8]">{selectedStrategy.successRate}%</span>
+                      <span className="text-[#30D5C8]">
+                        {selectedStrategy.successRate}%
+                      </span>
                     </div>
                   </CardContent>
                 </Card>
@@ -682,30 +859,44 @@ export function AIBotCreator() {
                 {estimatedReturns && (
                   <Card className="bg-gray-800/50 border-gray-700">
                     <CardHeader>
-                      <CardTitle className="text-white">Performance Projection</CardTitle>
+                      <CardTitle className="text-white">
+                        Performance Projection
+                      </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="space-y-3">
                         <div>
                           <div className="flex justify-between mb-1">
-                            <span className="text-gray-400 text-sm">Conservative</span>
-                            <span className="text-green-400">+${estimatedReturns.conservative.toFixed(0)}</span>
+                            <span className="text-gray-400 text-sm">
+                              Conservative
+                            </span>
+                            <span className="text-green-400">
+                              +${estimatedReturns.conservative.toFixed(0)}
+                            </span>
                           </div>
                           <Progress value={30} className="h-2" />
                         </div>
 
                         <div>
                           <div className="flex justify-between mb-1">
-                            <span className="text-gray-400 text-sm">Realistic</span>
-                            <span className="text-[#30D5C8]">+${estimatedReturns.realistic.toFixed(0)}</span>
+                            <span className="text-gray-400 text-sm">
+                              Realistic
+                            </span>
+                            <span className="text-[#30D5C8]">
+                              +${estimatedReturns.realistic.toFixed(0)}
+                            </span>
                           </div>
                           <Progress value={60} className="h-2" />
                         </div>
 
                         <div>
                           <div className="flex justify-between mb-1">
-                            <span className="text-gray-400 text-sm">Optimistic</span>
-                            <span className="text-blue-400">+${estimatedReturns.optimistic.toFixed(0)}</span>
+                            <span className="text-gray-400 text-sm">
+                              Optimistic
+                            </span>
+                            <span className="text-blue-400">
+                              +${estimatedReturns.optimistic.toFixed(0)}
+                            </span>
                           </div>
                           <Progress value={85} className="h-2" />
                         </div>
@@ -714,8 +905,12 @@ export function AIBotCreator() {
                       {botConfig.aiOptimization && (
                         <div className="border-t border-gray-700 pt-3">
                           <div className="flex justify-between">
-                            <span className="text-[#30D5C8] text-sm font-medium">AI Enhancement Bonus</span>
-                            <span className="text-[#30D5C8] font-bold">+${estimatedReturns.aiBonus.toFixed(0)}</span>
+                            <span className="text-[#30D5C8] text-sm font-medium">
+                              AI Enhancement Bonus
+                            </span>
+                            <span className="text-[#30D5C8] font-bold">
+                              +${estimatedReturns.aiBonus.toFixed(0)}
+                            </span>
                           </div>
                         </div>
                       )}
@@ -726,7 +921,9 @@ export function AIBotCreator() {
             ) : (
               <div className="text-center py-12">
                 <Settings className="w-16 h-16 text-gray-600 mx-auto mb-4" />
-                <p className="text-gray-400">Complete the configuration to see preview</p>
+                <p className="text-gray-400">
+                  Complete the configuration to see preview
+                </p>
               </div>
             )}
           </TabsContent>
@@ -751,5 +948,5 @@ export function AIBotCreator() {
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

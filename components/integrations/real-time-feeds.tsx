@@ -1,48 +1,58 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Activity, TrendingUp, TrendingDown, Wifi, WifiOff, Play, Pause, AlertCircle, CheckCircle } from "lucide-react"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Activity,
+  TrendingUp,
+  TrendingDown,
+  Wifi,
+  WifiOff,
+  Play,
+  Pause,
+  AlertCircle,
+  CheckCircle,
+} from "lucide-react";
 
 interface PriceData {
-  symbol: string
-  price: number
-  change24h: number
-  volume24h: number
-  lastUpdate: string
-  exchange: string
+  symbol: string;
+  price: number;
+  change24h: number;
+  volume24h: number;
+  lastUpdate: string;
+  exchange: string;
 }
 
 interface OrderBookData {
-  symbol: string
-  bids: [number, number][]
-  asks: [number, number][]
-  spread: number
-  exchange: string
+  symbol: string;
+  bids: [number, number][];
+  asks: [number, number][];
+  spread: number;
+  exchange: string;
 }
 
 interface TradeData {
-  id: string
-  symbol: string
-  price: number
-  quantity: number
-  side: "buy" | "sell"
-  timestamp: string
-  exchange: string
+  id: string;
+  symbol: string;
+  price: number;
+  quantity: number;
+  side: "buy" | "sell";
+  timestamp: string;
+  exchange: string;
 }
 
 export function RealTimeFeeds() {
-  const [isConnected, setIsConnected] = useState(true)
+  const [isConnected, setIsConnected] = useState(true);
   const [activeFeeds, setActiveFeeds] = useState({
     prices: true,
     orderbook: true,
     trades: false,
     klines: false,
-  })
+  });
 
   const [priceData, setPriceData] = useState<PriceData[]>([
     {
@@ -61,7 +71,14 @@ export function RealTimeFeeds() {
       lastUpdate: "Just now",
       exchange: "Binance",
     },
-    { symbol: "BNBUSDT", price: 310.2, change24h: 3.4, volume24h: 890000, lastUpdate: "Just now", exchange: "Binance" },
+    {
+      symbol: "BNBUSDT",
+      price: 310.2,
+      change24h: 3.4,
+      volume24h: 890000,
+      lastUpdate: "Just now",
+      exchange: "Binance",
+    },
     {
       symbol: "BTCUSDT",
       price: 42885.25,
@@ -78,8 +95,15 @@ export function RealTimeFeeds() {
       lastUpdate: "Just now",
       exchange: "Bybit",
     },
-    { symbol: "SOLUSDT", price: 99.95, change24h: -3.2, volume24h: 5670000, lastUpdate: "Just now", exchange: "Bybit" },
-  ])
+    {
+      symbol: "SOLUSDT",
+      price: 99.95,
+      change24h: -3.2,
+      volume24h: 5670000,
+      lastUpdate: "Just now",
+      exchange: "Bybit",
+    },
+  ]);
 
   const [orderBookData, setOrderBookData] = useState<OrderBookData[]>([
     {
@@ -120,7 +144,7 @@ export function RealTimeFeeds() {
       spread: 0.25,
       exchange: "Binance",
     },
-  ])
+  ]);
 
   const [recentTrades, setRecentTrades] = useState<TradeData[]>([
     {
@@ -168,18 +192,18 @@ export function RealTimeFeeds() {
       timestamp: "14:32:11",
       exchange: "Bybit",
     },
-  ])
+  ]);
 
   const [connectionStatus, setConnectionStatus] = useState({
     binance: "connected",
     bybit: "connected",
     kucoin: "disconnected",
     okx: "connecting",
-  })
+  });
 
   // Simulate real-time updates
   useEffect(() => {
-    if (!isConnected) return
+    if (!isConnected) return;
 
     const interval = setInterval(() => {
       // Update prices
@@ -190,7 +214,7 @@ export function RealTimeFeeds() {
           change24h: item.change24h + (Math.random() - 0.5) * 0.5,
           lastUpdate: "Just now",
         })),
-      )
+      );
 
       // Add new trades
       const newTrade: TradeData = {
@@ -201,34 +225,34 @@ export function RealTimeFeeds() {
         side: Math.random() > 0.5 ? "buy" : "sell",
         timestamp: new Date().toLocaleTimeString(),
         exchange: ["Binance", "Bybit"][Math.floor(Math.random() * 2)],
-      }
+      };
 
-      setRecentTrades((prev) => [newTrade, ...prev.slice(0, 19)])
-    }, 2000)
+      setRecentTrades((prev) => [newTrade, ...prev.slice(0, 19)]);
+    }, 2000);
 
-    return () => clearInterval(interval)
-  }, [isConnected])
+    return () => clearInterval(interval);
+  }, [isConnected]);
 
   const toggleConnection = () => {
-    setIsConnected(!isConnected)
-  }
+    setIsConnected(!isConnected);
+  };
 
   const toggleFeed = (feedType: keyof typeof activeFeeds) => {
-    setActiveFeeds((prev) => ({ ...prev, [feedType]: !prev[feedType] }))
-  }
+    setActiveFeeds((prev) => ({ ...prev, [feedType]: !prev[feedType] }));
+  };
 
   const getConnectionIcon = (status: string) => {
     switch (status) {
       case "connected":
-        return <CheckCircle className="w-4 h-4 text-green-400" />
+        return <CheckCircle className="w-4 h-4 text-green-400" />;
       case "connecting":
-        return <Activity className="w-4 h-4 text-yellow-400 animate-pulse" />
+        return <Activity className="w-4 h-4 text-yellow-400 animate-pulse" />;
       case "disconnected":
-        return <AlertCircle className="w-4 h-4 text-red-400" />
+        return <AlertCircle className="w-4 h-4 text-red-400" />;
       default:
-        return <WifiOff className="w-4 h-4 text-gray-400" />
+        return <WifiOff className="w-4 h-4 text-gray-400" />;
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
@@ -237,8 +261,12 @@ export function RealTimeFeeds() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-white text-xl">📡 Real-Time Data Feeds</CardTitle>
-              <p className="text-gray-400 text-sm">Live market data from connected exchanges</p>
+              <CardTitle className="text-white text-xl">
+                📡 Real-Time Data Feeds
+              </CardTitle>
+              <p className="text-gray-400 text-sm">
+                Live market data from connected exchanges
+              </p>
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
@@ -247,16 +275,26 @@ export function RealTimeFeeds() {
                 ) : (
                   <WifiOff className="w-5 h-5 text-red-400" />
                 )}
-                <span className={`text-sm ${isConnected ? "text-green-400" : "text-red-400"}`}>
+                <span
+                  className={`text-sm ${isConnected ? "text-green-400" : "text-red-400"}`}
+                >
                   {isConnected ? "Connected" : "Disconnected"}
                 </span>
               </div>
               <Button
                 onClick={toggleConnection}
                 variant={isConnected ? "destructive" : "default"}
-                className={isConnected ? "" : "bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]"}
+                className={
+                  isConnected
+                    ? ""
+                    : "bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]"
+                }
               >
-                {isConnected ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+                {isConnected ? (
+                  <Pause className="w-4 h-4 mr-2" />
+                ) : (
+                  <Play className="w-4 h-4 mr-2" />
+                )}
                 {isConnected ? "Disconnect" : "Connect"}
               </Button>
             </div>
@@ -267,7 +305,9 @@ export function RealTimeFeeds() {
             {Object.entries(connectionStatus).map(([exchange, status]) => (
               <div key={exchange} className="bg-gray-800/50 rounded-lg p-3">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-white font-medium capitalize">{exchange}</span>
+                  <span className="text-white font-medium capitalize">
+                    {exchange}
+                  </span>
                   {getConnectionIcon(status)}
                 </div>
                 <Badge
@@ -295,9 +335,14 @@ export function RealTimeFeeds() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {Object.entries(activeFeeds).map(([feedType, isActive]) => (
-              <div key={feedType} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+              <div
+                key={feedType}
+                className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg"
+              >
                 <div>
-                  <div className="text-white font-medium capitalize">{feedType}</div>
+                  <div className="text-white font-medium capitalize">
+                    {feedType}
+                  </div>
                   <div className="text-gray-400 text-sm">
                     {feedType === "prices" && "Live price updates"}
                     {feedType === "orderbook" && "Order book depth"}
@@ -305,7 +350,12 @@ export function RealTimeFeeds() {
                     {feedType === "klines" && "Candlestick data"}
                   </div>
                 </div>
-                <Switch checked={isActive} onCheckedChange={() => toggleFeed(feedType as keyof typeof activeFeeds)} />
+                <Switch
+                  checked={isActive}
+                  onCheckedChange={() =>
+                    toggleFeed(feedType as keyof typeof activeFeeds)
+                  }
+                />
               </div>
             ))}
           </div>
@@ -315,7 +365,10 @@ export function RealTimeFeeds() {
       {/* Live Data Tabs */}
       <Tabs defaultValue="prices" className="space-y-4">
         <TabsList className="bg-gray-900/50 border-gray-800">
-          <TabsTrigger value="prices" className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]">
+          <TabsTrigger
+            value="prices"
+            className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]"
+          >
             💰 Prices
           </TabsTrigger>
           <TabsTrigger
@@ -324,7 +377,10 @@ export function RealTimeFeeds() {
           >
             📊 Order Book
           </TabsTrigger>
-          <TabsTrigger value="trades" className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]">
+          <TabsTrigger
+            value="trades"
+            className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]"
+          >
             🔄 Recent Trades
           </TabsTrigger>
         </TabsList>
@@ -339,30 +395,54 @@ export function RealTimeFeeds() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-800">
-                      <th className="text-left text-gray-400 text-sm font-medium py-3">Symbol</th>
-                      <th className="text-left text-gray-400 text-sm font-medium py-3">Exchange</th>
-                      <th className="text-right text-gray-400 text-sm font-medium py-3">Price</th>
-                      <th className="text-right text-gray-400 text-sm font-medium py-3">24h Change</th>
-                      <th className="text-right text-gray-400 text-sm font-medium py-3">Volume</th>
-                      <th className="text-right text-gray-400 text-sm font-medium py-3">Last Update</th>
+                      <th className="text-left text-gray-400 text-sm font-medium py-3">
+                        Symbol
+                      </th>
+                      <th className="text-left text-gray-400 text-sm font-medium py-3">
+                        Exchange
+                      </th>
+                      <th className="text-right text-gray-400 text-sm font-medium py-3">
+                        Price
+                      </th>
+                      <th className="text-right text-gray-400 text-sm font-medium py-3">
+                        24h Change
+                      </th>
+                      <th className="text-right text-gray-400 text-sm font-medium py-3">
+                        Volume
+                      </th>
+                      <th className="text-right text-gray-400 text-sm font-medium py-3">
+                        Last Update
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {priceData.map((item, index) => (
-                      <tr key={`${item.exchange}-${item.symbol}`} className="border-b border-gray-800/50">
+                      <tr
+                        key={`${item.exchange}-${item.symbol}`}
+                        className="border-b border-gray-800/50"
+                      >
                         <td className="py-3">
                           <div className="flex items-center space-x-2">
                             <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                            <span className="text-white font-medium">{item.symbol}</span>
+                            <span className="text-white font-medium">
+                              {item.symbol}
+                            </span>
                           </div>
                         </td>
                         <td className="py-3">
-                          <Badge variant="outline" className="border-gray-600 text-gray-300">
+                          <Badge
+                            variant="outline"
+                            className="border-gray-600 text-gray-300"
+                          >
                             {item.exchange}
                           </Badge>
                         </td>
-                        <td className="py-3 text-right text-white font-mono">${item.price.toFixed(2)}</td>
-                        <td className={`py-3 text-right ${item.change24h >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        <td className="py-3 text-right text-white font-mono">
+                          ${item.price.toFixed(2)}
+                        </td>
+                        <td
+                          className={`py-3 text-right ${item.change24h >= 0 ? "text-green-400" : "text-red-400"}`}
+                        >
                           <div className="flex items-center justify-end space-x-1">
                             {item.change24h >= 0 ? (
                               <TrendingUp className="w-3 h-3" />
@@ -375,8 +455,12 @@ export function RealTimeFeeds() {
                             </span>
                           </div>
                         </td>
-                        <td className="py-3 text-right text-white">${(item.volume24h / 1000000).toFixed(1)}M</td>
-                        <td className="py-3 text-right text-gray-400 text-sm">{item.lastUpdate}</td>
+                        <td className="py-3 text-right text-white">
+                          ${(item.volume24h / 1000000).toFixed(1)}M
+                        </td>
+                        <td className="py-3 text-right text-gray-400 text-sm">
+                          {item.lastUpdate}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -389,29 +473,48 @@ export function RealTimeFeeds() {
         <TabsContent value="orderbook" className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {orderBookData.map((orderbook) => (
-              <Card key={`${orderbook.exchange}-${orderbook.symbol}`} className="bg-gray-900/50 border-gray-800">
+              <Card
+                key={`${orderbook.exchange}-${orderbook.symbol}`}
+                className="bg-gray-900/50 border-gray-800"
+              >
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-white">{orderbook.symbol}</CardTitle>
-                    <Badge variant="outline" className="border-gray-600 text-gray-300">
+                    <CardTitle className="text-white">
+                      {orderbook.symbol}
+                    </CardTitle>
+                    <Badge
+                      variant="outline"
+                      className="border-gray-600 text-gray-300"
+                    >
                       {orderbook.exchange}
                     </Badge>
                   </div>
-                  <div className="text-sm text-gray-400">Spread: ${orderbook.spread.toFixed(2)}</div>
+                  <div className="text-sm text-gray-400">
+                    Spread: ${orderbook.spread.toFixed(2)}
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-2 gap-4">
                     {/* Asks */}
                     <div>
-                      <h4 className="text-red-400 text-sm font-medium mb-2">Asks (Sell Orders)</h4>
+                      <h4 className="text-red-400 text-sm font-medium mb-2">
+                        Asks (Sell Orders)
+                      </h4>
                       <div className="space-y-1">
                         {orderbook.asks
                           .slice()
                           .reverse()
                           .map(([price, quantity], index) => (
-                            <div key={index} className="flex justify-between text-sm">
-                              <span className="text-red-400 font-mono">${price.toFixed(2)}</span>
-                              <span className="text-gray-300">{quantity.toFixed(4)}</span>
+                            <div
+                              key={index}
+                              className="flex justify-between text-sm"
+                            >
+                              <span className="text-red-400 font-mono">
+                                ${price.toFixed(2)}
+                              </span>
+                              <span className="text-gray-300">
+                                {quantity.toFixed(4)}
+                              </span>
                             </div>
                           ))}
                       </div>
@@ -419,12 +522,21 @@ export function RealTimeFeeds() {
 
                     {/* Bids */}
                     <div>
-                      <h4 className="text-green-400 text-sm font-medium mb-2">Bids (Buy Orders)</h4>
+                      <h4 className="text-green-400 text-sm font-medium mb-2">
+                        Bids (Buy Orders)
+                      </h4>
                       <div className="space-y-1">
                         {orderbook.bids.map(([price, quantity], index) => (
-                          <div key={index} className="flex justify-between text-sm">
-                            <span className="text-green-400 font-mono">${price.toFixed(2)}</span>
-                            <span className="text-gray-300">{quantity.toFixed(4)}</span>
+                          <div
+                            key={index}
+                            className="flex justify-between text-sm"
+                          >
+                            <span className="text-green-400 font-mono">
+                              ${price.toFixed(2)}
+                            </span>
+                            <span className="text-gray-300">
+                              {quantity.toFixed(4)}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -446,37 +558,69 @@ export function RealTimeFeeds() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-gray-800">
-                      <th className="text-left text-gray-400 text-sm font-medium py-3">Time</th>
-                      <th className="text-left text-gray-400 text-sm font-medium py-3">Symbol</th>
-                      <th className="text-left text-gray-400 text-sm font-medium py-3">Exchange</th>
-                      <th className="text-left text-gray-400 text-sm font-medium py-3">Side</th>
-                      <th className="text-right text-gray-400 text-sm font-medium py-3">Price</th>
-                      <th className="text-right text-gray-400 text-sm font-medium py-3">Quantity</th>
-                      <th className="text-right text-gray-400 text-sm font-medium py-3">Total</th>
+                      <th className="text-left text-gray-400 text-sm font-medium py-3">
+                        Time
+                      </th>
+                      <th className="text-left text-gray-400 text-sm font-medium py-3">
+                        Symbol
+                      </th>
+                      <th className="text-left text-gray-400 text-sm font-medium py-3">
+                        Exchange
+                      </th>
+                      <th className="text-left text-gray-400 text-sm font-medium py-3">
+                        Side
+                      </th>
+                      <th className="text-right text-gray-400 text-sm font-medium py-3">
+                        Price
+                      </th>
+                      <th className="text-right text-gray-400 text-sm font-medium py-3">
+                        Quantity
+                      </th>
+                      <th className="text-right text-gray-400 text-sm font-medium py-3">
+                        Total
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {recentTrades.map((trade) => (
-                      <tr key={trade.id} className="border-b border-gray-800/50">
-                        <td className="py-3 text-gray-300 text-sm font-mono">{trade.timestamp}</td>
-                        <td className="py-3 text-white font-medium">{trade.symbol}</td>
+                      <tr
+                        key={trade.id}
+                        className="border-b border-gray-800/50"
+                      >
+                        <td className="py-3 text-gray-300 text-sm font-mono">
+                          {trade.timestamp}
+                        </td>
+                        <td className="py-3 text-white font-medium">
+                          {trade.symbol}
+                        </td>
                         <td className="py-3">
-                          <Badge variant="outline" className="border-gray-600 text-gray-300 text-xs">
+                          <Badge
+                            variant="outline"
+                            className="border-gray-600 text-gray-300 text-xs"
+                          >
                             {trade.exchange}
                           </Badge>
                         </td>
                         <td className="py-3">
                           <Badge
                             className={
-                              trade.side === "buy" ? "bg-green-500/10 text-green-400" : "bg-red-500/10 text-red-400"
+                              trade.side === "buy"
+                                ? "bg-green-500/10 text-green-400"
+                                : "bg-red-500/10 text-red-400"
                             }
                           >
                             {trade.side.toUpperCase()}
                           </Badge>
                         </td>
-                        <td className="py-3 text-right text-white font-mono">${trade.price.toFixed(2)}</td>
-                        <td className="py-3 text-right text-white">{trade.quantity.toFixed(4)}</td>
-                        <td className="py-3 text-right text-white">${(trade.price * trade.quantity).toFixed(2)}</td>
+                        <td className="py-3 text-right text-white font-mono">
+                          ${trade.price.toFixed(2)}
+                        </td>
+                        <td className="py-3 text-right text-white">
+                          {trade.quantity.toFixed(4)}
+                        </td>
+                        <td className="py-3 text-right text-white">
+                          ${(trade.price * trade.quantity).toFixed(2)}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -487,5 +631,5 @@ export function RealTimeFeeds() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

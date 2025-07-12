@@ -1,74 +1,95 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Mail, Send, CheckCircle, AlertCircle } from "lucide-react"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Mail, Send, CheckCircle, AlertCircle } from "lucide-react";
 
 export function EmailTester() {
-  const [emailType, setEmailType] = useState("custom")
-  const [toEmail, setToEmail] = useState("")
-  const [subject, setSubject] = useState("")
-  const [message, setMessage] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [result, setResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [emailType, setEmailType] = useState("custom");
+  const [toEmail, setToEmail] = useState("");
+  const [subject, setSubject] = useState("");
+  const [message, setMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [result, setResult] = useState<{
+    success: boolean;
+    message: string;
+  } | null>(null);
 
   const handleSendTestEmail = async () => {
     if (!toEmail) {
-      setResult({ success: false, message: "Please enter recipient email" })
-      return
+      setResult({ success: false, message: "Please enter recipient email" });
+      return;
     }
 
-    setIsLoading(true)
-    setResult(null)
+    setIsLoading(true);
+    setResult(null);
 
     try {
-      let response
+      let response;
 
       if (emailType === "verification") {
         response = await fetch("/api/test/send-verification-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: toEmail, firstName: "Test User" }),
-        })
+        });
       } else if (emailType === "reset") {
         response = await fetch("/api/test/send-reset-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: toEmail, firstName: "Test User" }),
-        })
+        });
       } else if (emailType === "welcome") {
         response = await fetch("/api/test/send-welcome-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: toEmail, firstName: "Test User" }),
-        })
+        });
       } else {
         response = await fetch("/api/test/send-custom-email", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: toEmail, subject, message }),
-        })
+        });
       }
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (response.ok) {
-        setResult({ success: true, message: data.message || "Email sent successfully!" })
+        setResult({
+          success: true,
+          message: data.message || "Email sent successfully!",
+        });
       } else {
-        setResult({ success: false, message: data.error || "Failed to send email" })
+        setResult({
+          success: false,
+          message: data.error || "Failed to send email",
+        });
       }
     } catch (error) {
-      setResult({ success: false, message: "Network error occurred" })
+      setResult({ success: false, message: "Network error occurred" });
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <Card className="w-full max-w-2xl mx-auto">
@@ -77,7 +98,9 @@ export function EmailTester() {
           <Mail className="w-5 h-5" />
           Email Tester
         </CardTitle>
-        <CardDescription>Test email functionality with project.command.center@gmail.com</CardDescription>
+        <CardDescription>
+          Test email functionality with project.command.center@gmail.com
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
@@ -132,19 +155,31 @@ export function EmailTester() {
         )}
 
         {result && (
-          <Alert className={result.success ? "border-green-500/20 bg-green-500/10" : "border-red-500/20 bg-red-500/10"}>
+          <Alert
+            className={
+              result.success
+                ? "border-green-500/20 bg-green-500/10"
+                : "border-red-500/20 bg-red-500/10"
+            }
+          >
             {result.success ? (
               <CheckCircle className="h-4 w-4 text-green-400" />
             ) : (
               <AlertCircle className="h-4 w-4 text-red-400" />
             )}
-            <AlertDescription className={result.success ? "text-green-300" : "text-red-300"}>
+            <AlertDescription
+              className={result.success ? "text-green-300" : "text-red-300"}
+            >
               {result.message}
             </AlertDescription>
           </Alert>
         )}
 
-        <Button onClick={handleSendTestEmail} className="w-full" disabled={isLoading}>
+        <Button
+          onClick={handleSendTestEmail}
+          className="w-full"
+          disabled={isLoading}
+        >
           {isLoading ? (
             <>
               <Send className="mr-2 h-4 w-4 animate-pulse" />
@@ -162,9 +197,12 @@ export function EmailTester() {
           <p className="font-medium mb-2">📧 Email Configuration:</p>
           <p>• Sender: project.command.center@gmail.com</p>
           <p>• SMTP Host: {process.env.SMTP_HOST || "smtp.gmail.com"}</p>
-          <p>• Make sure SMTP_USER and SMTP_PASS are configured in your environment</p>
+          <p>
+            • Make sure SMTP_USER and SMTP_PASS are configured in your
+            environment
+          </p>
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

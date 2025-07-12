@@ -1,12 +1,24 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +26,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,69 +37,76 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, Edit, Trash2, UserPlus } from "lucide-react"
+} from "@/components/ui/alert-dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Search, Edit, Trash2, UserPlus } from "lucide-react";
 
 interface User {
-  id: string
-  email: string
-  name: string
-  role: string
-  status: string
-  plan: string
-  createdAt: string
-  lastLogin: string
+  id: string;
+  email: string;
+  name: string;
+  role: string;
+  status: string;
+  plan: string;
+  createdAt: string;
+  lastLogin: string;
 }
 
 export function UserManagement() {
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [roleFilter, setRoleFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [editingUser, setEditingUser] = useState<User | null>(null)
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   useEffect(() => {
-    fetchUsers()
-  }, [searchTerm, roleFilter, statusFilter])
+    fetchUsers();
+  }, [searchTerm, roleFilter, statusFilter]);
 
   const fetchUsers = async () => {
     try {
-      const token = localStorage.getItem("token")
-      const params = new URLSearchParams()
-      if (searchTerm) params.append("search", searchTerm)
-      if (roleFilter !== "all") params.append("role", roleFilter)
-      if (statusFilter !== "all") params.append("status", statusFilter)
+      const token = localStorage.getItem("token");
+      const params = new URLSearchParams();
+      if (searchTerm) params.append("search", searchTerm);
+      if (roleFilter !== "all") params.append("role", roleFilter);
+      if (statusFilter !== "all") params.append("status", statusFilter);
 
       const response = await fetch(`/api/admin/users?${params}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      })
+      });
 
       if (response.ok) {
-        const data = await response.json()
-        setUsers(data.users)
+        const data = await response.json();
+        setUsers(data.users);
       }
     } catch (error) {
-      console.error("Failed to fetch users:", error)
+      console.error("Failed to fetch users:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleEditUser = (user: User) => {
-    setEditingUser({ ...user })
-    setIsEditDialogOpen(true)
-  }
+    setEditingUser({ ...user });
+    setIsEditDialogOpen(true);
+  };
 
   const handleSaveUser = async () => {
-    if (!editingUser) return
+    if (!editingUser) return;
 
     try {
-      const token = localStorage.getItem("token")
+      const token = localStorage.getItem("token");
       const response = await fetch("/api/admin/users", {
         method: "PUT",
         headers: {
@@ -95,68 +114,87 @@ export function UserManagement() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(editingUser),
-      })
+      });
 
       if (response.ok) {
-        setIsEditDialogOpen(false)
-        setEditingUser(null)
-        fetchUsers()
+        setIsEditDialogOpen(false);
+        setEditingUser(null);
+        fetchUsers();
       }
     } catch (error) {
-      console.error("Failed to update user:", error)
+      console.error("Failed to update user:", error);
     }
-  }
+  };
 
   const handleDeleteUser = async (userId: string) => {
     try {
-      const token = localStorage.getItem("token")
+      const token = localStorage.getItem("token");
       const response = await fetch(`/api/admin/users?id=${userId}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
         },
-      })
+      });
 
       if (response.ok) {
-        fetchUsers()
+        fetchUsers();
       }
     } catch (error) {
-      console.error("Failed to delete user:", error)
+      console.error("Failed to delete user:", error);
     }
-  }
+  };
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
+    const variants: Record<
+      string,
+      "default" | "secondary" | "destructive" | "outline"
+    > = {
       active: "default",
       inactive: "secondary",
       suspended: "destructive",
-    }
-    return <Badge variant={variants[status] || "outline"}>{status}</Badge>
-  }
+    };
+    return <Badge variant={variants[status] || "outline"}>{status}</Badge>;
+  };
 
   const getRoleBadge = (role: string) => {
     const colors: Record<string, string> = {
       admin: "bg-red-500/10 text-red-400 border-red-500/20",
       user: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-    }
-    return <Badge className={colors[role] || "bg-gray-500/10 text-gray-400 border-gray-500/20"}>{role}</Badge>
-  }
+    };
+    return (
+      <Badge
+        className={
+          colors[role] || "bg-gray-500/10 text-gray-400 border-gray-500/20"
+        }
+      >
+        {role}
+      </Badge>
+    );
+  };
 
   const getPlanBadge = (plan: string) => {
     const colors: Record<string, string> = {
       starter: "bg-green-500/10 text-green-400 border-green-500/20",
       pro: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
       enterprise: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-    }
-    return <Badge className={colors[plan] || "bg-gray-500/10 text-gray-400 border-gray-500/20"}>{plan}</Badge>
-  }
+    };
+    return (
+      <Badge
+        className={
+          colors[plan] || "bg-gray-500/10 text-gray-400 border-gray-500/20"
+        }
+      >
+        {plan}
+      </Badge>
+    );
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#30D5C8]"></div>
       </div>
-    )
+    );
   }
 
   return (
@@ -169,7 +207,9 @@ export function UserManagement() {
             Add User
           </Button>
         </CardTitle>
-        <CardDescription className="text-gray-400">Manage user accounts, roles, and permissions</CardDescription>
+        <CardDescription className="text-gray-400">
+          Manage user accounts, roles, and permissions
+        </CardDescription>
       </CardHeader>
 
       <CardContent className="space-y-6">
@@ -234,7 +274,9 @@ export function UserManagement() {
                   <TableCell>{getRoleBadge(user.role)}</TableCell>
                   <TableCell>{getStatusBadge(user.status)}</TableCell>
                   <TableCell>{getPlanBadge(user.plan)}</TableCell>
-                  <TableCell className="text-gray-400">{new Date(user.lastLogin).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-gray-400">
+                    {new Date(user.lastLogin).toLocaleDateString()}
+                  </TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
                       <Button
@@ -247,15 +289,22 @@ export function UserManagement() {
                       </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
-                          <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-300">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-400 hover:text-red-300"
+                          >
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent className="bg-gray-900 border-gray-800">
                           <AlertDialogHeader>
-                            <AlertDialogTitle className="text-white">Delete User</AlertDialogTitle>
+                            <AlertDialogTitle className="text-white">
+                              Delete User
+                            </AlertDialogTitle>
                             <AlertDialogDescription className="text-gray-400">
-                              Are you sure you want to delete this user? This action cannot be undone.
+                              Are you sure you want to delete this user? This
+                              action cannot be undone.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
@@ -284,7 +333,9 @@ export function UserManagement() {
           <DialogContent className="bg-gray-900 border-gray-800">
             <DialogHeader>
               <DialogTitle className="text-white">Edit User</DialogTitle>
-              <DialogDescription className="text-gray-400">Update user information and permissions</DialogDescription>
+              <DialogDescription className="text-gray-400">
+                Update user information and permissions
+              </DialogDescription>
             </DialogHeader>
             {editingUser && (
               <div className="space-y-4">
@@ -295,7 +346,9 @@ export function UserManagement() {
                   <Input
                     id="name"
                     value={editingUser.name}
-                    onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                    onChange={(e) =>
+                      setEditingUser({ ...editingUser, name: e.target.value })
+                    }
                     className="bg-gray-800 border-gray-700 text-white"
                   />
                 </div>
@@ -306,7 +359,9 @@ export function UserManagement() {
                   <Input
                     id="email"
                     value={editingUser.email}
-                    onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })}
+                    onChange={(e) =>
+                      setEditingUser({ ...editingUser, email: e.target.value })
+                    }
                     className="bg-gray-800 border-gray-700 text-white"
                   />
                 </div>
@@ -316,7 +371,9 @@ export function UserManagement() {
                   </Label>
                   <Select
                     value={editingUser.role}
-                    onValueChange={(value) => setEditingUser({ ...editingUser, role: value })}
+                    onValueChange={(value) =>
+                      setEditingUser({ ...editingUser, role: value })
+                    }
                   >
                     <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
                       <SelectValue />
@@ -333,7 +390,9 @@ export function UserManagement() {
                   </Label>
                   <Select
                     value={editingUser.status}
-                    onValueChange={(value) => setEditingUser({ ...editingUser, status: value })}
+                    onValueChange={(value) =>
+                      setEditingUser({ ...editingUser, status: value })
+                    }
                   >
                     <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
                       <SelectValue />
@@ -351,7 +410,9 @@ export function UserManagement() {
                   </Label>
                   <Select
                     value={editingUser.plan}
-                    onValueChange={(value) => setEditingUser({ ...editingUser, plan: value })}
+                    onValueChange={(value) =>
+                      setEditingUser({ ...editingUser, plan: value })
+                    }
                   >
                     <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
                       <SelectValue />
@@ -373,7 +434,10 @@ export function UserManagement() {
               >
                 Cancel
               </Button>
-              <Button onClick={handleSaveUser} className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]">
+              <Button
+                onClick={handleSaveUser}
+                className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]"
+              >
                 Save Changes
               </Button>
             </DialogFooter>
@@ -381,5 +445,5 @@ export function UserManagement() {
         </Dialog>
       </CardContent>
     </Card>
-  )
+  );
 }

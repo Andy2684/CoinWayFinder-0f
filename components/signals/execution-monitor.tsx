@@ -1,36 +1,45 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Activity, CheckCircle, XCircle, Clock, DollarSign, TrendingUp, AlertTriangle, Zap } from "lucide-react"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Activity,
+  CheckCircle,
+  XCircle,
+  Clock,
+  DollarSign,
+  TrendingUp,
+  AlertTriangle,
+  Zap,
+} from "lucide-react";
 
 interface ExecutionStatus {
-  signalId: string
-  symbol: string
-  type: "BUY" | "SELL"
-  status: "PENDING" | "EXECUTING" | "EXECUTED" | "FAILED" | "CANCELLED"
-  progress: number
-  executionPrice?: number
-  targetPrice: number
-  stopLoss: number
-  currentPrice: number
-  pnl?: number
-  pnlPercentage?: number
-  exchange: string
-  quantity: number
-  fees?: number
-  slippage?: number
-  executionTime?: string
-  error?: string
+  signalId: string;
+  symbol: string;
+  type: "BUY" | "SELL";
+  status: "PENDING" | "EXECUTING" | "EXECUTED" | "FAILED" | "CANCELLED";
+  progress: number;
+  executionPrice?: number;
+  targetPrice: number;
+  stopLoss: number;
+  currentPrice: number;
+  pnl?: number;
+  pnlPercentage?: number;
+  exchange: string;
+  quantity: number;
+  fees?: number;
+  slippage?: number;
+  executionTime?: string;
+  error?: string;
 }
 
 export function ExecutionMonitor() {
-  const [executions, setExecutions] = useState<ExecutionStatus[]>([])
-  const [isMonitoring, setIsMonitoring] = useState(true)
+  const [executions, setExecutions] = useState<ExecutionStatus[]>([]);
+  const [isMonitoring, setIsMonitoring] = useState(true);
 
   useEffect(() => {
     // Mock execution data
@@ -90,9 +99,9 @@ export function ExecutionMonitor() {
         quantity: 1000,
         error: "Insufficient balance",
       },
-    ]
+    ];
 
-    setExecutions(mockExecutions)
+    setExecutions(mockExecutions);
 
     // Simulate real-time updates
     if (isMonitoring) {
@@ -100,100 +109,123 @@ export function ExecutionMonitor() {
         setExecutions((prev) =>
           prev.map((exec) => {
             if (exec.status === "EXECUTING") {
-              const newProgress = Math.min(100, exec.progress + Math.random() * 20)
+              const newProgress = Math.min(
+                100,
+                exec.progress + Math.random() * 20,
+              );
               if (newProgress >= 100) {
                 return {
                   ...exec,
                   status: "EXECUTED",
                   progress: 100,
-                  executionPrice: exec.currentPrice + (Math.random() - 0.5) * 10,
+                  executionPrice:
+                    exec.currentPrice + (Math.random() - 0.5) * 10,
                   executionTime: new Date().toISOString(),
                   fees: exec.quantity * exec.currentPrice * 0.001,
                   slippage: Math.random() * 0.1,
-                }
+                };
               }
-              return { ...exec, progress: newProgress }
+              return { ...exec, progress: newProgress };
             }
 
             // Update current prices and P&L for executed positions
             if (exec.status === "EXECUTED" && exec.executionPrice) {
-              const priceChange = (Math.random() - 0.5) * 50
-              const newCurrentPrice = exec.currentPrice + priceChange
+              const priceChange = (Math.random() - 0.5) * 50;
+              const newCurrentPrice = exec.currentPrice + priceChange;
               const pnl =
                 exec.type === "BUY"
                   ? (newCurrentPrice - exec.executionPrice) * exec.quantity
-                  : (exec.executionPrice - newCurrentPrice) * exec.quantity
-              const pnlPercentage = (pnl / (exec.executionPrice * exec.quantity)) * 100
+                  : (exec.executionPrice - newCurrentPrice) * exec.quantity;
+              const pnlPercentage =
+                (pnl / (exec.executionPrice * exec.quantity)) * 100;
 
               return {
                 ...exec,
                 currentPrice: newCurrentPrice,
                 pnl,
                 pnlPercentage,
-              }
+              };
             }
 
-            return exec
+            return exec;
           }),
-        )
-      }, 2000)
+        );
+      }, 2000);
 
-      return () => clearInterval(interval)
+      return () => clearInterval(interval);
     }
-  }, [isMonitoring])
+  }, [isMonitoring]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "EXECUTED":
-        return <CheckCircle className="w-4 h-4 text-green-400" />
+        return <CheckCircle className="w-4 h-4 text-green-400" />;
       case "EXECUTING":
-        return <Activity className="w-4 h-4 text-blue-400 animate-pulse" />
+        return <Activity className="w-4 h-4 text-blue-400 animate-pulse" />;
       case "PENDING":
-        return <Clock className="w-4 h-4 text-yellow-400" />
+        return <Clock className="w-4 h-4 text-yellow-400" />;
       case "FAILED":
-        return <XCircle className="w-4 h-4 text-red-400" />
+        return <XCircle className="w-4 h-4 text-red-400" />;
       case "CANCELLED":
-        return <XCircle className="w-4 h-4 text-gray-400" />
+        return <XCircle className="w-4 h-4 text-gray-400" />;
       default:
-        return <Clock className="w-4 h-4 text-gray-400" />
+        return <Clock className="w-4 h-4 text-gray-400" />;
     }
-  }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "EXECUTED":
-        return "text-green-400 bg-green-400/10"
+        return "text-green-400 bg-green-400/10";
       case "EXECUTING":
-        return "text-blue-400 bg-blue-400/10"
+        return "text-blue-400 bg-blue-400/10";
       case "PENDING":
-        return "text-yellow-400 bg-yellow-400/10"
+        return "text-yellow-400 bg-yellow-400/10";
       case "FAILED":
-        return "text-red-400 bg-red-400/10"
+        return "text-red-400 bg-red-400/10";
       case "CANCELLED":
-        return "text-gray-400 bg-gray-400/10"
+        return "text-gray-400 bg-gray-400/10";
       default:
-        return "text-gray-400 bg-gray-400/10"
+        return "text-gray-400 bg-gray-400/10";
     }
-  }
+  };
 
-  const activeExecutions = executions.filter((e) => e.status === "EXECUTING" || e.status === "PENDING")
-  const completedExecutions = executions.filter((e) => e.status === "EXECUTED")
-  const failedExecutions = executions.filter((e) => e.status === "FAILED" || e.status === "CANCELLED")
-  const totalPnL = completedExecutions.reduce((sum, exec) => sum + (exec.pnl || 0), 0)
+  const activeExecutions = executions.filter(
+    (e) => e.status === "EXECUTING" || e.status === "PENDING",
+  );
+  const completedExecutions = executions.filter((e) => e.status === "EXECUTED");
+  const failedExecutions = executions.filter(
+    (e) => e.status === "FAILED" || e.status === "CANCELLED",
+  );
+  const totalPnL = completedExecutions.reduce(
+    (sum, exec) => sum + (exec.pnl || 0),
+    0,
+  );
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white mb-2">⚡ Execution Monitor</h2>
+          <h2 className="text-2xl font-bold text-white mb-2">
+            ⚡ Execution Monitor
+          </h2>
           <p className="text-gray-300">Real-time signal execution tracking</p>
         </div>
         <div className="flex items-center space-x-4">
-          <Badge className={isMonitoring ? "text-green-400 bg-green-400/10" : "text-gray-400 bg-gray-400/10"}>
+          <Badge
+            className={
+              isMonitoring
+                ? "text-green-400 bg-green-400/10"
+                : "text-gray-400 bg-gray-400/10"
+            }
+          >
             {isMonitoring ? "Live" : "Paused"}
           </Badge>
-          <Button variant="outline" onClick={() => setIsMonitoring(!isMonitoring)}>
+          <Button
+            variant="outline"
+            onClick={() => setIsMonitoring(!isMonitoring)}
+          >
             {isMonitoring ? "Pause" : "Resume"} Monitoring
           </Button>
         </div>
@@ -206,7 +238,9 @@ export function ExecutionMonitor() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Active Executions</p>
-                <p className="text-2xl font-bold text-white">{activeExecutions.length}</p>
+                <p className="text-2xl font-bold text-white">
+                  {activeExecutions.length}
+                </p>
               </div>
               <Activity className="w-8 h-8 text-blue-400" />
             </div>
@@ -218,7 +252,9 @@ export function ExecutionMonitor() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Completed</p>
-                <p className="text-2xl font-bold text-white">{completedExecutions.length}</p>
+                <p className="text-2xl font-bold text-white">
+                  {completedExecutions.length}
+                </p>
               </div>
               <CheckCircle className="w-8 h-8 text-green-400" />
             </div>
@@ -230,7 +266,9 @@ export function ExecutionMonitor() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Total P&L</p>
-                <p className={`text-2xl font-bold ${totalPnL >= 0 ? "text-green-400" : "text-red-400"}`}>
+                <p
+                  className={`text-2xl font-bold ${totalPnL >= 0 ? "text-green-400" : "text-red-400"}`}
+                >
                   {totalPnL >= 0 ? "+" : ""}${totalPnL.toFixed(2)}
                 </p>
               </div>
@@ -245,7 +283,12 @@ export function ExecutionMonitor() {
               <div>
                 <p className="text-sm text-gray-400">Success Rate</p>
                 <p className="text-2xl font-bold text-white">
-                  {executions.length > 0 ? Math.round((completedExecutions.length / executions.length) * 100) : 0}%
+                  {executions.length > 0
+                    ? Math.round(
+                        (completedExecutions.length / executions.length) * 100,
+                      )
+                    : 0}
+                  %
                 </p>
               </div>
               <TrendingUp className="w-8 h-8 text-[#30D5C8]" />
@@ -256,26 +299,39 @@ export function ExecutionMonitor() {
 
       <Tabs defaultValue="active" className="space-y-6">
         <TabsList className="bg-[#1A1B23] border-gray-800">
-          <TabsTrigger value="active">Active ({activeExecutions.length})</TabsTrigger>
-          <TabsTrigger value="completed">Completed ({completedExecutions.length})</TabsTrigger>
-          <TabsTrigger value="failed">Failed ({failedExecutions.length})</TabsTrigger>
+          <TabsTrigger value="active">
+            Active ({activeExecutions.length})
+          </TabsTrigger>
+          <TabsTrigger value="completed">
+            Completed ({completedExecutions.length})
+          </TabsTrigger>
+          <TabsTrigger value="failed">
+            Failed ({failedExecutions.length})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="active" className="space-y-4">
           {activeExecutions.map((execution) => (
-            <Card key={execution.signalId} className="bg-[#1A1B23] border-gray-800">
+            <Card
+              key={execution.signalId}
+              className="bg-[#1A1B23] border-gray-800"
+            >
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     {getStatusIcon(execution.status)}
                     <div>
-                      <h3 className="text-lg font-semibold text-white">{execution.symbol}</h3>
+                      <h3 className="text-lg font-semibold text-white">
+                        {execution.symbol}
+                      </h3>
                       <p className="text-sm text-gray-400">
                         {execution.exchange} • {execution.type}
                       </p>
                     </div>
                   </div>
-                  <Badge className={getStatusColor(execution.status)}>{execution.status}</Badge>
+                  <Badge className={getStatusColor(execution.status)}>
+                    {execution.status}
+                  </Badge>
                 </div>
               </CardHeader>
 
@@ -285,7 +341,9 @@ export function ExecutionMonitor() {
                   <div className="space-y-2">
                     <div className="flex justify-between text-sm">
                       <span className="text-gray-400">Execution Progress</span>
-                      <span className="text-white">{execution.progress.toFixed(0)}%</span>
+                      <span className="text-white">
+                        {execution.progress.toFixed(0)}%
+                      </span>
                     </div>
                     <Progress value={execution.progress} className="h-2" />
                   </div>
@@ -295,19 +353,27 @@ export function ExecutionMonitor() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Current Price</p>
-                    <p className="text-sm font-medium text-white">${execution.currentPrice.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-white">
+                      ${execution.currentPrice.toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Target</p>
-                    <p className="text-sm font-medium text-green-400">${execution.targetPrice.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-green-400">
+                      ${execution.targetPrice.toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Stop Loss</p>
-                    <p className="text-sm font-medium text-red-400">${execution.stopLoss.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-red-400">
+                      ${execution.stopLoss.toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Quantity</p>
-                    <p className="text-sm font-medium text-white">{execution.quantity}</p>
+                    <p className="text-sm font-medium text-white">
+                      {execution.quantity}
+                    </p>
                   </div>
                 </div>
 
@@ -336,7 +402,10 @@ export function ExecutionMonitor() {
 
         <TabsContent value="completed" className="space-y-4">
           {completedExecutions.map((execution) => (
-            <Card key={execution.signalId} className="bg-[#1A1B23] border-gray-800">
+            <Card
+              key={execution.signalId}
+              className="bg-[#1A1B23] border-gray-800"
+            >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
@@ -347,13 +416,17 @@ export function ExecutionMonitor() {
                       </p>
                       <p className="text-xs text-gray-400">
                         {execution.exchange} •{" "}
-                        {execution.executionTime && new Date(execution.executionTime).toLocaleString()}
+                        {execution.executionTime &&
+                          new Date(execution.executionTime).toLocaleString()}
                       </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`font-medium ${(execution.pnl || 0) >= 0 ? "text-green-400" : "text-red-400"}`}>
-                      {(execution.pnl || 0) >= 0 ? "+" : ""}${(execution.pnl || 0).toFixed(2)}
+                    <p
+                      className={`font-medium ${(execution.pnl || 0) >= 0 ? "text-green-400" : "text-red-400"}`}
+                    >
+                      {(execution.pnl || 0) >= 0 ? "+" : ""}$
+                      {(execution.pnl || 0).toFixed(2)}
                     </p>
                     <p className="text-xs text-gray-400">
                       {(execution.pnlPercentage || 0) >= 0 ? "+" : ""}
@@ -368,7 +441,10 @@ export function ExecutionMonitor() {
 
         <TabsContent value="failed" className="space-y-4">
           {failedExecutions.map((execution) => (
-            <Card key={execution.signalId} className="bg-[#1A1B23] border-gray-800">
+            <Card
+              key={execution.signalId}
+              className="bg-[#1A1B23] border-gray-800"
+            >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
@@ -377,12 +453,20 @@ export function ExecutionMonitor() {
                       <p className="font-medium text-white">
                         {execution.symbol} {execution.type}
                       </p>
-                      <p className="text-xs text-gray-400">{execution.exchange}</p>
+                      <p className="text-xs text-gray-400">
+                        {execution.exchange}
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <Badge className="text-red-400 bg-red-400/10">{execution.status}</Badge>
-                    {execution.error && <p className="text-xs text-red-400 mt-1">{execution.error}</p>}
+                    <Badge className="text-red-400 bg-red-400/10">
+                      {execution.status}
+                    </Badge>
+                    {execution.error && (
+                      <p className="text-xs text-red-400 mt-1">
+                        {execution.error}
+                      </p>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -391,5 +475,5 @@ export function ExecutionMonitor() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

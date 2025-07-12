@@ -1,59 +1,68 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Play, Pause, TrendingUp, TrendingDown, Zap, Brain, Target, DollarSign } from "lucide-react"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Play,
+  Pause,
+  TrendingUp,
+  TrendingDown,
+  Zap,
+  Brain,
+  Target,
+  DollarSign,
+} from "lucide-react";
 
 interface AutomatedSignal {
-  id: string
-  strategy: string
-  symbol: string
-  type: "BUY" | "SELL"
-  confidence: number
-  entryPrice: number
-  targetPrice: number
-  stopLoss: number
-  currentPrice: number
-  status: "PENDING" | "EXECUTED" | "CANCELLED" | "COMPLETED"
-  executionTime?: string
-  pnl?: number
-  pnlPercentage?: number
-  riskScore: number
-  volume: number
-  timeframe: string
+  id: string;
+  strategy: string;
+  symbol: string;
+  type: "BUY" | "SELL";
+  confidence: number;
+  entryPrice: number;
+  targetPrice: number;
+  stopLoss: number;
+  currentPrice: number;
+  status: "PENDING" | "EXECUTED" | "CANCELLED" | "COMPLETED";
+  executionTime?: string;
+  pnl?: number;
+  pnlPercentage?: number;
+  riskScore: number;
+  volume: number;
+  timeframe: string;
   indicators: {
-    rsi: number
-    macd: number
-    bollinger: string
-    volume: string
-    momentum: string
-  }
-  aiAnalysis: string
-  createdAt: string
-  executedAt?: string
+    rsi: number;
+    macd: number;
+    bollinger: string;
+    volume: string;
+    momentum: string;
+  };
+  aiAnalysis: string;
+  createdAt: string;
+  executedAt?: string;
 }
 
 interface StrategyConfig {
-  id: string
-  name: string
-  enabled: boolean
-  riskLevel: "LOW" | "MEDIUM" | "HIGH"
-  minConfidence: number
-  maxPositionSize: number
-  symbols: string[]
-  timeframes: string[]
-  parameters: Record<string, any>
+  id: string;
+  name: string;
+  enabled: boolean;
+  riskLevel: "LOW" | "MEDIUM" | "HIGH";
+  minConfidence: number;
+  maxPositionSize: number;
+  symbols: string[];
+  timeframes: string[];
+  parameters: Record<string, any>;
 }
 
 export function AutomatedSignals() {
-  const [signals, setSignals] = useState<AutomatedSignal[]>([])
-  const [strategies, setStrategies] = useState<StrategyConfig[]>([])
-  const [isGenerating, setIsGenerating] = useState(false)
-  const [executionEnabled, setExecutionEnabled] = useState(false)
+  const [signals, setSignals] = useState<AutomatedSignal[]>([]);
+  const [strategies, setStrategies] = useState<StrategyConfig[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [executionEnabled, setExecutionEnabled] = useState(false);
 
   // Mock data initialization
   useEffect(() => {
@@ -120,7 +129,7 @@ export function AutomatedSignals() {
           minPatternStrength: 0.7,
         },
       },
-    ]
+    ];
 
     const mockSignals: AutomatedSignal[] = [
       {
@@ -206,62 +215,84 @@ export function AutomatedSignals() {
           "AI detected ascending triangle pattern with 89% confidence. Breakout expected within next 2-4 hours.",
         createdAt: "2024-01-15T11:45:00Z",
       },
-    ]
+    ];
 
-    setStrategies(mockStrategies)
-    setSignals(mockSignals)
-  }, [])
+    setStrategies(mockStrategies);
+    setSignals(mockSignals);
+  }, []);
 
   const toggleStrategy = (strategyId: string) => {
     setStrategies((prev) =>
-      prev.map((strategy) => (strategy.id === strategyId ? { ...strategy, enabled: !strategy.enabled } : strategy)),
-    )
-  }
+      prev.map((strategy) =>
+        strategy.id === strategyId
+          ? { ...strategy, enabled: !strategy.enabled }
+          : strategy,
+      ),
+    );
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "EXECUTED":
-        return "text-green-400 bg-green-400/10"
+        return "text-green-400 bg-green-400/10";
       case "PENDING":
-        return "text-yellow-400 bg-yellow-400/10"
+        return "text-yellow-400 bg-yellow-400/10";
       case "CANCELLED":
-        return "text-red-400 bg-red-400/10"
+        return "text-red-400 bg-red-400/10";
       case "COMPLETED":
-        return "text-blue-400 bg-blue-400/10"
+        return "text-blue-400 bg-blue-400/10";
       default:
-        return "text-gray-400 bg-gray-400/10"
+        return "text-gray-400 bg-gray-400/10";
     }
-  }
+  };
 
   const getRiskColor = (risk: number) => {
-    if (risk <= 3) return "text-green-400"
-    if (risk <= 7) return "text-yellow-400"
-    return "text-red-400"
-  }
+    if (risk <= 3) return "text-green-400";
+    if (risk <= 7) return "text-yellow-400";
+    return "text-red-400";
+  };
 
-  const activeSignals = signals.filter((s) => s.status === "EXECUTED" || s.status === "PENDING")
-  const completedSignals = signals.filter((s) => s.status === "COMPLETED" || s.status === "CANCELLED")
-  const totalPnL = signals.reduce((sum, signal) => sum + (signal.pnl || 0), 0)
-  const winRate = (signals.filter((s) => (s.pnl || 0) > 0).length / Math.max(signals.length, 1)) * 100
+  const activeSignals = signals.filter(
+    (s) => s.status === "EXECUTED" || s.status === "PENDING",
+  );
+  const completedSignals = signals.filter(
+    (s) => s.status === "COMPLETED" || s.status === "CANCELLED",
+  );
+  const totalPnL = signals.reduce((sum, signal) => sum + (signal.pnl || 0), 0);
+  const winRate =
+    (signals.filter((s) => (s.pnl || 0) > 0).length /
+      Math.max(signals.length, 1)) *
+    100;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-white mb-2">🤖 Automated Signals</h1>
-          <p className="text-gray-300">AI-powered signal generation and automated execution</p>
+          <h1 className="text-3xl font-bold text-white mb-2">
+            🤖 Automated Signals
+          </h1>
+          <p className="text-gray-300">
+            AI-powered signal generation and automated execution
+          </p>
         </div>
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <Switch checked={executionEnabled} onCheckedChange={setExecutionEnabled} />
+            <Switch
+              checked={executionEnabled}
+              onCheckedChange={setExecutionEnabled}
+            />
             <span className="text-sm text-gray-300">Auto Execute</span>
           </div>
           <Button
             className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]"
             onClick={() => setIsGenerating(!isGenerating)}
           >
-            {isGenerating ? <Pause className="w-4 h-4 mr-2" /> : <Play className="w-4 h-4 mr-2" />}
+            {isGenerating ? (
+              <Pause className="w-4 h-4 mr-2" />
+            ) : (
+              <Play className="w-4 h-4 mr-2" />
+            )}
             {isGenerating ? "Pause Generation" : "Start Generation"}
           </Button>
         </div>
@@ -274,7 +305,9 @@ export function AutomatedSignals() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Active Signals</p>
-                <p className="text-2xl font-bold text-white">{activeSignals.length}</p>
+                <p className="text-2xl font-bold text-white">
+                  {activeSignals.length}
+                </p>
               </div>
               <Zap className="w-8 h-8 text-[#30D5C8]" />
             </div>
@@ -286,7 +319,9 @@ export function AutomatedSignals() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Total P&L</p>
-                <p className={`text-2xl font-bold ${totalPnL >= 0 ? "text-green-400" : "text-red-400"}`}>
+                <p
+                  className={`text-2xl font-bold ${totalPnL >= 0 ? "text-green-400" : "text-red-400"}`}
+                >
                   {totalPnL >= 0 ? "+" : ""}${totalPnL.toFixed(2)}
                 </p>
               </div>
@@ -300,7 +335,9 @@ export function AutomatedSignals() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-400">Win Rate</p>
-                <p className="text-2xl font-bold text-white">{winRate.toFixed(1)}%</p>
+                <p className="text-2xl font-bold text-white">
+                  {winRate.toFixed(1)}%
+                </p>
               </div>
               <Target className="w-8 h-8 text-blue-400" />
             </div>
@@ -313,7 +350,8 @@ export function AutomatedSignals() {
               <div>
                 <p className="text-sm text-gray-400">Strategies Active</p>
                 <p className="text-2xl font-bold text-white">
-                  {strategies.filter((s) => s.enabled).length}/{strategies.length}
+                  {strategies.filter((s) => s.enabled).length}/
+                  {strategies.length}
                 </p>
               </div>
               <Brain className="w-8 h-8 text-purple-400" />
@@ -341,15 +379,22 @@ export function AutomatedSignals() {
                       <TrendingDown className="w-5 h-5 text-red-400" />
                     )}
                     <div>
-                      <h3 className="text-lg font-semibold text-white">{signal.symbol}</h3>
+                      <h3 className="text-lg font-semibold text-white">
+                        {signal.symbol}
+                      </h3>
                       <p className="text-sm text-gray-400">
                         {signal.strategy} • {signal.timeframe}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
-                    <Badge className={getStatusColor(signal.status)}>{signal.status}</Badge>
-                    <Badge variant="outline" className="text-[#30D5C8] border-[#30D5C8]/30">
+                    <Badge className={getStatusColor(signal.status)}>
+                      {signal.status}
+                    </Badge>
+                    <Badge
+                      variant="outline"
+                      className="text-[#30D5C8] border-[#30D5C8]/30"
+                    >
                       {signal.confidence}%
                     </Badge>
                   </div>
@@ -361,19 +406,27 @@ export function AutomatedSignals() {
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Entry Price</p>
-                    <p className="text-sm font-medium text-white">${signal.entryPrice.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-white">
+                      ${signal.entryPrice.toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Current Price</p>
-                    <p className="text-sm font-medium text-white">${signal.currentPrice.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-white">
+                      ${signal.currentPrice.toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Target</p>
-                    <p className="text-sm font-medium text-green-400">${signal.targetPrice.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-green-400">
+                      ${signal.targetPrice.toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Stop Loss</p>
-                    <p className="text-sm font-medium text-red-400">${signal.stopLoss.toLocaleString()}</p>
+                    <p className="text-sm font-medium text-red-400">
+                      ${signal.stopLoss.toLocaleString()}
+                    </p>
                   </div>
                 </div>
 
@@ -381,23 +434,35 @@ export function AutomatedSignals() {
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4 p-4 bg-[#0F1015] rounded-lg">
                   <div>
                     <p className="text-xs text-gray-400 mb-1">RSI</p>
-                    <p className="text-sm font-medium text-white">{signal.indicators.rsi}</p>
+                    <p className="text-sm font-medium text-white">
+                      {signal.indicators.rsi}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">MACD</p>
-                    <p className="text-sm font-medium text-white">{signal.indicators.macd}</p>
+                    <p className="text-sm font-medium text-white">
+                      {signal.indicators.macd}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Bollinger</p>
-                    <p className="text-sm font-medium text-white">{signal.indicators.bollinger}</p>
+                    <p className="text-sm font-medium text-white">
+                      {signal.indicators.bollinger}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Volume</p>
-                    <p className="text-sm font-medium text-white">{signal.indicators.volume}</p>
+                    <p className="text-sm font-medium text-white">
+                      {signal.indicators.volume}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Risk Score</p>
-                    <p className={`text-sm font-medium ${getRiskColor(signal.riskScore)}`}>{signal.riskScore}/10</p>
+                    <p
+                      className={`text-sm font-medium ${getRiskColor(signal.riskScore)}`}
+                    >
+                      {signal.riskScore}/10
+                    </p>
                   </div>
                 </div>
 
@@ -406,15 +471,20 @@ export function AutomatedSignals() {
                   <div className="flex items-center justify-between p-3 bg-[#0F1015] rounded-lg">
                     <div>
                       <p className="text-xs text-gray-400">Current P&L</p>
-                      <p className={`text-lg font-bold ${signal.pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-                        {signal.pnl >= 0 ? "+" : ""}${signal.pnl.toFixed(2)} ({signal.pnlPercentage >= 0 ? "+" : ""}
+                      <p
+                        className={`text-lg font-bold ${signal.pnl >= 0 ? "text-green-400" : "text-red-400"}`}
+                      >
+                        {signal.pnl >= 0 ? "+" : ""}${signal.pnl.toFixed(2)} (
+                        {signal.pnlPercentage >= 0 ? "+" : ""}
                         {signal.pnlPercentage?.toFixed(2)}%)
                       </p>
                     </div>
                     {signal.status === "EXECUTED" && (
                       <div className="text-right">
                         <p className="text-xs text-gray-400">Executed At</p>
-                        <p className="text-sm text-white">{new Date(signal.executedAt!).toLocaleTimeString()}</p>
+                        <p className="text-sm text-white">
+                          {new Date(signal.executedAt!).toLocaleTimeString()}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -436,29 +506,45 @@ export function AutomatedSignals() {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-white">{strategy.name}</CardTitle>
+                    <CardTitle className="text-white">
+                      {strategy.name}
+                    </CardTitle>
                     <p className="text-sm text-gray-400 mt-1">
-                      Risk: {strategy.riskLevel} • Min Confidence: {strategy.minConfidence}% • Max Position: $
+                      Risk: {strategy.riskLevel} • Min Confidence:{" "}
+                      {strategy.minConfidence}% • Max Position: $
                       {strategy.maxPositionSize}
                     </p>
                   </div>
                   <div className="flex items-center space-x-4">
                     <Badge
-                      className={strategy.enabled ? "text-green-400 bg-green-400/10" : "text-gray-400 bg-gray-400/10"}
+                      className={
+                        strategy.enabled
+                          ? "text-green-400 bg-green-400/10"
+                          : "text-gray-400 bg-gray-400/10"
+                      }
                     >
                       {strategy.enabled ? "Active" : "Inactive"}
                     </Badge>
-                    <Switch checked={strategy.enabled} onCheckedChange={() => toggleStrategy(strategy.id)} />
+                    <Switch
+                      checked={strategy.enabled}
+                      onCheckedChange={() => toggleStrategy(strategy.id)}
+                    />
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-xs text-gray-400 mb-2">Supported Symbols</p>
+                    <p className="text-xs text-gray-400 mb-2">
+                      Supported Symbols
+                    </p>
                     <div className="flex flex-wrap gap-1">
                       {strategy.symbols.map((symbol) => (
-                        <Badge key={symbol} variant="outline" className="text-xs">
+                        <Badge
+                          key={symbol}
+                          variant="outline"
+                          className="text-xs"
+                        >
                           {symbol}
                         </Badge>
                       ))}
@@ -497,10 +583,15 @@ export function AutomatedSignals() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`font-medium ${(signal.pnl || 0) >= 0 ? "text-green-400" : "text-red-400"}`}>
-                      {(signal.pnl || 0) >= 0 ? "+" : ""}${(signal.pnl || 0).toFixed(2)}
+                    <p
+                      className={`font-medium ${(signal.pnl || 0) >= 0 ? "text-green-400" : "text-red-400"}`}
+                    >
+                      {(signal.pnl || 0) >= 0 ? "+" : ""}$
+                      {(signal.pnl || 0).toFixed(2)}
                     </p>
-                    <p className="text-xs text-gray-400">{new Date(signal.createdAt).toLocaleDateString()}</p>
+                    <p className="text-xs text-gray-400">
+                      {new Date(signal.createdAt).toLocaleDateString()}
+                    </p>
                   </div>
                 </div>
               </CardContent>
@@ -509,5 +600,5 @@ export function AutomatedSignals() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

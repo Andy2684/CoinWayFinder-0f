@@ -1,10 +1,16 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   PieChart,
   Pie,
@@ -18,11 +24,18 @@ import {
   ResponsiveContainer,
   Area,
   AreaChart,
-} from "recharts"
-import { PieChartIcon, TrendingUp, DollarSign, Percent, Target, Shield } from "lucide-react"
+} from "recharts";
+import {
+  PieChartIcon,
+  TrendingUp,
+  DollarSign,
+  Percent,
+  Target,
+  Shield,
+} from "lucide-react";
 
 export function PortfolioAnalytics() {
-  const [timeframe, setTimeframe] = useState("30d")
+  const [timeframe, setTimeframe] = useState("30d");
 
   // Portfolio allocation data
   const allocationData = [
@@ -32,26 +45,86 @@ export function PortfolioAnalytics() {
     { name: "ADA", value: 10, amount: 4568.13, color: "#0033AD" },
     { name: "MATIC", value: 8, amount: 3654.5, color: "#8247E5" },
     { name: "Others", value: 7, amount: 3195.73, color: "#6B7280" },
-  ]
+  ];
 
   // Performance by exchange
   const exchangePerformance = [
-    { exchange: "Binance", profit: 2456.78, percentage: 12.3, trades: 234, color: "#F0B90B" },
-    { exchange: "Bybit", profit: 1892.45, percentage: 9.8, trades: 189, color: "#FF6B35" },
-    { exchange: "OKX", profit: 1234.56, percentage: 8.1, trades: 156, color: "#000000" },
-    { exchange: "KuCoin", profit: 987.65, percentage: 6.4, trades: 123, color: "#24D366" },
-    { exchange: "Coinbase", profit: 543.21, percentage: 4.2, trades: 89, color: "#0052FF" },
-  ]
+    {
+      exchange: "Binance",
+      profit: 2456.78,
+      percentage: 12.3,
+      trades: 234,
+      color: "#F0B90B",
+    },
+    {
+      exchange: "Bybit",
+      profit: 1892.45,
+      percentage: 9.8,
+      trades: 189,
+      color: "#FF6B35",
+    },
+    {
+      exchange: "OKX",
+      profit: 1234.56,
+      percentage: 8.1,
+      trades: 156,
+      color: "#000000",
+    },
+    {
+      exchange: "KuCoin",
+      profit: 987.65,
+      percentage: 6.4,
+      trades: 123,
+      color: "#24D366",
+    },
+    {
+      exchange: "Coinbase",
+      profit: 543.21,
+      percentage: 4.2,
+      trades: 89,
+      color: "#0052FF",
+    },
+  ];
 
   // Risk metrics
   const riskMetrics = [
-    { metric: "Portfolio Beta", value: "1.23", description: "vs BTC", status: "medium" },
-    { metric: "Sharpe Ratio", value: "2.45", description: "Risk-adjusted return", status: "good" },
-    { metric: "Max Drawdown", value: "8.7%", description: "Largest loss", status: "good" },
-    { metric: "Volatility", value: "15.2%", description: "30-day volatility", status: "medium" },
-    { metric: "VaR (95%)", value: "$1,234", description: "Value at Risk", status: "medium" },
-    { metric: "Correlation", value: "0.78", description: "vs Market", status: "high" },
-  ]
+    {
+      metric: "Portfolio Beta",
+      value: "1.23",
+      description: "vs BTC",
+      status: "medium",
+    },
+    {
+      metric: "Sharpe Ratio",
+      value: "2.45",
+      description: "Risk-adjusted return",
+      status: "good",
+    },
+    {
+      metric: "Max Drawdown",
+      value: "8.7%",
+      description: "Largest loss",
+      status: "good",
+    },
+    {
+      metric: "Volatility",
+      value: "15.2%",
+      description: "30-day volatility",
+      status: "medium",
+    },
+    {
+      metric: "VaR (95%)",
+      value: "$1,234",
+      description: "Value at Risk",
+      status: "medium",
+    },
+    {
+      metric: "Correlation",
+      value: "0.78",
+      description: "vs Market",
+      status: "high",
+    },
+  ];
 
   // Performance over time
   const performanceData = [
@@ -60,22 +133,22 @@ export function PortfolioAnalytics() {
     { date: "Jan 14", portfolio: 42800, benchmark: 41200 },
     { date: "Jan 21", portfolio: 44100, benchmark: 42100 },
     { date: "Jan 28", portfolio: 45678, benchmark: 43200 },
-  ]
+  ];
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "good":
-        return "text-green-400"
+        return "text-green-400";
       case "medium":
-        return "text-yellow-400"
+        return "text-yellow-400";
       case "high":
-        return "text-red-400"
+        return "text-red-400";
       default:
-        return "text-gray-400"
+        return "text-gray-400";
     }
-  }
+  };
 
-  const totalValue = allocationData.reduce((sum, item) => sum + item.amount, 0)
+  const totalValue = allocationData.reduce((sum, item) => sum + item.amount, 0);
 
   return (
     <div className="space-y-8">
@@ -114,7 +187,9 @@ export function PortfolioAnalytics() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Pie Chart */}
                 <div>
-                  <h4 className="text-white font-medium mb-4">Asset Allocation</h4>
+                  <h4 className="text-white font-medium mb-4">
+                    Asset Allocation
+                  </h4>
                   <ResponsiveContainer width="100%" height={300}>
                     <PieChart>
                       <Pie
@@ -146,17 +221,31 @@ export function PortfolioAnalytics() {
                   <h4 className="text-white font-medium mb-4">Holdings</h4>
                   <div className="space-y-3">
                     {allocationData.map((asset, index) => (
-                      <div key={index} className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg">
+                      <div
+                        key={index}
+                        className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg"
+                      >
                         <div className="flex items-center space-x-3">
-                          <div className="w-4 h-4 rounded-full" style={{ backgroundColor: asset.color }}></div>
+                          <div
+                            className="w-4 h-4 rounded-full"
+                            style={{ backgroundColor: asset.color }}
+                          ></div>
                           <div>
-                            <p className="text-white font-medium">{asset.name}</p>
-                            <p className="text-gray-400 text-sm">{asset.value}%</p>
+                            <p className="text-white font-medium">
+                              {asset.name}
+                            </p>
+                            <p className="text-gray-400 text-sm">
+                              {asset.value}%
+                            </p>
                           </div>
                         </div>
                         <div className="text-right">
-                          <p className="text-white font-medium">${asset.amount.toLocaleString()}</p>
-                          <p className="text-gray-400 text-sm">${((asset.amount / totalValue) * 100).toFixed(1)}%</p>
+                          <p className="text-white font-medium">
+                            ${asset.amount.toLocaleString()}
+                          </p>
+                          <p className="text-gray-400 text-sm">
+                            ${((asset.amount / totalValue) * 100).toFixed(1)}%
+                          </p>
                         </div>
                       </div>
                     ))}
@@ -168,7 +257,9 @@ export function PortfolioAnalytics() {
             {/* Performance Tab */}
             <TabsContent value="performance" className="space-y-6">
               <div>
-                <h4 className="text-white font-medium mb-4">Portfolio vs Benchmark</h4>
+                <h4 className="text-white font-medium mb-4">
+                  Portfolio vs Benchmark
+                </h4>
                 <ResponsiveContainer width="100%" height={300}>
                   <AreaChart data={performanceData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -234,14 +325,24 @@ export function PortfolioAnalytics() {
                   {riskMetrics.map((metric, index) => (
                     <div key={index} className="p-4 bg-gray-800/30 rounded-lg">
                       <div className="flex items-center justify-between mb-2">
-                        <h5 className="text-white font-medium">{metric.metric}</h5>
-                        <Badge className={`${getStatusColor(metric.status)} bg-transparent border`}>
+                        <h5 className="text-white font-medium">
+                          {metric.metric}
+                        </h5>
+                        <Badge
+                          className={`${getStatusColor(metric.status)} bg-transparent border`}
+                        >
                           {metric.status}
                         </Badge>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className={`text-2xl font-bold ${getStatusColor(metric.status)}`}>{metric.value}</span>
-                        <span className="text-gray-400 text-sm">{metric.description}</span>
+                        <span
+                          className={`text-2xl font-bold ${getStatusColor(metric.status)}`}
+                        >
+                          {metric.value}
+                        </span>
+                        <span className="text-gray-400 text-sm">
+                          {metric.description}
+                        </span>
                       </div>
                     </div>
                   ))}
@@ -251,15 +352,22 @@ export function PortfolioAnalytics() {
               {/* Risk Score */}
               <div className="text-center p-6 bg-gray-800/30 rounded-lg">
                 <Shield className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
-                <h4 className="text-2xl font-bold text-yellow-400 mb-2">Medium Risk</h4>
-                <p className="text-gray-400">Your portfolio has moderate risk exposure with good diversification</p>
+                <h4 className="text-2xl font-bold text-yellow-400 mb-2">
+                  Medium Risk
+                </h4>
+                <p className="text-gray-400">
+                  Your portfolio has moderate risk exposure with good
+                  diversification
+                </p>
               </div>
             </TabsContent>
 
             {/* Exchanges Tab */}
             <TabsContent value="exchanges" className="space-y-6">
               <div>
-                <h4 className="text-white font-medium mb-4">Performance by Exchange</h4>
+                <h4 className="text-white font-medium mb-4">
+                  Performance by Exchange
+                </h4>
                 <ResponsiveContainer width="100%" height={300}>
                   <BarChart data={exchangePerformance}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
@@ -280,17 +388,31 @@ export function PortfolioAnalytics() {
               {/* Exchange Details */}
               <div className="space-y-3">
                 {exchangePerformance.map((exchange, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg">
+                  <div
+                    key={index}
+                    className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg"
+                  >
                     <div className="flex items-center space-x-3">
-                      <div className="w-4 h-4 rounded-full" style={{ backgroundColor: exchange.color }}></div>
+                      <div
+                        className="w-4 h-4 rounded-full"
+                        style={{ backgroundColor: exchange.color }}
+                      ></div>
                       <div>
-                        <p className="text-white font-medium">{exchange.exchange}</p>
-                        <p className="text-gray-400 text-sm">{exchange.trades} trades</p>
+                        <p className="text-white font-medium">
+                          {exchange.exchange}
+                        </p>
+                        <p className="text-gray-400 text-sm">
+                          {exchange.trades} trades
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-green-400 font-medium">+${exchange.profit.toFixed(2)}</p>
-                      <p className="text-green-400 text-sm">+{exchange.percentage}%</p>
+                      <p className="text-green-400 font-medium">
+                        +${exchange.profit.toFixed(2)}
+                      </p>
+                      <p className="text-green-400 text-sm">
+                        +{exchange.percentage}%
+                      </p>
                     </div>
                   </div>
                 ))}
@@ -300,5 +422,5 @@ export function PortfolioAnalytics() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

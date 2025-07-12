@@ -1,36 +1,39 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { useAuth } from "./auth-provider"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "./auth-provider";
 
 interface ProtectedRouteProps {
-  children: React.ReactNode
-  requireAdmin?: boolean
+  children: React.ReactNode;
+  requireAdmin?: boolean;
 }
 
-export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
-  const { user, loading } = useAuth()
-  const router = useRouter()
-  const [isAuthorized, setIsAuthorized] = useState(false)
+export function ProtectedRoute({
+  children,
+  requireAdmin = false,
+}: ProtectedRouteProps) {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+  const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    if (loading) return
+    if (loading) return;
 
     if (!user) {
-      router.push("/auth/login")
-      return
+      router.push("/auth/login");
+      return;
     }
 
     if (requireAdmin && user.role !== "admin") {
-      router.push("/dashboard")
-      return
+      router.push("/dashboard");
+      return;
     }
 
-    setIsAuthorized(true)
-  }, [user, loading, requireAdmin, router])
+    setIsAuthorized(true);
+  }, [user, loading, requireAdmin, router]);
 
   if (loading) {
     return (
@@ -40,7 +43,7 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
           <p className="text-gray-400">Loading...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!isAuthorized) {
@@ -51,8 +54,8 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
           <p className="text-gray-400">Checking permissions...</p>
         </div>
       </div>
-    )
+    );
   }
 
-  return <>{children}</>
+  return <>{children}</>;
 }

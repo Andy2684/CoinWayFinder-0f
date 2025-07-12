@@ -1,5 +1,5 @@
-import Link from "next/link"
-import { TrendingUp, MessageSquare, Mail } from "lucide-react"
+import Link from "next/link";
+import { TrendingUp, MessageSquare, Mail } from "lucide-react";
 
 export function Footer() {
   const footerSections = [
@@ -38,7 +38,7 @@ export function Footer() {
         { href: "/pt", label: "Português" },
       ],
     },
-  ]
+  ];
 
   return (
     <footer className="bg-gray-900 border-t border-gray-800">
@@ -50,16 +50,25 @@ export function Footer() {
               <div className="w-8 h-8 bg-[#30D5C8] rounded-lg flex items-center justify-center">
                 <TrendingUp className="w-5 h-5 text-[#191A1E]" />
               </div>
-              <span className="text-xl font-bold text-white">CoinWayfinder</span>
+              <span className="text-xl font-bold text-white">
+                CoinWayfinder
+              </span>
             </Link>
             <p className="text-gray-400 text-sm mb-4">
-              AI-powered crypto trading assistant delivering smart signals and automated bots.
+              AI-powered crypto trading assistant delivering smart signals and
+              automated bots.
             </p>
             <div className="flex space-x-4">
-              <Link href="https://t.me/andis_fx_signals_bot" className="text-gray-400 hover:text-[#30D5C8]">
+              <Link
+                href="https://t.me/andis_fx_signals_bot"
+                className="text-gray-400 hover:text-[#30D5C8]"
+              >
                 <MessageSquare className="w-5 h-5" />
               </Link>
-              <Link href="mailto:support@coinwayfinder.com" className="text-gray-400 hover:text-[#30D5C8]">
+              <Link
+                href="mailto:support@coinwayfinder.com"
+                className="text-gray-400 hover:text-[#30D5C8]"
+              >
                 <Mail className="w-5 h-5" />
               </Link>
             </div>
@@ -72,7 +81,10 @@ export function Footer() {
               <ul className="space-y-2">
                 {section.links.map((link, linkIndex) => (
                   <li key={linkIndex}>
-                    <Link href={link.href} className="text-gray-400 hover:text-[#30D5C8] text-sm transition-colors">
+                    <Link
+                      href={link.href}
+                      className="text-gray-400 hover:text-[#30D5C8] text-sm transition-colors"
+                    >
                       {link.label}
                     </Link>
                   </li>
@@ -84,7 +96,9 @@ export function Footer() {
 
         <div className="border-t border-gray-800 mt-12 pt-8">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-400 text-sm">© 2024 CoinWayfinder. All rights reserved.</p>
+            <p className="text-gray-400 text-sm">
+              © 2024 CoinWayfinder. All rights reserved.
+            </p>
             <p className="text-gray-400 text-sm mt-2 md:mt-0">
               ⚠️ Crypto trading involves risk. Please read our risk disclaimer.
             </p>
@@ -92,5 +106,5 @@ export function Footer() {
         </div>
       </div>
     </footer>
-  )
+  );
 }

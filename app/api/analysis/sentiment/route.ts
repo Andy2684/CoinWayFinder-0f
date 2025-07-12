@@ -1,9 +1,9 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const symbol = searchParams.get("symbol") || "BTC"
+    const { searchParams } = new URL(request.url);
+    const symbol = searchParams.get("symbol") || "BTC";
 
     // Mock sentiment analysis data
     const sentimentData = {
@@ -61,14 +61,27 @@ export async function GET(request: NextRequest) {
       trendingTopics: [
         { topic: `${symbol} ETF`, mentions: 2340, sentiment: 78, change: 15.2 },
         { topic: "DeFi Protocol", mentions: 1890, sentiment: 65, change: -3.4 },
-        { topic: "Layer 2 Solutions", mentions: 1560, sentiment: 82, change: 22.1 },
-        { topic: "NFT Marketplace", mentions: 1230, sentiment: 58, change: -8.7 },
+        {
+          topic: "Layer 2 Solutions",
+          mentions: 1560,
+          sentiment: 82,
+          change: 22.1,
+        },
+        {
+          topic: "NFT Marketplace",
+          mentions: 1230,
+          sentiment: 58,
+          change: -8.7,
+        },
       ],
-    }
+    };
 
-    return NextResponse.json(sentimentData)
+    return NextResponse.json(sentimentData);
   } catch (error) {
-    console.error("Sentiment analysis API error:", error)
-    return NextResponse.json({ error: "Failed to fetch sentiment analysis data" }, { status: 500 })
+    console.error("Sentiment analysis API error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch sentiment analysis data" },
+      { status: 500 },
+    );
   }
 }

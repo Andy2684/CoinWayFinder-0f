@@ -1,31 +1,39 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-import { Bot, Brain, Play, Pause, Settings, AlertTriangle, Zap } from "lucide-react"
-import { aiBotStrategies } from "@/lib/ai-bot-strategies"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import {
+  Bot,
+  Brain,
+  Play,
+  Pause,
+  Settings,
+  AlertTriangle,
+  Zap,
+} from "lucide-react";
+import { aiBotStrategies } from "@/lib/ai-bot-strategies";
 
 interface AIBot {
-  id: string
-  name: string
-  strategy: string
-  status: "active" | "paused" | "stopped"
-  investment: number
-  currentValue: number
-  pnl: number
-  pnlPercentage: number
-  aiOptimization: boolean
-  trades: number
-  successRate: number
-  lastTrade: string
+  id: string;
+  name: string;
+  strategy: string;
+  status: "active" | "paused" | "stopped";
+  investment: number;
+  currentValue: number;
+  pnl: number;
+  pnlPercentage: number;
+  aiOptimization: boolean;
+  trades: number;
+  successRate: number;
+  lastTrade: string;
 }
 
 export function AIActiveBots() {
-  const [bots, setBots] = useState<AIBot[]>([])
-  const [loading, setLoading] = useState(true)
+  const [bots, setBots] = useState<AIBot[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Simulate fetching AI bots data
@@ -72,43 +80,43 @@ export function AIActiveBots() {
         successRate: 82,
         lastTrade: "3 hours ago",
       },
-    ]
+    ];
 
     setTimeout(() => {
-      setBots(mockBots)
-      setLoading(false)
-    }, 1000)
-  }, [])
+      setBots(mockBots);
+      setLoading(false);
+    }, 1000);
+  }, []);
 
   const getStrategyInfo = (strategyId: string) => {
-    return aiBotStrategies.find((s) => s.id === strategyId)
-  }
+    return aiBotStrategies.find((s) => s.id === strategyId);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-green-500/10 text-green-400"
+        return "bg-green-500/10 text-green-400";
       case "paused":
-        return "bg-yellow-500/10 text-yellow-400"
+        return "bg-yellow-500/10 text-yellow-400";
       case "stopped":
-        return "bg-red-500/10 text-red-400"
+        return "bg-red-500/10 text-red-400";
       default:
-        return "bg-gray-500/10 text-gray-400"
+        return "bg-gray-500/10 text-gray-400";
     }
-  }
+  };
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "active":
-        return <Play className="w-3 h-3" />
+        return <Play className="w-3 h-3" />;
       case "paused":
-        return <Pause className="w-3 h-3" />
+        return <Pause className="w-3 h-3" />;
       case "stopped":
-        return <AlertTriangle className="w-3 h-3" />
+        return <AlertTriangle className="w-3 h-3" />;
       default:
-        return <Bot className="w-3 h-3" />
+        return <Bot className="w-3 h-3" />;
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -129,7 +137,7 @@ export function AIActiveBots() {
           </div>
         </CardContent>
       </Card>
-    )
+    );
   }
 
   return (
@@ -140,7 +148,10 @@ export function AIActiveBots() {
             <Brain className="w-5 h-5 mr-2 text-[#30D5C8]" />
             AI Active Bots
           </div>
-          <Badge variant="outline" className="border-[#30D5C8]/30 text-[#30D5C8]">
+          <Badge
+            variant="outline"
+            className="border-[#30D5C8]/30 text-[#30D5C8]"
+          >
             {bots.filter((bot) => bot.status === "active").length} Active
           </Badge>
         </CardTitle>
@@ -148,7 +159,7 @@ export function AIActiveBots() {
       <CardContent>
         <div className="space-y-4">
           {bots.map((bot) => {
-            const strategy = getStrategyInfo(bot.strategy)
+            const strategy = getStrategyInfo(bot.strategy);
             return (
               <div
                 key={bot.id}
@@ -162,9 +173,13 @@ export function AIActiveBots() {
                     <div>
                       <h3 className="text-white font-semibold flex items-center">
                         {bot.name}
-                        {bot.aiOptimization && <Zap className="w-3 h-3 ml-1 text-[#30D5C8]" />}
+                        {bot.aiOptimization && (
+                          <Zap className="w-3 h-3 ml-1 text-[#30D5C8]" />
+                        )}
                       </h3>
-                      <p className="text-sm text-gray-400">{strategy?.name || bot.strategy}</p>
+                      <p className="text-sm text-gray-400">
+                        {strategy?.name || bot.strategy}
+                      </p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-2">
@@ -178,21 +193,30 @@ export function AIActiveBots() {
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-3">
                   <div>
                     <p className="text-xs text-gray-400">Investment</p>
-                    <p className="text-sm font-semibold text-white">${bot.investment.toLocaleString()}</p>
+                    <p className="text-sm font-semibold text-white">
+                      ${bot.investment.toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">Current Value</p>
-                    <p className="text-sm font-semibold text-white">${bot.currentValue.toLocaleString()}</p>
+                    <p className="text-sm font-semibold text-white">
+                      ${bot.currentValue.toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">P&L</p>
-                    <p className={`text-sm font-semibold ${bot.pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-                      {bot.pnl >= 0 ? "+" : ""}${bot.pnl.toLocaleString()} ({bot.pnlPercentage.toFixed(2)}%)
+                    <p
+                      className={`text-sm font-semibold ${bot.pnl >= 0 ? "text-green-400" : "text-red-400"}`}
+                    >
+                      {bot.pnl >= 0 ? "+" : ""}${bot.pnl.toLocaleString()} (
+                      {bot.pnlPercentage.toFixed(2)}%)
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">Success Rate</p>
-                    <p className="text-sm font-semibold text-[#30D5C8]">{bot.successRate}%</p>
+                    <p className="text-sm font-semibold text-[#30D5C8]">
+                      {bot.successRate}%
+                    </p>
                   </div>
                 </div>
 
@@ -239,11 +263,14 @@ export function AIActiveBots() {
                       <span>AI Optimization Active</span>
                       <span>{Math.floor(Math.random() * 100)}% efficiency</span>
                     </div>
-                    <Progress value={Math.floor(Math.random() * 100)} className="h-1" />
+                    <Progress
+                      value={Math.floor(Math.random() * 100)}
+                      className="h-1"
+                    />
                   </div>
                 )}
               </div>
-            )
+            );
           })}
         </div>
 
@@ -251,10 +278,12 @@ export function AIActiveBots() {
           <div className="text-center py-8">
             <Brain className="w-12 h-12 text-gray-600 mx-auto mb-3" />
             <p className="text-gray-400">No AI bots created yet</p>
-            <p className="text-sm text-gray-500 mt-1">Create your first AI-powered trading bot to get started</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Create your first AI-powered trading bot to get started
+            </p>
           </div>
         )}
       </CardContent>
     </Card>
-  )
+  );
 }

@@ -1,9 +1,9 @@
-"use client"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AutomatedSignals } from "@/components/signals/automated-signals"
-import { ExecutionMonitor } from "@/components/signals/execution-monitor"
-import { SignalFeed } from "@/components/signals/signal-feed"
-import { SignalPerformance } from "@/components/signals/signal-performance"
+"use client";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AutomatedSignals } from "@/components/signals/automated-signals";
+import { ExecutionMonitor } from "@/components/signals/execution-monitor";
+import { SignalFeed } from "@/components/signals/signal-feed";
+import { SignalPerformance } from "@/components/signals/signal-performance";
 
 export default function SignalsPage() {
   return (
@@ -35,5 +35,5 @@ export default function SignalsPage() {
         </Tabs>
       </div>
     </div>
-  )
+  );
 }

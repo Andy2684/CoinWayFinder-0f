@@ -1,42 +1,48 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server";
 
 // Mock orders storage
-const mockOrders = new Map()
+const mockOrders = new Map();
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const status = searchParams.get("status")
-    const symbol = searchParams.get("symbol")
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get("status");
+    const symbol = searchParams.get("symbol");
 
-    let orders = Array.from(mockOrders.values())
+    let orders = Array.from(mockOrders.values());
 
     if (status) {
-      orders = orders.filter((order: any) => order.status === status)
+      orders = orders.filter((order: any) => order.status === status);
     }
 
     if (symbol) {
-      orders = orders.filter((order: any) => order.symbol === symbol)
+      orders = orders.filter((order: any) => order.symbol === symbol);
     }
 
     return NextResponse.json({
       success: true,
       data: orders,
       total: orders.length,
-    })
+    });
   } catch (error) {
-    console.error("Error fetching paper trading orders:", error)
-    return NextResponse.json({ success: false, error: "Failed to fetch orders" }, { status: 500 })
+    console.error("Error fetching paper trading orders:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch orders" },
+      { status: 500 },
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { symbol, side, type, quantity, price, stopPrice, strategy } = body
+    const body = await request.json();
+    const { symbol, side, type, quantity, price, stopPrice, strategy } = body;
 
     if (!symbol || !side || !type || !quantity) {
-      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
+      return NextResponse.json(
+        { success: false, error: "Missing required fields" },
+        { status: 400 },
+      );
     }
 
     const order = {
@@ -50,51 +56,67 @@ export async function POST(request: NextRequest) {
       strategy,
       status: type === "MARKET" ? "FILLED" : "PENDING",
       filledQuantity: type === "MARKET" ? quantity : 0,
-      averagePrice: type === "MARKET" ? price || 43000 + Math.random() * 100 : undefined,
+      averagePrice:
+        type === "MARKET" ? price || 43000 + Math.random() * 100 : undefined,
       timestamp: new Date().toISOString(),
-    }
+    };
 
-    mockOrders.set(order.id, order)
+    mockOrders.set(order.id, order);
 
     return NextResponse.json({
       success: true,
       data: order,
       message: "Order placed successfully",
-    })
+    });
   } catch (error) {
-    console.error("Error placing paper trading order:", error)
-    return NextResponse.json({ success: false, error: "Failed to place order" }, { status: 500 })
+    console.error("Error placing paper trading order:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to place order" },
+      { status: 500 },
+    );
   }
 }
 
 export async function DELETE(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const orderId = searchParams.get("orderId")
+    const { searchParams } = new URL(request.url);
+    const orderId = searchParams.get("orderId");
 
     if (!orderId) {
-      return NextResponse.json({ success: false, error: "Order ID is required" }, { status: 400 })
+      return NextResponse.json(
+        { success: false, error: "Order ID is required" },
+        { status: 400 },
+      );
     }
 
-    const order = mockOrders.get(orderId)
+    const order = mockOrders.get(orderId);
     if (!order) {
-      return NextResponse.json({ success: false, error: "Order not found" }, { status: 404 })
+      return NextResponse.json(
+        { success: false, error: "Order not found" },
+        { status: 404 },
+      );
     }
 
     if (order.status !== "PENDING") {
-      return NextResponse.json({ success: false, error: "Cannot cancel non-pending order" }, { status: 400 })
+      return NextResponse.json(
+        { success: false, error: "Cannot cancel non-pending order" },
+        { status: 400 },
+      );
     }
 
-    order.status = "CANCELLED"
-    mockOrders.set(orderId, order)
+    order.status = "CANCELLED";
+    mockOrders.set(orderId, order);
 
     return NextResponse.json({
       success: true,
       data: order,
       message: "Order cancelled successfully",
-    })
+    });
   } catch (error) {
-    console.error("Error cancelling paper trading order:", error)
-    return NextResponse.json({ success: false, error: "Failed to cancel order" }, { status: 500 })
+    console.error("Error cancelling paper trading order:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to cancel order" },
+      { status: 500 },
+    );
   }
 }

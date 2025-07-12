@@ -1,12 +1,15 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { emailService } from "@/lib/email-service"
+import { type NextRequest, NextResponse } from "next/server";
+import { emailService } from "@/lib/email-service";
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, subject, message } = await request.json()
+    const { email, subject, message } = await request.json();
 
     if (!email || !subject || !message) {
-      return NextResponse.json({ error: "Email, subject, and message are required" }, { status: 400 })
+      return NextResponse.json(
+        { error: "Email, subject, and message are required" },
+        { status: 400 },
+      );
     }
 
     const html = `
@@ -35,24 +38,30 @@ export async function POST(request: NextRequest) {
         </div>
       </body>
       </html>
-    `
+    `;
 
     const emailSent = await emailService.sendEmail({
       to: email,
       subject,
       html,
-    })
+    });
 
     if (!emailSent) {
-      return NextResponse.json({ error: "Failed to send email" }, { status: 500 })
+      return NextResponse.json(
+        { error: "Failed to send email" },
+        { status: 500 },
+      );
     }
 
     return NextResponse.json({
       success: true,
       message: "Custom email sent successfully!",
-    })
+    });
   } catch (error) {
-    console.error("Test custom email error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("Test custom email error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }

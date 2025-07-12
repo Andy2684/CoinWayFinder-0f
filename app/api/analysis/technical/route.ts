@@ -1,10 +1,10 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url)
-    const symbol = searchParams.get("symbol") || "BTC"
-    const timeframe = searchParams.get("timeframe") || "1h"
+    const { searchParams } = new URL(request.url);
+    const symbol = searchParams.get("symbol") || "BTC";
+    const timeframe = searchParams.get("timeframe") || "1h";
 
     // Mock technical analysis data
     const technicalData = {
@@ -26,18 +26,24 @@ export async function GET(request: NextRequest) {
         },
       },
       priceData: Array.from({ length: 24 }, (_, i) => ({
-        timestamp: new Date(Date.now() - (23 - i) * 60 * 60 * 1000).toISOString(),
+        timestamp: new Date(
+          Date.now() - (23 - i) * 60 * 60 * 1000,
+        ).toISOString(),
         price: 43000 + Math.random() * 2000 - 1000,
         volume: Math.random() * 1000000,
         rsi: 30 + Math.random() * 40,
         macd: -0.01 + Math.random() * 0.02,
       })),
-      overallSignal: Math.random() > 0.6 ? "BUY" : Math.random() > 0.3 ? "SELL" : "NEUTRAL",
-    }
+      overallSignal:
+        Math.random() > 0.6 ? "BUY" : Math.random() > 0.3 ? "SELL" : "NEUTRAL",
+    };
 
-    return NextResponse.json(technicalData)
+    return NextResponse.json(technicalData);
   } catch (error) {
-    console.error("Technical analysis API error:", error)
-    return NextResponse.json({ error: "Failed to fetch technical analysis data" }, { status: 500 })
+    console.error("Technical analysis API error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch technical analysis data" },
+      { status: 500 },
+    );
   }
 }

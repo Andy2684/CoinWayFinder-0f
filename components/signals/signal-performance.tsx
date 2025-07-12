@@ -1,7 +1,13 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   LineChart,
   Line,
@@ -18,11 +24,11 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from "recharts"
-import { TrendingUp, Target, Shield, DollarSign } from "lucide-react"
+} from "recharts";
+import { TrendingUp, Target, Shield, DollarSign } from "lucide-react";
 
 export function SignalPerformance() {
-  const [timeframe, setTimeframe] = useState("7d")
+  const [timeframe, setTimeframe] = useState("7d");
 
   // Mock performance data
   const performanceData = [
@@ -33,21 +39,51 @@ export function SignalPerformance() {
     { date: "2024-01-12", pnl: 2800, signals: 20, winRate: 78 },
     { date: "2024-01-13", pnl: 4100, signals: 25, winRate: 84 },
     { date: "2024-01-14", pnl: 3600, signals: 24, winRate: 79 },
-  ]
+  ];
 
   const strategyPerformance = [
-    { strategy: "Trend Following", signals: 45, winRate: 78, pnl: 8420, avgReturn: 3.2 },
-    { strategy: "Mean Reversion", signals: 32, winRate: 82, pnl: 6180, avgReturn: 2.8 },
-    { strategy: "Breakout", signals: 28, winRate: 71, pnl: 4950, avgReturn: 4.1 },
-    { strategy: "Support/Resistance", signals: 38, winRate: 75, pnl: 5670, avgReturn: 2.9 },
-    { strategy: "Momentum", signals: 22, winRate: 86, pnl: 4320, avgReturn: 3.8 },
-  ]
+    {
+      strategy: "Trend Following",
+      signals: 45,
+      winRate: 78,
+      pnl: 8420,
+      avgReturn: 3.2,
+    },
+    {
+      strategy: "Mean Reversion",
+      signals: 32,
+      winRate: 82,
+      pnl: 6180,
+      avgReturn: 2.8,
+    },
+    {
+      strategy: "Breakout",
+      signals: 28,
+      winRate: 71,
+      pnl: 4950,
+      avgReturn: 4.1,
+    },
+    {
+      strategy: "Support/Resistance",
+      signals: 38,
+      winRate: 75,
+      pnl: 5670,
+      avgReturn: 2.9,
+    },
+    {
+      strategy: "Momentum",
+      signals: 22,
+      winRate: 86,
+      pnl: 4320,
+      avgReturn: 3.8,
+    },
+  ];
 
   const riskDistribution = [
     { name: "Low Risk", value: 45, color: "#10B981" },
     { name: "Medium Risk", value: 38, color: "#F59E0B" },
     { name: "High Risk", value: 17, color: "#EF4444" },
-  ]
+  ];
 
   const timeframeData = [
     { timeframe: "15M", signals: 28, winRate: 68, avgReturn: 1.8 },
@@ -56,7 +92,7 @@ export function SignalPerformance() {
     { timeframe: "2H", signals: 38, winRate: 79, avgReturn: 3.2 },
     { timeframe: "4H", signals: 32, winRate: 82, avgReturn: 3.9 },
     { timeframe: "1D", signals: 18, winRate: 85, avgReturn: 4.5 },
-  ]
+  ];
 
   return (
     <div className="space-y-6">
@@ -135,7 +171,13 @@ export function SignalPerformance() {
                     borderRadius: "8px",
                   }}
                 />
-                <Area type="monotone" dataKey="pnl" stroke="#30D5C8" fill="#30D5C8" fillOpacity={0.2} />
+                <Area
+                  type="monotone"
+                  dataKey="pnl"
+                  stroke="#30D5C8"
+                  fill="#30D5C8"
+                  fillOpacity={0.2}
+                />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
@@ -159,7 +201,13 @@ export function SignalPerformance() {
                     borderRadius: "8px",
                   }}
                 />
-                <Line type="monotone" dataKey="winRate" stroke="#10B981" strokeWidth={2} dot={{ fill: "#10B981" }} />
+                <Line
+                  type="monotone"
+                  dataKey="winRate"
+                  stroke="#10B981"
+                  strokeWidth={2}
+                  dot={{ fill: "#10B981" }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -170,7 +218,9 @@ export function SignalPerformance() {
       <Card className="bg-[#1A1B23] border-gray-800">
         <CardHeader>
           <CardTitle className="text-white">Strategy Performance</CardTitle>
-          <CardDescription>Performance breakdown by trading strategy</CardDescription>
+          <CardDescription>
+            Performance breakdown by trading strategy
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -181,22 +231,32 @@ export function SignalPerformance() {
               >
                 <div className="flex items-center gap-4">
                   <div>
-                    <h4 className="font-medium text-white">{strategy.strategy}</h4>
-                    <p className="text-sm text-gray-400">{strategy.signals} signals</p>
+                    <h4 className="font-medium text-white">
+                      {strategy.strategy}
+                    </h4>
+                    <p className="text-sm text-gray-400">
+                      {strategy.signals} signals
+                    </p>
                   </div>
                 </div>
                 <div className="flex items-center gap-6">
                   <div className="text-center">
                     <p className="text-sm text-gray-400">Win Rate</p>
-                    <p className="font-medium text-[#30D5C8]">{strategy.winRate}%</p>
+                    <p className="font-medium text-[#30D5C8]">
+                      {strategy.winRate}%
+                    </p>
                   </div>
                   <div className="text-center">
                     <p className="text-sm text-gray-400">P&L</p>
-                    <p className="font-medium text-green-400">+${strategy.pnl.toLocaleString()}</p>
+                    <p className="font-medium text-green-400">
+                      +${strategy.pnl.toLocaleString()}
+                    </p>
                   </div>
                   <div className="text-center">
                     <p className="text-sm text-gray-400">Avg Return</p>
-                    <p className="font-medium text-white">{strategy.avgReturn}%</p>
+                    <p className="font-medium text-white">
+                      {strategy.avgReturn}%
+                    </p>
                   </div>
                 </div>
               </div>
@@ -260,5 +320,5 @@ export function SignalPerformance() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

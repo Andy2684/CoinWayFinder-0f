@@ -1,12 +1,12 @@
-import { ProtectedRoute } from "@/components/auth/protected-route"
-import { DashboardOverview } from "@/components/dashboard/dashboard-overview"
-import { LiveMarketData } from "@/components/dashboard/live-market-data"
-import { ActiveStrategies } from "@/components/dashboard/active-strategies"
-import { PnLTracking } from "@/components/dashboard/pnl-tracking"
-import { TradeLogs } from "@/components/dashboard/trade-logs"
-import { QuickActions } from "@/components/dashboard/quick-actions"
-import { PortfolioAnalytics } from "@/components/dashboard/portfolio-analytics"
-import { RiskManagement } from "@/components/dashboard/risk-management"
+import { ProtectedRoute } from "@/components/auth/protected-route";
+import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
+import { LiveMarketData } from "@/components/dashboard/live-market-data";
+import { ActiveStrategies } from "@/components/dashboard/active-strategies";
+import { PnLTracking } from "@/components/dashboard/pnl-tracking";
+import { TradeLogs } from "@/components/dashboard/trade-logs";
+import { QuickActions } from "@/components/dashboard/quick-actions";
+import { PortfolioAnalytics } from "@/components/dashboard/portfolio-analytics";
+import { RiskManagement } from "@/components/dashboard/risk-management";
 
 export default function DashboardPage() {
   return (
@@ -15,7 +15,9 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white">Trading Dashboard</h1>
-            <p className="text-gray-400 mt-2">Monitor your trading performance and manage your strategies</p>
+            <p className="text-gray-400 mt-2">
+              Monitor your trading performance and manage your strategies
+            </p>
           </div>
           <QuickActions />
         </div>
@@ -37,5 +39,5 @@ export default function DashboardPage() {
         <TradeLogs />
       </div>
     </ProtectedRoute>
-  )
+  );
 }

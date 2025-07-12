@@ -1,30 +1,46 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Key, Eye, EyeOff, Plus, Trash2, Shield, AlertTriangle, CheckCircle, Copy } from "lucide-react"
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Key,
+  Eye,
+  EyeOff,
+  Plus,
+  Trash2,
+  Shield,
+  AlertTriangle,
+  CheckCircle,
+  Copy,
+} from "lucide-react";
 
 interface APIKey {
-  id: string
-  exchange: string
-  name: string
-  apiKey: string
-  secretKey: string
-  passphrase?: string
-  permissions: string[]
-  isTestnet: boolean
-  status: "active" | "inactive" | "expired"
-  createdAt: string
-  lastUsed: string
-  ipWhitelist: string[]
+  id: string;
+  exchange: string;
+  name: string;
+  apiKey: string;
+  secretKey: string;
+  passphrase?: string;
+  permissions: string[];
+  isTestnet: boolean;
+  status: "active" | "inactive" | "expired";
+  createdAt: string;
+  lastUsed: string;
+  ipWhitelist: string[];
 }
 
 export function APIKeyManager() {
@@ -69,10 +85,10 @@ export function APIKeyManager() {
       lastUsed: "2 days ago",
       ipWhitelist: [],
     },
-  ])
+  ]);
 
-  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({})
-  const [isAddingKey, setIsAddingKey] = useState(false)
+  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+  const [isAddingKey, setIsAddingKey] = useState(false);
   const [newKeyData, setNewKeyData] = useState({
     exchange: "",
     name: "",
@@ -81,11 +97,11 @@ export function APIKeyManager() {
     passphrase: "",
     isTestnet: false,
     permissions: [] as string[],
-  })
+  });
 
   const toggleSecretVisibility = (keyId: string) => {
-    setShowSecrets((prev) => ({ ...prev, [keyId]: !prev[keyId] }))
-  }
+    setShowSecrets((prev) => ({ ...prev, [keyId]: !prev[keyId] }));
+  };
 
   const handleAddKey = () => {
     const newKey: APIKey = {
@@ -95,9 +111,9 @@ export function APIKeyManager() {
       createdAt: new Date().toISOString().split("T")[0],
       lastUsed: "Never",
       ipWhitelist: [],
-    }
-    setApiKeys((prev) => [...prev, newKey])
-    setIsAddingKey(false)
+    };
+    setApiKeys((prev) => [...prev, newKey]);
+    setIsAddingKey(false);
     setNewKeyData({
       exchange: "",
       name: "",
@@ -106,22 +122,26 @@ export function APIKeyManager() {
       passphrase: "",
       isTestnet: false,
       permissions: [],
-    })
-  }
+    });
+  };
 
   const handleDeleteKey = (keyId: string) => {
-    setApiKeys((prev) => prev.filter((key) => key.id !== keyId))
-  }
+    setApiKeys((prev) => prev.filter((key) => key.id !== keyId));
+  };
 
   const toggleKeyStatus = (keyId: string) => {
     setApiKeys((prev) =>
-      prev.map((key) => (key.id === keyId ? { ...key, status: key.status === "active" ? "inactive" : "active" } : key)),
-    )
-  }
+      prev.map((key) =>
+        key.id === keyId
+          ? { ...key, status: key.status === "active" ? "inactive" : "active" }
+          : key,
+      ),
+    );
+  };
 
   const testConnection = async (keyId: string) => {
-    const key = apiKeys.find((k) => k.id === keyId)
-    if (!key) return
+    const key = apiKeys.find((k) => k.id === keyId);
+    if (!key) return;
 
     // Simulate API test
     try {
@@ -137,31 +157,31 @@ export function APIKeyManager() {
           },
           testnet: key.isTestnet,
         }),
-      })
+      });
 
-      const result = await response.json()
+      const result = await response.json();
       if (result.success) {
-        alert("Connection test successful!")
+        alert("Connection test successful!");
       } else {
-        alert(`Connection test failed: ${result.error}`)
+        alert(`Connection test failed: ${result.error}`);
       }
     } catch (error) {
-      alert("Connection test failed: Network error")
+      alert("Connection test failed: Network error");
     }
-  }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-green-500/10 text-green-400"
+        return "bg-green-500/10 text-green-400";
       case "inactive":
-        return "bg-gray-500/10 text-gray-400"
+        return "bg-gray-500/10 text-gray-400";
       case "expired":
-        return "bg-red-500/10 text-red-400"
+        return "bg-red-500/10 text-red-400";
       default:
-        return "bg-gray-500/10 text-gray-400"
+        return "bg-gray-500/10 text-gray-400";
     }
-  }
+  };
 
   const exchangeOptions = [
     { id: "binance", name: "Binance", requiresPassphrase: false },
@@ -170,9 +190,16 @@ export function APIKeyManager() {
     { id: "okx", name: "OKX", requiresPassphrase: true },
     { id: "coinbase", name: "Coinbase Pro", requiresPassphrase: true },
     { id: "kraken", name: "Kraken", requiresPassphrase: false },
-  ]
+  ];
 
-  const permissionOptions = ["spot", "futures", "margin", "options", "staking", "lending"]
+  const permissionOptions = [
+    "spot",
+    "futures",
+    "margin",
+    "options",
+    "staking",
+    "lending",
+  ];
 
   return (
     <div className="space-y-6">
@@ -181,8 +208,12 @@ export function APIKeyManager() {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-white text-xl">🔑 API Key Management</CardTitle>
-              <p className="text-gray-400 text-sm">Securely manage your exchange API credentials</p>
+              <CardTitle className="text-white text-xl">
+                🔑 API Key Management
+              </CardTitle>
+              <p className="text-gray-400 text-sm">
+                Securely manage your exchange API credentials
+              </p>
             </div>
             <Dialog open={isAddingKey} onOpenChange={setIsAddingKey}>
               <DialogTrigger asChild>
@@ -203,7 +234,12 @@ export function APIKeyManager() {
                         id="exchange"
                         className="w-full mt-1 p-2 bg-gray-800 border border-gray-700 rounded-md text-white"
                         value={newKeyData.exchange}
-                        onChange={(e) => setNewKeyData((prev) => ({ ...prev, exchange: e.target.value }))}
+                        onChange={(e) =>
+                          setNewKeyData((prev) => ({
+                            ...prev,
+                            exchange: e.target.value,
+                          }))
+                        }
                       >
                         <option value="">Select Exchange</option>
                         {exchangeOptions.map((exchange) => (
@@ -219,7 +255,12 @@ export function APIKeyManager() {
                         id="name"
                         placeholder="e.g., Main Trading Account"
                         value={newKeyData.name}
-                        onChange={(e) => setNewKeyData((prev) => ({ ...prev, name: e.target.value }))}
+                        onChange={(e) =>
+                          setNewKeyData((prev) => ({
+                            ...prev,
+                            name: e.target.value,
+                          }))
+                        }
                         className="bg-gray-800 border-gray-700 text-white"
                       />
                     </div>
@@ -231,7 +272,12 @@ export function APIKeyManager() {
                       id="apiKey"
                       placeholder="Enter your API key"
                       value={newKeyData.apiKey}
-                      onChange={(e) => setNewKeyData((prev) => ({ ...prev, apiKey: e.target.value }))}
+                      onChange={(e) =>
+                        setNewKeyData((prev) => ({
+                          ...prev,
+                          apiKey: e.target.value,
+                        }))
+                      }
                       className="bg-gray-800 border-gray-700 text-white"
                     />
                   </div>
@@ -243,12 +289,18 @@ export function APIKeyManager() {
                       type="password"
                       placeholder="Enter your secret key"
                       value={newKeyData.secretKey}
-                      onChange={(e) => setNewKeyData((prev) => ({ ...prev, secretKey: e.target.value }))}
+                      onChange={(e) =>
+                        setNewKeyData((prev) => ({
+                          ...prev,
+                          secretKey: e.target.value,
+                        }))
+                      }
                       className="bg-gray-800 border-gray-700 text-white"
                     />
                   </div>
 
-                  {exchangeOptions.find((ex) => ex.name === newKeyData.exchange)?.requiresPassphrase && (
+                  {exchangeOptions.find((ex) => ex.name === newKeyData.exchange)
+                    ?.requiresPassphrase && (
                     <div>
                       <Label htmlFor="passphrase">Passphrase</Label>
                       <Input
@@ -256,7 +308,12 @@ export function APIKeyManager() {
                         type="password"
                         placeholder="Enter your passphrase"
                         value={newKeyData.passphrase}
-                        onChange={(e) => setNewKeyData((prev) => ({ ...prev, passphrase: e.target.value }))}
+                        onChange={(e) =>
+                          setNewKeyData((prev) => ({
+                            ...prev,
+                            passphrase: e.target.value,
+                          }))
+                        }
                         className="bg-gray-800 border-gray-700 text-white"
                       />
                     </div>
@@ -266,26 +323,38 @@ export function APIKeyManager() {
                     <Label>Permissions</Label>
                     <div className="grid grid-cols-3 gap-2 mt-2">
                       {permissionOptions.map((permission) => (
-                        <label key={permission} className="flex items-center space-x-2">
+                        <label
+                          key={permission}
+                          className="flex items-center space-x-2"
+                        >
                           <input
                             type="checkbox"
-                            checked={newKeyData.permissions.includes(permission)}
+                            checked={newKeyData.permissions.includes(
+                              permission,
+                            )}
                             onChange={(e) => {
                               if (e.target.checked) {
                                 setNewKeyData((prev) => ({
                                   ...prev,
-                                  permissions: [...prev.permissions, permission],
-                                }))
+                                  permissions: [
+                                    ...prev.permissions,
+                                    permission,
+                                  ],
+                                }));
                               } else {
                                 setNewKeyData((prev) => ({
                                   ...prev,
-                                  permissions: prev.permissions.filter((p) => p !== permission),
-                                }))
+                                  permissions: prev.permissions.filter(
+                                    (p) => p !== permission,
+                                  ),
+                                }));
                               }
                             }}
                             className="rounded"
                           />
-                          <span className="text-sm capitalize">{permission}</span>
+                          <span className="text-sm capitalize">
+                            {permission}
+                          </span>
                         </label>
                       ))}
                     </div>
@@ -294,7 +363,12 @@ export function APIKeyManager() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       checked={newKeyData.isTestnet}
-                      onCheckedChange={(checked) => setNewKeyData((prev) => ({ ...prev, isTestnet: checked }))}
+                      onCheckedChange={(checked) =>
+                        setNewKeyData((prev) => ({
+                          ...prev,
+                          isTestnet: checked,
+                        }))
+                      }
                     />
                     <Label>Use Testnet</Label>
                   </div>
@@ -302,18 +376,27 @@ export function APIKeyManager() {
                   <Alert>
                     <Shield className="h-4 w-4" />
                     <AlertDescription>
-                      Your API keys are encrypted and stored securely. Never share your secret keys with anyone.
+                      Your API keys are encrypted and stored securely. Never
+                      share your secret keys with anyone.
                     </AlertDescription>
                   </Alert>
 
                   <div className="flex justify-end space-x-2">
-                    <Button variant="outline" onClick={() => setIsAddingKey(false)}>
+                    <Button
+                      variant="outline"
+                      onClick={() => setIsAddingKey(false)}
+                    >
                       Cancel
                     </Button>
                     <Button
                       onClick={handleAddKey}
                       className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]"
-                      disabled={!newKeyData.exchange || !newKeyData.name || !newKeyData.apiKey || !newKeyData.secretKey}
+                      disabled={
+                        !newKeyData.exchange ||
+                        !newKeyData.name ||
+                        !newKeyData.apiKey ||
+                        !newKeyData.secretKey
+                      }
                     >
                       Add Key
                     </Button>
@@ -336,20 +419,33 @@ export function APIKeyManager() {
                     <Key className="w-6 h-6 text-[#30D5C8]" />
                   </div>
                   <div>
-                    <CardTitle className="text-white text-lg">{apiKey.name}</CardTitle>
+                    <CardTitle className="text-white text-lg">
+                      {apiKey.name}
+                    </CardTitle>
                     <div className="flex items-center space-x-2 mt-1">
-                      <Badge variant="outline" className="border-gray-600 text-gray-300">
+                      <Badge
+                        variant="outline"
+                        className="border-gray-600 text-gray-300"
+                      >
                         {apiKey.exchange}
                       </Badge>
-                      {apiKey.isTestnet && <Badge className="bg-yellow-500/10 text-yellow-400">Testnet</Badge>}
+                      {apiKey.isTestnet && (
+                        <Badge className="bg-yellow-500/10 text-yellow-400">
+                          Testnet
+                        </Badge>
+                      )}
                       <Badge className={getStatusColor(apiKey.status)}>
-                        {apiKey.status.charAt(0).toUpperCase() + apiKey.status.slice(1)}
+                        {apiKey.status.charAt(0).toUpperCase() +
+                          apiKey.status.slice(1)}
                       </Badge>
                     </div>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <Switch checked={apiKey.status === "active"} onCheckedChange={() => toggleKeyStatus(apiKey.id)} />
+                  <Switch
+                    checked={apiKey.status === "active"}
+                    onCheckedChange={() => toggleKeyStatus(apiKey.id)}
+                  />
                   <Button
                     variant="ghost"
                     size="sm"
@@ -383,14 +479,32 @@ export function APIKeyManager() {
                       <Label className="text-gray-400">API Key</Label>
                       <div className="flex items-center space-x-2">
                         <Input
-                          value={showSecrets[apiKey.id] ? apiKey.apiKey : apiKey.apiKey.replace(/./g, "*")}
+                          value={
+                            showSecrets[apiKey.id]
+                              ? apiKey.apiKey
+                              : apiKey.apiKey.replace(/./g, "*")
+                          }
                           readOnly
                           className="bg-gray-800/50 border-gray-700 text-white font-mono"
                         />
-                        <Button variant="ghost" size="sm" onClick={() => toggleSecretVisibility(apiKey.id)}>
-                          {showSecrets[apiKey.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleSecretVisibility(apiKey.id)}
+                        >
+                          {showSecrets[apiKey.id] ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
                         </Button>
-                        <Button variant="ghost" size="sm" onClick={() => navigator.clipboard.writeText(apiKey.apiKey)}>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            navigator.clipboard.writeText(apiKey.apiKey)
+                          }
+                        >
                           <Copy className="w-4 h-4" />
                         </Button>
                       </div>
@@ -400,12 +514,24 @@ export function APIKeyManager() {
                       <Label className="text-gray-400">Secret Key</Label>
                       <div className="flex items-center space-x-2">
                         <Input
-                          value={showSecrets[apiKey.id] ? apiKey.secretKey : "***hidden***"}
+                          value={
+                            showSecrets[apiKey.id]
+                              ? apiKey.secretKey
+                              : "***hidden***"
+                          }
                           readOnly
                           className="bg-gray-800/50 border-gray-700 text-white font-mono"
                         />
-                        <Button variant="ghost" size="sm" onClick={() => toggleSecretVisibility(apiKey.id)}>
-                          {showSecrets[apiKey.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleSecretVisibility(apiKey.id)}
+                        >
+                          {showSecrets[apiKey.id] ? (
+                            <EyeOff className="w-4 h-4" />
+                          ) : (
+                            <Eye className="w-4 h-4" />
+                          )}
                         </Button>
                       </div>
                     </div>
@@ -415,12 +541,24 @@ export function APIKeyManager() {
                         <Label className="text-gray-400">Passphrase</Label>
                         <div className="flex items-center space-x-2">
                           <Input
-                            value={showSecrets[apiKey.id] ? apiKey.passphrase : "***hidden***"}
+                            value={
+                              showSecrets[apiKey.id]
+                                ? apiKey.passphrase
+                                : "***hidden***"
+                            }
                             readOnly
                             className="bg-gray-800/50 border-gray-700 text-white font-mono"
                           />
-                          <Button variant="ghost" size="sm" onClick={() => toggleSecretVisibility(apiKey.id)}>
-                            {showSecrets[apiKey.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleSecretVisibility(apiKey.id)}
+                          >
+                            {showSecrets[apiKey.id] ? (
+                              <EyeOff className="w-4 h-4" />
+                            ) : (
+                              <Eye className="w-4 h-4" />
+                            )}
                           </Button>
                         </div>
                       </div>
@@ -440,11 +578,17 @@ export function APIKeyManager() {
 
                 <TabsContent value="permissions" className="space-y-4">
                   <div>
-                    <Label className="text-gray-400 mb-3 block">Granted Permissions</Label>
+                    <Label className="text-gray-400 mb-3 block">
+                      Granted Permissions
+                    </Label>
                     <div className="flex flex-wrap gap-2">
                       {apiKey.permissions.map((permission) => (
-                        <Badge key={permission} className="bg-[#30D5C8]/10 text-[#30D5C8]">
-                          {permission.charAt(0).toUpperCase() + permission.slice(1)}
+                        <Badge
+                          key={permission}
+                          className="bg-[#30D5C8]/10 text-[#30D5C8]"
+                        >
+                          {permission.charAt(0).toUpperCase() +
+                            permission.slice(1)}
                         </Badge>
                       ))}
                     </div>
@@ -453,8 +597,9 @@ export function APIKeyManager() {
                   <Alert>
                     <AlertTriangle className="h-4 w-4" />
                     <AlertDescription>
-                      Only grant the minimum permissions required for your trading strategy. You can modify permissions
-                      by creating a new API key on the exchange.
+                      Only grant the minimum permissions required for your
+                      trading strategy. You can modify permissions by creating a
+                      new API key on the exchange.
                     </AlertDescription>
                   </Alert>
                 </TabsContent>
@@ -466,18 +611,33 @@ export function APIKeyManager() {
                       <div className="space-y-1">
                         {apiKey.ipWhitelist.length > 0 ? (
                           apiKey.ipWhitelist.map((ip, index) => (
-                            <div key={index} className="flex items-center justify-between p-2 bg-gray-800/50 rounded">
-                              <span className="text-white font-mono text-sm">{ip}</span>
-                              <Button variant="ghost" size="sm" className="text-red-400 hover:bg-red-400/10">
+                            <div
+                              key={index}
+                              className="flex items-center justify-between p-2 bg-gray-800/50 rounded"
+                            >
+                              <span className="text-white font-mono text-sm">
+                                {ip}
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-400 hover:bg-red-400/10"
+                              >
                                 <Trash2 className="w-3 h-3" />
                               </Button>
                             </div>
                           ))
                         ) : (
-                          <div className="text-gray-400 text-sm">No IP restrictions</div>
+                          <div className="text-gray-400 text-sm">
+                            No IP restrictions
+                          </div>
                         )}
                       </div>
-                      <Button variant="outline" size="sm" className="border-gray-600 text-white bg-transparent">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="border-gray-600 text-white bg-transparent"
+                      >
                         <Plus className="w-4 h-4 mr-2" />
                         Add IP
                       </Button>
@@ -486,24 +646,36 @@ export function APIKeyManager() {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded">
                         <div>
-                          <div className="text-white font-medium">Two-Factor Authentication</div>
-                          <div className="text-gray-400 text-sm">Additional security layer</div>
+                          <div className="text-white font-medium">
+                            Two-Factor Authentication
+                          </div>
+                          <div className="text-gray-400 text-sm">
+                            Additional security layer
+                          </div>
                         </div>
                         <CheckCircle className="w-5 h-5 text-green-400" />
                       </div>
 
                       <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded">
                         <div>
-                          <div className="text-white font-medium">Withdrawal Restrictions</div>
-                          <div className="text-gray-400 text-sm">API cannot withdraw funds</div>
+                          <div className="text-white font-medium">
+                            Withdrawal Restrictions
+                          </div>
+                          <div className="text-gray-400 text-sm">
+                            API cannot withdraw funds
+                          </div>
                         </div>
                         <CheckCircle className="w-5 h-5 text-green-400" />
                       </div>
 
                       <div className="flex items-center justify-between p-3 bg-gray-800/50 rounded">
                         <div>
-                          <div className="text-white font-medium">Rate Limiting</div>
-                          <div className="text-gray-400 text-sm">Automatic request throttling</div>
+                          <div className="text-white font-medium">
+                            Rate Limiting
+                          </div>
+                          <div className="text-gray-400 text-sm">
+                            Automatic request throttling
+                          </div>
                         </div>
                         <CheckCircle className="w-5 h-5 text-green-400" />
                       </div>
@@ -513,8 +685,8 @@ export function APIKeyManager() {
                   <Alert>
                     <Shield className="h-4 w-4" />
                     <AlertDescription>
-                      For maximum security, enable IP whitelisting and disable withdrawal permissions for trading-only
-                      API keys.
+                      For maximum security, enable IP whitelisting and disable
+                      withdrawal permissions for trading-only API keys.
                     </AlertDescription>
                   </Alert>
                 </TabsContent>
@@ -527,7 +699,9 @@ export function APIKeyManager() {
       {/* Security Recommendations */}
       <Card className="bg-gray-900/50 border-gray-800">
         <CardHeader>
-          <CardTitle className="text-white">🛡️ Security Best Practices</CardTitle>
+          <CardTitle className="text-white">
+            🛡️ Security Best Practices
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -586,5 +760,5 @@ export function APIKeyManager() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

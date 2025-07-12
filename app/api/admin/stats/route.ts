@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server"
+import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
@@ -56,11 +56,14 @@ export async function GET() {
         { plan: "Pro", count: 374, percentage: 30 },
         { plan: "Enterprise", count: 250, percentage: 20 },
       ],
-    }
+    };
 
-    return NextResponse.json(stats)
+    return NextResponse.json(stats);
   } catch (error) {
-    console.error("Get admin stats error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("Get admin stats error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 },
+    );
   }
 }

@@ -1,13 +1,13 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { generateText } from "ai"
-import { openai } from "@ai-sdk/openai"
+import { type NextRequest, NextResponse } from "next/server";
+import { generateText } from "ai";
+import { openai } from "@ai-sdk/openai";
 
 export async function POST(request: NextRequest) {
   try {
-    const { articles } = await request.json()
+    const { articles } = await request.json();
 
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ articles })
+      return NextResponse.json({ articles });
     }
 
     const analyzedArticles = await Promise.all(
@@ -28,26 +28,29 @@ export async function POST(request: NextRequest) {
             Title: ${article.title}
             Summary: ${article.summary}
             Category: ${article.category}`,
-          })
+          });
 
-          const analysis = JSON.parse(text)
+          const analysis = JSON.parse(text);
 
           return {
             ...article,
             sentiment: analysis.sentiment || "neutral",
             impact: analysis.impact || "medium",
             aiSummary: analysis.aiSummary || null,
-          }
+          };
         } catch (error) {
-          console.error("Error analyzing article:", error)
-          return article
+          console.error("Error analyzing article:", error);
+          return article;
         }
       }),
-    )
+    );
 
-    return NextResponse.json({ articles: analyzedArticles })
+    return NextResponse.json({ articles: analyzedArticles });
   } catch (error) {
-    console.error("Error in sentiment analysis:", error)
-    return NextResponse.json({ error: "Failed to analyze sentiment" }, { status: 500 })
+    console.error("Error in sentiment analysis:", error);
+    return NextResponse.json(
+      { error: "Failed to analyze sentiment" },
+      { status: 500 },
+    );
   }
 }

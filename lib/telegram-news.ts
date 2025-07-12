@@ -1,37 +1,37 @@
 // Telegram bot integration for news alerts
 
 export interface TelegramNewsAlert {
-  chatId: string
+  chatId: string;
   article: {
-    title: string
-    summary: string
-    source: string
-    category: string
-    sentiment: string
-    aiSummary?: string
-    url: string
-  }
+    title: string;
+    summary: string;
+    source: string;
+    category: string;
+    sentiment: string;
+    aiSummary?: string;
+    url: string;
+  };
 }
 
 export async function sendNewsAlert({ chatId, article }: TelegramNewsAlert) {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
   if (!botToken) {
-    console.error("Telegram bot token not configured")
-    return false
+    console.error("Telegram bot token not configured");
+    return false;
   }
 
   const sentimentEmoji = {
     positive: "🟢",
     negative: "🔴",
     neutral: "⚪",
-  }
+  };
 
   const categoryEmoji = {
     crypto: "🪙",
     stocks: "📈",
     economy: "🏦",
-  }
+  };
 
   const message = `
 📰 *${article.title}*
@@ -44,24 +44,27 @@ ${article.aiSummary ? `🧠 *AI Analysis:* ${article.aiSummary}` : ""}
 
 📊 *Source:* ${article.source}
 🔗 [Read More](${article.url})
-  `.trim()
+  `.trim();
 
   try {
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: message,
-        parse_mode: "Markdown",
-        disable_web_page_preview: false,
-      }),
-    })
+    const response = await fetch(
+      `https://api.telegram.org/bot${botToken}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: message,
+          parse_mode: "Markdown",
+          disable_web_page_preview: false,
+        }),
+      },
+    );
 
-    return response.ok
+    return response.ok;
   } catch (error) {
-    console.error("Error sending Telegram news alert:", error)
-    return false
+    console.error("Error sending Telegram news alert:", error);
+    return false;
   }
 }
 
@@ -84,24 +87,27 @@ ${index + 1}. *${article.title}*
 💡 *Trading Tip:* Stay informed but don't let news drive emotional decisions. Stick to your strategy!
 
 Use /settings to customize your news preferences.
-  `.trim()
+  `.trim();
 
-  const botToken = process.env.TELEGRAM_BOT_TOKEN
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
   try {
-    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: message,
-        parse_mode: "Markdown",
-      }),
-    })
+    const response = await fetch(
+      `https://api.telegram.org/bot${botToken}/sendMessage`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: message,
+          parse_mode: "Markdown",
+        }),
+      },
+    );
 
-    return response.ok
+    return response.ok;
   } catch (error) {
-    console.error("Error sending daily digest:", error)
-    return false
+    console.error("Error sending daily digest:", error);
+    return false;
   }
 }

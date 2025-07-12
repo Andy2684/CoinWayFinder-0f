@@ -1,10 +1,10 @@
-import nodemailer from "nodemailer"
+import nodemailer from "nodemailer";
 
 interface EmailOptions {
-  to: string | string[]
-  subject: string
-  html: string
-  text?: string
+  to: string | string[];
+  subject: string;
+  html: string;
+  text?: string;
 }
 class EmailService {
   private transporter: nodemailer.Transporter;
@@ -29,18 +29,21 @@ class EmailService {
         subject: options.subject,
         html: options.html,
         text: options.text,
-      }
+      };
 
-      const result = await this.transporter.sendMail(mailOptions)
-      console.log("Email sent successfully:", result.messageId)
-      return true
+      const result = await this.transporter.sendMail(mailOptions);
+      console.log("Email sent successfully:", result.messageId);
+      return true;
     } catch (error) {
-      console.error("Failed to send email:", error)
-      return false
+      console.error("Failed to send email:", error);
+      return false;
     }
   }
 
-  async sendBotCreationEmail(userEmail: string, botConfig: any): Promise<boolean> {
+  async sendBotCreationEmail(
+    userEmail: string,
+    botConfig: any,
+  ): Promise<boolean> {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #1a1a1a; color: #ffffff; border-radius: 8px; overflow: hidden;">
         <div style="background: linear-gradient(135deg, #30D5C8 0%, #4F46E5 100%); padding: 30px 20px; text-align: center;">
@@ -84,13 +87,13 @@ class EmailService {
           </div>
         </div>
       </div>
-    `
+    `;
 
     return this.sendEmail({
       to: userEmail,
       subject: `AI Bot Created: ${botConfig.name}`,
       html,
-    })
+    });
   }
 
   async sendTradingAlert(userEmail: string, alert: any): Promise<boolean> {
@@ -120,16 +123,19 @@ class EmailService {
           </div>
         </div>
       </div>
-    `
+    `;
 
     return this.sendEmail({
       to: userEmail,
       subject: `Trading Alert: ${alert.symbol} ${alert.type}`,
       html,
-    })
+    });
   }
 
-  async sendWelcomeEmail(userEmail: string, userName: string): Promise<boolean> {
+  async sendWelcomeEmail(
+    userEmail: string,
+    userName: string,
+  ): Promise<boolean> {
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #1a1a1a; color: #ffffff; border-radius: 8px; overflow: hidden;">
         <div style="background: linear-gradient(135deg, #30D5C8 0%, #4F46E5 100%); padding: 40px 20px; text-align: center;">
@@ -162,17 +168,20 @@ class EmailService {
           </div>
         </div>
       </div>
-    `
+    `;
 
     return this.sendEmail({
       to: userEmail,
       subject: "Welcome to Coinwayfinder - Start AI Trading Today!",
       html,
-    })
+    });
   }
 
-  async sendVerificationEmail(userEmail: string, verificationToken: string): Promise<boolean> {
-    const verificationUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/auth/verify-email?token=${verificationToken}`
+  async sendVerificationEmail(
+    userEmail: string,
+    verificationToken: string,
+  ): Promise<boolean> {
+    const verificationUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/auth/verify-email?token=${verificationToken}`;
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #1a1a1a; color: #ffffff; border-radius: 8px; overflow: hidden;">
@@ -198,17 +207,20 @@ class EmailService {
           </p>
         </div>
       </div>
-    `
+    `;
 
     return this.sendEmail({
       to: userEmail,
       subject: "Verify Your Coinwayfinder Account",
       html,
-    })
+    });
   }
 
-  async sendPasswordResetEmail(userEmail: string, resetToken: string): Promise<boolean> {
-    const resetUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/auth/reset-password?token=${resetToken}`
+  async sendPasswordResetEmail(
+    userEmail: string,
+    resetToken: string,
+  ): Promise<boolean> {
+    const resetUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/auth/reset-password?token=${resetToken}`;
 
     const html = `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #1a1a1a; color: #ffffff; border-radius: 8px; overflow: hidden;">
@@ -233,14 +245,14 @@ class EmailService {
           </p>
         </div>
       </div>
-    `
+    `;
 
     return this.sendEmail({
       to: userEmail,
       subject: "Reset Your Coinwayfinder Password",
       html,
-    })
+    });
   }
 }
 
-export const emailService = new EmailService()
+export const emailService = new EmailService();

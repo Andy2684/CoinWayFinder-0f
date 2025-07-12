@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,24 +10,35 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Slider } from "@/components/ui/slider"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { Calculator, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react"
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { Separator } from "@/components/ui/separator";
+import {
+  Calculator,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+} from "lucide-react";
 
 interface CreateSignalDialogProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
   const [formData, setFormData] = useState({
     symbol: "",
     type: "",
@@ -40,39 +51,39 @@ export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
     confidence: [75],
     riskLevel: "",
     analysis: "",
-  })
+  });
 
   const updateField = (field: string, value: any) => {
     setFormData((prev) => ({
       ...prev,
       [field]: value,
-    }))
-  }
+    }));
+  };
 
   const calculateRiskReward = () => {
-    const entry = Number.parseFloat(formData.entryPrice)
-    const target = Number.parseFloat(formData.targetPrice)
-    const stop = Number.parseFloat(formData.stopLoss)
+    const entry = Number.parseFloat(formData.entryPrice);
+    const target = Number.parseFloat(formData.targetPrice);
+    const stop = Number.parseFloat(formData.stopLoss);
 
-    if (!entry || !target || !stop) return null
+    if (!entry || !target || !stop) return null;
 
-    const reward = Math.abs(target - entry)
-    const risk = Math.abs(entry - stop)
-    const ratio = reward / risk
+    const reward = Math.abs(target - entry);
+    const risk = Math.abs(entry - stop);
+    const ratio = reward / risk;
 
     return {
       reward: reward.toFixed(2),
       risk: risk.toFixed(2),
       ratio: ratio.toFixed(2),
-    }
-  }
+    };
+  };
 
-  const riskReward = calculateRiskReward()
+  const riskReward = calculateRiskReward();
 
   const handleSubmit = () => {
     // Here you would typically send the data to your API
-    console.log("Creating signal:", formData)
-    setOpen(false)
+    console.log("Creating signal:", formData);
+    setOpen(false);
     // Reset form
     setFormData({
       symbol: "",
@@ -86,8 +97,8 @@ export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
       confidence: [75],
       riskLevel: "",
       analysis: "",
-    })
-  }
+    });
+  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -98,7 +109,10 @@ export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
             <TrendingUp className="w-5 h-5 text-[#30D5C8]" />
             Create New Signal
           </DialogTitle>
-          <DialogDescription>Set up a new trading signal with detailed parameters and AI analysis.</DialogDescription>
+          <DialogDescription>
+            Set up a new trading signal with detailed parameters and AI
+            analysis.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
@@ -106,7 +120,10 @@ export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="symbol">Symbol</Label>
-              <Select value={formData.symbol} onValueChange={(value) => updateField("symbol", value)}>
+              <Select
+                value={formData.symbol}
+                onValueChange={(value) => updateField("symbol", value)}
+              >
                 <SelectTrigger className="bg-[#0F1015] border-gray-700">
                   <SelectValue placeholder="Select symbol" />
                 </SelectTrigger>
@@ -123,7 +140,10 @@ export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
 
             <div>
               <Label htmlFor="type">Signal Type</Label>
-              <Select value={formData.type} onValueChange={(value) => updateField("type", value)}>
+              <Select
+                value={formData.type}
+                onValueChange={(value) => updateField("type", value)}
+              >
                 <SelectTrigger className="bg-[#0F1015] border-gray-700">
                   <SelectValue placeholder="Select type" />
                 </SelectTrigger>
@@ -148,15 +168,22 @@ export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="strategy">Strategy</Label>
-              <Select value={formData.strategy} onValueChange={(value) => updateField("strategy", value)}>
+              <Select
+                value={formData.strategy}
+                onValueChange={(value) => updateField("strategy", value)}
+              >
                 <SelectTrigger className="bg-[#0F1015] border-gray-700">
                   <SelectValue placeholder="Select strategy" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Trend Following">Trend Following</SelectItem>
+                  <SelectItem value="Trend Following">
+                    Trend Following
+                  </SelectItem>
                   <SelectItem value="Mean Reversion">Mean Reversion</SelectItem>
                   <SelectItem value="Breakout">Breakout</SelectItem>
-                  <SelectItem value="Support/Resistance">Support/Resistance</SelectItem>
+                  <SelectItem value="Support/Resistance">
+                    Support/Resistance
+                  </SelectItem>
                   <SelectItem value="Momentum">Momentum</SelectItem>
                   <SelectItem value="Scalping">Scalping</SelectItem>
                 </SelectContent>
@@ -165,7 +192,10 @@ export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
 
             <div>
               <Label htmlFor="exchange">Exchange</Label>
-              <Select value={formData.exchange} onValueChange={(value) => updateField("exchange", value)}>
+              <Select
+                value={formData.exchange}
+                onValueChange={(value) => updateField("exchange", value)}
+              >
                 <SelectTrigger className="bg-[#0F1015] border-gray-700">
                   <SelectValue placeholder="Select exchange" />
                 </SelectTrigger>
@@ -183,7 +213,10 @@ export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <Label htmlFor="timeframe">Timeframe</Label>
-              <Select value={formData.timeframe} onValueChange={(value) => updateField("timeframe", value)}>
+              <Select
+                value={formData.timeframe}
+                onValueChange={(value) => updateField("timeframe", value)}
+              >
                 <SelectTrigger className="bg-[#0F1015] border-gray-700">
                   <SelectValue placeholder="Select timeframe" />
                 </SelectTrigger>
@@ -200,16 +233,23 @@ export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
 
             <div>
               <Label htmlFor="riskLevel">Risk Level</Label>
-              <Select value={formData.riskLevel} onValueChange={(value) => updateField("riskLevel", value)}>
+              <Select
+                value={formData.riskLevel}
+                onValueChange={(value) => updateField("riskLevel", value)}
+              >
                 <SelectTrigger className="bg-[#0F1015] border-gray-700">
                   <SelectValue placeholder="Select risk level" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="LOW">
-                    <Badge className="text-green-400 bg-green-400/10">LOW</Badge>
+                    <Badge className="text-green-400 bg-green-400/10">
+                      LOW
+                    </Badge>
                   </SelectItem>
                   <SelectItem value="MEDIUM">
-                    <Badge className="text-yellow-400 bg-yellow-400/10">MEDIUM</Badge>
+                    <Badge className="text-yellow-400 bg-yellow-400/10">
+                      MEDIUM
+                    </Badge>
                   </SelectItem>
                   <SelectItem value="HIGH">
                     <Badge className="text-red-400 bg-red-400/10">HIGH</Badge>
@@ -269,27 +309,36 @@ export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-3">
                     <Calculator className="w-4 h-4 text-[#30D5C8]" />
-                    <h4 className="font-medium text-white">Risk/Reward Analysis</h4>
+                    <h4 className="font-medium text-white">
+                      Risk/Reward Analysis
+                    </h4>
                   </div>
                   <div className="grid grid-cols-3 gap-4 text-sm">
                     <div>
                       <p className="text-gray-400">Potential Reward</p>
-                      <p className="font-medium text-green-400">${riskReward.reward}</p>
+                      <p className="font-medium text-green-400">
+                        ${riskReward.reward}
+                      </p>
                     </div>
                     <div>
                       <p className="text-gray-400">Potential Risk</p>
-                      <p className="font-medium text-red-400">${riskReward.risk}</p>
+                      <p className="font-medium text-red-400">
+                        ${riskReward.risk}
+                      </p>
                     </div>
                     <div>
                       <p className="text-gray-400">R:R Ratio</p>
-                      <p className="font-medium text-[#30D5C8]">1:{riskReward.ratio}</p>
+                      <p className="font-medium text-[#30D5C8]">
+                        1:{riskReward.ratio}
+                      </p>
                     </div>
                   </div>
                   {Number.parseFloat(riskReward.ratio) < 1.5 && (
                     <div className="flex items-center gap-2 mt-3 p-2 bg-yellow-500/10 rounded border border-yellow-500/20">
                       <AlertTriangle className="w-4 h-4 text-yellow-400" />
                       <p className="text-xs text-yellow-400">
-                        Consider improving risk/reward ratio (recommended: 1:1.5 or better)
+                        Consider improving risk/reward ratio (recommended: 1:1.5
+                        or better)
                       </p>
                     </div>
                   )}
@@ -302,7 +351,9 @@ export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
 
           {/* Confidence Level */}
           <div>
-            <Label className="text-white mb-3 block">Confidence Level: {formData.confidence[0]}%</Label>
+            <Label className="text-white mb-3 block">
+              Confidence Level: {formData.confidence[0]}%
+            </Label>
             <Slider
               value={formData.confidence}
               onValueChange={(value) => updateField("confidence", value)}
@@ -332,13 +383,19 @@ export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4">
-            <Button variant="outline" onClick={() => setOpen(false)} className="flex-1">
+            <Button
+              variant="outline"
+              onClick={() => setOpen(false)}
+              className="flex-1"
+            >
               Cancel
             </Button>
             <Button
               onClick={handleSubmit}
               className="flex-1 bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]"
-              disabled={!formData.symbol || !formData.type || !formData.entryPrice}
+              disabled={
+                !formData.symbol || !formData.type || !formData.entryPrice
+              }
             >
               Create Signal
             </Button>
@@ -346,5 +403,5 @@ export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
         </div>
       </DialogContent>
     </Dialog>
-  )
+  );
 }

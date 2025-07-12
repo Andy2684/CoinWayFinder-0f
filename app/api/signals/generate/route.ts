@@ -1,20 +1,20 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { strategies, symbols, timeframes } = body
+    const body = await request.json();
+    const { strategies, symbols, timeframes } = body;
 
     // Simulate signal generation
-    const generatedSignals = []
+    const generatedSignals = [];
 
     for (const strategy of strategies || ["rsi-divergence"]) {
       for (const symbol of symbols || ["BTC/USDT"]) {
         for (const timeframe of timeframes || ["4h"]) {
           // Random chance to generate a signal
           if (Math.random() > 0.7) {
-            const type = Math.random() > 0.5 ? "BUY" : "SELL"
-            const price = 43000 + Math.random() * 2000
+            const type = Math.random() > 0.5 ? "BUY" : "SELL";
+            const price = 43000 + Math.random() * 2000;
 
             generatedSignals.push({
               id: `signal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
@@ -36,8 +36,10 @@ export async function POST(request: NextRequest) {
               },
               reasoning: `${strategy} detected ${type.toLowerCase()} opportunity with ${Math.round(70 + Math.random() * 25)}% confidence`,
               createdAt: new Date().toISOString(),
-              expiresAt: new Date(Date.now() + 4 * 60 * 60 * 1000).toISOString(),
-            })
+              expiresAt: new Date(
+                Date.now() + 4 * 60 * 60 * 1000,
+              ).toISOString(),
+            });
           }
         }
       }
@@ -48,9 +50,12 @@ export async function POST(request: NextRequest) {
       data: generatedSignals,
       count: generatedSignals.length,
       message: `Generated ${generatedSignals.length} signals`,
-    })
+    });
   } catch (error) {
-    console.error("Error generating signals:", error)
-    return NextResponse.json({ success: false, error: "Failed to generate signals" }, { status: 500 })
+    console.error("Error generating signals:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to generate signals" },
+      { status: 500 },
+    );
   }
 }

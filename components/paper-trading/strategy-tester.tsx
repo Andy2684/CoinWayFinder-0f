@@ -1,30 +1,43 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
-import { Play, Pause, Settings, BarChart3, TrendingUp, Target } from "lucide-react"
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
+import {
+  Play,
+  Pause,
+  Settings,
+  BarChart3,
+  TrendingUp,
+  Target,
+} from "lucide-react";
 
 interface StrategyTest {
-  id: string
-  name: string
-  status: "RUNNING" | "PAUSED" | "COMPLETED" | "FAILED"
-  progress: number
-  startTime: string
-  endTime?: string
-  initialBalance: number
-  currentBalance: number
-  totalTrades: number
-  winRate: number
-  maxDrawdown: number
-  sharpeRatio: number
-  parameters: Record<string, any>
+  id: string;
+  name: string;
+  status: "RUNNING" | "PAUSED" | "COMPLETED" | "FAILED";
+  progress: number;
+  startTime: string;
+  endTime?: string;
+  initialBalance: number;
+  currentBalance: number;
+  totalTrades: number;
+  winRate: number;
+  maxDrawdown: number;
+  sharpeRatio: number;
+  parameters: Record<string, any>;
 }
 
 export function StrategyTester() {
@@ -67,7 +80,7 @@ export function StrategyTester() {
         timeframes: ["1h", "4h"],
       },
     },
-  ])
+  ]);
 
   const [newTest, setNewTest] = useState({
     name: "",
@@ -75,7 +88,7 @@ export function StrategyTester() {
     initialBalance: 10000,
     duration: "7d",
     symbols: ["BTC/USDT"],
-  })
+  });
 
   const startNewTest = () => {
     const test: StrategyTest = {
@@ -95,9 +108,9 @@ export function StrategyTester() {
         duration: newTest.duration,
         symbols: newTest.symbols,
       },
-    }
+    };
 
-    setTests((prev) => [test, ...prev])
+    setTests((prev) => [test, ...prev]);
 
     // Reset form
     setNewTest({
@@ -106,38 +119,47 @@ export function StrategyTester() {
       initialBalance: 10000,
       duration: "7d",
       symbols: ["BTC/USDT"],
-    })
-  }
+    });
+  };
 
   const toggleTest = (testId: string) => {
     setTests((prev) =>
       prev.map((test) =>
-        test.id === testId ? { ...test, status: test.status === "RUNNING" ? "PAUSED" : "RUNNING" } : test,
+        test.id === testId
+          ? {
+              ...test,
+              status: test.status === "RUNNING" ? "PAUSED" : "RUNNING",
+            }
+          : test,
       ),
-    )
-  }
+    );
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "RUNNING":
-        return "text-blue-400 bg-blue-400/10"
+        return "text-blue-400 bg-blue-400/10";
       case "PAUSED":
-        return "text-yellow-400 bg-yellow-400/10"
+        return "text-yellow-400 bg-yellow-400/10";
       case "COMPLETED":
-        return "text-green-400 bg-green-400/10"
+        return "text-green-400 bg-green-400/10";
       case "FAILED":
-        return "text-red-400 bg-red-400/10"
+        return "text-red-400 bg-red-400/10";
       default:
-        return "text-gray-400 bg-gray-400/10"
+        return "text-gray-400 bg-gray-400/10";
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-white mb-2">🧪 Strategy Tester</h2>
-          <p className="text-gray-300">Backtest and optimize trading strategies</p>
+          <h2 className="text-2xl font-bold text-white mb-2">
+            🧪 Strategy Tester
+          </h2>
+          <p className="text-gray-300">
+            Backtest and optimize trading strategies
+          </p>
         </div>
         <Button className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]">
           <Settings className="w-4 h-4 mr-2" />
@@ -147,7 +169,9 @@ export function StrategyTester() {
 
       <Tabs defaultValue="tests" className="space-y-6">
         <TabsList className="bg-[#1A1B23] border-gray-800">
-          <TabsTrigger value="tests">Running Tests ({tests.length})</TabsTrigger>
+          <TabsTrigger value="tests">
+            Running Tests ({tests.length})
+          </TabsTrigger>
           <TabsTrigger value="new">New Test</TabsTrigger>
           <TabsTrigger value="results">Results</TabsTrigger>
         </TabsList>
@@ -159,17 +183,27 @@ export function StrategyTester() {
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-white">{test.name}</CardTitle>
-                    <p className="text-sm text-gray-400 mt-1">Started: {new Date(test.startTime).toLocaleString()}</p>
+                    <p className="text-sm text-gray-400 mt-1">
+                      Started: {new Date(test.startTime).toLocaleString()}
+                    </p>
                   </div>
                   <div className="flex items-center space-x-3">
-                    <Badge className={getStatusColor(test.status)}>{test.status}</Badge>
+                    <Badge className={getStatusColor(test.status)}>
+                      {test.status}
+                    </Badge>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => toggleTest(test.id)}
-                      disabled={test.status === "COMPLETED" || test.status === "FAILED"}
+                      disabled={
+                        test.status === "COMPLETED" || test.status === "FAILED"
+                      }
                     >
-                      {test.status === "RUNNING" ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                      {test.status === "RUNNING" ? (
+                        <Pause className="w-4 h-4" />
+                      ) : (
+                        <Play className="w-4 h-4" />
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -188,26 +222,41 @@ export function StrategyTester() {
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
-                    <p className="text-xs text-gray-400 mb-1">Current Balance</p>
-                    <p className="text-sm font-medium text-white">${test.currentBalance.toLocaleString()}</p>
+                    <p className="text-xs text-gray-400 mb-1">
+                      Current Balance
+                    </p>
+                    <p className="text-sm font-medium text-white">
+                      ${test.currentBalance.toLocaleString()}
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Total Return</p>
                     <p
                       className={`text-sm font-medium ${
-                        test.currentBalance >= test.initialBalance ? "text-green-400" : "text-red-400"
+                        test.currentBalance >= test.initialBalance
+                          ? "text-green-400"
+                          : "text-red-400"
                       }`}
                     >
-                      {(((test.currentBalance - test.initialBalance) / test.initialBalance) * 100).toFixed(2)}%
+                      {(
+                        ((test.currentBalance - test.initialBalance) /
+                          test.initialBalance) *
+                        100
+                      ).toFixed(2)}
+                      %
                     </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Win Rate</p>
-                    <p className="text-sm font-medium text-white">{test.winRate.toFixed(1)}%</p>
+                    <p className="text-sm font-medium text-white">
+                      {test.winRate.toFixed(1)}%
+                    </p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Sharpe Ratio</p>
-                    <p className="text-sm font-medium text-white">{test.sharpeRatio.toFixed(2)}</p>
+                    <p className="text-sm font-medium text-white">
+                      {test.sharpeRatio.toFixed(2)}
+                    </p>
                   </div>
                 </div>
 
@@ -216,7 +265,10 @@ export function StrategyTester() {
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(test.parameters).map(([key, value]) => (
                       <Badge key={key} variant="outline" className="text-xs">
-                        {key}: {Array.isArray(value) ? value.join(", ") : String(value)}
+                        {key}:{" "}
+                        {Array.isArray(value)
+                          ? value.join(", ")
+                          : String(value)}
                       </Badge>
                     ))}
                   </div>
@@ -229,7 +281,9 @@ export function StrategyTester() {
         <TabsContent value="new" className="space-y-6">
           <Card className="bg-[#1A1B23] border-gray-800">
             <CardHeader>
-              <CardTitle className="text-white">Create New Strategy Test</CardTitle>
+              <CardTitle className="text-white">
+                Create New Strategy Test
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -240,7 +294,9 @@ export function StrategyTester() {
                   <Input
                     id="testName"
                     value={newTest.name}
-                    onChange={(e) => setNewTest((prev) => ({ ...prev, name: e.target.value }))}
+                    onChange={(e) =>
+                      setNewTest((prev) => ({ ...prev, name: e.target.value }))
+                    }
                     placeholder="Enter test name"
                     className="bg-[#0F1015] border-gray-700 text-white"
                   />
@@ -251,16 +307,26 @@ export function StrategyTester() {
                   </Label>
                   <Select
                     value={newTest.strategy}
-                    onValueChange={(value) => setNewTest((prev) => ({ ...prev, strategy: value }))}
+                    onValueChange={(value) =>
+                      setNewTest((prev) => ({ ...prev, strategy: value }))
+                    }
                   >
                     <SelectTrigger className="bg-[#0F1015] border-gray-700 text-white">
                       <SelectValue placeholder="Select strategy" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="rsi-divergence">RSI Divergence</SelectItem>
-                      <SelectItem value="macd-crossover">MACD Crossover</SelectItem>
-                      <SelectItem value="bollinger-squeeze">Bollinger Squeeze</SelectItem>
-                      <SelectItem value="ai-pattern">AI Pattern Recognition</SelectItem>
+                      <SelectItem value="rsi-divergence">
+                        RSI Divergence
+                      </SelectItem>
+                      <SelectItem value="macd-crossover">
+                        MACD Crossover
+                      </SelectItem>
+                      <SelectItem value="bollinger-squeeze">
+                        Bollinger Squeeze
+                      </SelectItem>
+                      <SelectItem value="ai-pattern">
+                        AI Pattern Recognition
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -272,7 +338,12 @@ export function StrategyTester() {
                     id="initialBalance"
                     type="number"
                     value={newTest.initialBalance}
-                    onChange={(e) => setNewTest((prev) => ({ ...prev, initialBalance: Number(e.target.value) }))}
+                    onChange={(e) =>
+                      setNewTest((prev) => ({
+                        ...prev,
+                        initialBalance: Number(e.target.value),
+                      }))
+                    }
                     className="bg-[#0F1015] border-gray-700 text-white"
                   />
                 </div>
@@ -282,7 +353,9 @@ export function StrategyTester() {
                   </Label>
                   <Select
                     value={newTest.duration}
-                    onValueChange={(value) => setNewTest((prev) => ({ ...prev, duration: value }))}
+                    onValueChange={(value) =>
+                      setNewTest((prev) => ({ ...prev, duration: value }))
+                    }
                   >
                     <SelectTrigger className="bg-[#0F1015] border-gray-700 text-white">
                       <SelectValue />
@@ -352,33 +425,72 @@ export function StrategyTester() {
 
           <Card className="bg-[#1A1B23] border-gray-800">
             <CardHeader>
-              <CardTitle className="text-white">Strategy Performance Comparison</CardTitle>
+              <CardTitle className="text-white">
+                Strategy Performance Comparison
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {[
-                  { name: "RSI Divergence", tests: 5, avgReturn: 18.5, winRate: 75.2, sharpe: 2.1 },
-                  { name: "MACD Crossover", tests: 3, avgReturn: 12.3, winRate: 68.1, sharpe: 1.8 },
-                  { name: "Bollinger Squeeze", tests: 4, avgReturn: 15.7, winRate: 62.5, sharpe: 1.6 },
-                  { name: "AI Pattern", tests: 2, avgReturn: 22.1, winRate: 80.0, sharpe: 2.3 },
+                  {
+                    name: "RSI Divergence",
+                    tests: 5,
+                    avgReturn: 18.5,
+                    winRate: 75.2,
+                    sharpe: 2.1,
+                  },
+                  {
+                    name: "MACD Crossover",
+                    tests: 3,
+                    avgReturn: 12.3,
+                    winRate: 68.1,
+                    sharpe: 1.8,
+                  },
+                  {
+                    name: "Bollinger Squeeze",
+                    tests: 4,
+                    avgReturn: 15.7,
+                    winRate: 62.5,
+                    sharpe: 1.6,
+                  },
+                  {
+                    name: "AI Pattern",
+                    tests: 2,
+                    avgReturn: 22.1,
+                    winRate: 80.0,
+                    sharpe: 2.3,
+                  },
                 ].map((strategy) => (
-                  <div key={strategy.name} className="p-4 bg-[#0F1015] rounded-lg">
+                  <div
+                    key={strategy.name}
+                    className="p-4 bg-[#0F1015] rounded-lg"
+                  >
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-white">{strategy.name}</h4>
-                      <Badge className="text-[#30D5C8] bg-[#30D5C8]/10">{strategy.tests} tests</Badge>
+                      <h4 className="font-medium text-white">
+                        {strategy.name}
+                      </h4>
+                      <Badge className="text-[#30D5C8] bg-[#30D5C8]/10">
+                        {strategy.tests} tests
+                      </Badge>
                     </div>
                     <div className="grid grid-cols-3 gap-4">
                       <div>
                         <p className="text-xs text-gray-400">Avg Return</p>
-                        <p className="text-sm font-medium text-green-400">+{strategy.avgReturn}%</p>
+                        <p className="text-sm font-medium text-green-400">
+                          +{strategy.avgReturn}%
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-400">Win Rate</p>
-                        <p className="text-sm font-medium text-white">{strategy.winRate}%</p>
+                        <p className="text-sm font-medium text-white">
+                          {strategy.winRate}%
+                        </p>
                       </div>
                       <div>
                         <p className="text-xs text-gray-400">Sharpe Ratio</p>
-                        <p className="text-sm font-medium text-white">{strategy.sharpe}</p>
+                        <p className="text-sm font-medium text-white">
+                          {strategy.sharpe}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -389,5 +501,5 @@ export function StrategyTester() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }

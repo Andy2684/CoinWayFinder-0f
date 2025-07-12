@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
 import {
   TrendingUp,
   BarChart3,
@@ -15,7 +15,7 @@ import {
   Activity,
   Target,
   Settings,
-} from "lucide-react"
+} from "lucide-react";
 
 export function TradingFeatures() {
   const features = [
@@ -205,13 +205,17 @@ export function TradingFeatures() {
         },
       ],
     },
-  ]
+  ];
 
   return (
     <section className="mb-12">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-white mb-2">⚡ Trading Features</h2>
-        <p className="text-gray-300">Configure available trading features across your connected exchanges</p>
+        <h2 className="text-2xl font-bold text-white mb-2">
+          ⚡ Trading Features
+        </h2>
+        <p className="text-gray-300">
+          Configure available trading features across your connected exchanges
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -225,16 +229,25 @@ export function TradingFeatures() {
             </CardHeader>
             <CardContent className="space-y-4">
               {category.items.map((feature, featureIndex) => (
-                <div key={featureIndex} className="flex items-start justify-between p-4 bg-gray-800/30 rounded-lg">
+                <div
+                  key={featureIndex}
+                  className="flex items-start justify-between p-4 bg-gray-800/30 rounded-lg"
+                >
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="text-white font-medium">{feature.name}</h4>
                       <Switch checked={feature.enabled} />
                     </div>
-                    <p className="text-gray-400 text-sm mb-3">{feature.description}</p>
+                    <p className="text-gray-400 text-sm mb-3">
+                      {feature.description}
+                    </p>
                     <div className="flex flex-wrap gap-1">
                       {feature.exchanges.map((exchange, exchangeIndex) => (
-                        <Badge key={exchangeIndex} variant="outline" className="text-xs border-gray-600 text-gray-300">
+                        <Badge
+                          key={exchangeIndex}
+                          variant="outline"
+                          className="text-xs border-gray-600 text-gray-300"
+                        >
                           {exchange}
                         </Badge>
                       ))}
@@ -252,11 +265,18 @@ export function TradingFeatures() {
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-white mb-2">Feature Configuration Summary</h3>
-              <p className="text-gray-400">Manage global settings for all trading features</p>
+              <h3 className="text-lg font-semibold text-white mb-2">
+                Feature Configuration Summary
+              </h3>
+              <p className="text-gray-400">
+                Manage global settings for all trading features
+              </p>
             </div>
             <div className="flex items-center space-x-2">
-              <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-800 bg-transparent">
+              <Button
+                variant="outline"
+                className="border-gray-600 text-white hover:bg-gray-800 bg-transparent"
+              >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Sync All
               </Button>
@@ -300,5 +320,5 @@ export function TradingFeatures() {
         </CardContent>
       </Card>
     </section>
-  )
+  );
 }

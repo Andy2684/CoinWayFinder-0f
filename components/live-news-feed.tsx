@@ -1,75 +1,98 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Clock, ExternalLink, Search, TrendingUp, TrendingDown, Minus, Newspaper } from "lucide-react"
-import Link from "next/link"
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Clock,
+  ExternalLink,
+  Search,
+  TrendingUp,
+  TrendingDown,
+  Minus,
+  Newspaper,
+} from "lucide-react";
+import Link from "next/link";
 
 interface NewsArticle {
-  id: string
-  title: string
-  summary: string
-  source: string
-  category: "crypto" | "stocks" | "economy"
-  publishedAt: string
-  url: string
-  sentiment: "positive" | "negative" | "neutral"
-  aiSummary?: string
-  impact?: "high" | "medium" | "low"
+  id: string;
+  title: string;
+  summary: string;
+  source: string;
+  category: "crypto" | "stocks" | "economy";
+  publishedAt: string;
+  url: string;
+  sentiment: "positive" | "negative" | "neutral";
+  aiSummary?: string;
+  impact?: "high" | "medium" | "low";
 }
 
 interface LiveNewsFeedProps {
-  variant?: "homepage" | "full"
-  limit?: number
+  variant?: "homepage" | "full";
+  limit?: number;
 }
 
-export function LiveNewsFeed({ variant = "homepage", limit = 5 }: LiveNewsFeedProps) {
-  const [articles, setArticles] = useState<NewsArticle[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState("")
-  const [categoryFilter, setCategoryFilter] = useState<string>("all")
-  const [timeFilter, setTimeFilter] = useState<string>("24h")
+export function LiveNewsFeed({
+  variant = "homepage",
+  limit = 5,
+}: LiveNewsFeedProps) {
+  const [articles, setArticles] = useState<NewsArticle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [timeFilter, setTimeFilter] = useState<string>("24h");
 
   // Mock data for demonstration
   const mockArticles: NewsArticle[] = [
     {
       id: "1",
       title: "Bitcoin Surges to $68,000 After Record ETF Inflows",
-      summary: "Spot Bitcoin ETFs see record $400M daily volume as institutional adoption accelerates",
+      summary:
+        "Spot Bitcoin ETFs see record $400M daily volume as institutional adoption accelerates",
       source: "Bloomberg",
       category: "crypto",
       publishedAt: "2024-01-07T14:30:00Z",
       url: "#",
       sentiment: "positive",
-      aiSummary: "This is likely bullish for BTC short-term as institutional demand increases.",
+      aiSummary:
+        "This is likely bullish for BTC short-term as institutional demand increases.",
       impact: "high",
     },
     {
       id: "2",
       title: "Fed Signals Potential Rate Cuts in Q2 2024",
-      summary: "Federal Reserve hints at monetary policy easing amid cooling inflation data",
+      summary:
+        "Federal Reserve hints at monetary policy easing amid cooling inflation data",
       source: "CNBC",
       category: "economy",
       publishedAt: "2024-01-07T13:15:00Z",
       url: "#",
       sentiment: "positive",
-      aiSummary: "Rate cuts typically boost risk assets including crypto and growth stocks.",
+      aiSummary:
+        "Rate cuts typically boost risk assets including crypto and growth stocks.",
       impact: "high",
     },
     {
       id: "3",
       title: "Ethereum Layer 2 Solutions See 300% Growth",
-      summary: "Arbitrum and Polygon lead scaling solution adoption with record transaction volumes",
+      summary:
+        "Arbitrum and Polygon lead scaling solution adoption with record transaction volumes",
       source: "CoinDesk",
       category: "crypto",
       publishedAt: "2024-01-07T12:45:00Z",
       url: "#",
       sentiment: "positive",
-      aiSummary: "Strong fundamentals for ETH ecosystem, potential positive price impact.",
+      aiSummary:
+        "Strong fundamentals for ETH ecosystem, potential positive price impact.",
       impact: "medium",
     },
     {
@@ -81,25 +104,29 @@ export function LiveNewsFeed({ variant = "homepage", limit = 5 }: LiveNewsFeedPr
       publishedAt: "2024-01-07T11:20:00Z",
       url: "#",
       sentiment: "positive",
-      aiSummary: "AI sector strength may correlate with crypto AI tokens performance.",
+      aiSummary:
+        "AI sector strength may correlate with crypto AI tokens performance.",
       impact: "medium",
     },
     {
       id: "5",
       title: "Global Inflation Rates Continue Downward Trend",
-      summary: "Major economies report cooling inflation, supporting risk asset sentiment",
+      summary:
+        "Major economies report cooling inflation, supporting risk asset sentiment",
       source: "Reuters",
       category: "economy",
       publishedAt: "2024-01-07T10:30:00Z",
       url: "#",
       sentiment: "positive",
-      aiSummary: "Disinflationary trend supports continued monetary easing globally.",
+      aiSummary:
+        "Disinflationary trend supports continued monetary easing globally.",
       impact: "medium",
     },
     {
       id: "6",
       title: "Altcoin Season Indicators Flash Green",
-      summary: "Alternative cryptocurrencies outperform Bitcoin as market sentiment improves",
+      summary:
+        "Alternative cryptocurrencies outperform Bitcoin as market sentiment improves",
       source: "CryptoPanic",
       category: "crypto",
       publishedAt: "2024-01-07T09:15:00Z",
@@ -108,81 +135,89 @@ export function LiveNewsFeed({ variant = "homepage", limit = 5 }: LiveNewsFeedPr
       aiSummary: "Altcoin strength suggests broader crypto market bullishness.",
       impact: "medium",
     },
-  ]
+  ];
 
   useEffect(() => {
     // Simulate API call
     const fetchNews = async () => {
-      setLoading(true)
+      setLoading(true);
       // In real implementation, this would call your news API
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      setArticles(mockArticles)
-      setLoading(false)
-    }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setArticles(mockArticles);
+      setLoading(false);
+    };
 
-    fetchNews()
+    fetchNews();
 
     // Set up refresh interval (every 3 minutes)
-    const interval = setInterval(fetchNews, 180000)
-    return () => clearInterval(interval)
-  }, [])
+    const interval = setInterval(fetchNews, 180000);
+    return () => clearInterval(interval);
+  }, []);
 
   const filteredArticles = articles
     .filter((article) => {
-      if (categoryFilter !== "all" && article.category !== categoryFilter) return false
-      if (searchTerm && !article.title.toLowerCase().includes(searchTerm.toLowerCase())) return false
+      if (categoryFilter !== "all" && article.category !== categoryFilter)
+        return false;
+      if (
+        searchTerm &&
+        !article.title.toLowerCase().includes(searchTerm.toLowerCase())
+      )
+        return false;
 
       // Time filter logic
-      const now = new Date()
-      const articleDate = new Date(article.publishedAt)
-      const hoursDiff = (now.getTime() - articleDate.getTime()) / (1000 * 60 * 60)
+      const now = new Date();
+      const articleDate = new Date(article.publishedAt);
+      const hoursDiff =
+        (now.getTime() - articleDate.getTime()) / (1000 * 60 * 60);
 
       switch (timeFilter) {
         case "1h":
-          return hoursDiff <= 1
+          return hoursDiff <= 1;
         case "24h":
-          return hoursDiff <= 24
+          return hoursDiff <= 24;
         case "week":
-          return hoursDiff <= 168
+          return hoursDiff <= 168;
         default:
-          return true
+          return true;
       }
     })
-    .slice(0, variant === "homepage" ? limit : undefined)
+    .slice(0, variant === "homepage" ? limit : undefined);
 
   const getSentimentIcon = (sentiment: string) => {
     switch (sentiment) {
       case "positive":
-        return <TrendingUp className="w-4 h-4 text-green-500" />
+        return <TrendingUp className="w-4 h-4 text-green-500" />;
       case "negative":
-        return <TrendingDown className="w-4 h-4 text-red-500" />
+        return <TrendingDown className="w-4 h-4 text-red-500" />;
       default:
-        return <Minus className="w-4 h-4 text-gray-500" />
+        return <Minus className="w-4 h-4 text-gray-500" />;
     }
-  }
+  };
 
   const getCategoryColor = (category: string) => {
     switch (category) {
       case "crypto":
-        return "bg-[#30D5C8]/10 text-[#30D5C8] border-[#30D5C8]/20"
+        return "bg-[#30D5C8]/10 text-[#30D5C8] border-[#30D5C8]/20";
       case "stocks":
-        return "bg-blue-500/10 text-blue-400 border-blue-500/20"
+        return "bg-blue-500/10 text-blue-400 border-blue-500/20";
       case "economy":
-        return "bg-orange-500/10 text-orange-400 border-orange-500/20"
+        return "bg-orange-500/10 text-orange-400 border-orange-500/20";
       default:
-        return "bg-gray-500/10 text-gray-400 border-gray-500/20"
+        return "bg-gray-500/10 text-gray-400 border-gray-500/20";
     }
-  }
+  };
 
   const getTimeAgo = (dateString: string) => {
-    const now = new Date()
-    const date = new Date(dateString)
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60))
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInMinutes = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60),
+    );
 
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
-    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`
-    return `${Math.floor(diffInMinutes / 1440)}d ago`
-  }
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+  };
 
   if (variant === "homepage") {
     return (
@@ -191,10 +226,15 @@ export function LiveNewsFeed({ variant = "homepage", limit = 5 }: LiveNewsFeedPr
           <div className="flex items-center justify-between mb-8">
             <div className="flex items-center space-x-3">
               <Newspaper className="w-6 h-6 text-[#30D5C8]" />
-              <h2 className="text-2xl font-bold text-white">📢 Live Market News</h2>
+              <h2 className="text-2xl font-bold text-white">
+                📢 Live Market News
+              </h2>
             </div>
             <Link href="/news">
-              <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-800 bg-transparent">
+              <Button
+                variant="outline"
+                className="border-gray-600 text-white hover:bg-gray-800 bg-transparent"
+              >
                 See All News
               </Button>
             </Link>
@@ -203,7 +243,10 @@ export function LiveNewsFeed({ variant = "homepage", limit = 5 }: LiveNewsFeedPr
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[...Array(3)].map((_, i) => (
-                <Card key={i} className="bg-gray-900/50 border-gray-800 animate-pulse">
+                <Card
+                  key={i}
+                  className="bg-gray-900/50 border-gray-800 animate-pulse"
+                >
                   <CardContent className="p-6">
                     <div className="h-4 bg-gray-700 rounded mb-3"></div>
                     <div className="h-3 bg-gray-700 rounded mb-2"></div>
@@ -221,7 +264,9 @@ export function LiveNewsFeed({ variant = "homepage", limit = 5 }: LiveNewsFeedPr
                 >
                   <CardContent className="p-6">
                     <div className="flex items-start justify-between mb-3">
-                      <Badge className={`text-xs ${getCategoryColor(article.category)}`}>
+                      <Badge
+                        className={`text-xs ${getCategoryColor(article.category)}`}
+                      >
                         {article.category.toUpperCase()}
                       </Badge>
                       {getSentimentIcon(article.sentiment)}
@@ -231,12 +276,18 @@ export function LiveNewsFeed({ variant = "homepage", limit = 5 }: LiveNewsFeedPr
                       {article.title}
                     </h3>
 
-                    <p className="text-gray-300 text-sm mb-3 line-clamp-2">{article.summary}</p>
+                    <p className="text-gray-300 text-sm mb-3 line-clamp-2">
+                      {article.summary}
+                    </p>
 
                     {article.aiSummary && (
                       <div className="bg-[#30D5C8]/5 border border-[#30D5C8]/20 rounded-lg p-3 mb-3">
-                        <p className="text-[#30D5C8] text-xs font-medium mb-1">🧠 AI Analysis</p>
-                        <p className="text-gray-300 text-xs">{article.aiSummary}</p>
+                        <p className="text-[#30D5C8] text-xs font-medium mb-1">
+                          🧠 AI Analysis
+                        </p>
+                        <p className="text-gray-300 text-xs">
+                          {article.aiSummary}
+                        </p>
                       </div>
                     )}
 
@@ -255,7 +306,7 @@ export function LiveNewsFeed({ variant = "homepage", limit = 5 }: LiveNewsFeedPr
           )}
         </div>
       </section>
-    )
+    );
   }
 
   return (
@@ -301,7 +352,10 @@ export function LiveNewsFeed({ variant = "homepage", limit = 5 }: LiveNewsFeedPr
       <div className="space-y-4">
         {loading
           ? [...Array(5)].map((_, i) => (
-              <Card key={i} className="bg-gray-900/50 border-gray-800 animate-pulse">
+              <Card
+                key={i}
+                className="bg-gray-900/50 border-gray-800 animate-pulse"
+              >
                 <CardContent className="p-6">
                   <div className="h-6 bg-gray-700 rounded mb-3"></div>
                   <div className="h-4 bg-gray-700 rounded mb-2"></div>
@@ -317,11 +371,16 @@ export function LiveNewsFeed({ variant = "homepage", limit = 5 }: LiveNewsFeedPr
                 <CardContent className="p-6">
                   <div className="flex items-start justify-between mb-4">
                     <div className="flex items-center space-x-3">
-                      <Badge className={`text-xs ${getCategoryColor(article.category)}`}>
+                      <Badge
+                        className={`text-xs ${getCategoryColor(article.category)}`}
+                      >
                         {article.category.toUpperCase()}
                       </Badge>
                       {article.impact && (
-                        <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
+                        <Badge
+                          variant="outline"
+                          className="text-xs border-gray-600 text-gray-300"
+                        >
                           {article.impact.toUpperCase()} IMPACT
                         </Badge>
                       )}
@@ -338,9 +397,13 @@ export function LiveNewsFeed({ variant = "homepage", limit = 5 }: LiveNewsFeedPr
                   {article.aiSummary && (
                     <div className="bg-[#30D5C8]/5 border border-[#30D5C8]/20 rounded-lg p-4 mb-4">
                       <div className="flex items-center space-x-2 mb-2">
-                        <span className="text-[#30D5C8] text-sm font-medium">🧠 AI Analysis</span>
+                        <span className="text-[#30D5C8] text-sm font-medium">
+                          🧠 AI Analysis
+                        </span>
                       </div>
-                      <p className="text-gray-300 text-sm">{article.aiSummary}</p>
+                      <p className="text-gray-300 text-sm">
+                        {article.aiSummary}
+                      </p>
                     </div>
                   )}
 
@@ -352,7 +415,11 @@ export function LiveNewsFeed({ variant = "homepage", limit = 5 }: LiveNewsFeedPr
                         <span>{getTimeAgo(article.publishedAt)}</span>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="text-gray-400 hover:text-[#30D5C8]">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-gray-400 hover:text-[#30D5C8]"
+                    >
                       Read More <ExternalLink className="w-4 h-4 ml-1" />
                     </Button>
                   </div>
@@ -364,10 +431,14 @@ export function LiveNewsFeed({ variant = "homepage", limit = 5 }: LiveNewsFeedPr
       {filteredArticles.length === 0 && !loading && (
         <div className="text-center py-12">
           <Newspaper className="w-12 h-12 text-gray-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-400 mb-2">No news found</h3>
-          <p className="text-gray-500">Try adjusting your filters or search terms</p>
+          <h3 className="text-lg font-medium text-gray-400 mb-2">
+            No news found
+          </h3>
+          <p className="text-gray-500">
+            Try adjusting your filters or search terms
+          </p>
         </div>
       )}
     </div>
-  )
+  );
 }

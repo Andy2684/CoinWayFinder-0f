@@ -1,9 +1,15 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   LineChart,
   Line,
@@ -15,11 +21,11 @@ import {
   PieChart,
   Pie,
   Cell,
-} from "recharts"
-import { TrendingUp, DollarSign, Calendar, Download } from "lucide-react"
+} from "recharts";
+import { TrendingUp, DollarSign, Calendar, Download } from "lucide-react";
 
 export function PnLTracking() {
-  const [timeframe, setTimeframe] = useState("7d")
+  const [timeframe, setTimeframe] = useState("7d");
 
   const pnlData = [
     { date: "Jan 1", pnl: 0, cumulative: 0 },
@@ -29,7 +35,7 @@ export function PnLTracking() {
     { date: "Jan 5", pnl: 289, cumulative: 812 },
     { date: "Jan 6", pnl: -67, cumulative: 745 },
     { date: "Jan 7", pnl: 567, cumulative: 1312 },
-  ]
+  ];
 
   const exchangeBreakdown = [
     { name: "Binance", value: 45, color: "#F7931A" },
@@ -37,7 +43,7 @@ export function PnLTracking() {
     { name: "OKX", value: 15, color: "#000000" },
     { name: "KuCoin", value: 10, color: "#24D366" },
     { name: "Coinbase", value: 5, color: "#0052FF" },
-  ]
+  ];
 
   const strategyPerformance = [
     { strategy: "DCA", profit: 1247, percentage: 35 },
@@ -45,7 +51,7 @@ export function PnLTracking() {
     { strategy: "AI", profit: 567, percentage: 16 },
     { strategy: "Scalping", profit: 234, percentage: 7 },
     { strategy: "Manual", profit: -89, percentage: -3 },
-  ]
+  ];
 
   return (
     <Card className="bg-gray-900/50 border-gray-800">
@@ -139,8 +145,13 @@ export function PnLTracking() {
               {exchangeBreakdown.map((exchange, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: exchange.color }}></div>
-                    <span className="text-sm text-gray-300">{exchange.name}</span>
+                    <div
+                      className="w-3 h-3 rounded-full"
+                      style={{ backgroundColor: exchange.color }}
+                    ></div>
+                    <span className="text-sm text-gray-300">
+                      {exchange.name}
+                    </span>
                   </div>
                   <span className="text-sm text-white">{exchange.value}%</span>
                 </div>
@@ -154,13 +165,22 @@ export function PnLTracking() {
           <h4 className="text-white font-medium mb-3">Strategy Performance</h4>
           <div className="space-y-2">
             {strategyPerformance.map((strategy, index) => (
-              <div key={index} className="flex items-center justify-between p-2 bg-gray-800/30 rounded">
-                <span className="text-sm text-gray-300">{strategy.strategy}</span>
+              <div
+                key={index}
+                className="flex items-center justify-between p-2 bg-gray-800/30 rounded"
+              >
+                <span className="text-sm text-gray-300">
+                  {strategy.strategy}
+                </span>
                 <div className="text-right">
-                  <p className={`text-sm font-medium ${strategy.profit >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  <p
+                    className={`text-sm font-medium ${strategy.profit >= 0 ? "text-green-400" : "text-red-400"}`}
+                  >
                     ${strategy.profit}
                   </p>
-                  <p className={`text-xs ${strategy.percentage >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  <p
+                    className={`text-xs ${strategy.percentage >= 0 ? "text-green-400" : "text-red-400"}`}
+                  >
                     {strategy.percentage >= 0 ? "+" : ""}
                     {strategy.percentage}%
                   </p>
@@ -171,5 +191,5 @@ export function PnLTracking() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

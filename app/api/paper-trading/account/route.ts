@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server";
 
 // Mock paper trading account data
 let mockAccount = {
@@ -16,24 +16,27 @@ let mockAccount = {
   sharpeRatio: 1.85,
   createdAt: "2024-01-01T00:00:00Z",
   isActive: true,
-}
+};
 
 export async function GET() {
   try {
     return NextResponse.json({
       success: true,
       data: mockAccount,
-    })
+    });
   } catch (error) {
-    console.error("Error fetching paper trading account:", error)
-    return NextResponse.json({ success: false, error: "Failed to fetch account" }, { status: 500 })
+    console.error("Error fetching paper trading account:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch account" },
+      { status: 500 },
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { action, ...data } = body
+    const body = await request.json();
+    const { action, ...data } = body;
 
     switch (action) {
       case "reset":
@@ -48,24 +51,30 @@ export async function POST(request: NextRequest) {
           winRate: 0,
           maxDrawdown: 0,
           sharpeRatio: 0,
-        }
-        break
+        };
+        break;
 
       case "update":
-        mockAccount = { ...mockAccount, ...data }
-        break
+        mockAccount = { ...mockAccount, ...data };
+        break;
 
       default:
-        return NextResponse.json({ success: false, error: "Invalid action" }, { status: 400 })
+        return NextResponse.json(
+          { success: false, error: "Invalid action" },
+          { status: 400 },
+        );
     }
 
     return NextResponse.json({
       success: true,
       data: mockAccount,
       message: `Account ${action} successful`,
-    })
+    });
   } catch (error) {
-    console.error("Error updating paper trading account:", error)
-    return NextResponse.json({ success: false, error: "Failed to update account" }, { status: 500 })
+    console.error("Error updating paper trading account:", error);
+    return NextResponse.json(
+      { success: false, error: "Failed to update account" },
+      { status: 500 },
+    );
   }
 }

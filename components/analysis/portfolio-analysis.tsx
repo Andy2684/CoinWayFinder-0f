@@ -1,9 +1,15 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   PieChart,
   Pie,
@@ -15,44 +21,51 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-} from "recharts"
-import { TrendingUp, TrendingDown, DollarSign, Percent, RefreshCw, AlertTriangle } from "lucide-react"
+} from "recharts";
+import {
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Percent,
+  RefreshCw,
+  AlertTriangle,
+} from "lucide-react";
 
 interface Holding {
-  symbol: string
-  name: string
-  amount: number
-  value: number
-  percentage: number
-  pnl: number
-  pnlPercentage: number
-  avgBuyPrice: number
-  currentPrice: number
+  symbol: string;
+  name: string;
+  amount: number;
+  value: number;
+  percentage: number;
+  pnl: number;
+  pnlPercentage: number;
+  avgBuyPrice: number;
+  currentPrice: number;
 }
 
 interface PerformanceData {
-  date: string
-  value: number
-  pnl: number
+  date: string;
+  value: number;
+  pnl: number;
 }
 
 interface RiskMetric {
-  name: string
-  value: number
-  description: string
-  status: "good" | "warning" | "danger"
+  name: string;
+  value: number;
+  description: string;
+  status: "good" | "warning" | "danger";
 }
 
 export function PortfolioAnalysis() {
-  const [holdings, setHoldings] = useState<Holding[]>([])
-  const [performanceData, setPerformanceData] = useState<PerformanceData[]>([])
-  const [riskMetrics, setRiskMetrics] = useState<RiskMetric[]>([])
-  const [totalValue, setTotalValue] = useState(0)
-  const [totalPnL, setTotalPnL] = useState(0)
-  const [loading, setLoading] = useState(false)
+  const [holdings, setHoldings] = useState<Holding[]>([]);
+  const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
+  const [riskMetrics, setRiskMetrics] = useState<RiskMetric[]>([]);
+  const [totalValue, setTotalValue] = useState(0);
+  const [totalPnL, setTotalPnL] = useState(0);
+  const [loading, setLoading] = useState(false);
 
   const fetchPortfolioData = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
       // Mock data for demonstration
       const mockHoldings: Holding[] = [
@@ -111,13 +124,18 @@ export function PortfolioAnalysis() {
           avgBuyPrice: 6.07,
           currentPrice: 5.5,
         },
-      ]
+      ];
 
-      const mockPerformance: PerformanceData[] = Array.from({ length: 30 }, (_, i) => ({
-        date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-        value: 45000 + Math.random() * 10000 - 5000,
-        pnl: -2000 + Math.random() * 8000,
-      }))
+      const mockPerformance: PerformanceData[] = Array.from(
+        { length: 30 },
+        (_, i) => ({
+          date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000)
+            .toISOString()
+            .split("T")[0],
+          value: 45000 + Math.random() * 10000 - 5000,
+          pnl: -2000 + Math.random() * 8000,
+        }),
+      );
 
       const mockRiskMetrics: RiskMetric[] = [
         {
@@ -150,61 +168,78 @@ export function PortfolioAnalysis() {
           description: "Portfolio diversification rating",
           status: "good",
         },
-      ]
+      ];
 
-      setHoldings(mockHoldings)
-      setPerformanceData(mockPerformance)
-      setRiskMetrics(mockRiskMetrics)
-      setTotalValue(mockHoldings.reduce((sum, holding) => sum + holding.value, 0))
-      setTotalPnL(mockHoldings.reduce((sum, holding) => sum + holding.pnl, 0))
+      setHoldings(mockHoldings);
+      setPerformanceData(mockPerformance);
+      setRiskMetrics(mockRiskMetrics);
+      setTotalValue(
+        mockHoldings.reduce((sum, holding) => sum + holding.value, 0),
+      );
+      setTotalPnL(mockHoldings.reduce((sum, holding) => sum + holding.pnl, 0));
     } catch (error) {
-      console.error("Error fetching portfolio data:", error)
+      console.error("Error fetching portfolio data:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchPortfolioData()
-  }, [])
+    fetchPortfolioData();
+  }, []);
 
-  const COLORS = ["#2563eb", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4"]
+  const COLORS = [
+    "#2563eb",
+    "#10b981",
+    "#f59e0b",
+    "#ef4444",
+    "#8b5cf6",
+    "#06b6d4",
+  ];
 
   const getRiskColor = (status: string) => {
     switch (status) {
       case "good":
-        return "text-green-600"
+        return "text-green-600";
       case "warning":
-        return "text-yellow-600"
+        return "text-yellow-600";
       case "danger":
-        return "text-red-600"
+        return "text-red-600";
       default:
-        return "text-gray-600"
+        return "text-gray-600";
     }
-  }
+  };
 
   const getRiskBg = (status: string) => {
     switch (status) {
       case "good":
-        return "bg-green-100"
+        return "bg-green-100";
       case "warning":
-        return "bg-yellow-100"
+        return "bg-yellow-100";
       case "danger":
-        return "bg-red-100"
+        return "bg-red-100";
       default:
-        return "bg-gray-100"
+        return "bg-gray-100";
     }
-  }
+  };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">Portfolio Analysis</h2>
-          <p className="text-muted-foreground">Comprehensive analysis of your crypto portfolio</p>
+          <p className="text-muted-foreground">
+            Comprehensive analysis of your crypto portfolio
+          </p>
         </div>
-        <Button onClick={fetchPortfolioData} disabled={loading} variant="outline">
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+        <Button
+          onClick={fetchPortfolioData}
+          disabled={loading}
+          variant="outline"
+        >
+          <RefreshCw
+            className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`}
+          />
           Refresh
         </Button>
       </div>
@@ -216,7 +251,9 @@ export function PortfolioAnalysis() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">${totalValue.toLocaleString()}</div>
+            <div className="text-2xl font-bold">
+              ${totalValue.toLocaleString()}
+            </div>
             <p className="text-xs text-muted-foreground">Portfolio value</p>
           </CardContent>
         </Card>
@@ -231,7 +268,9 @@ export function PortfolioAnalysis() {
             )}
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${totalPnL >= 0 ? "text-green-600" : "text-red-600"}`}>
+            <div
+              className={`text-2xl font-bold ${totalPnL >= 0 ? "text-green-600" : "text-red-600"}`}
+            >
               ${Math.abs(totalPnL).toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -278,16 +317,26 @@ export function PortfolioAnalysis() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ symbol, percentage }) => `${symbol} ${percentage.toFixed(1)}%`}
+                    label={({ symbol, percentage }) =>
+                      `${symbol} ${percentage.toFixed(1)}%`
+                    }
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
                   >
                     {holdings.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => [`$${value.toLocaleString()}`, "Value"]} />
+                  <Tooltip
+                    formatter={(value: number) => [
+                      `$${value.toLocaleString()}`,
+                      "Value",
+                    ]}
+                  />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -304,17 +353,34 @@ export function PortfolioAnalysis() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={performanceData}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tickFormatter={(value) => new Date(value).toLocaleDateString()} />
+                  <XAxis
+                    dataKey="date"
+                    tickFormatter={(value) =>
+                      new Date(value).toLocaleDateString()
+                    }
+                  />
                   <YAxis />
                   <Tooltip
-                    labelFormatter={(value) => new Date(value).toLocaleDateString()}
+                    labelFormatter={(value) =>
+                      new Date(value).toLocaleDateString()
+                    }
                     formatter={(value: number, name: string) => [
                       `$${value.toLocaleString()}`,
                       name === "value" ? "Portfolio Value" : "P&L",
                     ]}
                   />
-                  <Line type="monotone" dataKey="value" stroke="#2563eb" strokeWidth={2} />
-                  <Line type="monotone" dataKey="pnl" stroke="#10b981" strokeWidth={2} />
+                  <Line
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#2563eb"
+                    strokeWidth={2}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="pnl"
+                    stroke="#10b981"
+                    strokeWidth={2}
+                  />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -326,27 +392,44 @@ export function PortfolioAnalysis() {
         <Card>
           <CardHeader>
             <CardTitle>Holdings Breakdown</CardTitle>
-            <CardDescription>Detailed view of your crypto holdings</CardDescription>
+            <CardDescription>
+              Detailed view of your crypto holdings
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {holdings.map((holding, index) => (
-              <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+              <div
+                key={index}
+                className="flex items-center justify-between p-4 border rounded-lg"
+              >
                 <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full`} style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                  <div
+                    className={`w-3 h-3 rounded-full`}
+                    style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                  />
                   <div>
                     <div className="font-medium">{holding.symbol}</div>
-                    <div className="text-sm text-muted-foreground">{holding.name}</div>
+                    <div className="text-sm text-muted-foreground">
+                      {holding.name}
+                    </div>
                     <div className="text-xs text-muted-foreground">
                       {holding.amount} @ ${holding.currentPrice.toFixed(2)}
                     </div>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-medium">${holding.value.toLocaleString()}</div>
-                  <div className={`text-sm ${holding.pnl >= 0 ? "text-green-600" : "text-red-600"}`}>
-                    {holding.pnl >= 0 ? "+" : ""}${holding.pnl.toLocaleString()} ({holding.pnlPercentage.toFixed(1)}%)
+                  <div className="font-medium">
+                    ${holding.value.toLocaleString()}
                   </div>
-                  <div className="text-xs text-muted-foreground">{holding.percentage.toFixed(1)}%</div>
+                  <div
+                    className={`text-sm ${holding.pnl >= 0 ? "text-green-600" : "text-red-600"}`}
+                  >
+                    {holding.pnl >= 0 ? "+" : ""}${holding.pnl.toLocaleString()}{" "}
+                    ({holding.pnlPercentage.toFixed(1)}%)
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {holding.percentage.toFixed(1)}%
+                  </div>
                 </div>
               </div>
             ))}
@@ -356,7 +439,9 @@ export function PortfolioAnalysis() {
         <Card>
           <CardHeader>
             <CardTitle>Risk Metrics</CardTitle>
-            <CardDescription>Portfolio risk analysis and metrics</CardDescription>
+            <CardDescription>
+              Portfolio risk analysis and metrics
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {riskMetrics.map((metric, index) => (
@@ -370,7 +455,9 @@ export function PortfolioAnalysis() {
                     {metric.status}
                   </Badge>
                 </div>
-                <div className={`text-2xl font-bold ${getRiskColor(metric.status)}`}>
+                <div
+                  className={`text-2xl font-bold ${getRiskColor(metric.status)}`}
+                >
                   {metric.value}
                   {metric.name.includes("Ratio") || metric.name.includes("Beta")
                     ? ""
@@ -378,12 +465,14 @@ export function PortfolioAnalysis() {
                       ? "/100"
                       : "%"}
                 </div>
-                <div className="text-sm text-muted-foreground mt-1">{metric.description}</div>
+                <div className="text-sm text-muted-foreground mt-1">
+                  {metric.description}
+                </div>
               </div>
             ))}
           </CardContent>
         </Card>
       </div>
     </div>
-  )
+  );
 }
