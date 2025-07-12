@@ -1,15 +1,12 @@
-'use client'
-import { Suspense } from "react"
+"use client"
 
-export default function ResetPasswordPageWrapper() {
+import { Suspense } from "react"
+import ResetPasswordForm from "@/components/reset-password-form"
+
+export default function ResetPasswordPage() {
   return (
     <Suspense fallback={<div>Загрузка...</div>}>
-      <ResetPasswordPage />
+      <ResetPasswordForm />
     </Suspense>
   )
-}
-
-function ResetPasswordPage() {
-  const searchParams = useSearchParams()
-  // Твой код здесь...
 }
