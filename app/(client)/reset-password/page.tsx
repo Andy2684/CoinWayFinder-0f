@@ -1,12 +1,21 @@
-"use client"
+import { Suspense } from "react";
 
-import { Suspense } from "react"
-import ResetPasswordForm from "@/components/reset-password-form"
+function ResetPasswordContent() {
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
+
+  return (
+    <div>
+      <h1>Reset Password</h1>
+      <p>Token: {token}</p>
+    </div>
+  );
+}
 
 export default function ResetPasswordPage() {
   return (
     <Suspense fallback={<div>Загрузка...</div>}>
-      <ResetPasswordForm />
+      <ResetPasswordContent />
     </Suspense>
-  )
+  );
 }
