@@ -106,7 +106,6 @@
   }
 }
 
-/* Custom styles for crypto theme */
 .profit {
   @apply text-green-600 dark:text-green-400;
 }
@@ -119,24 +118,21 @@
   @apply text-gray-600 dark:text-gray-400;
 }
 
-/* Animation for live data updates */
 @keyframes pulse-green {
-  0%,
-  100% {\
-    @apply bg-green-500/20;
+  0%, 100% {
+    background-color: rgba(34, 197, 94, 0.2);
   }
-  50% {\
-    @apply bg-green-500/40;
+  50% {
+    background-color: rgba(34, 197, 94, 0.4);
   }
 }
 
 @keyframes pulse-red {
-  0%,
-  100% {\
-    @apply bg-red-500/20;
+  0%, 100% {
+    background-color: rgba(239, 68, 68, 0.2);
   }
-  50% {\
-    @apply bg-red-500/40;
+  50% {
+    background-color: rgba(239, 68, 68, 0.4);
   }
 }
 
@@ -163,7 +159,6 @@
   animation: fadeIn 0.5s ease-out;
 }
 
-/* Trading chart styles */
 .trading-chart {
   background: linear-gradient(45deg, #1e3c72 0%, #2a5298 100%);
   @apply rounded-lg border bg-card p-4;
@@ -186,7 +181,6 @@
   @apply stroke-border;
 }
 
-/* Signal card styles */
 .signal-card {
   @apply relative overflow-hidden rounded-lg border bg-card p-4 transition-all hover:shadow-md;
 }
@@ -203,7 +197,6 @@
   @apply border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950;
 }
 
-/* Signal strength indicators */
 .signal-strong {
   @apply bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400;
 }
@@ -216,7 +209,6 @@
   @apply bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400;
 }
 
-/* Bot status indicators */
 .bot-status {
   @apply inline-flex items-center rounded-full px-2 py-1 text-xs font-medium;
 }
@@ -233,7 +225,6 @@
   @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300;
 }
 
-/* News sentiment indicators */
 .sentiment-positive {
   @apply text-green-600 dark:text-green-400;
 }
@@ -246,7 +237,6 @@
   @apply text-yellow-600 dark:text-yellow-400;
 }
 
-/* Loading states */
 .loading-skeleton {
   @apply animate-pulse bg-muted rounded;
 }
@@ -255,7 +245,6 @@
   animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Custom scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
 }
@@ -281,7 +270,6 @@
   display: none;
 }
 
-/* Mobile responsive adjustments */
 @media (max-width: 768px) {
   .trading-chart {
     @apply text-sm;
