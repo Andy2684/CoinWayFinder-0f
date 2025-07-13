@@ -2,14 +2,18 @@ import { HeroSection } from "@/components/hero-section"
 import { FeaturesSection } from "@/components/features-section"
 import { PricingSection } from "@/components/pricing-section"
 import { CTASection } from "@/components/cta-section"
+import { Footer } from "@/components/footer"
+import { NewsWidget } from "@/components/news-widget"
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-[#191A1E]">
+    <div className="min-h-screen">
       <HeroSection />
       <FeaturesSection />
+      <NewsWidget />
       <PricingSection />
       <CTASection />
-    </main>
+      <Footer />
+    </div>
   )
 }

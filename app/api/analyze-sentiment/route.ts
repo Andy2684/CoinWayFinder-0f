@@ -1,4 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { generateText } from "ai"
+import { openai } from "@ai-sdk/openai"
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,28 +10,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Text is required" }, { status: 400 })
     }
 
-    // Simple sentiment analysis simulation
-    const positiveWords = ["bullish", "moon", "pump", "gain", "profit", "buy", "long", "up", "rise", "surge"]
-    const negativeWords = ["bearish", "dump", "crash", "loss", "sell", "short", "down", "fall", "drop", "decline"]
-
-    const words = text.toLowerCase().split(/\s+/)
-    let score = 0
-
-    words.forEach((word) => {
-      if (positiveWords.includes(word)) score += 1
-      if (negativeWords.includes(word)) score -= 1
+    const { text: sentiment } = await generateText({
+      model: openai("gpt-4o"),
+      prompt: `Analyze the sentiment of this crypto-related text and provide a score from -1 (very negative) to 1 (very positive), along with a brief explanation: "${text}"`,
+      system:
+        'You are a cryptocurrency market sentiment analyzer. Respond with a JSON object containing "score" (number between -1 and 1) and "explanation" (string).',
     })
 
-    let sentiment = "neutral"
-    if (score > 0) sentiment = "positive"
-    if (score < 0) sentiment = "negative"
-
-    const confidence = Math.min((Math.abs(score) / words.length) * 10, 1)
+    let analysis
+    try {
+      analysis = JSON.parse(sentiment)
+    } catch {
+      // Fallback if AI doesn't return valid JSON
+      analysis = {
+        score: 0,
+        explanation: "Unable to parse sentiment analysis",
+      }
+    }
 
     return NextResponse.json({
-      sentiment,
-      score,
-      confidence: Math.round(confidence * 100) / 100,
+      sentiment: analysis.score,
+      explanation: analysis.explanation,
+      originalText: text,
     })
   } catch (error) {
     console.error("Sentiment analysis error:", error)

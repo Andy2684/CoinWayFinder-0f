@@ -45,12 +45,13 @@
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
     --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent-foreground: 222.2 84% 4.9%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 94.1%;
+    --radius: 0.5rem;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -68,42 +69,63 @@
   }
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
+/* Custom styles for crypto theme */
+.crypto-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
-::-webkit-scrollbar-track {
-  @apply bg-muted;
+.profit {
+  @apply text-green-600 dark:text-green-400;
 }
 
-::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/30 rounded-full;
+.loss {
+  @apply text-red-600 dark:text-red-400;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
+.neutral {
+  @apply text-gray-600 dark:text-gray-400;
 }
 
-/* Animation utilities */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
+/* Animation for live data updates */
+@keyframes pulse-green {
+  0%,
+  100% {\
+    @apply bg-green-100 dark:bg-green-900/20;
   }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+  50% {\
+    @apply bg-green-200 dark:bg-green-900/40;
   }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-out;
+@keyframes pulse-red {
+  0%,
+  100% {\
+    @apply bg-red-100 dark:bg-red-900/20;
+  }
+  50% {\
+    @apply bg-red-200 dark:bg-red-900/40;
+  }
+}
+
+.pulse-green {
+  animation: pulse-green 1s ease-in-out;
+}
+
+.pulse-red {
+  animation: pulse-red 1s ease-in-out;
 }
 
 /* Trading chart styles */
 .trading-chart {
-  @apply rounded-lg border bg-card;
+  @apply rounded-lg border bg-card p-4;
+}
+
+.price-up {
+  @apply text-green-600 dark:text-green-400;
+}
+
+.price-down {
+  @apply text-red-600 dark:text-red-400;
 }
 
 .trading-chart .recharts-cartesian-axis-tick-value {
@@ -130,6 +152,19 @@
 
 .signal-card.neutral {
   @apply border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950;
+}
+
+/* Signal strength indicators */
+.signal-strong {
+  @apply bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400;
+}
+
+.signal-moderate {
+  @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400;
+}
+
+.signal-weak {
+  @apply bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400;
 }
 
 /* Bot status indicators */
@@ -165,6 +200,23 @@
 /* Loading states */
 .loading-skeleton {
   @apply animate-pulse bg-muted rounded;
+}
+
+/* Custom scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  @apply bg-muted rounded-lg;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  @apply bg-muted-foreground/30 rounded-lg;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
 }
 
 /* Mobile responsive adjustments */

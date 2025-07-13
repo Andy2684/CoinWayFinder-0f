@@ -1,69 +1,117 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
-// Mock news data
+// Mock news data - in production, this would fetch from actual news APIs
 const mockNews = [
   {
     id: "1",
-    title: "Bitcoin Reaches New All-Time High Above $100,000",
-    summary:
-      "Bitcoin has surged past the $100,000 milestone for the first time in history, driven by institutional adoption and regulatory clarity.",
-    url: "https://example.com/news/1",
-    publishedAt: "2024-01-15T10:30:00Z",
+    title: "Bitcoin Reaches New All-Time High Amid Institutional Adoption",
+    content:
+      "Bitcoin has surged to unprecedented levels as major corporations and financial institutions continue to embrace cryptocurrency...",
     source: "CryptoNews",
-    sentiment: "positive",
-    impact: "high",
+    publishedAt: "2024-01-23T10:30:00Z",
+    sentiment: 0.8,
+    category: "bitcoin",
+    image: "/placeholder.jpg",
+    url: "https://example.com/news/1",
   },
   {
     id: "2",
-    title: "Ethereum 2.0 Staking Rewards Increase to 5.2%",
-    summary:
-      "The latest Ethereum network upgrade has resulted in higher staking rewards, attracting more validators to the network.",
+    title: "Ethereum 2.0 Staking Rewards Hit Record High",
+    content:
+      "Ethereum staking has become increasingly profitable as network activity surges and more validators join the network...",
+    source: "BlockchainDaily",
+    publishedAt: "2024-01-23T08:15:00Z",
+    sentiment: 0.6,
+    category: "ethereum",
+    image: "/placeholder.jpg",
     url: "https://example.com/news/2",
-    publishedAt: "2024-01-15T09:15:00Z",
-    source: "ETH Today",
-    sentiment: "positive",
-    impact: "medium",
   },
   {
     id: "3",
-    title: "Major Exchange Announces New Security Measures",
-    summary:
-      "Following recent security concerns, the exchange has implemented advanced multi-signature wallets and enhanced monitoring.",
+    title: "Regulatory Clarity Boosts Altcoin Market",
+    content:
+      "Recent regulatory announcements have provided much-needed clarity for the cryptocurrency market, leading to significant gains...",
+    source: "CryptoRegulator",
+    publishedAt: "2024-01-23T06:45:00Z",
+    sentiment: 0.4,
+    category: "regulation",
+    image: "/placeholder.jpg",
     url: "https://example.com/news/3",
-    publishedAt: "2024-01-15T08:45:00Z",
-    source: "Crypto Security",
-    sentiment: "neutral",
-    impact: "medium",
   },
   {
     id: "4",
-    title: "Regulatory Framework for DeFi Protocols Proposed",
-    summary:
-      "New regulatory guidelines aim to provide clarity for decentralized finance protocols while maintaining innovation.",
+    title: "DeFi Protocol Faces Security Concerns",
+    content: "A popular DeFi protocol has paused operations following reports of potential security vulnerabilities...",
+    source: "DeFiWatch",
+    publishedAt: "2024-01-22T20:30:00Z",
+    sentiment: -0.3,
+    category: "defi",
+    image: "/placeholder.jpg",
     url: "https://example.com/news/4",
-    publishedAt: "2024-01-15T07:20:00Z",
-    source: "Regulatory Watch",
-    sentiment: "neutral",
-    impact: "high",
   },
   {
     id: "5",
-    title: "Altcoin Season Shows Signs of Momentum",
-    summary:
-      "Several alternative cryptocurrencies are showing strong performance as market sentiment shifts toward risk-on assets.",
+    title: "Major Exchange Announces New Trading Features",
+    content:
+      "Leading cryptocurrency exchange introduces advanced trading tools and lower fees for institutional clients...",
+    source: "TradingNews",
+    publishedAt: "2024-01-22T18:00:00Z",
+    sentiment: 0.5,
+    category: "exchange",
+    image: "/placeholder.jpg",
     url: "https://example.com/news/5",
-    publishedAt: "2024-01-15T06:30:00Z",
-    source: "Altcoin Daily",
-    sentiment: "positive",
-    impact: "medium",
   },
 ]
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    return NextResponse.json({ news: mockNews })
+    const { searchParams } = new URL(request.url)
+    const category = searchParams.get("category")
+    const limit = Number.parseInt(searchParams.get("limit") || "10")
+
+    let filteredNews = mockNews
+
+    // Filter by category if provided
+    if (category && category !== "all") {
+      filteredNews = mockNews.filter((news) => news.category === category)
+    }
+
+    // Limit results
+    filteredNews = filteredNews.slice(0, limit)
+
+    return NextResponse.json({
+      news: filteredNews,
+      total: filteredNews.length,
+    })
   } catch (error) {
     console.error("Error fetching news:", error)
     return NextResponse.json({ error: "Failed to fetch news" }, { status: 500 })
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { url } = await request.json()
+
+    if (!url) {
+      return NextResponse.json({ error: "URL is required" }, { status: 400 })
+    }
+
+    // In production, this would fetch and analyze the article
+    const mockAnalysis = {
+      title: "Analyzed Article Title",
+      sentiment: Math.random() * 2 - 1, // Random sentiment between -1 and 1
+      summary: "This is a mock analysis of the provided article URL.",
+      keyPoints: [
+        "Market sentiment is currently positive",
+        "Trading volume has increased significantly",
+        "Technical indicators suggest bullish trend",
+      ],
+    }
+
+    return NextResponse.json({ analysis: mockAnalysis })
+  } catch (error) {
+    console.error("Error analyzing news:", error)
+    return NextResponse.json({ error: "Failed to analyze news article" }, { status: 500 })
   }
 }
