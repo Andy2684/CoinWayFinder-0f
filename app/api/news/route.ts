@@ -1,4 +1,4 @@
-export const dynamic = "force-dynamic";
+export const dynamic = "force-dynamic"; // Важно: отключает статическую генерацию
 
 import { NextRequest, NextResponse } from "next/server";
 import {
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     // Limit results
     articles = articles.slice(0, limit);
 
-    // Analyze sentiment with AI (optional)
+    // Analyze sentiment with AI
     if (process.env.OPENAI_API_KEY) {
       articles = await analyzeNewsSentiment(articles);
     }
