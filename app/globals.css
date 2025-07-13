@@ -10,7 +10,7 @@
     --card-foreground: 222.2 84% 4.9%;
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 210 40% 98%;
     --secondary: 210 40% 96%;
     --secondary-foreground: 222.2 84% 4.9%;
@@ -22,13 +22,13 @@
     --destructive-foreground: 210 40% 98%;
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
-    --radius: 0.5rem;
   }
 
   .dark {
@@ -38,8 +38,8 @@
     --card-foreground: 210 40% 98%;
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 84% 4.9%;
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
     --muted: 217.2 32.6% 17.5%;
@@ -50,7 +50,7 @@
     --destructive-foreground: 210 40% 98%;
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: 224.3 76.3% 94.1%;
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
@@ -115,41 +115,65 @@
   @apply stroke-border;
 }
 
-/* Signal indicators */
-.signal-buy {
-  @apply bg-green-500/10 text-green-500 border-green-500/20;
+/* Signal card styles */
+.signal-card {
+  @apply relative overflow-hidden rounded-lg border bg-card p-4 transition-all hover:shadow-md;
 }
 
-.signal-sell {
-  @apply bg-red-500/10 text-red-500 border-red-500/20;
+.signal-card.bullish {
+  @apply border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950;
 }
 
-.signal-hold {
-  @apply bg-yellow-500/10 text-yellow-500 border-yellow-500/20;
+.signal-card.bearish {
+  @apply border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950;
 }
 
-/* Status indicators */
-.status-active {
-  @apply bg-green-500/10 text-green-500;
+.signal-card.neutral {
+  @apply border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950;
 }
 
-.status-paused {
-  @apply bg-yellow-500/10 text-yellow-500;
+/* Bot status indicators */
+.bot-status {
+  @apply inline-flex items-center rounded-full px-2 py-1 text-xs font-medium;
 }
 
-.status-stopped {
-  @apply bg-red-500/10 text-red-500;
+.bot-status.active {
+  @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300;
 }
 
-/* Profit/Loss indicators */
-.profit-positive {
-  @apply text-green-500;
+.bot-status.paused {
+  @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300;
 }
 
-.profit-negative {
-  @apply text-red-500;
+.bot-status.stopped {
+  @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300;
 }
 
-.profit-neutral {
-  @apply text-muted-foreground;
+/* News sentiment indicators */
+.sentiment-positive {
+  @apply text-green-600 dark:text-green-400;
+}
+
+.sentiment-negative {
+  @apply text-red-600 dark:text-red-400;
+}
+
+.sentiment-neutral {
+  @apply text-yellow-600 dark:text-yellow-400;
+}
+
+/* Loading states */
+.loading-skeleton {
+  @apply animate-pulse bg-muted rounded;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .trading-chart {
+    @apply text-sm;
+  }
+
+  .signal-card {
+    @apply p-3;
+  }
 }

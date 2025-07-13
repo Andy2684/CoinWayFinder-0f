@@ -8,63 +8,31 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Text is required" }, { status: 400 })
     }
 
-    // Mock sentiment analysis - in production, integrate with actual AI service
-    const sentiment = analyzeSentiment(text)
+    // Simple sentiment analysis simulation
+    const positiveWords = ["bullish", "moon", "pump", "gain", "profit", "buy", "long", "up", "rise", "surge"]
+    const negativeWords = ["bearish", "dump", "crash", "loss", "sell", "short", "down", "fall", "drop", "decline"]
+
+    const words = text.toLowerCase().split(/\s+/)
+    let score = 0
+
+    words.forEach((word) => {
+      if (positiveWords.includes(word)) score += 1
+      if (negativeWords.includes(word)) score -= 1
+    })
+
+    let sentiment = "neutral"
+    if (score > 0) sentiment = "positive"
+    if (score < 0) sentiment = "negative"
+
+    const confidence = Math.min((Math.abs(score) / words.length) * 10, 1)
 
     return NextResponse.json({
-      sentiment: sentiment.label,
-      confidence: sentiment.score,
-      analysis: {
-        positive: sentiment.positive,
-        negative: sentiment.negative,
-        neutral: sentiment.neutral,
-      },
+      sentiment,
+      score,
+      confidence: Math.round(confidence * 100) / 100,
     })
   } catch (error) {
     console.error("Sentiment analysis error:", error)
     return NextResponse.json({ error: "Failed to analyze sentiment" }, { status: 500 })
-  }
-}
-
-function analyzeSentiment(text: string) {
-  // Simple keyword-based sentiment analysis
-  const positiveWords = ["bullish", "moon", "pump", "gain", "profit", "buy", "long", "up", "rise", "green"]
-  const negativeWords = ["bearish", "dump", "crash", "loss", "sell", "short", "down", "fall", "red", "dip"]
-
-  const words = text.toLowerCase().split(/\s+/)
-  let positiveCount = 0
-  let negativeCount = 0
-
-  words.forEach((word) => {
-    if (positiveWords.some((pw) => word.includes(pw))) positiveCount++
-    if (negativeWords.some((nw) => word.includes(nw))) negativeCount++
-  })
-
-  const total = positiveCount + negativeCount
-  if (total === 0) {
-    return { label: "neutral", score: 0.5, positive: 0.33, negative: 0.33, neutral: 0.34 }
-  }
-
-  const positiveRatio = positiveCount / total
-  const negativeRatio = negativeCount / total
-
-  if (positiveRatio > negativeRatio) {
-    return {
-      label: "positive",
-      score: positiveRatio,
-      positive: positiveRatio,
-      negative: negativeRatio,
-      neutral: 1 - positiveRatio - negativeRatio,
-    }
-  } else if (negativeRatio > positiveRatio) {
-    return {
-      label: "negative",
-      score: negativeRatio,
-      positive: positiveRatio,
-      negative: negativeRatio,
-      neutral: 1 - positiveRatio - negativeRatio,
-    }
-  } else {
-    return { label: "neutral", score: 0.5, positive: 0.33, negative: 0.33, neutral: 0.34 }
   }
 }
