@@ -1,40 +1,19 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-// Mock performance data - in production, this would come from your database
+// Обязательно укажи это, чтобы отключить попытку статической генерации
+export const dynamic = "force-dynamic";
+
 const mockPerformanceData = {
   "7d": {
-    totalPnL: 1150,
-    winRate: 76,
-    avgReturn: 8.7,
+    totalPnL: 830,
+    winRate: 71,
+    avgReturn: 8.4,
     bestStreak: 12,
     maxDrawdown: -8.5,
-    sharpeRatio: 2.34,
-    profitFactor: 1.87,
-    riskRewardRatio: 2.8,
-    dailyData: [
-      { date: "2024-01-04", totalPnL: 420, winRate: 70, signals: 10 },
-      { date: "2024-01-05", totalPnL: 380, winRate: 65, signals: 8 },
-      { date: "2024-01-06", totalPnL: 520, winRate: 78, signals: 12 },
-      { date: "2024-01-07", totalPnL: 680, winRate: 82, signals: 15 },
-      { date: "2024-01-08", totalPnL: 750, winRate: 85, signals: 18 },
-      { date: "2024-01-09", totalPnL: 920, winRate: 73, signals: 22 },
-      { date: "2024-01-10", totalPnL: 1150, winRate: 76, signals: 24 },
-    ],
-    strategyPerformance: [
-      {
-        strategy: "AI Trend Following",
-        signals: 45,
-        winRate: 78,
-        avgReturn: 12.4,
-        totalPnL: 558,
-      },
-      {
-        strategy: "Mean Reversion",
-        signals: 32,
-        winRate: 85,
-        avgReturn: 8.7,
-        totalPnL: 278,
-      },
+    sharpeRatio: 1.62,
+    profitFactor: 1.47,
+    riskRewardRatio: 2.1,
+    strategies: [
       {
         strategy: "Breakout Scalping",
         signals: 28,
