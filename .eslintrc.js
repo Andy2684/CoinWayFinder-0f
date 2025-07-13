@@ -19,18 +19,22 @@ module.exports = {
     "plugin:prettier/recommended"
   ],
   rules: {
-    // отключаем любые ошибки за неиспользуемые переменные
+    // Отключаем ошибки за неиспользуемые переменные и импорты
     "@typescript-eslint/no-unused-vars": "off",
     "no-unused-vars": "off",
-
-    // отключаем авто-ошибки unused-imports (если ты ставил этот плагин ранее)
     "unused-imports/no-unused-vars": "off",
     "unused-imports/no-unused-imports": "off",
 
+    // Отключаем ошибки по JSX, any, ts-comment, require
+    "react/react-in-jsx-scope": "off",
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/ban-ts-comment": "off",
     "@typescript-eslint/no-require-imports": "off",
-    "no-case-declarations": "warn",
+
+    // Отключаем ошибки из switch-case
+    "no-case-declarations": "off",
+
+    // Разрешаем console.log
     "no-console": "off"
   },
   settings: {
@@ -38,4 +42,4 @@ module.exports = {
       version: "detect"
     }
   }
-}
+};
