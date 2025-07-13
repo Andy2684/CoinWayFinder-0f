@@ -7,12 +7,10 @@ import { TradeLogs } from "@/components/dashboard/trade-logs"
 import { QuickActions } from "@/components/dashboard/quick-actions"
 import { PortfolioAnalytics } from "@/components/dashboard/portfolio-analytics"
 import { RiskManagement } from "@/components/dashboard/risk-management"
-
-// New Chart Components
-import { LivePriceChart } from "@/components/charts/live-price-chart"
-import { VolumeChart } from "@/components/charts/volume-chart"
-import { PortfolioPerformanceChart } from "@/components/charts/portfolio-performance-chart"
-import { MarketHeatmap } from "@/components/charts/market-heatmap"
+// Add imports for the new chart components
+import { LivePriceCharts } from "@/components/dashboard/live-price-charts"
+import { MarketHeatmap } from "@/components/dashboard/market-heatmap"
+import { TradingVolumeChart } from "@/components/dashboard/trading-volume-chart"
 
 export default function DashboardPage() {
   return (
@@ -21,50 +19,41 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white">Trading Dashboard</h1>
-            <p className="text-gray-400 mt-2">
-              Monitor your trading performance and manage your strategies with advanced analytics
-            </p>
+            <p className="text-gray-400 mt-2">Monitor your trading performance and manage your strategies</p>
           </div>
           <QuickActions />
         </div>
 
-        {/* Main Overview */}
+        {/* Main Dashboard Overview */}
         <DashboardOverview />
 
-        {/* Charts Section */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-          <LivePriceChart symbol="BTC/USDT" height={350} />
-          <VolumeChart />
-        </div>
-
-        {/* Performance and Analytics */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          <div className="xl:col-span-2">
-            <PortfolioPerformanceChart />
-          </div>
-          <div className="space-y-6">
-            <PnLTracking />
-            <RiskManagement />
-          </div>
+        {/* Live Charts Section */}
+        <div className="space-y-8">
+          <h2 className="text-2xl font-bold text-white">📈 Live Market Analysis</h2>
+          <LivePriceCharts />
         </div>
 
         {/* Market Overview */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          <div className="xl:col-span-2">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+          <div className="space-y-8">
             <MarketHeatmap />
           </div>
-          <div>
-            <LiveMarketData />
+          <div className="space-y-8">
+            <TradingVolumeChart />
           </div>
         </div>
 
-        {/* Portfolio and Strategies */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-          <div className="xl:col-span-2">
+        {/* Portfolio & Trading Stats */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-8">
+            <LiveMarketData />
             <PortfolioAnalytics />
           </div>
-          <div>
+
+          <div className="space-y-8">
             <ActiveStrategies />
+            <PnLTracking />
+            <RiskManagement />
           </div>
         </div>
 
