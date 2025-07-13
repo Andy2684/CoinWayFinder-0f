@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ['nodemailer', 'bcryptjs', 'jsonwebtoken'],
+    serverExternalPackages: ['nodemailer', 'bcryptjs', 'jsonwebtoken'],
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {
