@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // ❗ Перенёс serverExternalPackages из experimental на верхний уровень
+  // Разрешённые внешние зависимости для serverless-среды
   serverExternalPackages: ['nodemailer', 'bcryptjs', 'jsonwebtoken'],
+
+  // Webpack fallback'и для клиентской сборки
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
@@ -14,6 +16,8 @@ const nextConfig = {
     }
     return config;
   },
+
+  // Настройки изображений
   images: {
     domains: ['localhost'],
     remotePatterns: [
@@ -24,12 +28,18 @@ const nextConfig = {
     ],
     unoptimized: true,
   },
+
+  // Отключить падение сборки из-за ошибок линтера
   eslint: {
     ignoreDuringBuilds: true,
   },
+
+  // Отключить падение сборки из-за ошибок TypeScript
   typescript: {
     ignoreBuildErrors: true,
   },
+
+  // Глобальные переменные окружения
   env: {
     NEXTAUTH_URL: process.env.NEXTAUTH_URL || 'http://localhost:3000',
     NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'your-secret-key',
