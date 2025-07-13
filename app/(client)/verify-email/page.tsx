@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Card,
@@ -19,25 +19,20 @@ export default function VerifyEmailPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { login } = useAuth();
-  const [status, setStatus] = useState<"loading" | "success" | "error">(
-    "loading"
-  );
+  const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("");
   const [countdown, setCountdown] = useState(3);
 
   const token = searchParams.get("token");
 
-  const verifyEmail = async (verificationToken: string) => {
+  const verifyEmail = useCallback(async (verificationToken: string) => {
     try {
-      const response = await fetch(
-        `/api/auth/verify-email?token=${verificationToken}`
-      );
+      const response = await fetch(`/api/auth/verify-email?token=${verificationToken}`);
       const result = await response.json();
 
       if (response.ok) {
         setStatus("success");
         setMessage(result.message);
-
         if (result.token && result.user) {
           login(result.token, result.user);
         }
@@ -49,7 +44,7 @@ export default function VerifyEmailPage() {
       setStatus("error");
       setMessage("Network error. Please try again.");
     }
-  };
+  }, [login]);
 
   useEffect(() => {
     if (!token) {
@@ -59,7 +54,7 @@ export default function VerifyEmailPage() {
     }
 
     verifyEmail(token);
-  }, [token, verifyEmail]); // ✅ добавили verifyEmail
+  }, [token, verifyEmail]);
 
   useEffect(() => {
     if (status === "success" && countdown > 0) {
@@ -105,12 +100,9 @@ export default function VerifyEmailPage() {
           </CardTitle>
 
           <CardDescription>
-            {status === "loading" &&
-              "Please wait while we verify your email address."}
-            {status === "success" &&
-              `Redirecting to dashboard in ${countdown} seconds...`}
-            {status === "error" &&
-              "There was a problem verifying your email address."}
+            {status === "loading" && "Please wait while we verify your email address."}
+            {status === "success" && `Redirecting to dashboard in ${countdown} seconds...`}
+            {status === "error" && "There was a problem verifying your email address."}
           </CardDescription>
         </CardHeader>
 
@@ -124,13 +116,9 @@ export default function VerifyEmailPage() {
           {status === "success" && (
             <div className="text-center space-y-4">
               <p className="text-sm text-gray-600">
-                Your account has been successfully verified and you are now
-                logged in!
+                Your account has been successfully verified and you are now logged in!
               </p>
-              <Button
-                onClick={() => router.push("/dashboard")}
-                className="w-full"
-              >
+              <Button onClick={() => router.push("/dashboard")} className="w-full">
                 Go to Dashboard
               </Button>
             </div>
@@ -160,10 +148,7 @@ export default function VerifyEmailPage() {
           )}
 
           <div className="text-center">
-            <Link
-              href="/auth/login"
-              className="text-sm text-blue-600 hover:underline"
-            >
+            <Link href="/auth/login" className="text-sm text-blue-600 hover:underline">
               Back to Login
             </Link>
           </div>
