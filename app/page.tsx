@@ -3,14 +3,12 @@ import { FeaturesSection } from "@/components/features-section"
 import { PricingSection } from "@/components/pricing-section"
 import { CTASection } from "@/components/cta-section"
 import { Footer } from "@/components/footer"
-import { NewsWidget } from "@/components/news-widget"
 
 export default function HomePage() {
   return (
     <div className="min-h-screen">
       <HeroSection />
       <FeaturesSection />
-      <NewsWidget />
       <PricingSection />
       <CTASection />
       <Footer />

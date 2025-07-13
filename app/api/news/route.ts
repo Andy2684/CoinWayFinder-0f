@@ -1,117 +1,60 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 
-// Mock news data - in production, this would fetch from actual news APIs
+// Mock news data
 const mockNews = [
   {
     id: "1",
-    title: "Bitcoin Reaches New All-Time High Amid Institutional Adoption",
-    content:
-      "Bitcoin has surged to unprecedented levels as major corporations and financial institutions continue to embrace cryptocurrency...",
-    source: "CryptoNews",
-    publishedAt: "2024-01-23T10:30:00Z",
-    sentiment: 0.8,
-    category: "bitcoin",
-    image: "/placeholder.jpg",
+    title: "Bitcoin Reaches New All-Time High",
+    summary: "Bitcoin surpassed $100,000 for the first time, driven by institutional adoption and ETF approvals.",
     url: "https://example.com/news/1",
+    source: "CryptoNews",
+    publishedAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
+    sentiment: 0.8,
+    impact: "high",
   },
   {
     id: "2",
-    title: "Ethereum 2.0 Staking Rewards Hit Record High",
-    content:
-      "Ethereum staking has become increasingly profitable as network activity surges and more validators join the network...",
-    source: "BlockchainDaily",
-    publishedAt: "2024-01-23T08:15:00Z",
-    sentiment: 0.6,
-    category: "ethereum",
-    image: "/placeholder.jpg",
+    title: "Ethereum 2.0 Staking Rewards Increase",
+    summary: "New protocol upgrade increases staking rewards by 15%, attracting more validators to the network.",
     url: "https://example.com/news/2",
+    source: "EthereumDaily",
+    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
+    sentiment: 0.6,
+    impact: "medium",
   },
   {
     id: "3",
-    title: "Regulatory Clarity Boosts Altcoin Market",
-    content:
-      "Recent regulatory announcements have provided much-needed clarity for the cryptocurrency market, leading to significant gains...",
-    source: "CryptoRegulator",
-    publishedAt: "2024-01-23T06:45:00Z",
-    sentiment: 0.4,
-    category: "regulation",
-    image: "/placeholder.jpg",
+    title: "Regulatory Clarity Boosts Market Confidence",
+    summary: "New regulatory framework provides clear guidelines for cryptocurrency operations.",
     url: "https://example.com/news/3",
+    source: "RegulationToday",
+    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), // 4 hours ago
+    sentiment: 0.7,
+    impact: "high",
   },
   {
     id: "4",
-    title: "DeFi Protocol Faces Security Concerns",
-    content: "A popular DeFi protocol has paused operations following reports of potential security vulnerabilities...",
-    source: "DeFiWatch",
-    publishedAt: "2024-01-22T20:30:00Z",
-    sentiment: -0.3,
-    category: "defi",
-    image: "/placeholder.jpg",
+    title: "DeFi Protocol Launches New Yield Farming",
+    summary: "Popular DeFi protocol introduces innovative yield farming mechanism with higher returns.",
     url: "https://example.com/news/4",
-  },
-  {
-    id: "5",
-    title: "Major Exchange Announces New Trading Features",
-    content:
-      "Leading cryptocurrency exchange introduces advanced trading tools and lower fees for institutional clients...",
-    source: "TradingNews",
-    publishedAt: "2024-01-22T18:00:00Z",
+    source: "DeFiWeekly",
+    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(), // 6 hours ago
     sentiment: 0.5,
-    category: "exchange",
-    image: "/placeholder.jpg",
-    url: "https://example.com/news/5",
+    impact: "medium",
   },
 ]
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url)
-    const category = searchParams.get("category")
-    const limit = Number.parseInt(searchParams.get("limit") || "10")
-
-    let filteredNews = mockNews
-
-    // Filter by category if provided
-    if (category && category !== "all") {
-      filteredNews = mockNews.filter((news) => news.category === category)
-    }
-
-    // Limit results
-    filteredNews = filteredNews.slice(0, limit)
+    // Sort by publishedAt (most recent first)
+    const sortedNews = mockNews.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
 
     return NextResponse.json({
-      news: filteredNews,
-      total: filteredNews.length,
+      news: sortedNews,
+      total: sortedNews.length,
     })
   } catch (error) {
     console.error("Error fetching news:", error)
     return NextResponse.json({ error: "Failed to fetch news" }, { status: 500 })
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    const { url } = await request.json()
-
-    if (!url) {
-      return NextResponse.json({ error: "URL is required" }, { status: 400 })
-    }
-
-    // In production, this would fetch and analyze the article
-    const mockAnalysis = {
-      title: "Analyzed Article Title",
-      sentiment: Math.random() * 2 - 1, // Random sentiment between -1 and 1
-      summary: "This is a mock analysis of the provided article URL.",
-      keyPoints: [
-        "Market sentiment is currently positive",
-        "Trading volume has increased significantly",
-        "Technical indicators suggest bullish trend",
-      ],
-    }
-
-    return NextResponse.json({ analysis: mockAnalysis })
-  } catch (error) {
-    console.error("Error analyzing news:", error)
-    return NextResponse.json({ error: "Failed to analyze news article" }, { status: 500 })
   }
 }
