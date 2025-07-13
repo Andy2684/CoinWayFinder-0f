@@ -1,8 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  experimental: {
-    serverComponentsExternalPackages: ['nodemailer', 'bcryptjs', 'jsonwebtoken'],
-  },
+  // ❗ Перенёс serverExternalPackages из experimental на верхний уровень
+  serverExternalPackages: ['nodemailer', 'bcryptjs', 'jsonwebtoken'],
   webpack: (config, { isServer }) => {
     if (!isServer) {
       config.resolve.fallback = {
