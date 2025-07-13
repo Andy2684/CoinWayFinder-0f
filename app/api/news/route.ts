@@ -4,57 +4,56 @@ import { NextResponse } from "next/server"
 const mockNews = [
   {
     id: "1",
-    title: "Bitcoin Reaches New All-Time High",
-    summary: "Bitcoin surpassed $100,000 for the first time, driven by institutional adoption and ETF approvals.",
-    url: "https://example.com/news/1",
+    title: "Bitcoin Reaches New All-Time High Above $100,000",
+    summary:
+      "Bitcoin has surged past the $100,000 milestone for the first time, driven by institutional adoption and regulatory clarity.",
+    content:
+      "In a historic moment for cryptocurrency, Bitcoin has broken through the $100,000 barrier, marking a significant milestone in its journey from a niche digital asset to a mainstream financial instrument. The surge comes amid increased institutional adoption, with major corporations adding Bitcoin to their treasury reserves and traditional financial institutions launching Bitcoin-focused products.",
     source: "CryptoNews",
-    publishedAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
-    sentiment: 0.8,
-    impact: "high",
+    url: "https://example.com/bitcoin-100k",
+    published_at: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
+    sentiment_score: 0.8,
+    impact_score: 0.9,
+    tags: ["Bitcoin", "Price", "ATH", "Institutional"],
   },
   {
     id: "2",
-    title: "Ethereum 2.0 Staking Rewards Increase",
-    summary: "New protocol upgrade increases staking rewards by 15%, attracting more validators to the network.",
-    url: "https://example.com/news/2",
+    title: "Ethereum 2.0 Staking Rewards Increase to 5.2% APY",
+    summary:
+      "Ethereum staking rewards have increased following the latest network upgrade, attracting more validators to secure the network.",
+    content:
+      "The Ethereum network has seen a significant increase in staking rewards, now offering an annual percentage yield (APY) of 5.2% for validators. This increase comes after the successful implementation of the latest network upgrade, which has improved the efficiency of the proof-of-stake consensus mechanism.",
     source: "EthereumDaily",
-    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-    sentiment: 0.6,
-    impact: "medium",
+    url: "https://example.com/eth-staking",
+    published_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
+    sentiment_score: 0.6,
+    impact_score: 0.7,
+    tags: ["Ethereum", "Staking", "Rewards", "Upgrade"],
   },
   {
     id: "3",
-    title: "Regulatory Clarity Boosts Market Confidence",
-    summary: "New regulatory framework provides clear guidelines for cryptocurrency operations.",
-    url: "https://example.com/news/3",
+    title: "SEC Approves First Solana ETF Application",
+    summary:
+      "The Securities and Exchange Commission has approved the first Solana exchange-traded fund, opening new investment opportunities.",
+    content:
+      "In a groundbreaking decision, the U.S. Securities and Exchange Commission has approved the first Solana-based exchange-traded fund (ETF). This approval marks a significant step forward for alternative cryptocurrency investments and could pave the way for more diverse crypto ETF offerings.",
     source: "RegulationToday",
-    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), // 4 hours ago
-    sentiment: 0.7,
-    impact: "high",
-  },
-  {
-    id: "4",
-    title: "DeFi Protocol Launches New Yield Farming",
-    summary: "Popular DeFi protocol introduces innovative yield farming mechanism with higher returns.",
-    url: "https://example.com/news/4",
-    source: "DeFiWeekly",
-    publishedAt: new Date(Date.now() - 1000 * 60 * 60 * 6).toISOString(), // 6 hours ago
-    sentiment: 0.5,
-    impact: "medium",
+    url: "https://example.com/solana-etf",
+    published_at: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), // 4 hours ago
+    sentiment_score: 0.7,
+    impact_score: 0.8,
+    tags: ["Solana", "ETF", "SEC", "Regulation"],
   },
 ]
 
 export async function GET() {
   try {
-    // Sort by publishedAt (most recent first)
-    const sortedNews = mockNews.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
-
     return NextResponse.json({
-      news: sortedNews,
-      total: sortedNews.length,
+      success: true,
+      data: mockNews,
     })
   } catch (error) {
-    console.error("Error fetching news:", error)
+    console.error("Get news error:", error)
     return NextResponse.json({ error: "Failed to fetch news" }, { status: 500 })
   }
 }

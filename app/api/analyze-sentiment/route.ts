@@ -16,29 +16,20 @@ export async function POST(request: NextRequest) {
 
 Text: "${text}"
 
-Please respond in JSON format with:
+Respond in JSON format with:
 - sentiment_score: number between -1 and 1
 - sentiment_label: "positive", "negative", or "neutral"
 - confidence: number between 0 and 1
-- key_points: array of strings with main insights
+- key_insights: array of strings with main points
 - market_impact: brief description of potential market impact`,
     })
 
-    let parsedAnalysis
-    try {
-      parsedAnalysis = JSON.parse(analysis)
-    } catch {
-      // Fallback if AI doesn't return valid JSON
-      parsedAnalysis = {
-        sentiment_score: 0,
-        sentiment_label: "neutral",
-        confidence: 0.5,
-        key_points: ["Analysis could not be parsed"],
-        market_impact: "Unknown impact",
-      }
-    }
+    const sentimentData = JSON.parse(analysis)
 
-    return NextResponse.json(parsedAnalysis)
+    return NextResponse.json({
+      success: true,
+      data: sentimentData,
+    })
   } catch (error) {
     console.error("Sentiment analysis error:", error)
     return NextResponse.json({ error: "Failed to analyze sentiment" }, { status: 500 })

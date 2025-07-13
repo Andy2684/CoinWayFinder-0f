@@ -7,13 +7,14 @@ const mockBots = [
     name: "DCA Bitcoin Bot",
     strategy: "DCA",
     status: "active",
+    pair: "BTC/USDT",
     profit: 12.5,
     trades: 45,
-    created: new Date().toISOString(),
+    created_at: new Date().toISOString(),
     config: {
-      symbol: "BTC/USDT",
       amount: 100,
       interval: "1h",
+      target_profit: 15,
     },
   },
   {
@@ -21,22 +22,26 @@ const mockBots = [
     name: "Grid Trading ETH",
     strategy: "Grid",
     status: "paused",
+    pair: "ETH/USDT",
     profit: -2.3,
     trades: 23,
-    created: new Date().toISOString(),
+    created_at: new Date().toISOString(),
     config: {
-      symbol: "ETH/USDT",
-      gridSize: 0.5,
-      amount: 500,
+      grid_size: 10,
+      upper_limit: 4000,
+      lower_limit: 3000,
     },
   },
 ]
 
 export async function GET() {
   try {
-    return NextResponse.json({ bots: mockBots })
+    return NextResponse.json({
+      success: true,
+      data: mockBots,
+    })
   } catch (error) {
-    console.error("Error fetching bots:", error)
+    console.error("Get bots error:", error)
     return NextResponse.json({ error: "Failed to fetch bots" }, { status: 500 })
   }
 }
@@ -51,32 +56,15 @@ export async function POST(request: NextRequest) {
       status: "active",
       profit: 0,
       trades: 0,
-      created: new Date().toISOString(),
+      created_at: new Date().toISOString(),
     }
 
-    mockBots.push(newBot)
-
-    return NextResponse.json({ bot: newBot }, { status: 201 })
+    return NextResponse.json({
+      success: true,
+      data: newBot,
+    })
   } catch (error) {
-    console.error("Error creating bot:", error)
+    console.error("Create bot error:", error)
     return NextResponse.json({ error: "Failed to create bot" }, { status: 500 })
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const { id, ...updates } = await request.json()
-
-    const botIndex = mockBots.findIndex((bot) => bot.id === id)
-    if (botIndex === -1) {
-      return NextResponse.json({ error: "Bot not found" }, { status: 404 })
-    }
-
-    mockBots[botIndex] = { ...mockBots[botIndex], ...updates }
-
-    return NextResponse.json({ bot: mockBots[botIndex] })
-  } catch (error) {
-    console.error("Error updating bot:", error)
-    return NextResponse.json({ error: "Failed to update bot" }, { status: 500 })
   }
 }

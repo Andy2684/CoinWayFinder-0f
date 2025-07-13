@@ -4,13 +4,23 @@ A comprehensive cryptocurrency trading platform with AI-powered signals, automat
 
 ## Features
 
-- 🤖 AI-Powered Trading Signals
-- 📊 Real-time Market Data
-- 🔄 Automated Trading Bots
-- 📰 News Sentiment Analysis
-- 💼 Portfolio Management
-- 🔐 Secure Authentication
-- 📱 Responsive Design
+- 🤖 AI-powered trading signals and sentiment analysis
+- 📊 Real-time market data and analytics
+- 🔄 Automated trading bots with multiple strategies
+- 📰 Live news feed with sentiment scoring
+- 🔗 Exchange integrations (Binance, Coinbase, Kraken)
+- 📱 Telegram bot for notifications
+- 🎯 Risk management tools
+- 📈 Portfolio tracking and P&L analysis
+
+## Tech Stack
+
+- **Frontend**: Next.js 14, React 18, TypeScript
+- **Styling**: Tailwind CSS, shadcn/ui
+- **AI**: Vercel AI SDK with OpenAI
+- **Authentication**: JWT with bcrypt
+- **Charts**: Recharts
+- **Icons**: Lucide React
 
 ## Getting Started
 
@@ -25,19 +35,9 @@ Create a `.env.local` file with:
 
 \`\`\`
 XAI_API_KEY=your_xai_api_key
-NEXTAUTH_SECRET=your_nextauth_secret
-NEXTAUTH_URL=http://localhost:3000
+JWT_SECRET=your_jwt_secret
 \`\`\`
 
-## Tech Stack
+## Deployment
 
-- Next.js 14
-- TypeScript
-- Tailwind CSS
-- Radix UI
-- AI SDK
-- Recharts
-
-## License
-
-MIT License
+Deploy to Vercel with one click or use the Vercel CLI.
