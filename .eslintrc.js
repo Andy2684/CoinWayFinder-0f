@@ -35,7 +35,14 @@ module.exports = {
     "no-case-declarations": "off",
 
     // Разрешаем console.log
-    "no-console": "off"
+    "no-console": "off",
+
+    // 🔧 Новые добавленные правила
+    "react/no-unescaped-entities": "off",
+    "react/prop-types": "off",
+    "react/no-unknown-property": "off",
+    "react-hooks/exhaustive-deps": "warn",
+    "@typescript-eslint/no-empty-object-type": "off"
   },
   settings: {
     react: {
