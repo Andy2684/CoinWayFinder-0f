@@ -1,3 +1,4 @@
+// .eslintrc.js
 module.exports = {
   root: true,
   parser: "@typescript-eslint/parser",
@@ -5,10 +6,16 @@ module.exports = {
     ecmaVersion: "latest",
     sourceType: "module",
     ecmaFeatures: {
-      jsx: true
-    }
+      jsx: true,
+    },
   },
-  plugins: ["@typescript-eslint", "react", "react-hooks"],
+  plugins: [
+    "@typescript-eslint",
+    "react",
+    "react-hooks",
+    "unused-imports",
+    "prettier"
+  ],
   extends: [
     "next",
     "next/core-web-vitals",
@@ -19,34 +26,30 @@ module.exports = {
     "plugin:prettier/recommended"
   ],
   rules: {
-    // Отключаем ошибки за неиспользуемые переменные и импорты
+    // отключаем любые ошибки за неиспользуемые переменные и импорты
     "@typescript-eslint/no-unused-vars": "off",
     "no-unused-vars": "off",
     "unused-imports/no-unused-vars": "off",
     "unused-imports/no-unused-imports": "off",
 
-    // Отключаем ошибки по JSX, any, ts-comment, require
+    // отключаем ошибки JSX / any / ts-comment / require
     "react/react-in-jsx-scope": "off",
     "@typescript-eslint/no-explicit-any": "off",
     "@typescript-eslint/ban-ts-comment": "off",
     "@typescript-eslint/no-require-imports": "off",
 
-    // Отключаем ошибки из switch-case
+    // отключаем предупреждение при let/const в switch
     "no-case-declarations": "off",
 
-    // Разрешаем console.log
+    // разрешаем console.log
     "no-console": "off",
 
-    // 🔧 Новые добавленные правила
-    "react/no-unescaped-entities": "off",
-    "react/prop-types": "off",
-    "react/no-unknown-property": "off",
-    "react-hooks/exhaustive-deps": "warn",
-    "@typescript-eslint/no-empty-object-type": "off"
+    // отключаем предупреждение про неэкранированные символы в JSX
+    "react/no-unescaped-entities": "off"
   },
   settings: {
     react: {
-      version: "detect"
-    }
-  }
+      version: "detect",
+    },
+  },
 };
