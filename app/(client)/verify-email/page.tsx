@@ -20,38 +20,17 @@ export default function VerifyEmailPage() {
   const router = useRouter();
   const { login } = useAuth();
   const [status, setStatus] = useState<"loading" | "success" | "error">(
-    "loading",
+    "loading"
   );
   const [message, setMessage] = useState("");
   const [countdown, setCountdown] = useState(3);
 
   const token = searchParams.get("token");
 
-  useEffect(() => {
-    if (!token) {
-      setStatus("error");
-      setMessage("Invalid verification link");
-      return;
-    }
-
-    verifyEmail(token);
-  }, [token]);
-
-  useEffect(() => {
-    if (status === "success" && countdown > 0) {
-      const timer = setTimeout(() => {
-        setCountdown(countdown - 1);
-      }, 1000);
-      return () => clearTimeout(timer);
-    } else if (status === "success" && countdown === 0) {
-      router.push("/dashboard");
-    }
-  }, [status, countdown, router]);
-
   const verifyEmail = async (verificationToken: string) => {
     try {
       const response = await fetch(
-        `/api/auth/verify-email?token=${verificationToken}`,
+        `/api/auth/verify-email?token=${verificationToken}`
       );
       const result = await response.json();
 
@@ -59,7 +38,6 @@ export default function VerifyEmailPage() {
         setStatus("success");
         setMessage(result.message);
 
-        // Auto-login the user
         if (result.token && result.user) {
           login(result.token, result.user);
         }
@@ -73,9 +51,28 @@ export default function VerifyEmailPage() {
     }
   };
 
+  useEffect(() => {
+    if (!token) {
+      setStatus("error");
+      setMessage("Invalid verification link");
+      return;
+    }
+
+    verifyEmail(token);
+  }, [token, verifyEmail]); // ✅ добавили verifyEmail
+
+  useEffect(() => {
+    if (status === "success" && countdown > 0) {
+      const timer = setTimeout(() => {
+        setCountdown((prev) => prev - 1);
+      }, 1000);
+      return () => clearTimeout(timer);
+    } else if (status === "success" && countdown === 0) {
+      router.push("/dashboard");
+    }
+  }, [status, countdown, router]);
+
   const resendVerification = async () => {
-    // This would need the user's email - in a real app, you might store this in localStorage
-    // or require the user to enter their email again
     alert("Please contact support to resend verification email");
   };
 
