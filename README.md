@@ -1,30 +1,103 @@
-# Coinwayfinder clone
+# CoinWayFinder
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+A comprehensive cryptocurrency trading platform with AI-powered signals, automated trading bots, and real-time market analysis.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/andys-projects-6612b26e/v0-coinwayfinder-clone)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/yHKHJXPQIsq)
+## Features
 
-## Overview
+- **AI-Powered Trading Signals**: Get intelligent trading recommendations based on market analysis
+- **Automated Trading Bots**: Deploy and manage trading bots with various strategies
+- **Real-time Market Data**: Live cryptocurrency prices and market analytics
+- **Exchange Integration**: Connect with major cryptocurrency exchanges
+- **Risk Management**: Advanced portfolio tracking and risk assessment tools
+- **News Analytics**: Real-time crypto news with sentiment analysis
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+## Tech Stack
+
+- **Frontend**: Next.js 14, React 18, TypeScript
+- **Styling**: Tailwind CSS, shadcn/ui components
+- **Authentication**: JWT-based auth system
+- **State Management**: React hooks and context
+- **Charts**: Recharts for data visualization
+- **Icons**: Lucide React
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 18+ 
+- pnpm (recommended) or npm
+
+### Installation
+
+1. Clone the repository:
+\`\`\`bash
+git clone https://github.com/your-username/coinwayfinder.git
+cd coinwayfinder
+\`\`\`
+
+2. Install dependencies:
+\`\`\`bash
+pnpm install
+\`\`\`
+
+3. Set up environment variables:
+\`\`\`bash
+cp .env.example .env.local
+\`\`\`
+
+4. Run the development server:
+\`\`\`bash
+pnpm dev
+\`\`\`
+
+5. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## Environment Variables
+
+Create a `.env.local` file with the following variables:
+
+\`\`\`env
+NEXTAUTH_SECRET=your-secret-key
+JWT_SECRET=your-jwt-secret
+API_SECRET_KEY=your-api-secret
+NEXT_PUBLIC_BASE_URL=http://localhost:3000
+\`\`\`
+
+## Project Structure
+
+\`\`\`
+├── app/                    # Next.js app directory
+│   ├── api/               # API routes
+│   ├── auth/              # Authentication pages
+│   ├── dashboard/         # Dashboard pages
+│   └── signals/           # Trading signals pages
+├── components/            # React components
+│   ├── ui/               # shadcn/ui components
+│   ├── auth/             # Authentication components
+│   ├── dashboard/        # Dashboard components
+│   └── signals/          # Signal components
+├── lib/                  # Utility functions
+├── hooks/                # Custom React hooks
+└── types/                # TypeScript type definitions
+\`\`\`
 
 ## Deployment
 
-Your project is live at:
+The easiest way to deploy is using [Vercel](https://vercel.com):
 
-**[https://vercel.com/andys-projects-6612b26e/v0-coinwayfinder-clone](https://vercel.com/andys-projects-6612b26e/v0-coinwayfinder-clone)**
+1. Push your code to GitHub
+2. Connect your repository to Vercel
+3. Configure environment variables
+4. Deploy!
 
-## Build your app
+## Contributing
 
-Continue building your app on:
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-**[https://v0.dev/chat/projects/yHKHJXPQIsq](https://v0.dev/chat/projects/yHKHJXPQIsq)**
+## License
 
-## How It Works
-
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

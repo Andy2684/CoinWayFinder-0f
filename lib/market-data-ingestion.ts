@@ -1,324 +1,394 @@
-// Real-time market data ingestion system
+// Real-time market data ingestion from multiple exchanges
 
-export interface MarketDataPoint {
+import { ExchangeAdapterFactory } from "./exchange-adapters"
+
+export interface MarketData {
   symbol: string
   exchange: string
-  timestamp: number
   price: number
   volume: number
-  high24h: number
-  low24h: number
-  change24h: number
-  bid: number
-  ask: number
-  fundingRate?: number
-  openInterest?: number
-  liquidations?: number
+  change: number
+  changePercent: number
+  high: number
+  low: number
+  timestamp: number
 }
 
 export interface OrderBookData {
   symbol: string
   exchange: string
-  timestamp: number
-  bids: [number, number][] // [price, quantity]
+  bids: [number, number][]
   asks: [number, number][]
-}
-
-export interface TradeData {
-  symbol: string
-  exchange: string
   timestamp: number
-  price: number
-  quantity: number
-  side: "buy" | "sell"
-  tradeId: string
 }
 
-export class MarketDataIngestion {
-  private subscribers: Map<string, Set<(data: MarketDataPoint) => void>> = new Map()
-  private orderBookSubscribers: Map<string, Set<(data: OrderBookData) => void>> = new Map()
-  private tradeSubscribers: Map<string, Set<(data: TradeData) => void>> = new Map()
+export class MarketDataManager {
+  private static instance: MarketDataManager
+  private subscribers: Map<string, ((data: MarketData) => void)[]> = new Map()
+  private orderBookSubscribers: Map<string, ((data: OrderBookData) => void)[]> = new Map()
   private connections: Map<string, WebSocket> = new Map()
   private reconnectAttempts: Map<string, number> = new Map()
   private maxReconnectAttempts = 5
-  private reconnectDelay = 1000
+  private reconnectDelay = 5000
 
-  constructor() {
-    this.initializeConnections()
+  static getInstance(): MarketDataManager {
+    if (!MarketDataManager.instance) {
+      MarketDataManager.instance = new MarketDataManager()
+    }
+    return MarketDataManager.instance
   }
 
-  private initializeConnections(): void {
-    const exchanges = [
-      {
-        id: "binance",
-        wsUrl: "wss://stream.binance.com:9443/ws/!ticker@arr",
-        type: "ticker",
-      },
-      {
-        id: "bybit",
-        wsUrl: "wss://stream.bybit.com/v5/public/spot",
-        type: "ticker",
-      },
-      {
-        id: "okx",
-        wsUrl: "wss://ws.okx.com:8443/ws/v5/public",
-        type: "ticker",
-      },
-    ]
+  // Subscribe to ticker updates for a symbol
+  subscribeTicker(symbol: string, exchange: string, callback: (data: MarketData) => void): void {
+    const key = `${exchange}:${symbol}:ticker`
 
-    exchanges.forEach((exchange) => {
-      this.connectToExchange(exchange.id, exchange.wsUrl, exchange.type)
-    })
+    if (!this.subscribers.has(key)) {
+      this.subscribers.set(key, [])
+      this.startTickerStream(symbol, exchange)
+    }
+
+    this.subscribers.get(key)!.push(callback)
   }
 
-  private connectToExchange(exchangeId: string, wsUrl: string, type: string): void {
-    try {
-      const ws = new WebSocket(wsUrl)
+  // Subscribe to order book updates for a symbol
+  subscribeOrderBook(symbol: string, exchange: string, callback: (data: OrderBookData) => void): void {
+    const key = `${exchange}:${symbol}:orderbook`
 
-      ws.onopen = () => {
-        console.log(`Connected to ${exchangeId} ${type} stream`)
-        this.reconnectAttempts.set(exchangeId, 0)
+    if (!this.orderBookSubscribers.has(key)) {
+      this.orderBookSubscribers.set(key, [])
+      this.startOrderBookStream(symbol, exchange)
+    }
 
-        // Send subscription messages based on exchange
-        this.sendSubscriptionMessage(ws, exchangeId, type)
+    this.orderBookSubscribers.get(key)!.push(callback)
+  }
+
+  // Unsubscribe from ticker updates
+  unsubscribeTicker(symbol: string, exchange: string, callback: (data: MarketData) => void): void {
+    const key = `${exchange}:${symbol}:ticker`
+    const subscribers = this.subscribers.get(key)
+
+    if (subscribers) {
+      const index = subscribers.indexOf(callback)
+      if (index > -1) {
+        subscribers.splice(index, 1)
       }
 
-      ws.onmessage = (event) => {
+      if (subscribers.length === 0) {
+        this.subscribers.delete(key)
+        this.stopStream(key)
+      }
+    }
+  }
+
+  // Unsubscribe from order book updates
+  unsubscribeOrderBook(symbol: string, exchange: string, callback: (data: OrderBookData) => void): void {
+    const key = `${exchange}:${symbol}:orderbook`
+    const subscribers = this.orderBookSubscribers.get(key)
+
+    if (subscribers) {
+      const index = subscribers.indexOf(callback)
+      if (index > -1) {
+        subscribers.splice(index, 1)
+      }
+
+      if (subscribers.length === 0) {
+        this.orderBookSubscribers.delete(key)
+        this.stopStream(key)
+      }
+    }
+  }
+
+  // Get current market data for multiple symbols
+  async getMarketData(symbols: string[], exchange: string): Promise<MarketData[]> {
+    const adapter = ExchangeAdapterFactory.getAdapter(exchange)
+    if (!adapter) {
+      throw new Error(`Exchange ${exchange} not supported`)
+    }
+
+    const marketData: MarketData[] = []
+
+    for (const symbol of symbols) {
+      try {
+        // For real implementation, we'd use a batch API call if available
+        const ticker = await this.fetchTicker(symbol, exchange)
+        if (ticker) {
+          marketData.push(ticker)
+        }
+      } catch (error) {
+        console.error(`Error fetching ticker for ${symbol} on ${exchange}:`, error)
+      }
+    }
+
+    return marketData
+  }
+
+  // Get aggregated market data from multiple exchanges
+  async getAggregatedMarketData(symbol: string, exchanges: string[]): Promise<MarketData[]> {
+    const promises = exchanges.map((exchange) => this.fetchTicker(symbol, exchange))
+    const results = await Promise.allSettled(promises)
+
+    return results
+      .filter(
+        (result): result is PromiseFulfilledResult<MarketData> =>
+          result.status === "fulfilled" && result.value !== null,
+      )
+      .map((result) => result.value)
+  }
+
+  // Get best bid/ask across exchanges
+  async getBestPrice(
+    symbol: string,
+    exchanges: string[],
+  ): Promise<{
+    bestBid: { price: number; exchange: string } | null
+    bestAsk: { price: number; exchange: string } | null
+  }> {
+    const orderBooks = await Promise.allSettled(
+      exchanges.map(async (exchange) => {
+        const adapter = ExchangeAdapterFactory.getAdapter(exchange)
+        if (!adapter) return null
+
         try {
-          const data = JSON.parse(event.data)
-          this.processMessage(exchangeId, data, type)
+          const orderBook = await adapter.getOrderBook(symbol)
+          return { ...orderBook, exchange }
         } catch (error) {
-          console.error(`Error parsing message from ${exchangeId}:`, error)
+          console.error(`Error fetching order book for ${symbol} on ${exchange}:`, error)
+          return null
+        }
+      }),
+    )
+
+    let bestBid: { price: number; exchange: string } | null = null
+    let bestAsk: { price: number; exchange: string } | null = null
+
+    orderBooks.forEach((result) => {
+      if (result.status === "fulfilled" && result.value) {
+        const { bids, asks, exchange } = result.value
+
+        if (bids.length > 0) {
+          const topBid = bids[0][0]
+          if (!bestBid || topBid > bestBid.price) {
+            bestBid = { price: topBid, exchange }
+          }
+        }
+
+        if (asks.length > 0) {
+          const topAsk = asks[0][0]
+          if (!bestAsk || topAsk < bestAsk.price) {
+            bestAsk = { price: topAsk, exchange }
+          }
         }
       }
+    })
 
-      ws.onclose = () => {
-        console.log(`Disconnected from ${exchangeId} ${type} stream`)
-        this.handleReconnection(exchangeId, wsUrl, type)
+    return { bestBid, bestAsk }
+  }
+
+  private async fetchTicker(symbol: string, exchange: string): Promise<MarketData | null> {
+    try {
+      // Use public API endpoints that don't require authentication
+      switch (exchange.toLowerCase()) {
+        case "binance":
+          return await this.fetchBinanceTicker(symbol)
+        case "bybit":
+          return await this.fetchBybitTicker(symbol)
+        default:
+          console.warn(`Ticker fetching not implemented for ${exchange}`)
+          return null
       }
-
-      ws.onerror = (error) => {
-        console.error(`WebSocket error for ${exchangeId}:`, error)
-      }
-
-      this.connections.set(`${exchangeId}_${type}`, ws)
     } catch (error) {
-      console.error(`Failed to connect to ${exchangeId}:`, error)
-      this.handleReconnection(exchangeId, wsUrl, type)
+      console.error(`Error fetching ticker for ${symbol} on ${exchange}:`, error)
+      return null
     }
   }
 
-  private sendSubscriptionMessage(ws: WebSocket, exchangeId: string, type: string): void {
-    switch (exchangeId) {
-      case "binance":
-        // Binance automatically sends all tickers
-        break
-      case "bybit":
-        ws.send(
-          JSON.stringify({
-            op: "subscribe",
-            args: ["tickers.BTC-USDT", "tickers.ETH-USDT", "tickers.SOL-USDT"],
-          }),
-        )
-        break
-      case "okx":
-        ws.send(
-          JSON.stringify({
-            op: "subscribe",
-            args: [
-              { channel: "tickers", instId: "BTC-USDT" },
-              { channel: "tickers", instId: "ETH-USDT" },
-              { channel: "tickers", instId: "SOL-USDT" },
-            ],
-          }),
-        )
-        break
+  private async fetchBinanceTicker(symbol: string): Promise<MarketData | null> {
+    try {
+      const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`)
+      if (!response.ok) return null
+
+      const data = await response.json()
+      return {
+        symbol: data.symbol,
+        exchange: "binance",
+        price: Number.parseFloat(data.lastPrice),
+        volume: Number.parseFloat(data.volume),
+        change: Number.parseFloat(data.priceChange),
+        changePercent: Number.parseFloat(data.priceChangePercent),
+        high: Number.parseFloat(data.highPrice),
+        low: Number.parseFloat(data.lowPrice),
+        timestamp: Date.now(),
+      }
+    } catch (error) {
+      console.error("Error fetching Binance ticker:", error)
+      return null
     }
   }
 
-  private processMessage(exchangeId: string, data: any, type: string): void {
-    switch (exchangeId) {
-      case "binance":
-        this.processBinanceData(data)
-        break
-      case "bybit":
-        this.processBybitData(data)
-        break
-      case "okx":
-        this.processOKXData(data)
-        break
-    }
-  }
+  private async fetchBybitTicker(symbol: string): Promise<MarketData | null> {
+    try {
+      const response = await fetch(`https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`)
+      if (!response.ok) return null
 
-  private processBinanceData(data: any): void {
-    if (Array.isArray(data)) {
-      // Multiple tickers
-      data.forEach((ticker) => this.processBinanceTicker(ticker))
-    } else if (data.e === "24hrTicker") {
-      // Single ticker
-      this.processBinanceTicker(data)
-    }
-  }
+      const data = await response.json()
+      if (data.retCode !== 0 || !data.result.list.length) return null
 
-  private processBinanceTicker(ticker: any): void {
-    const marketData: MarketDataPoint = {
-      symbol: ticker.s,
-      exchange: "binance",
-      timestamp: Date.now(),
-      price: Number.parseFloat(ticker.c),
-      volume: Number.parseFloat(ticker.v),
-      high24h: Number.parseFloat(ticker.h),
-      low24h: Number.parseFloat(ticker.l),
-      change24h: Number.parseFloat(ticker.P),
-      bid: Number.parseFloat(ticker.b),
-      ask: Number.parseFloat(ticker.a),
-    }
-
-    this.notifySubscribers(ticker.s, marketData)
-  }
-
-  private processBybitData(data: any): void {
-    if (data.topic && data.topic.includes("tickers")) {
-      const ticker = data.data
-      const marketData: MarketDataPoint = {
+      const ticker = data.result.list[0]
+      return {
         symbol: ticker.symbol,
         exchange: "bybit",
-        timestamp: Date.now(),
         price: Number.parseFloat(ticker.lastPrice),
         volume: Number.parseFloat(ticker.volume24h),
-        high24h: Number.parseFloat(ticker.highPrice24h),
-        low24h: Number.parseFloat(ticker.lowPrice24h),
-        change24h: Number.parseFloat(ticker.price24hPcnt) * 100,
-        bid: Number.parseFloat(ticker.bid1Price),
-        ask: Number.parseFloat(ticker.ask1Price),
+        change: Number.parseFloat(ticker.price24hPcnt) * Number.parseFloat(ticker.lastPrice),
+        changePercent: Number.parseFloat(ticker.price24hPcnt) * 100,
+        high: Number.parseFloat(ticker.highPrice24h),
+        low: Number.parseFloat(ticker.lowPrice24h),
+        timestamp: Date.now(),
       }
-
-      this.notifySubscribers(ticker.symbol, marketData)
+    } catch (error) {
+      console.error("Error fetching Bybit ticker:", error)
+      return null
     }
   }
 
-  private processOKXData(data: any): void {
-    if (data.arg && data.arg.channel === "tickers" && data.data) {
-      data.data.forEach((ticker: any) => {
-        const marketData: MarketDataPoint = {
-          symbol: ticker.instId,
-          exchange: "okx",
-          timestamp: Date.now(),
-          price: Number.parseFloat(ticker.last),
-          volume: Number.parseFloat(ticker.vol24h),
-          high24h: Number.parseFloat(ticker.high24h),
-          low24h: Number.parseFloat(ticker.low24h),
-          change24h: Number.parseFloat(ticker.chgUtc) * 100,
-          bid: Number.parseFloat(ticker.bidPx),
-          ask: Number.parseFloat(ticker.askPx),
+  private startTickerStream(symbol: string, exchange: string): void {
+    const adapter = ExchangeAdapterFactory.getAdapter(exchange)
+    if (!adapter) return
+
+    const key = `${exchange}:${symbol}:ticker`
+
+    try {
+      adapter.subscribeToTicker(symbol, (data) => {
+        const marketData: MarketData = {
+          symbol: data.symbol,
+          exchange,
+          price: data.price,
+          volume: data.volume || 0,
+          change: data.change || 0,
+          changePercent: data.changePercent || 0,
+          high: data.high || 0,
+          low: data.low || 0,
+          timestamp: data.timestamp || Date.now(),
         }
 
-        this.notifySubscribers(ticker.instId, marketData)
+        const subscribers = this.subscribers.get(key)
+        if (subscribers) {
+          subscribers.forEach((callback) => callback(marketData))
+        }
       })
+
+      this.reconnectAttempts.set(key, 0)
+    } catch (error) {
+      console.error(`Error starting ticker stream for ${key}:`, error)
+      this.handleReconnect(key, () => this.startTickerStream(symbol, exchange))
     }
   }
 
-  private notifySubscribers(symbol: string, data: MarketDataPoint): void {
-    const symbolSubscribers = this.subscribers.get(symbol)
-    if (symbolSubscribers) {
-      symbolSubscribers.forEach((callback) => {
-        try {
-          callback(data)
-        } catch (error) {
-          console.error("Error in subscriber callback:", error)
-        }
-      })
-    }
+  private startOrderBookStream(symbol: string, exchange: string): void {
+    const adapter = ExchangeAdapterFactory.getAdapter(exchange)
+    if (!adapter) return
 
-    // Also notify wildcard subscribers
-    const wildcardSubscribers = this.subscribers.get("*")
-    if (wildcardSubscribers) {
-      wildcardSubscribers.forEach((callback) => {
-        try {
-          callback(data)
-        } catch (error) {
-          console.error("Error in wildcard subscriber callback:", error)
+    const key = `${exchange}:${symbol}:orderbook`
+
+    try {
+      adapter.subscribeToOrderBook(symbol, (data) => {
+        const orderBookData: OrderBookData = {
+          symbol: data.symbol,
+          exchange,
+          bids: data.bids || [],
+          asks: data.asks || [],
+          timestamp: data.timestamp || Date.now(),
+        }
+
+        const subscribers = this.orderBookSubscribers.get(key)
+        if (subscribers) {
+          subscribers.forEach((callback) => callback(orderBookData))
         }
       })
+
+      this.reconnectAttempts.set(key, 0)
+    } catch (error) {
+      console.error(`Error starting order book stream for ${key}:`, error)
+      this.handleReconnect(key, () => this.startOrderBookStream(symbol, exchange))
     }
   }
 
-  private handleReconnection(exchangeId: string, wsUrl: string, type: string): void {
-    const key = `${exchangeId}_${type}`
-    const attempts = this.reconnectAttempts.get(exchangeId) || 0
+  private stopStream(key: string): void {
+    const connection = this.connections.get(key)
+    if (connection) {
+      connection.close()
+      this.connections.delete(key)
+    }
+    this.reconnectAttempts.delete(key)
+  }
+
+  private handleReconnect(key: string, reconnectFn: () => void): void {
+    const attempts = this.reconnectAttempts.get(key) || 0
 
     if (attempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts.set(exchangeId, attempts + 1)
-
+      this.reconnectAttempts.set(key, attempts + 1)
       setTimeout(() => {
-        console.log(`Attempting to reconnect to ${exchangeId} (attempt ${attempts + 1})`)
-        this.connectToExchange(exchangeId, wsUrl, type)
+        console.log(`Attempting to reconnect ${key} (attempt ${attempts + 1})`)
+        reconnectFn()
       }, this.reconnectDelay * Math.pow(2, attempts)) // Exponential backoff
     } else {
-      console.error(`Max reconnection attempts reached for ${exchangeId}`)
+      console.error(`Max reconnection attempts reached for ${key}`)
     }
   }
 
-  public subscribe(symbol: string, callback: (data: MarketDataPoint) => void): () => void {
-    if (!this.subscribers.has(symbol)) {
-      this.subscribers.set(symbol, new Set())
-    }
-
-    this.subscribers.get(symbol)!.add(callback)
-
-    // Return unsubscribe function
-    return () => {
-      const symbolSubscribers = this.subscribers.get(symbol)
-      if (symbolSubscribers) {
-        symbolSubscribers.delete(callback)
-        if (symbolSubscribers.size === 0) {
-          this.subscribers.delete(symbol)
-        }
+  // Get popular trading pairs for an exchange
+  async getPopularPairs(exchange: string): Promise<string[]> {
+    try {
+      switch (exchange.toLowerCase()) {
+        case "binance":
+          return await this.getBinancePopularPairs()
+        case "bybit":
+          return await this.getBybitPopularPairs()
+        default:
+          return ["BTCUSDT", "ETHUSDT", "BNBUSDT", "ADAUSDT", "SOLUSDT"]
       }
+    } catch (error) {
+      console.error(`Error fetching popular pairs for ${exchange}:`, error)
+      return ["BTCUSDT", "ETHUSDT", "BNBUSDT", "ADAUSDT", "SOLUSDT"]
     }
   }
 
-  public subscribeToOrderBook(symbol: string, callback: (data: OrderBookData) => void): () => void {
-    if (!this.orderBookSubscribers.has(symbol)) {
-      this.orderBookSubscribers.set(symbol, new Set())
-    }
+  private async getBinancePopularPairs(): Promise<string[]> {
+    try {
+      const response = await fetch("https://api.binance.com/api/v3/ticker/24hr")
+      if (!response.ok) throw new Error("Failed to fetch Binance tickers")
 
-    this.orderBookSubscribers.get(symbol)!.add(callback)
-
-    return () => {
-      const symbolSubscribers = this.orderBookSubscribers.get(symbol)
-      if (symbolSubscribers) {
-        symbolSubscribers.delete(callback)
-        if (symbolSubscribers.size === 0) {
-          this.orderBookSubscribers.delete(symbol)
-        }
-      }
+      const tickers = await response.json()
+      return tickers
+        .filter((ticker: any) => ticker.symbol.endsWith("USDT"))
+        .sort((a: any, b: any) => Number.parseFloat(b.quoteVolume) - Number.parseFloat(a.quoteVolume))
+        .slice(0, 20)
+        .map((ticker: any) => ticker.symbol)
+    } catch (error) {
+      console.error("Error fetching Binance popular pairs:", error)
+      return ["BTCUSDT", "ETHUSDT", "BNBUSDT", "ADAUSDT", "SOLUSDT"]
     }
   }
 
-  public getConnectionStatus(): Record<string, boolean> {
-    const status: Record<string, boolean> = {}
+  private async getBybitPopularPairs(): Promise<string[]> {
+    try {
+      const response = await fetch("https://api.bybit.com/v5/market/tickers?category=spot")
+      if (!response.ok) throw new Error("Failed to fetch Bybit tickers")
 
-    this.connections.forEach((ws, key) => {
-      status[key] = ws.readyState === WebSocket.OPEN
-    })
+      const data = await response.json()
+      if (data.retCode !== 0) throw new Error("Bybit API error")
 
-    return status
-  }
-
-  public disconnect(): void {
-    this.connections.forEach((ws, key) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.close()
-      }
-    })
-
-    this.connections.clear()
-    this.subscribers.clear()
-    this.orderBookSubscribers.clear()
-    this.tradeSubscribers.clear()
+      return data.result.list
+        .filter((ticker: any) => ticker.symbol.endsWith("USDT"))
+        .sort((a: any, b: any) => Number.parseFloat(b.turnover24h) - Number.parseFloat(a.turnover24h))
+        .slice(0, 20)
+        .map((ticker: any) => ticker.symbol)
+    } catch (error) {
+      console.error("Error fetching Bybit popular pairs:", error)
+      return ["BTCUSDT", "ETHUSDT", "SOLUSDT", "ADAUSDT", "DOTUSDT"]
+    }
   }
 }
 
-// Singleton instance
-export const marketDataIngestion = new MarketDataIngestion()
+// Export singleton instance
+export const marketDataManager = MarketDataManager.getInstance()

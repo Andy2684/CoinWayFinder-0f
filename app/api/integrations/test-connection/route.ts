@@ -1,81 +1,139 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getExchangeConfig, buildAuthHeaders } from "@/lib/exchange-config"
+import { ExchangeAdapterFactory } from "@/lib/exchange-adapters"
 
 export async function POST(request: NextRequest) {
   try {
-    const { exchangeId, credentials, testnet } = await request.json()
+    const { exchangeId, credentials, testnet = false } = await request.json()
 
     if (!exchangeId || !credentials) {
-      return NextResponse.json({ success: false, error: "Missing exchange ID or credentials" }, { status: 400 })
-    }
-
-    const config = getExchangeConfig(exchangeId)
-    if (!config) {
-      return NextResponse.json({ success: false, error: "Unsupported exchange" }, { status: 400 })
-    }
-
-    // Use testnet URL if specified and available
-    const baseUrl = testnet && config.testnetUrl ? config.testnetUrl : config.baseUrl
-
-    // Test connection based on exchange
-    let testEndpoint = ""
-    const method = "GET"
-
-    switch (exchangeId) {
-      case "binance":
-        testEndpoint = "/api/v3/account"
-        break
-      case "coinbase":
-        testEndpoint = "/accounts"
-        break
-      case "bybit":
-        testEndpoint = "/v5/account/wallet-balance"
-        break
-      default:
-        testEndpoint = "/account" // Generic endpoint
-    }
-
-    // Build authentication headers
-    const headers = buildAuthHeaders(exchangeId, credentials, method, testEndpoint)
-
-    // Make test request
-    const response = await fetch(`${baseUrl}${testEndpoint}`, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-        ...headers,
-      },
-    })
-
-    if (response.ok) {
-      const data = await response.json()
-      return NextResponse.json({
-        success: true,
-        message: "Connection successful",
-        data: {
-          exchange: config.name,
-          testnet,
-          timestamp: new Date().toISOString(),
-          // Don't return sensitive account data
-          accountInfo: {
-            hasBalance: Array.isArray(data.balances) ? data.balances.length > 0 : true,
-            permissions: data.permissions || ["spot"],
-          },
-        },
-      })
-    } else {
-      const errorData = await response.text()
       return NextResponse.json(
         {
           success: false,
-          error: "Authentication failed",
-          details: errorData,
+          error: "Missing exchange ID or credentials",
+        },
+        { status: 400 },
+      )
+    }
+
+    // Validate required credentials
+    if (!credentials.apiKey || !credentials.secretKey) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "API key and secret key are required",
+        },
+        { status: 400 },
+      )
+    }
+
+    // Get the exchange adapter
+    const adapter = ExchangeAdapterFactory.getAdapter(exchangeId, testnet)
+    if (!adapter) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unsupported exchange",
+        },
+        { status: 400 },
+      )
+    }
+
+    // Test authentication
+    const isAuthenticated = await adapter.authenticate(credentials)
+
+    if (!isAuthenticated) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Authentication failed. Please check your API credentials.",
         },
         { status: 401 },
       )
     }
+
+    // Test basic functionality by fetching account balance
+    try {
+      const balance = await adapter.getBalance()
+      const rateLimit = adapter.getRateLimit()
+
+      return NextResponse.json({
+        success: true,
+        message: "Connection successful",
+        data: {
+          exchange: adapter.name,
+          exchangeId: adapter.id,
+          testnet,
+          timestamp: new Date().toISOString(),
+          accountInfo: {
+            hasBalance: Array.isArray(balance.balances) ? balance.balances.length > 0 : true,
+            balanceCount: Array.isArray(balance.balances) ? balance.balances.length : 0,
+            accountType: balance.accountType || "spot",
+            canTrade: balance.canTrade !== false,
+            canWithdraw: balance.canWithdraw !== false,
+            canDeposit: balance.canDeposit !== false,
+          },
+          rateLimit: {
+            requests: rateLimit.requests,
+            window: rateLimit.window,
+            remaining: rateLimit.remaining,
+          },
+        },
+      })
+    } catch (balanceError) {
+      // Authentication succeeded but balance fetch failed
+      // This might be due to permissions or other issues
+      console.error("Balance fetch error:", balanceError)
+
+      return NextResponse.json({
+        success: true,
+        message: "Authentication successful, but limited access detected",
+        warning: "Could not fetch account balance. Check API key permissions.",
+        data: {
+          exchange: adapter.name,
+          exchangeId: adapter.id,
+          testnet,
+          timestamp: new Date().toISOString(),
+          accountInfo: {
+            hasBalance: false,
+            balanceCount: 0,
+            accountType: "unknown",
+            canTrade: false,
+            canWithdraw: false,
+            canDeposit: false,
+          },
+          rateLimit: adapter.getRateLimit(),
+        },
+      })
+    }
   } catch (error) {
     console.error("Connection test error:", error)
-    return NextResponse.json({ success: false, error: "Connection test failed" }, { status: 500 })
+
+    // Provide more specific error messages
+    let errorMessage = "Connection test failed"
+    let statusCode = 500
+
+    if (error instanceof Error) {
+      if (error.message.includes("Authentication failed") || error.message.includes("Invalid API")) {
+        errorMessage = "Invalid API credentials"
+        statusCode = 401
+      } else if (error.message.includes("Rate limit")) {
+        errorMessage = "Rate limit exceeded. Please try again later."
+        statusCode = 429
+      } else if (error.message.includes("Network") || error.message.includes("fetch")) {
+        errorMessage = "Network error. Please check your connection."
+        statusCode = 503
+      } else {
+        errorMessage = error.message
+      }
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: errorMessage,
+        details: process.env.NODE_ENV === "development" ? error : undefined,
+      },
+      { status: statusCode },
+    )
   }
 }

@@ -1,53 +1,36 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { generateText } from "ai"
-import { openai } from "@ai-sdk/openai"
 
 export async function POST(request: NextRequest) {
   try {
-    const { articles } = await request.json()
+    const { text } = await request.json()
 
-    if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ articles })
+    if (!text) {
+      return NextResponse.json({ error: "Text is required" }, { status: 400 })
     }
 
-    const analyzedArticles = await Promise.all(
-      articles.map(async (article: any) => {
-        try {
-          const { text } = await generateText({
-            model: openai("gpt-4o-mini"),
-            system: `You are a financial news analyst. Analyze the sentiment and market impact of news articles.
-            
-            Respond with a JSON object containing:
-            - sentiment: "positive", "negative", or "neutral"
-            - impact: "high", "medium", or "low"
-            - aiSummary: A brief 1-2 sentence analysis of how this might affect crypto/stock markets
-            
-            Focus on market implications and trading relevance.`,
-            prompt: `Analyze this news article:
-            
-            Title: ${article.title}
-            Summary: ${article.summary}
-            Category: ${article.category}`,
-          })
+    // Simple sentiment analysis mock
+    const positiveWords = ["bullish", "moon", "pump", "buy", "long", "up", "rise", "gain", "profit"]
+    const negativeWords = ["bearish", "dump", "sell", "short", "down", "fall", "loss", "crash"]
 
-          const analysis = JSON.parse(text)
+    const words = text.toLowerCase().split(/\s+/)
+    let score = 0
 
-          return {
-            ...article,
-            sentiment: analysis.sentiment || "neutral",
-            impact: analysis.impact || "medium",
-            aiSummary: analysis.aiSummary || null,
-          }
-        } catch (error) {
-          console.error("Error analyzing article:", error)
-          return article
-        }
-      }),
-    )
+    words.forEach((word: string) => {
+      if (positiveWords.includes(word)) score += 1
+      if (negativeWords.includes(word)) score -= 1
+    })
 
-    return NextResponse.json({ articles: analyzedArticles })
+    let sentiment = "neutral"
+    if (score > 0) sentiment = "positive"
+    if (score < 0) sentiment = "negative"
+
+    return NextResponse.json({
+      sentiment,
+      score,
+      confidence: Math.min(Math.abs(score) * 0.2, 1),
+    })
   } catch (error) {
-    console.error("Error in sentiment analysis:", error)
+    console.error("Sentiment analysis error:", error)
     return NextResponse.json({ error: "Failed to analyze sentiment" }, { status: 500 })
   }
 }

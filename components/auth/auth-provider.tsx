@@ -1,120 +1,84 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import type React from "react"
+import { createContext, useContext, useEffect, useState } from "react"
 
 interface User {
   id: string
   email: string
-  firstName: string
-  lastName: string
-  username: string
-  role: string
-  plan: string
-  isVerified: boolean
-  permissions?: {
-    fullAccess?: boolean
-    manageUsers?: boolean
-    systemSettings?: boolean
-    allExchanges?: boolean
-    unlimitedBots?: boolean
-    advancedAnalytics?: boolean
-    prioritySupport?: boolean
-  }
+  name: string
 }
 
 interface AuthContextType {
   user: User | null
-  token: string | null
-  login: (token: string, user: User) => void
+  login: (email: string, password: string) => Promise<void>
   logout: () => void
-  isLoading: boolean
-  isAuthenticated: boolean
-  isAdmin: boolean
-  hasPermission: (permission: string) => boolean
+  signup: (email: string, password: string, name: string) => Promise<void>
+  loading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [token, setToken] = useState<string | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check for stored auth data on mount
-    const storedToken = localStorage.getItem("auth_token")
-    const storedUser = localStorage.getItem("auth_user")
-
-    if (storedToken && storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser)
-        setToken(storedToken)
-        setUser(parsedUser)
-      } catch (error) {
-        // Clear invalid stored data
-        localStorage.removeItem("auth_token")
-        localStorage.removeItem("auth_user")
-      }
-    }
-
-    setIsLoading(false)
+    // Check if user is logged in on mount
+    checkAuth()
   }, [])
 
-  const login = (newToken: string, newUser: User) => {
-    setToken(newToken)
-    setUser(newUser)
-    localStorage.setItem("auth_token", newToken)
-    localStorage.setItem("auth_user", JSON.stringify(newUser))
-  }
-
-  const logout = () => {
-    setToken(null)
-    setUser(null)
-    localStorage.removeItem("auth_token")
-    localStorage.removeItem("auth_user")
-  }
-
-  const isAuthenticated = !!user && !!token
-  const isAdmin = user?.role === "owner" || user?.role === "admin"
-
-  const hasPermission = (permission: string): boolean => {
-    if (!user) return false
-    if (user.role === "owner") return true // Owner has all permissions
-    if (user.permissions?.fullAccess) return true
-
-    switch (permission) {
-      case "manageUsers":
-        return user.permissions?.manageUsers || false
-      case "systemSettings":
-        return user.permissions?.systemSettings || false
-      case "allExchanges":
-        return user.permissions?.allExchanges || false
-      case "unlimitedBots":
-        return user.permissions?.unlimitedBots || false
-      case "advancedAnalytics":
-        return user.permissions?.advancedAnalytics || false
-      case "prioritySupport":
-        return user.permissions?.prioritySupport || false
-      default:
-        return false
+  const checkAuth = async () => {
+    try {
+      const response = await fetch("/api/auth/me")
+      if (response.ok) {
+        const userData = await response.json()
+        setUser(userData)
+      }
+    } catch (error) {
+      console.error("Auth check failed:", error)
+    } finally {
+      setLoading(false)
     }
   }
 
-  const value: AuthContextType = {
-    user,
-    token,
-    login,
-    logout,
-    isLoading,
-    isAuthenticated,
-    isAdmin,
-    hasPermission,
+  const login = async (email: string, password: string) => {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    })
+
+    if (!response.ok) {
+      throw new Error("Login failed")
+    }
+
+    const userData = await response.json()
+    setUser(userData.user)
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
+  const logout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" })
+    setUser(null)
+  }
 
-export { AuthContext }
+  const signup = async (email: string, password: string, name: string) => {
+    const response = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password, name }),
+    })
+
+    if (!response.ok) {
+      throw new Error("Signup failed")
+    }
+
+    const userData = await response.json()
+    setUser(userData.user)
+  }
+
+  return <AuthContext.Provider value={{ user, login, logout, signup, loading }}>{children}</AuthContext.Provider>
+}
 
 export function useAuth() {
   const context = useContext(AuthContext)
@@ -123,3 +87,6 @@ export function useAuth() {
   }
   return context
 }
+
+export default AuthProvider
+export { AuthContext }
