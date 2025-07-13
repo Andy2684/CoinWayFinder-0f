@@ -1,9 +1,15 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   ComposedChart,
   Bar,
@@ -16,28 +22,28 @@ import {
   PieChart,
   Pie,
   Cell,
-} from "recharts"
-import { Volume2, TrendingUp, Activity } from "lucide-react"
+} from "recharts";
+import { Volume2, TrendingUp, Activity } from "lucide-react";
 
 interface VolumeData {
-  time: string
-  totalVolume: number
-  buyVolume: number
-  sellVolume: number
-  price: number
-  trades: number
+  time: string;
+  totalVolume: number;
+  buyVolume: number;
+  sellVolume: number;
+  price: number;
+  trades: number;
 }
 
 interface ExchangeVolume {
-  exchange: string
-  volume: number
-  percentage: number
-  color: string
+  exchange: string;
+  volume: number;
+  percentage: number;
+  color: string;
 }
 
 export function TradingVolumeChart() {
-  const [selectedSymbol, setSelectedSymbol] = useState("BTC/USDT")
-  const [timeframe, setTimeframe] = useState("24h")
+  const [selectedSymbol, setSelectedSymbol] = useState("BTC/USDT");
+  const [timeframe, setTimeframe] = useState("24h");
 
   const [volumeData, setVolumeData] = useState<VolumeData[]>([
     {
@@ -88,50 +94,73 @@ export function TradingVolumeChart() {
       price: 67900,
       trades: 1456,
     },
-  ])
+  ]);
 
   const exchangeVolumeData: ExchangeVolume[] = [
-    { exchange: "Binance", volume: 12500000000, percentage: 35, color: "#F0B90B" },
-    { exchange: "Coinbase", volume: 8900000000, percentage: 25, color: "#0052FF" },
+    {
+      exchange: "Binance",
+      volume: 12500000000,
+      percentage: 35,
+      color: "#F0B90B",
+    },
+    {
+      exchange: "Coinbase",
+      volume: 8900000000,
+      percentage: 25,
+      color: "#0052FF",
+    },
     { exchange: "Bybit", volume: 7100000000, percentage: 20, color: "#FF6B35" },
     { exchange: "OKX", volume: 4200000000, percentage: 12, color: "#000000" },
     { exchange: "Others", volume: 2800000000, percentage: 8, color: "#6B7280" },
-  ]
+  ];
 
   // Calculate metrics
-  const totalVolume24h = volumeData.reduce((sum, item) => sum + item.totalVolume, 0)
-  const totalBuyVolume = volumeData.reduce((sum, item) => sum + item.buyVolume, 0)
-  const totalSellVolume = volumeData.reduce((sum, item) => sum + item.sellVolume, 0)
-  const buyPressure = (totalBuyVolume / (totalBuyVolume + totalSellVolume)) * 100
-  const avgTrades = volumeData.reduce((sum, item) => sum + item.trades, 0) / volumeData.length
+  const totalVolume24h = volumeData.reduce(
+    (sum, item) => sum + item.totalVolume,
+    0,
+  );
+  const totalBuyVolume = volumeData.reduce(
+    (sum, item) => sum + item.buyVolume,
+    0,
+  );
+  const totalSellVolume = volumeData.reduce(
+    (sum, item) => sum + item.sellVolume,
+    0,
+  );
+  const buyPressure =
+    (totalBuyVolume / (totalBuyVolume + totalSellVolume)) * 100;
+  const avgTrades =
+    volumeData.reduce((sum, item) => sum + item.trades, 0) / volumeData.length;
 
   // Simulate real-time updates
   useEffect(() => {
     const interval = setInterval(() => {
       setVolumeData((prevData) => {
-        const lastItem = prevData[prevData.length - 1]
+        const lastItem = prevData[prevData.length - 1];
         const newItem: VolumeData = {
           time: new Date().toLocaleTimeString(),
           totalVolume: lastItem.totalVolume * (1 + (Math.random() - 0.5) * 0.1),
           buyVolume: lastItem.buyVolume * (1 + (Math.random() - 0.5) * 0.1),
           sellVolume: lastItem.sellVolume * (1 + (Math.random() - 0.5) * 0.1),
           price: lastItem.price * (1 + (Math.random() - 0.5) * 0.01),
-          trades: Math.floor(lastItem.trades * (1 + (Math.random() - 0.5) * 0.2)),
-        }
+          trades: Math.floor(
+            lastItem.trades * (1 + (Math.random() - 0.5) * 0.2),
+          ),
+        };
 
-        return [...prevData.slice(-11), newItem] // Keep last 12 points
-      })
-    }, 10000) // Update every 10 seconds
+        return [...prevData.slice(-11), newItem]; // Keep last 12 points
+      });
+    }, 10000); // Update every 10 seconds
 
-    return () => clearInterval(interval)
-  }, [])
+    return () => clearInterval(interval);
+  }, []);
 
   const formatVolume = (value: number) => {
-    if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`
-    if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`
-    if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`
-    return `$${value.toFixed(2)}`
-  }
+    if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+    if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+    if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
+    return `$${value.toFixed(2)}`;
+  };
 
   return (
     <div className="space-y-6">
@@ -171,17 +200,23 @@ export function TradingVolumeChart() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-gray-700">
             <div className="text-center">
               <p className="text-sm text-gray-400">Total Volume</p>
-              <p className="text-lg font-bold text-white">{formatVolume(totalVolume24h)}</p>
+              <p className="text-lg font-bold text-white">
+                {formatVolume(totalVolume24h)}
+              </p>
             </div>
             <div className="text-center">
               <p className="text-sm text-gray-400">Buy Pressure</p>
-              <p className={`text-lg font-bold ${buyPressure > 50 ? "text-green-400" : "text-red-400"}`}>
+              <p
+                className={`text-lg font-bold ${buyPressure > 50 ? "text-green-400" : "text-red-400"}`}
+              >
                 {buyPressure.toFixed(1)}%
               </p>
             </div>
             <div className="text-center">
               <p className="text-sm text-gray-400">Avg Trades/Hour</p>
-              <p className="text-lg font-bold text-white">{avgTrades.toFixed(0)}</p>
+              <p className="text-lg font-bold text-white">
+                {avgTrades.toFixed(0)}
+              </p>
             </div>
             <div className="text-center">
               <p className="text-sm text-gray-400">Status</p>
@@ -198,7 +233,12 @@ export function TradingVolumeChart() {
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis dataKey="time" stroke="#9CA3AF" fontSize={12} />
               <YAxis yAxisId="left" stroke="#9CA3AF" fontSize={12} />
-              <YAxis yAxisId="right" orientation="right" stroke="#9CA3AF" fontSize={12} />
+              <YAxis
+                yAxisId="right"
+                orientation="right"
+                stroke="#9CA3AF"
+                fontSize={12}
+              />
               <Tooltip
                 contentStyle={{
                   backgroundColor: "#1F2937",
@@ -206,9 +246,28 @@ export function TradingVolumeChart() {
                   borderRadius: "8px",
                 }}
               />
-              <Bar yAxisId="left" dataKey="buyVolume" stackId="volume" fill="#10B981" fillOpacity={0.8} />
-              <Bar yAxisId="left" dataKey="sellVolume" stackId="volume" fill="#EF4444" fillOpacity={0.8} />
-              <Line yAxisId="right" type="monotone" dataKey="price" stroke="#30D5C8" strokeWidth={2} dot={false} />
+              <Bar
+                yAxisId="left"
+                dataKey="buyVolume"
+                stackId="volume"
+                fill="#10B981"
+                fillOpacity={0.8}
+              />
+              <Bar
+                yAxisId="left"
+                dataKey="sellVolume"
+                stackId="volume"
+                fill="#EF4444"
+                fillOpacity={0.8}
+              />
+              <Line
+                yAxisId="right"
+                type="monotone"
+                dataKey="price"
+                stroke="#30D5C8"
+                strokeWidth={2}
+                dot={false}
+              />
             </ComposedChart>
           </ResponsiveContainer>
         </CardContent>
@@ -255,17 +314,31 @@ export function TradingVolumeChart() {
             {/* Exchange List */}
             <div className="space-y-4">
               {exchangeVolumeData.map((exchange, index) => (
-                <div key={index} className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg">
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-3 bg-gray-800/30 rounded-lg"
+                >
                   <div className="flex items-center space-x-3">
-                    <div className="w-4 h-4 rounded-full" style={{ backgroundColor: exchange.color }}></div>
+                    <div
+                      className="w-4 h-4 rounded-full"
+                      style={{ backgroundColor: exchange.color }}
+                    ></div>
                     <div>
-                      <p className="text-white font-medium">{exchange.exchange}</p>
-                      <p className="text-gray-400 text-sm">{exchange.percentage}% of total volume</p>
+                      <p className="text-white font-medium">
+                        {exchange.exchange}
+                      </p>
+                      <p className="text-gray-400 text-sm">
+                        {exchange.percentage}% of total volume
+                      </p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-white font-medium">{formatVolume(exchange.volume)}</p>
-                    <Badge className="bg-[#30D5C8]/10 text-[#30D5C8] text-xs">#{index + 1}</Badge>
+                    <p className="text-white font-medium">
+                      {formatVolume(exchange.volume)}
+                    </p>
+                    <Badge className="bg-[#30D5C8]/10 text-[#30D5C8] text-xs">
+                      #{index + 1}
+                    </Badge>
                   </div>
                 </div>
               ))}
@@ -274,5 +347,5 @@ export function TradingVolumeChart() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

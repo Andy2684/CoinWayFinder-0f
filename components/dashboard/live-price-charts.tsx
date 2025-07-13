@@ -1,11 +1,17 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   LineChart,
   Line,
@@ -19,7 +25,7 @@ import {
   Area,
   ComposedChart,
   Bar,
-} from "recharts"
+} from "recharts";
 import {
   TrendingUp,
   TrendingDown,
@@ -28,36 +34,36 @@ import {
   CandlestickChartIcon as CandlestickIcon,
   LineChartIcon,
   Target,
-} from "lucide-react"
+} from "lucide-react";
 
 interface PriceData {
-  timestamp: number
-  time: string
-  open: number
-  high: number
-  low: number
-  close: number
-  volume: number
-  ma20: number
-  ma50: number
-  rsi: number
-  macd: number
-  signal: number
+  timestamp: number;
+  time: string;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+  ma20: number;
+  ma50: number;
+  rsi: number;
+  macd: number;
+  signal: number;
 }
 
 interface TechnicalIndicator {
-  name: string
-  value: number
-  signal: "buy" | "sell" | "neutral"
-  color: string
+  name: string;
+  value: number;
+  signal: "buy" | "sell" | "neutral";
+  color: string;
 }
 
 export function LivePriceCharts() {
-  const [selectedSymbol, setSelectedSymbol] = useState("BTC/USDT")
-  const [timeframe, setTimeframe] = useState("1h")
-  const [chartType, setChartType] = useState("candlestick")
-  const [showIndicators, setShowIndicators] = useState(true)
-  const [isLive, setIsLive] = useState(true)
+  const [selectedSymbol, setSelectedSymbol] = useState("BTC/USDT");
+  const [timeframe, setTimeframe] = useState("1h");
+  const [chartType, setChartType] = useState("candlestick");
+  const [showIndicators, setShowIndicators] = useState(true);
+  const [isLive, setIsLive] = useState(true);
 
   // Sample data - replace with real WebSocket data
   const [priceData, setPriceData] = useState<PriceData[]>([
@@ -131,7 +137,7 @@ export function LivePriceCharts() {
       macd: 387,
       signal: 332,
     },
-  ])
+  ]);
 
   const technicalIndicators: TechnicalIndicator[] = [
     { name: "RSI", value: 78.2, signal: "sell", color: "text-red-400" },
@@ -139,16 +145,21 @@ export function LivePriceCharts() {
     { name: "Stoch", value: 82.1, signal: "sell", color: "text-red-400" },
     { name: "CCI", value: 145.3, signal: "buy", color: "text-green-400" },
     { name: "ADX", value: 68.7, signal: "neutral", color: "text-yellow-400" },
-    { name: "Williams %R", value: -18.5, signal: "sell", color: "text-red-400" },
-  ]
+    {
+      name: "Williams %R",
+      value: -18.5,
+      signal: "sell",
+      color: "text-red-400",
+    },
+  ];
 
   // Simulate real-time updates
   useEffect(() => {
-    if (!isLive) return
+    if (!isLive) return;
 
     const interval = setInterval(() => {
       setPriceData((prevData) => {
-        const lastPoint = prevData[prevData.length - 1]
+        const lastPoint = prevData[prevData.length - 1];
         const newPoint: PriceData = {
           timestamp: Date.now(),
           time: new Date().toLocaleTimeString(),
@@ -159,40 +170,58 @@ export function LivePriceCharts() {
           volume: 1000000 + Math.random() * 500000,
           ma20: lastPoint.ma20 + (Math.random() - 0.5) * 10,
           ma50: lastPoint.ma50 + (Math.random() - 0.5) * 5,
-          rsi: Math.max(0, Math.min(100, lastPoint.rsi + (Math.random() - 0.5) * 5)),
+          rsi: Math.max(
+            0,
+            Math.min(100, lastPoint.rsi + (Math.random() - 0.5) * 5),
+          ),
           macd: lastPoint.macd + (Math.random() - 0.5) * 20,
           signal: lastPoint.signal + (Math.random() - 0.5) * 15,
-        }
+        };
 
-        return [...prevData.slice(-49), newPoint] // Keep last 50 points
-      })
-    }, 2000)
+        return [...prevData.slice(-49), newPoint]; // Keep last 50 points
+      });
+    }, 2000);
 
-    return () => clearInterval(interval)
-  }, [isLive])
+    return () => clearInterval(interval);
+  }, [isLive]);
 
-  const latestPrice = priceData[priceData.length - 1]
-  const priceChange = latestPrice ? latestPrice.close - latestPrice.open : 0
-  const priceChangePercent = latestPrice ? (priceChange / latestPrice.open) * 100 : 0
+  const latestPrice = priceData[priceData.length - 1];
+  const priceChange = latestPrice ? latestPrice.close - latestPrice.open : 0;
+  const priceChangePercent = latestPrice
+    ? (priceChange / latestPrice.open) * 100
+    : 0;
 
   const CandlestickData = ({ payload, x, y, width, height }: any) => {
-    if (!payload) return null
+    if (!payload) return null;
 
-    const { open, high, low, close } = payload
-    const isRising = close > open
-    const color = isRising ? "#10B981" : "#EF4444"
-    const bodyHeight = Math.abs(close - open)
-    const bodyY = Math.min(open, close)
+    const { open, high, low, close } = payload;
+    const isRising = close > open;
+    const color = isRising ? "#10B981" : "#EF4444";
+    const bodyHeight = Math.abs(close - open);
+    const bodyY = Math.min(open, close);
 
     return (
       <g>
         {/* Wick */}
-        <line x1={x + width / 2} y1={high} x2={x + width / 2} y2={low} stroke={color} strokeWidth={1} />
+        <line
+          x1={x + width / 2}
+          y1={high}
+          x2={x + width / 2}
+          y2={low}
+          stroke={color}
+          strokeWidth={1}
+        />
         {/* Body */}
-        <rect x={x + 1} y={bodyY} width={width - 2} height={bodyHeight || 1} fill={color} />
+        <rect
+          x={x + 1}
+          y={bodyY}
+          width={width - 2}
+          height={bodyHeight || 1}
+          fill={color}
+        />
       </g>
-    )
-  }
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -253,11 +282,17 @@ export function LivePriceCharts() {
             </div>
 
             <div className="flex items-center space-x-4">
-              <Badge className={`${isLive ? "bg-green-500/10 text-green-400" : "bg-gray-500/10 text-gray-400"}`}>
+              <Badge
+                className={`${isLive ? "bg-green-500/10 text-green-400" : "bg-gray-500/10 text-gray-400"}`}
+              >
                 <Activity className="w-3 h-3 mr-1" />
                 {isLive ? "Live" : "Paused"}
               </Badge>
-              <Button variant="ghost" size="sm" onClick={() => setIsLive(!isLive)}>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsLive(!isLive)}
+              >
                 {isLive ? "Pause" : "Resume"}
               </Button>
             </div>
@@ -268,7 +303,9 @@ export function LivePriceCharts() {
             <div className="flex items-center justify-between pt-4 border-t border-gray-700">
               <div className="flex items-center space-x-6">
                 <div>
-                  <p className="text-2xl font-bold text-white">${latestPrice.close.toFixed(2)}</p>
+                  <p className="text-2xl font-bold text-white">
+                    ${latestPrice.close.toFixed(2)}
+                  </p>
                   <p className="text-sm text-gray-400">{selectedSymbol}</p>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -277,7 +314,11 @@ export function LivePriceCharts() {
                   ) : (
                     <TrendingDown className="w-4 h-4 text-red-400" />
                   )}
-                  <span className={priceChange >= 0 ? "text-green-400" : "text-red-400"}>
+                  <span
+                    className={
+                      priceChange >= 0 ? "text-green-400" : "text-red-400"
+                    }
+                  >
                     {priceChange >= 0 ? "+" : ""}
                     {priceChange.toFixed(2)} ({priceChangePercent.toFixed(2)}%)
                   </span>
@@ -287,19 +328,27 @@ export function LivePriceCharts() {
               <div className="grid grid-cols-4 gap-4 text-center">
                 <div>
                   <p className="text-xs text-gray-400">High</p>
-                  <p className="text-sm text-white">${latestPrice.high.toFixed(2)}</p>
+                  <p className="text-sm text-white">
+                    ${latestPrice.high.toFixed(2)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">Low</p>
-                  <p className="text-sm text-white">${latestPrice.low.toFixed(2)}</p>
+                  <p className="text-sm text-white">
+                    ${latestPrice.low.toFixed(2)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">Volume</p>
-                  <p className="text-sm text-white">{(latestPrice.volume / 1000000).toFixed(2)}M</p>
+                  <p className="text-sm text-white">
+                    {(latestPrice.volume / 1000000).toFixed(2)}M
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">RSI</p>
-                  <p className="text-sm text-white">{latestPrice.rsi.toFixed(1)}</p>
+                  <p className="text-sm text-white">
+                    {latestPrice.rsi.toFixed(1)}
+                  </p>
                 </div>
               </div>
             </div>
@@ -331,7 +380,13 @@ export function LivePriceCharts() {
                         borderRadius: "8px",
                       }}
                     />
-                    <Line type="monotone" dataKey="close" stroke="#30D5C8" strokeWidth={2} dot={false} />
+                    <Line
+                      type="monotone"
+                      dataKey="close"
+                      stroke="#30D5C8"
+                      strokeWidth={2}
+                      dot={false}
+                    />
                     {showIndicators && (
                       <>
                         <Line
@@ -367,7 +422,13 @@ export function LivePriceCharts() {
                         borderRadius: "8px",
                       }}
                     />
-                    <Area type="monotone" dataKey="close" stroke="#30D5C8" fill="#30D5C8" fillOpacity={0.3} />
+                    <Area
+                      type="monotone"
+                      dataKey="close"
+                      stroke="#30D5C8"
+                      fill="#30D5C8"
+                      fillOpacity={0.3}
+                    />
                   </AreaChart>
                 )}
 
@@ -383,11 +444,27 @@ export function LivePriceCharts() {
                         borderRadius: "8px",
                       }}
                     />
-                    <Bar dataKey="close" fill="#30D5C8" shape={<CandlestickData />} />
+                    <Bar
+                      dataKey="close"
+                      fill="#30D5C8"
+                      shape={<CandlestickData />}
+                    />
                     {showIndicators && (
                       <>
-                        <Line type="monotone" dataKey="ma20" stroke="#F59E0B" strokeWidth={1} dot={false} />
-                        <Line type="monotone" dataKey="ma50" stroke="#8B5CF6" strokeWidth={1} dot={false} />
+                        <Line
+                          type="monotone"
+                          dataKey="ma20"
+                          stroke="#F59E0B"
+                          strokeWidth={1}
+                          dot={false}
+                        />
+                        <Line
+                          type="monotone"
+                          dataKey="ma50"
+                          stroke="#8B5CF6"
+                          strokeWidth={1}
+                          dot={false}
+                        />
                       </>
                     )}
                   </ComposedChart>
@@ -401,7 +478,12 @@ export function LivePriceCharts() {
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                   <XAxis dataKey="time" stroke="#9CA3AF" fontSize={12} />
                   <YAxis yAxisId="left" stroke="#9CA3AF" fontSize={12} />
-                  <YAxis yAxisId="right" orientation="right" stroke="#9CA3AF" fontSize={12} />
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    stroke="#9CA3AF"
+                    fontSize={12}
+                  />
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "#1F2937",
@@ -409,8 +491,20 @@ export function LivePriceCharts() {
                       borderRadius: "8px",
                     }}
                   />
-                  <Bar yAxisId="left" dataKey="volume" fill="#6B7280" fillOpacity={0.6} />
-                  <Line yAxisId="right" type="monotone" dataKey="close" stroke="#30D5C8" strokeWidth={2} dot={false} />
+                  <Bar
+                    yAxisId="left"
+                    dataKey="volume"
+                    fill="#6B7280"
+                    fillOpacity={0.6}
+                  />
+                  <Line
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="close"
+                    stroke="#30D5C8"
+                    strokeWidth={2}
+                    dot={false}
+                  />
                 </ComposedChart>
               </ResponsiveContainer>
             </TabsContent>
@@ -432,9 +526,23 @@ export function LivePriceCharts() {
                           borderRadius: "8px",
                         }}
                       />
-                      <ReferenceLine y={70} stroke="#EF4444" strokeDasharray="3 3" />
-                      <ReferenceLine y={30} stroke="#10B981" strokeDasharray="3 3" />
-                      <Line type="monotone" dataKey="rsi" stroke="#8B5CF6" strokeWidth={2} dot={false} />
+                      <ReferenceLine
+                        y={70}
+                        stroke="#EF4444"
+                        strokeDasharray="3 3"
+                      />
+                      <ReferenceLine
+                        y={30}
+                        stroke="#10B981"
+                        strokeDasharray="3 3"
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="rsi"
+                        stroke="#8B5CF6"
+                        strokeWidth={2}
+                        dot={false}
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -454,8 +562,20 @@ export function LivePriceCharts() {
                           borderRadius: "8px",
                         }}
                       />
-                      <Line type="monotone" dataKey="macd" stroke="#30D5C8" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="signal" stroke="#F59E0B" strokeWidth={2} dot={false} />
+                      <Line
+                        type="monotone"
+                        dataKey="macd"
+                        stroke="#30D5C8"
+                        strokeWidth={2}
+                        dot={false}
+                      />
+                      <Line
+                        type="monotone"
+                        dataKey="signal"
+                        stroke="#F59E0B"
+                        strokeWidth={2}
+                        dot={false}
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -476,9 +596,14 @@ export function LivePriceCharts() {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             {technicalIndicators.map((indicator, index) => (
-              <div key={index} className="text-center p-3 bg-gray-800/30 rounded-lg">
+              <div
+                key={index}
+                className="text-center p-3 bg-gray-800/30 rounded-lg"
+              >
                 <p className="text-sm text-gray-400 mb-1">{indicator.name}</p>
-                <p className={`text-lg font-bold ${indicator.color}`}>{indicator.value}</p>
+                <p className={`text-lg font-bold ${indicator.color}`}>
+                  {indicator.value}
+                </p>
                 <Badge
                   className={`text-xs mt-1 ${
                     indicator.signal === "buy"
@@ -498,16 +623,22 @@ export function LivePriceCharts() {
             <div className="flex items-center justify-between">
               <div>
                 <h4 className="text-white font-medium">Overall Signal</h4>
-                <p className="text-gray-400 text-sm">Based on 6 technical indicators</p>
+                <p className="text-gray-400 text-sm">
+                  Based on 6 technical indicators
+                </p>
               </div>
               <div className="text-center">
-                <Badge className="bg-yellow-500/10 text-yellow-400 text-lg px-4 py-2">NEUTRAL</Badge>
-                <p className="text-xs text-gray-400 mt-1">3 Buy • 2 Sell • 1 Neutral</p>
+                <Badge className="bg-yellow-500/10 text-yellow-400 text-lg px-4 py-2">
+                  NEUTRAL
+                </Badge>
+                <p className="text-xs text-gray-400 mt-1">
+                  3 Buy • 2 Sell • 1 Neutral
+                </p>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

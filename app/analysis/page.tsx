@@ -19,24 +19,18 @@ import {
 
 export default function AnalysisPage() {
   const [activeTab, setActiveTab] = useState("technical");
+  const [selectedCrypto, setSelectedCrypto] = useState("BTC");
 
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">
-          Crypto Analysis Tools
-        </h1>
+        <h1 className="text-3xl font-bold tracking-tight">Crypto Analysis Tools</h1>
         <p className="text-muted-foreground">
-          Comprehensive analysis tools for cryptocurrency trading and investment
-          decisions
+          Comprehensive analysis tools for cryptocurrency trading and investment decisions
         </p>
       </div>
 
-      <Tabs
-        value={activeTab}
-        onValueChange={setActiveTab}
-        className="space-y-6"
-      >
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="technical" className="flex items-center gap-2">
             <BarChart3 className="h-4 w-4" />
@@ -65,11 +59,14 @@ export default function AnalysisPage() {
         </TabsList>
 
         <TabsContent value="technical" className="space-y-6">
-          <TechnicalAnalysis />
+          <TechnicalAnalysis
+            selectedCrypto={selectedCrypto}
+            onChange={setSelectedCrypto}
+          />
         </TabsContent>
 
         <TabsContent value="sentiment" className="space-y-6">
-          <SentimentAnalysis />
+          <SentimentAnalysis selectedCrypto={selectedCrypto} />
         </TabsContent>
 
         <TabsContent value="portfolio" className="space-y-6">
@@ -81,11 +78,14 @@ export default function AnalysisPage() {
         </TabsContent>
 
         <TabsContent value="ai" className="space-y-6">
-          <AIInsights />
+          <AIInsights selectedCrypto={selectedCrypto} />
         </TabsContent>
 
         <TabsContent value="screener" className="space-y-6">
-          <CryptoScreener />
+          <CryptoScreener
+            selectedCrypto={selectedCrypto}
+            onSelect={setSelectedCrypto}
+          />
         </TabsContent>
       </Tabs>
     </div>

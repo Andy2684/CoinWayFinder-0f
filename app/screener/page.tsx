@@ -1,4 +1,4 @@
-import { CryptoScreenerAdvanced } from "@/components/screener/crypto-screener-advanced"
+import { CryptoScreenerAdvanced } from "@/components/screener/crypto-screener-advanced";
 
 export default function ScreenerPage() {
   return (
@@ -7,5 +7,5 @@ export default function ScreenerPage() {
         <CryptoScreenerAdvanced />
       </div>
     </div>
-  )
+  );
 }

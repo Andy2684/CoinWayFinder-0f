@@ -1,16 +1,16 @@
-import { ProtectedRoute } from "@/components/auth/protected-route"
-import { DashboardOverview } from "@/components/dashboard/dashboard-overview"
-import { LiveMarketData } from "@/components/dashboard/live-market-data"
-import { ActiveStrategies } from "@/components/dashboard/active-strategies"
-import { PnLTracking } from "@/components/dashboard/pnl-tracking"
-import { TradeLogs } from "@/components/dashboard/trade-logs"
-import { QuickActions } from "@/components/dashboard/quick-actions"
-import { PortfolioAnalytics } from "@/components/dashboard/portfolio-analytics"
-import { RiskManagement } from "@/components/dashboard/risk-management"
+import { ProtectedRoute } from "@/components/auth/protected-route";
+import { DashboardOverview } from "@/components/dashboard/dashboard-overview";
+import { LiveMarketData } from "@/components/dashboard/live-market-data";
+import { ActiveStrategies } from "@/components/dashboard/active-strategies";
+import { PnLTracking } from "@/components/dashboard/pnl-tracking";
+import { TradeLogs } from "@/components/dashboard/trade-logs";
+import { QuickActions } from "@/components/dashboard/quick-actions";
+import { PortfolioAnalytics } from "@/components/dashboard/portfolio-analytics";
+import { RiskManagement } from "@/components/dashboard/risk-management";
 // Add imports for the new chart components
-import { LivePriceCharts } from "@/components/dashboard/live-price-charts"
-import { MarketHeatmap } from "@/components/dashboard/market-heatmap"
-import { TradingVolumeChart } from "@/components/dashboard/trading-volume-chart"
+import { LivePriceCharts } from "@/components/dashboard/live-price-charts";
+import { MarketHeatmap } from "@/components/dashboard/market-heatmap";
+import { TradingVolumeChart } from "@/components/dashboard/trading-volume-chart";
 
 export default function DashboardPage() {
   return (
@@ -19,7 +19,9 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-white">Trading Dashboard</h1>
-            <p className="text-gray-400 mt-2">Monitor your trading performance and manage your strategies</p>
+            <p className="text-gray-400 mt-2">
+              Monitor your trading performance and manage your strategies
+            </p>
           </div>
           <QuickActions />
         </div>
@@ -29,7 +31,9 @@ export default function DashboardPage() {
 
         {/* Live Charts Section */}
         <div className="space-y-8">
-          <h2 className="text-2xl font-bold text-white">📈 Live Market Analysis</h2>
+          <h2 className="text-2xl font-bold text-white">
+            📈 Live Market Analysis
+          </h2>
           <LivePriceCharts />
         </div>
 
@@ -61,5 +65,5 @@ export default function DashboardPage() {
         <TradeLogs />
       </div>
     </ProtectedRoute>
-  )
+  );
 }

@@ -1,7 +1,7 @@
 // components/navigation.tsx
-"use client"
+"use client";
 
-import Link from "next/link"
+import Link from "next/link";
 
 export function Navigation() {
   return (
@@ -12,5 +12,5 @@ export function Navigation() {
       <Link href="/signals">Signals</Link>
       <Link href="/bots">Bots</Link>
     </nav>
-  )
+  );
 }

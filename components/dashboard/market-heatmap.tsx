@@ -1,24 +1,30 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { TrendingUp, TrendingDown, Thermometer } from "lucide-react"
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { TrendingUp, TrendingDown, Thermometer } from "lucide-react";
 
 interface MarketAsset {
-  symbol: string
-  name: string
-  price: number
-  change24h: number
-  marketCap: number
-  volume24h: number
-  category: string
+  symbol: string;
+  name: string;
+  price: number;
+  change24h: number;
+  marketCap: number;
+  volume24h: number;
+  category: string;
 }
 
 export function MarketHeatmap() {
-  const [timeframe, setTimeframe] = useState("24h")
-  const [category, setCategory] = useState("all")
+  const [timeframe, setTimeframe] = useState("24h");
+  const [category, setCategory] = useState("all");
 
   const [marketData, setMarketData] = useState<MarketAsset[]>([
     {
@@ -129,7 +135,7 @@ export function MarketHeatmap() {
       volume24h: 45000000,
       category: "defi",
     },
-  ])
+  ]);
 
   // Simulate real-time updates
   useEffect(() => {
@@ -139,56 +145,64 @@ export function MarketHeatmap() {
           ...asset,
           change24h: asset.change24h + (Math.random() - 0.5) * 0.5,
         })),
-      )
-    }, 5000)
+      );
+    }, 5000);
 
-    return () => clearInterval(interval)
-  }, [])
+    return () => clearInterval(interval);
+  }, []);
 
-  const filteredData = category === "all" ? marketData : marketData.filter((asset) => asset.category === category)
+  const filteredData =
+    category === "all"
+      ? marketData
+      : marketData.filter((asset) => asset.category === category);
 
   const getHeatmapColor = (change: number) => {
-    const intensity = Math.min(Math.abs(change) / 5, 1) // Normalize to 0-1
+    const intensity = Math.min(Math.abs(change) / 5, 1); // Normalize to 0-1
     if (change > 0) {
       return {
         backgroundColor: `rgba(16, 185, 129, ${intensity * 0.7})`,
         borderColor: `rgba(16, 185, 129, ${intensity})`,
         textColor: intensity > 0.5 ? "text-white" : "text-green-400",
-      }
+      };
     } else {
       return {
         backgroundColor: `rgba(239, 68, 68, ${intensity * 0.7})`,
         borderColor: `rgba(239, 68, 68, ${intensity})`,
         textColor: intensity > 0.5 ? "text-white" : "text-red-400",
-      }
+      };
     }
-  }
+  };
 
   const formatMarketCap = (value: number) => {
-    if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`
-    if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`
-    if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`
-    return `$${value.toFixed(2)}`
-  }
+    if (value >= 1e12) return `$${(value / 1e12).toFixed(2)}T`;
+    if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+    if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+    return `$${value.toFixed(2)}`;
+  };
 
   const formatVolume = (value: number) => {
-    if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`
-    if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`
-    if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`
-    return `$${value.toFixed(2)}`
-  }
+    if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
+    if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
+    if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
+    return `$${value.toFixed(2)}`;
+  };
 
   // Calculate grid dimensions based on market cap
   const getGridSize = (marketCap: number) => {
-    if (marketCap >= 1e12) return "col-span-4 row-span-3" // Largest
-    if (marketCap >= 1e11) return "col-span-3 row-span-2" // Large
-    if (marketCap >= 1e10) return "col-span-2 row-span-2" // Medium
-    if (marketCap >= 1e9) return "col-span-2 row-span-1" // Small-medium
-    return "col-span-1 row-span-1" // Small
-  }
+    if (marketCap >= 1e12) return "col-span-4 row-span-3"; // Largest
+    if (marketCap >= 1e11) return "col-span-3 row-span-2"; // Large
+    if (marketCap >= 1e10) return "col-span-2 row-span-2"; // Medium
+    if (marketCap >= 1e9) return "col-span-2 row-span-1"; // Small-medium
+    return "col-span-1 row-span-1"; // Small
+  };
 
-  const totalMarketCap = filteredData.reduce((sum, asset) => sum + asset.marketCap, 0)
-  const averageChange = filteredData.reduce((sum, asset) => sum + asset.change24h, 0) / filteredData.length
+  const totalMarketCap = filteredData.reduce(
+    (sum, asset) => sum + asset.marketCap,
+    0,
+  );
+  const averageChange =
+    filteredData.reduce((sum, asset) => sum + asset.change24h, 0) /
+    filteredData.length;
 
   return (
     <Card className="bg-gray-900/50 border-gray-800">
@@ -231,7 +245,9 @@ export function MarketHeatmap() {
           <div className="flex items-center space-x-6">
             <div>
               <p className="text-sm text-gray-400">Total Market Cap</p>
-              <p className="text-lg font-bold text-white">{formatMarketCap(totalMarketCap)}</p>
+              <p className="text-lg font-bold text-white">
+                {formatMarketCap(totalMarketCap)}
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-400">Average Change</p>
@@ -241,24 +257,31 @@ export function MarketHeatmap() {
                 ) : (
                   <TrendingDown className="w-4 h-4 text-red-400" />
                 )}
-                <p className={`text-lg font-bold ${averageChange >= 0 ? "text-green-400" : "text-red-400"}`}>
+                <p
+                  className={`text-lg font-bold ${averageChange >= 0 ? "text-green-400" : "text-red-400"}`}
+                >
                   {averageChange >= 0 ? "+" : ""}
                   {averageChange.toFixed(2)}%
                 </p>
               </div>
             </div>
           </div>
-          <Badge className="bg-[#30D5C8]/10 text-[#30D5C8]">{filteredData.length} Assets</Badge>
+          <Badge className="bg-[#30D5C8]/10 text-[#30D5C8]">
+            {filteredData.length} Assets
+          </Badge>
         </div>
       </CardHeader>
       <CardContent>
         {/* Heatmap Grid */}
-        <div className="grid grid-cols-8 gap-2 mb-6" style={{ minHeight: "400px" }}>
+        <div
+          className="grid grid-cols-8 gap-2 mb-6"
+          style={{ minHeight: "400px" }}
+        >
           {filteredData
             .sort((a, b) => b.marketCap - a.marketCap)
             .map((asset, index) => {
-              const colors = getHeatmapColor(asset.change24h)
-              const gridSize = getGridSize(asset.marketCap)
+              const colors = getHeatmapColor(asset.change24h);
+              const gridSize = getGridSize(asset.marketCap);
 
               return (
                 <div
@@ -271,15 +294,24 @@ export function MarketHeatmap() {
                 >
                   <div className="h-full flex flex-col justify-between">
                     <div>
-                      <h4 className={`font-bold text-sm ${colors.textColor}`}>{asset.symbol}</h4>
-                      <p className={`text-xs opacity-80 ${colors.textColor}`}>{asset.name}</p>
+                      <h4 className={`font-bold text-sm ${colors.textColor}`}>
+                        {asset.symbol}
+                      </h4>
+                      <p className={`text-xs opacity-80 ${colors.textColor}`}>
+                        {asset.name}
+                      </p>
                     </div>
 
                     <div className="mt-2">
                       <p className={`text-lg font-bold ${colors.textColor}`}>
-                        ${asset.price < 1 ? asset.price.toFixed(4) : asset.price.toFixed(2)}
+                        $
+                        {asset.price < 1
+                          ? asset.price.toFixed(4)
+                          : asset.price.toFixed(2)}
                       </p>
-                      <div className={`flex items-center space-x-1 ${colors.textColor}`}>
+                      <div
+                        className={`flex items-center space-x-1 ${colors.textColor}`}
+                      >
                         {asset.change24h >= 0 ? (
                           <TrendingUp className="w-3 h-3" />
                         ) : (
@@ -293,12 +325,16 @@ export function MarketHeatmap() {
                     </div>
 
                     <div className="mt-2 text-xs opacity-70">
-                      <p className={colors.textColor}>MC: {formatMarketCap(asset.marketCap)}</p>
-                      <p className={colors.textColor}>Vol: {formatVolume(asset.volume24h)}</p>
+                      <p className={colors.textColor}>
+                        MC: {formatMarketCap(asset.marketCap)}
+                      </p>
+                      <p className={colors.textColor}>
+                        Vol: {formatVolume(asset.volume24h)}
+                      </p>
                     </div>
                   </div>
                 </div>
-              )
+              );
             })}
         </div>
 
@@ -327,5 +363,5 @@ export function MarketHeatmap() {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }

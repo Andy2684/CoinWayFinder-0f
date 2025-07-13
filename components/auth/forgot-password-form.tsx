@@ -1,29 +1,35 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Mail, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react"
-import Link from "next/link"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Mail, ArrowLeft, CheckCircle, AlertCircle } from "lucide-react";
+import Link from "next/link";
 
 export function ForgotPasswordForm() {
-  const [email, setEmail] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const [message, setMessage] = useState("")
-  const [error, setError] = useState("")
-  const [resetLink, setResetLink] = useState("")
+  const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [resetLink, setResetLink] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
-    setMessage("")
-    setResetLink("")
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    setMessage("");
+    setResetLink("");
 
     try {
       const response = await fetch("/api/auth/forgot-password", {
@@ -32,25 +38,25 @@ export function ForgotPasswordForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ email }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (response.ok) {
-        setMessage(data.message || "Password reset link sent to your email")
+        setMessage(data.message || "Password reset link sent to your email");
         // For demo purposes, show the reset link
         if (data.resetLink) {
-          setResetLink(data.resetLink)
+          setResetLink(data.resetLink);
         }
       } else {
-        setError(data.error || "Failed to send reset email")
+        setError(data.error || "Failed to send reset email");
       }
     } catch (error) {
-      setError("Network error. Please try again.")
+      setError("Network error. Please try again.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#191A1E] p-4">
@@ -59,9 +65,12 @@ export function ForgotPasswordForm() {
           <div className="w-16 h-16 bg-[#30D5C8]/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <Mail className="w-8 h-8 text-[#30D5C8]" />
           </div>
-          <CardTitle className="text-2xl font-bold text-white">Forgot Password</CardTitle>
+          <CardTitle className="text-2xl font-bold text-white">
+            Forgot Password
+          </CardTitle>
           <CardDescription className="text-gray-400">
-            Enter your email address and we'll send you a link to reset your password
+            Enter your email address and we'll send you a link to reset your
+            password
           </CardDescription>
         </CardHeader>
 
@@ -69,15 +78,24 @@ export function ForgotPasswordForm() {
           {message && (
             <Alert className="border-green-500/20 bg-green-500/10">
               <CheckCircle className="h-4 w-4 text-green-400" />
-              <AlertDescription className="text-green-300">{message}</AlertDescription>
+              <AlertDescription className="text-green-300">
+                {message}
+              </AlertDescription>
             </Alert>
           )}
 
           {resetLink && (
             <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
-              <h3 className="text-blue-400 font-semibold mb-2">Demo Reset Link</h3>
-              <p className="text-blue-300 text-sm mb-2">Click the link below to reset your password:</p>
-              <Link href={resetLink} className="text-blue-400 hover:text-blue-300 underline text-sm break-all">
+              <h3 className="text-blue-400 font-semibold mb-2">
+                Demo Reset Link
+              </h3>
+              <p className="text-blue-300 text-sm mb-2">
+                Click the link below to reset your password:
+              </p>
+              <Link
+                href={resetLink}
+                className="text-blue-400 hover:text-blue-300 underline text-sm break-all"
+              >
                 {resetLink}
               </Link>
             </div>
@@ -86,7 +104,9 @@ export function ForgotPasswordForm() {
           {error && (
             <Alert className="border-red-500/20 bg-red-500/10">
               <AlertCircle className="h-4 w-4 text-red-400" />
-              <AlertDescription className="text-red-300">{error}</AlertDescription>
+              <AlertDescription className="text-red-300">
+                {error}
+              </AlertDescription>
             </Alert>
           )}
 
@@ -119,7 +139,10 @@ export function ForgotPasswordForm() {
           </form>
 
           <div className="text-center">
-            <Link href="/login" className="inline-flex items-center text-sm text-[#30D5C8] hover:underline">
+            <Link
+              href="/login"
+              className="inline-flex items-center text-sm text-[#30D5C8] hover:underline"
+            >
               <ArrowLeft className="w-4 h-4 mr-1" />
               Back to Login
             </Link>
@@ -127,5 +150,5 @@ export function ForgotPasswordForm() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

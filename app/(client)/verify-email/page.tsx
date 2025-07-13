@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import {
   Card,
@@ -27,6 +27,32 @@ export default function VerifyEmailPage() {
 
   const token = searchParams.get("token");
 
+  const verifyEmail = useCallback(
+    async (verificationToken: string) => {
+      try {
+        const response = await fetch(
+          `/api/auth/verify-email?token=${verificationToken}`,
+        );
+        const result = await response.json();
+
+        if (response.ok) {
+          setStatus("success");
+          setMessage(result.message);
+          if (result.token && result.user) {
+            login(result.token, result.user);
+          }
+        } else {
+          setStatus("error");
+          setMessage(result.error || "Verification failed");
+        }
+      } catch (error) {
+        setStatus("error");
+        setMessage("Network error. Please try again.");
+      }
+    },
+    [login],
+  );
+
   useEffect(() => {
     if (!token) {
       setStatus("error");
@@ -35,12 +61,12 @@ export default function VerifyEmailPage() {
     }
 
     verifyEmail(token);
-  }, [token]);
+  }, [token, verifyEmail]);
 
   useEffect(() => {
     if (status === "success" && countdown > 0) {
       const timer = setTimeout(() => {
-        setCountdown(countdown - 1);
+        setCountdown((prev) => prev - 1);
       }, 1000);
       return () => clearTimeout(timer);
     } else if (status === "success" && countdown === 0) {
@@ -48,34 +74,7 @@ export default function VerifyEmailPage() {
     }
   }, [status, countdown, router]);
 
-  const verifyEmail = async (verificationToken: string) => {
-    try {
-      const response = await fetch(
-        `/api/auth/verify-email?token=${verificationToken}`,
-      );
-      const result = await response.json();
-
-      if (response.ok) {
-        setStatus("success");
-        setMessage(result.message);
-
-        // Auto-login the user
-        if (result.token && result.user) {
-          login(result.token, result.user);
-        }
-      } else {
-        setStatus("error");
-        setMessage(result.error || "Verification failed");
-      }
-    } catch (error) {
-      setStatus("error");
-      setMessage("Network error. Please try again.");
-    }
-  };
-
   const resendVerification = async () => {
-    // This would need the user's email - in a real app, you might store this in localStorage
-    // or require the user to enter their email again
     alert("Please contact support to resend verification email");
   };
 

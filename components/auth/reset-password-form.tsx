@@ -1,76 +1,82 @@
-"use client"
+"use client";
 
-import type React from "react"
-import { useState, useEffect } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Lock, Eye, EyeOff, CheckCircle, AlertCircle } from "lucide-react"
-import Link from "next/link"
+import type React from "react";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Lock, Eye, EyeOff, CheckCircle, AlertCircle } from "lucide-react";
+import Link from "next/link";
 
 export function ResetPasswordForm() {
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [message, setMessage] = useState("")
-  const [error, setError] = useState("")
-  const [tokenValid, setTokenValid] = useState<boolean | null>(null)
-  const [userEmail, setUserEmail] = useState("")
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [tokenValid, setTokenValid] = useState<boolean | null>(null);
+  const [userEmail, setUserEmail] = useState("");
 
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const token = searchParams.get("token")
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const token = searchParams.get("token");
 
   useEffect(() => {
     if (!token) {
-      setError("Invalid reset link")
-      setTokenValid(false)
-      return
+      setError("Invalid reset link");
+      setTokenValid(false);
+      return;
     }
 
     // Validate token
     const validateToken = async () => {
       try {
-        const response = await fetch(`/api/auth/reset-password?token=${token}`)
-        const data = await response.json()
+        const response = await fetch(`/api/auth/reset-password?token=${token}`);
+        const data = await response.json();
 
         if (response.ok) {
-          setTokenValid(true)
-          setUserEmail(data.email)
+          setTokenValid(true);
+          setUserEmail(data.email);
         } else {
-          setError(data.error || "Invalid or expired reset token")
-          setTokenValid(false)
+          setError(data.error || "Invalid or expired reset token");
+          setTokenValid(false);
         }
       } catch (error) {
-        setError("Failed to validate reset token")
-        setTokenValid(false)
+        setError("Failed to validate reset token");
+        setTokenValid(false);
       }
-    }
+    };
 
-    validateToken()
-  }, [token])
+    validateToken();
+  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
-    setMessage("")
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    setMessage("");
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match")
-      setIsLoading(false)
-      return
+      setError("Passwords do not match");
+      setIsLoading(false);
+      return;
     }
 
     if (password.length < 8) {
-      setError("Password must be at least 8 characters long")
-      setIsLoading(false)
-      return
+      setError("Password must be at least 8 characters long");
+      setIsLoading(false);
+      return;
     }
 
     try {
@@ -80,24 +86,24 @@ export function ResetPasswordForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({ token, password }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (response.ok) {
-        setMessage("Password reset successfully! Redirecting to login...")
+        setMessage("Password reset successfully! Redirecting to login...");
         setTimeout(() => {
-          router.push("/login")
-        }, 2000)
+          router.push("/login");
+        }, 2000);
       } else {
-        setError(data.error || "Failed to reset password")
+        setError(data.error || "Failed to reset password");
       }
     } catch (error) {
-      setError("Network error. Please try again.")
+      setError("Network error. Please try again.");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   if (tokenValid === null) {
     return (
@@ -111,7 +117,7 @@ export function ResetPasswordForm() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   if (tokenValid === false) {
@@ -122,7 +128,9 @@ export function ResetPasswordForm() {
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <AlertCircle className="w-8 h-8 text-red-400" />
             </div>
-            <CardTitle className="text-2xl font-bold text-white">Invalid Reset Link</CardTitle>
+            <CardTitle className="text-2xl font-bold text-white">
+              Invalid Reset Link
+            </CardTitle>
             <CardDescription className="text-gray-400">
               This password reset link is invalid or has expired
             </CardDescription>
@@ -130,7 +138,9 @@ export function ResetPasswordForm() {
           <CardContent className="text-center">
             <Alert className="border-red-500/20 bg-red-500/10 mb-6">
               <AlertCircle className="h-4 w-4 text-red-400" />
-              <AlertDescription className="text-red-300">{error}</AlertDescription>
+              <AlertDescription className="text-red-300">
+                {error}
+              </AlertDescription>
             </Alert>
             <div className="space-y-4">
               <Link
@@ -139,14 +149,17 @@ export function ResetPasswordForm() {
               >
                 Request New Reset Link
               </Link>
-              <Link href="/login" className="block w-full text-[#30D5C8] hover:underline text-center">
+              <Link
+                href="/login"
+                className="block w-full text-[#30D5C8] hover:underline text-center"
+              >
                 Back to Login
               </Link>
             </div>
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
   return (
@@ -156,22 +169,30 @@ export function ResetPasswordForm() {
           <div className="w-16 h-16 bg-[#30D5C8]/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <Lock className="w-8 h-8 text-[#30D5C8]" />
           </div>
-          <CardTitle className="text-2xl font-bold text-white">Reset Password</CardTitle>
-          <CardDescription className="text-gray-400">Enter your new password for {userEmail}</CardDescription>
+          <CardTitle className="text-2xl font-bold text-white">
+            Reset Password
+          </CardTitle>
+          <CardDescription className="text-gray-400">
+            Enter your new password for {userEmail}
+          </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
           {message && (
             <Alert className="border-green-500/20 bg-green-500/10">
               <CheckCircle className="h-4 w-4 text-green-400" />
-              <AlertDescription className="text-green-300">{message}</AlertDescription>
+              <AlertDescription className="text-green-300">
+                {message}
+              </AlertDescription>
             </Alert>
           )}
 
           {error && (
             <Alert className="border-red-500/20 bg-red-500/10">
               <AlertCircle className="h-4 w-4 text-red-400" />
-              <AlertDescription className="text-red-300">{error}</AlertDescription>
+              <AlertDescription className="text-red-300">
+                {error}
+              </AlertDescription>
             </Alert>
           )}
 
@@ -197,7 +218,11 @@ export function ResetPasswordForm() {
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-3 text-gray-400 hover:text-gray-300"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
@@ -223,12 +248,18 @@ export function ResetPasswordForm() {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-3 text-gray-400 hover:text-gray-300"
                 >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </button>
               </div>
             </div>
 
-            <div className="text-sm text-gray-400">Password must be at least 8 characters long</div>
+            <div className="text-sm text-gray-400">
+              Password must be at least 8 characters long
+            </div>
 
             <Button
               type="submit"
@@ -240,12 +271,15 @@ export function ResetPasswordForm() {
           </form>
 
           <div className="text-center">
-            <Link href="/login" className="text-sm text-[#30D5C8] hover:underline">
+            <Link
+              href="/login"
+              className="text-sm text-[#30D5C8] hover:underline"
+            >
               Back to Login
             </Link>
           </div>
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
