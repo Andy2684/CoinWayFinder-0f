@@ -1,41 +1,28 @@
-"use client";
+"use client"
 
-import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  TrendingUp,
-  TrendingDown,
-  Activity,
-  Volume2,
-  Zap,
-  RefreshCw,
-} from "lucide-react";
+import { useState, useEffect } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { TrendingUp, TrendingDown, Activity, Volume2, Zap, RefreshCw } from "lucide-react"
 
 interface MarketData {
-  symbol: string;
-  exchange: string;
-  price: number;
-  change24h: number;
-  volume24h: number;
-  high24h: number;
-  low24h: number;
-  fundingRate?: number;
-  openInterest?: number;
-  liquidations?: number;
-  lastUpdate: string;
+  symbol: string
+  exchange: string
+  price: number
+  change24h: number
+  volume24h: number
+  high24h: number
+  low24h: number
+  fundingRate?: number
+  openInterest?: number
+  liquidations?: number
+  lastUpdate: string
 }
 
 export function LiveMarketData() {
-  const [selectedExchange, setSelectedExchange] = useState("all");
+  const [selectedExchange, setSelectedExchange] = useState("all")
   const [marketData, setMarketData] = useState<MarketData[]>([
     {
       symbol: "BTC/USDT",
@@ -96,9 +83,9 @@ export function LiveMarketData() {
       low24h: 0.8567,
       lastUpdate: "2 seconds ago",
     },
-  ]);
+  ])
 
-  const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [lastRefresh, setLastRefresh] = useState(new Date())
 
   const refreshData = () => {
     // Simulate real-time data updates
@@ -109,32 +96,30 @@ export function LiveMarketData() {
         change24h: item.change24h + (Math.random() - 0.5) * 0.1,
         lastUpdate: "Just now",
       })),
-    );
-    setLastRefresh(new Date());
-  };
+    )
+    setLastRefresh(new Date())
+  }
 
   useEffect(() => {
-    const interval = setInterval(refreshData, 3000); // Update every 3 seconds
-    return () => clearInterval(interval);
-  }, []);
+    const interval = setInterval(refreshData, 3000) // Update every 3 seconds
+    return () => clearInterval(interval)
+  }, [])
 
   const filteredData =
-    selectedExchange === "all"
-      ? marketData
-      : marketData.filter((item) => item.exchange === selectedExchange);
+    selectedExchange === "all" ? marketData : marketData.filter((item) => item.exchange === selectedExchange)
 
   const formatVolume = (volume: number) => {
-    if (volume >= 1e9) return `$${(volume / 1e9).toFixed(2)}B`;
-    if (volume >= 1e6) return `$${(volume / 1e6).toFixed(2)}M`;
-    if (volume >= 1e3) return `$${(volume / 1e3).toFixed(2)}K`;
-    return `$${volume.toFixed(2)}`;
-  };
+    if (volume >= 1e9) return `$${(volume / 1e9).toFixed(2)}B`
+    if (volume >= 1e6) return `$${(volume / 1e6).toFixed(2)}M`
+    if (volume >= 1e3) return `$${(volume / 1e3).toFixed(2)}K`
+    return `$${volume.toFixed(2)}`
+  }
 
   const formatNumber = (num: number) => {
-    if (num >= 1e6) return `${(num / 1e6).toFixed(2)}M`;
-    if (num >= 1e3) return `${(num / 1e3).toFixed(2)}K`;
-    return num.toFixed(2);
-  };
+    if (num >= 1e6) return `${(num / 1e6).toFixed(2)}M`
+    if (num >= 1e3) return `${(num / 1e3).toFixed(2)}K`
+    return num.toFixed(2)
+  }
 
   return (
     <Card className="bg-gray-900/50 border-gray-800">
@@ -145,10 +130,7 @@ export function LiveMarketData() {
             Live Market Data
           </CardTitle>
           <div className="flex items-center space-x-2">
-            <Select
-              value={selectedExchange}
-              onValueChange={setSelectedExchange}
-            >
+            <Select value={selectedExchange} onValueChange={setSelectedExchange}>
               <SelectTrigger className="w-32 bg-gray-800 border-gray-700 text-white">
                 <SelectValue />
               </SelectTrigger>
@@ -161,12 +143,7 @@ export function LiveMarketData() {
                 <SelectItem value="Coinbase">Coinbase</SelectItem>
               </SelectContent>
             </Select>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={refreshData}
-              className="h-8 w-8 p-0"
-            >
+            <Button variant="ghost" size="sm" onClick={refreshData} className="h-8 w-8 p-0">
               <RefreshCw className="w-4 h-4" />
             </Button>
           </div>
@@ -176,18 +153,13 @@ export function LiveMarketData() {
             <Activity className="w-3 h-3 mr-1" />
             Live
           </Badge>
-          <span className="text-xs text-gray-400">
-            Last updated: {lastRefresh.toLocaleTimeString()}
-          </span>
+          <span className="text-xs text-gray-400">Last updated: {lastRefresh.toLocaleTimeString()}</span>
         </div>
       </CardHeader>
       <CardContent>
         <div className="space-y-3">
           {filteredData.map((item, index) => (
-            <div
-              key={index}
-              className="p-4 bg-gray-800/30 rounded-lg border border-gray-700"
-            >
+            <div key={index} className="p-4 bg-gray-800/30 rounded-lg border border-gray-700">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center space-x-3">
                   <div>
@@ -196,20 +168,14 @@ export function LiveMarketData() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-bold text-white">
-                    ${item.price.toFixed(2)}
-                  </p>
+                  <p className="text-lg font-bold text-white">${item.price.toFixed(2)}</p>
                   <div className="flex items-center space-x-1">
                     {item.change24h > 0 ? (
                       <TrendingUp className="w-3 h-3 text-green-400" />
                     ) : (
                       <TrendingDown className="w-3 h-3 text-red-400" />
                     )}
-                    <span
-                      className={
-                        item.change24h > 0 ? "text-green-400" : "text-red-400"
-                      }
-                    >
+                    <span className={item.change24h > 0 ? "text-green-400" : "text-red-400"}>
                       {item.change24h > 0 ? "+" : ""}
                       {item.change24h.toFixed(2)}%
                     </span>
@@ -223,9 +189,7 @@ export function LiveMarketData() {
                     <Volume2 className="w-3 h-3 text-gray-400" />
                     <p className="text-xs text-gray-400">24h Volume</p>
                   </div>
-                  <p className="text-sm text-white">
-                    {formatVolume(item.volume24h)}
-                  </p>
+                  <p className="text-sm text-white">{formatVolume(item.volume24h)}</p>
                 </div>
 
                 <div>
@@ -238,9 +202,7 @@ export function LiveMarketData() {
                 {item.fundingRate && (
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Funding Rate</p>
-                    <p
-                      className={`text-sm ${item.fundingRate > 0 ? "text-green-400" : "text-red-400"}`}
-                    >
+                    <p className={`text-sm ${item.fundingRate > 0 ? "text-green-400" : "text-red-400"}`}>
                       {(item.fundingRate * 100).toFixed(4)}%
                     </p>
                   </div>
@@ -249,9 +211,7 @@ export function LiveMarketData() {
                 {item.openInterest && (
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Open Interest</p>
-                    <p className="text-sm text-white">
-                      ${formatNumber(item.openInterest)}
-                    </p>
+                    <p className="text-sm text-white">${formatNumber(item.openInterest)}</p>
                   </div>
                 )}
               </div>
@@ -263,9 +223,7 @@ export function LiveMarketData() {
                       <Zap className="w-3 h-3 text-red-400" />
                       <p className="text-xs text-gray-400">24h Liquidations</p>
                     </div>
-                    <p className="text-sm text-red-400">
-                      ${formatNumber(item.liquidations)}
-                    </p>
+                    <p className="text-sm text-red-400">${formatNumber(item.liquidations)}</p>
                   </div>
                 </div>
               )}
@@ -278,5 +236,5 @@ export function LiveMarketData() {
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }

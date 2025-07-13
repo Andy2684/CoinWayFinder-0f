@@ -1,19 +1,13 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Slider } from "@/components/ui/slider";
-import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Slider } from "@/components/ui/slider"
+import { Switch } from "@/components/ui/switch"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Dialog,
   DialogContent,
@@ -21,15 +15,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Bot, Settings, TrendingUp, Shield, Zap } from "lucide-react";
+} from "@/components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Plus, Bot, Settings, TrendingUp, Shield, Zap } from "lucide-react"
 
 export function CreateBotDialog() {
-  const [open, setOpen] = useState(false);
-  const [selectedStrategy, setSelectedStrategy] = useState("");
+  const [open, setOpen] = useState(false)
+  const [selectedStrategy, setSelectedStrategy] = useState("")
   const [botConfig, setBotConfig] = useState({
     name: "",
     strategy: "",
@@ -44,7 +38,7 @@ export function CreateBotDialog() {
     dcaSteps: 3,
     dcaDeviation: 2,
     description: "",
-  });
+  })
 
   const strategies = [
     {
@@ -83,7 +77,7 @@ export function CreateBotDialog() {
       icon: TrendingUp,
       color: "bg-green-500/10 text-green-400",
     },
-  ];
+  ]
 
   const tradingPairs = [
     "BTC/USDT",
@@ -96,13 +90,13 @@ export function CreateBotDialog() {
     "LINK/USDT",
     "UNI/USDT",
     "AVAX/USDT",
-  ];
+  ]
 
   const handleCreateBot = () => {
-    console.log("Creating bot with config:", botConfig);
-    setOpen(false);
+    console.log("Creating bot with config:", botConfig)
+    setOpen(false)
     // Here you would typically send the config to your API
-  };
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -119,35 +113,22 @@ export function CreateBotDialog() {
             Create Trading Bot
           </DialogTitle>
           <DialogDescription className="text-gray-400">
-            Configure your automated trading bot with custom parameters and risk
-            management
+            Configure your automated trading bot with custom parameters and risk management
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="strategy" className="w-full">
           <TabsList className="grid w-full grid-cols-4 bg-gray-800">
-            <TabsTrigger
-              value="strategy"
-              className="text-gray-300 data-[state=active]:text-white"
-            >
+            <TabsTrigger value="strategy" className="text-gray-300 data-[state=active]:text-white">
               Strategy
             </TabsTrigger>
-            <TabsTrigger
-              value="config"
-              className="text-gray-300 data-[state=active]:text-white"
-            >
+            <TabsTrigger value="config" className="text-gray-300 data-[state=active]:text-white">
               Configuration
             </TabsTrigger>
-            <TabsTrigger
-              value="risk"
-              className="text-gray-300 data-[state=active]:text-white"
-            >
+            <TabsTrigger value="risk" className="text-gray-300 data-[state=active]:text-white">
               Risk Management
             </TabsTrigger>
-            <TabsTrigger
-              value="advanced"
-              className="text-gray-300 data-[state=active]:text-white"
-            >
+            <TabsTrigger value="advanced" className="text-gray-300 data-[state=active]:text-white">
               Advanced
             </TabsTrigger>
           </TabsList>
@@ -164,39 +145,27 @@ export function CreateBotDialog() {
                       : "border-gray-800 bg-gray-900/50 hover:border-gray-700"
                   }`}
                   onClick={() => {
-                    setSelectedStrategy(strategy.id);
-                    setBotConfig({ ...botConfig, strategy: strategy.id });
+                    setSelectedStrategy(strategy.id)
+                    setBotConfig({ ...botConfig, strategy: strategy.id })
                   }}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-center space-x-3">
-                      <div
-                        className={`w-10 h-10 rounded-lg flex items-center justify-center ${strategy.color}`}
-                      >
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${strategy.color}`}>
                         <strategy.icon className="w-5 h-5" />
                       </div>
                       <div>
-                        <CardTitle className="text-white text-sm">
-                          {strategy.name}
-                        </CardTitle>
-                        <p className="text-xs text-gray-400">
-                          {strategy.description}
-                        </p>
+                        <CardTitle className="text-white text-sm">{strategy.name}</CardTitle>
+                        <p className="text-xs text-gray-400">{strategy.description}</p>
                       </div>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-0">
                     <div className="flex space-x-2">
-                      <Badge
-                        variant="outline"
-                        className="text-xs border-gray-600 text-gray-300"
-                      >
+                      <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
                         {strategy.difficulty}
                       </Badge>
-                      <Badge
-                        variant="outline"
-                        className="text-xs border-gray-600 text-gray-300"
-                      >
+                      <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
                         {strategy.risk} Risk
                       </Badge>
                     </div>
@@ -218,9 +187,7 @@ export function CreateBotDialog() {
                     id="botName"
                     placeholder="My Trading Bot"
                     value={botConfig.name}
-                    onChange={(e) =>
-                      setBotConfig({ ...botConfig, name: e.target.value })
-                    }
+                    onChange={(e) => setBotConfig({ ...botConfig, name: e.target.value })}
                     className="bg-gray-800 border-gray-700 text-white"
                   />
                 </div>
@@ -229,12 +196,7 @@ export function CreateBotDialog() {
                   <Label htmlFor="tradingPair" className="text-white">
                     Trading Pair
                   </Label>
-                  <Select
-                    value={botConfig.pair}
-                    onValueChange={(value) =>
-                      setBotConfig({ ...botConfig, pair: value })
-                    }
-                  >
+                  <Select value={botConfig.pair} onValueChange={(value) => setBotConfig({ ...botConfig, pair: value })}>
                     <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
                       <SelectValue placeholder="Select trading pair" />
                     </SelectTrigger>
@@ -256,12 +218,7 @@ export function CreateBotDialog() {
                     id="investment"
                     type="number"
                     value={botConfig.investment}
-                    onChange={(e) =>
-                      setBotConfig({
-                        ...botConfig,
-                        investment: Number(e.target.value),
-                      })
-                    }
+                    onChange={(e) => setBotConfig({ ...botConfig, investment: Number(e.target.value) })}
                     className="bg-gray-800 border-gray-700 text-white"
                   />
                 </div>
@@ -269,14 +226,10 @@ export function CreateBotDialog() {
 
               <div className="space-y-4">
                 <div>
-                  <Label className="text-white">
-                    Risk Level: {botConfig.riskLevel}%
-                  </Label>
+                  <Label className="text-white">Risk Level: {botConfig.riskLevel}%</Label>
                   <Slider
                     value={[botConfig.riskLevel]}
-                    onValueChange={(value) =>
-                      setBotConfig({ ...botConfig, riskLevel: value[0] })
-                    }
+                    onValueChange={(value) => setBotConfig({ ...botConfig, riskLevel: value[0] })}
                     max={100}
                     step={1}
                     className="mt-2"
@@ -295,12 +248,7 @@ export function CreateBotDialog() {
                     id="maxTrades"
                     type="number"
                     value={botConfig.maxTrades}
-                    onChange={(e) =>
-                      setBotConfig({
-                        ...botConfig,
-                        maxTrades: Number(e.target.value),
-                      })
-                    }
+                    onChange={(e) => setBotConfig({ ...botConfig, maxTrades: Number(e.target.value) })}
                     className="bg-gray-800 border-gray-700 text-white"
                   />
                 </div>
@@ -313,12 +261,7 @@ export function CreateBotDialog() {
                     id="description"
                     placeholder="Describe your bot strategy..."
                     value={botConfig.description}
-                    onChange={(e) =>
-                      setBotConfig({
-                        ...botConfig,
-                        description: e.target.value,
-                      })
-                    }
+                    onChange={(e) => setBotConfig({ ...botConfig, description: e.target.value })}
                     className="bg-gray-800 border-gray-700 text-white"
                   />
                 </div>
@@ -338,14 +281,10 @@ export function CreateBotDialog() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <Label className="text-white">
-                      Stop Loss: {botConfig.stopLoss}%
-                    </Label>
+                    <Label className="text-white">Stop Loss: {botConfig.stopLoss}%</Label>
                     <Slider
                       value={[botConfig.stopLoss]}
-                      onValueChange={(value) =>
-                        setBotConfig({ ...botConfig, stopLoss: value[0] })
-                      }
+                      onValueChange={(value) => setBotConfig({ ...botConfig, stopLoss: value[0] })}
                       max={20}
                       min={1}
                       step={0.5}
@@ -354,14 +293,10 @@ export function CreateBotDialog() {
                   </div>
 
                   <div>
-                    <Label className="text-white">
-                      Take Profit: {botConfig.takeProfit}%
-                    </Label>
+                    <Label className="text-white">Take Profit: {botConfig.takeProfit}%</Label>
                     <Slider
                       value={[botConfig.takeProfit]}
-                      onValueChange={(value) =>
-                        setBotConfig({ ...botConfig, takeProfit: value[0] })
-                      }
+                      onValueChange={(value) => setBotConfig({ ...botConfig, takeProfit: value[0] })}
                       max={50}
                       min={2}
                       step={0.5}
@@ -376,9 +311,7 @@ export function CreateBotDialog() {
                     <Switch
                       id="trailing"
                       checked={botConfig.enableTrailing}
-                      onCheckedChange={(checked) =>
-                        setBotConfig({ ...botConfig, enableTrailing: checked })
-                      }
+                      onCheckedChange={(checked) => setBotConfig({ ...botConfig, enableTrailing: checked })}
                     />
                   </div>
                 </CardContent>
@@ -399,9 +332,7 @@ export function CreateBotDialog() {
                     <Switch
                       id="enableDCA"
                       checked={botConfig.enableDCA}
-                      onCheckedChange={(checked) =>
-                        setBotConfig({ ...botConfig, enableDCA: checked })
-                      }
+                      onCheckedChange={(checked) => setBotConfig({ ...botConfig, enableDCA: checked })}
                     />
                   </div>
 
@@ -415,28 +346,16 @@ export function CreateBotDialog() {
                           id="dcaSteps"
                           type="number"
                           value={botConfig.dcaSteps}
-                          onChange={(e) =>
-                            setBotConfig({
-                              ...botConfig,
-                              dcaSteps: Number(e.target.value),
-                            })
-                          }
+                          onChange={(e) => setBotConfig({ ...botConfig, dcaSteps: Number(e.target.value) })}
                           className="bg-gray-800 border-gray-700 text-white"
                         />
                       </div>
 
                       <div>
-                        <Label className="text-white">
-                          Price Deviation: {botConfig.dcaDeviation}%
-                        </Label>
+                        <Label className="text-white">Price Deviation: {botConfig.dcaDeviation}%</Label>
                         <Slider
                           value={[botConfig.dcaDeviation]}
-                          onValueChange={(value) =>
-                            setBotConfig({
-                              ...botConfig,
-                              dcaDeviation: value[0],
-                            })
-                          }
+                          onValueChange={(value) => setBotConfig({ ...botConfig, dcaDeviation: value[0] })}
                           max={10}
                           min={0.5}
                           step={0.1}
@@ -454,9 +373,7 @@ export function CreateBotDialog() {
           <TabsContent value="advanced" className="space-y-6">
             <Card className="bg-gray-800/50 border-gray-700">
               <CardHeader>
-                <CardTitle className="text-white">
-                  Advanced Configuration
-                </CardTitle>
+                <CardTitle className="text-white">Advanced Configuration</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -535,5 +452,5 @@ export function CreateBotDialog() {
         </div>
       </DialogContent>
     </Dialog>
-  );
+  )
 }

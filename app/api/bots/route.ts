@@ -1,9 +1,9 @@
-import { type NextRequest, NextResponse } from "next/server";
+import { type NextRequest, NextResponse } from "next/server"
 
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId"); // In real app, get from auth
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get("userId") // In real app, get from auth
 
     // Mock bot data - in real app, fetch from database
     const bots = [
@@ -27,32 +27,26 @@ export async function GET(request: NextRequest) {
           priceDeviation: 5,
         },
       },
-    ];
+    ]
 
     return NextResponse.json({
       success: true,
       bots,
       total: bots.length,
-    });
+    })
   } catch (error) {
-    console.error("Error fetching bots:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to fetch bots" },
-      { status: 500 },
-    );
+    console.error("Error fetching bots:", error)
+    return NextResponse.json({ success: false, error: "Failed to fetch bots" }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const botConfig = await request.json();
+    const botConfig = await request.json()
 
     // Validate bot configuration
     if (!botConfig.name || !botConfig.strategy || !botConfig.pair) {
-      return NextResponse.json(
-        { success: false, error: "Missing required fields" },
-        { status: 400 },
-      );
+      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
     }
 
     // In real app, save to database and start bot
@@ -66,20 +60,17 @@ export async function POST(request: NextRequest) {
       winRate: 0,
       createdAt: new Date().toISOString(),
       lastTrade: null,
-    };
+    }
 
-    console.log("Creating new bot:", newBot);
+    console.log("Creating new bot:", newBot)
 
     return NextResponse.json({
       success: true,
       bot: newBot,
       message: "Bot created successfully",
-    });
+    })
   } catch (error) {
-    console.error("Error creating bot:", error);
-    return NextResponse.json(
-      { success: false, error: "Failed to create bot" },
-      { status: 500 },
-    );
+    console.error("Error creating bot:", error)
+    return NextResponse.json({ success: false, error: "Failed to create bot" }, { status: 500 })
   }
 }

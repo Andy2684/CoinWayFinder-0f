@@ -1,6 +1,6 @@
-import { Button } from "@/components/ui/button";
-import { ArrowRight, Bot } from "lucide-react";
-import Link from "next/link";
+import { Button } from "@/components/ui/button"
+import { ArrowRight, Bot } from "lucide-react"
+import Link from "next/link"
 
 export function HeroSection() {
   return (
@@ -10,9 +10,7 @@ export function HeroSection() {
           {/* Badge */}
           <div className="inline-flex items-center px-4 py-2 rounded-full bg-[#30D5C8]/10 border border-[#30D5C8]/20 mb-8">
             <Bot className="w-4 h-4 text-[#30D5C8] mr-2" />
-            <span className="text-[#30D5C8] text-sm font-medium">
-              AI-Powered Trading Assistant
-            </span>
+            <span className="text-[#30D5C8] text-sm font-medium">AI-Powered Trading Assistant</span>
           </div>
 
           {/* Main Headline */}
@@ -26,9 +24,8 @@ export function HeroSection() {
 
           {/* Subheadline */}
           <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Get real-time crypto signals, automated DCA bots, and AI-driven
-            market analysis delivered directly to your Telegram. Start trading
-            smarter, not harder.
+            Get real-time crypto signals, automated DCA bots, and AI-driven market analysis delivered directly to your
+            Telegram. Start trading smarter, not harder.
           </p>
 
           {/* CTA Buttons */}
@@ -77,5 +74,5 @@ export function HeroSection() {
         <div className="absolute bottom-1/4 right-1/4 w-64 h-64 bg-[#30D5C8]/5 rounded-full blur-3xl"></div>
       </div>
     </section>
-  );
+  )
 }

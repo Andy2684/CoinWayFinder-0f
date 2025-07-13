@@ -1,45 +1,36 @@
 // Bot strategy configurations and utilities
 
 export interface BotStrategy {
-  id: string;
-  name: string;
-  description: string;
-  category:
-    | "dca"
-    | "grid"
-    | "scalping"
-    | "momentum"
-    | "arbitrage"
-    | "mean-reversion"
-    | "ai-adaptive"
-    | "portfolio";
-  difficulty: "Beginner" | "Intermediate" | "Advanced";
-  riskLevel: "Low" | "Medium" | "Medium-High" | "High";
-  timeframe: string;
-  minInvestment: number;
-  avgReturn: string;
-  features: string[];
-  parameters: BotParameter[];
+  id: string
+  name: string
+  description: string
+  category: "dca" | "grid" | "scalping" | "momentum" | "arbitrage" | "mean-reversion" | "ai-adaptive" | "portfolio"
+  difficulty: "Beginner" | "Intermediate" | "Advanced"
+  riskLevel: "Low" | "Medium" | "Medium-High" | "High"
+  timeframe: string
+  minInvestment: number
+  avgReturn: string
+  features: string[]
+  parameters: BotParameter[]
 }
 
 export interface BotParameter {
-  key: string;
-  name: string;
-  type: "number" | "percentage" | "boolean" | "select";
-  defaultValue: any;
-  min?: number;
-  max?: number;
-  step?: number;
-  options?: string[];
-  description: string;
+  key: string
+  name: string
+  type: "number" | "percentage" | "boolean" | "select"
+  defaultValue: any
+  min?: number
+  max?: number
+  step?: number
+  options?: string[]
+  description: string
 }
 
 export const botStrategies: BotStrategy[] = [
   {
     id: "dca",
     name: "DCA (Dollar Cost Averaging)",
-    description:
-      "Automatically buy crypto at regular intervals regardless of price",
+    description: "Automatically buy crypto at regular intervals regardless of price",
     category: "dca",
     difficulty: "Beginner",
     riskLevel: "Low",
@@ -84,20 +75,14 @@ export const botStrategies: BotStrategy[] = [
   {
     id: "grid",
     name: "Grid Trading",
-    description:
-      "Place buy and sell orders at predetermined intervals above and below current price",
+    description: "Place buy and sell orders at predetermined intervals above and below current price",
     category: "grid",
     difficulty: "Intermediate",
     riskLevel: "Medium",
     timeframe: "Short-Medium",
     minInvestment: 500,
     avgReturn: "15-25% annually",
-    features: [
-      "Automated grid orders",
-      "Profit from volatility",
-      "Range-bound markets",
-      "Dynamic rebalancing",
-    ],
+    features: ["Automated grid orders", "Profit from volatility", "Range-bound markets", "Dynamic rebalancing"],
     parameters: [
       {
         key: "gridLevels",
@@ -139,20 +124,14 @@ export const botStrategies: BotStrategy[] = [
   {
     id: "scalping",
     name: "Scalping Bot",
-    description:
-      "High-frequency trading capturing small price movements throughout the day",
+    description: "High-frequency trading capturing small price movements throughout the day",
     category: "scalping",
     difficulty: "Advanced",
     riskLevel: "High",
     timeframe: "Very Short",
     minInvestment: 1000,
     avgReturn: "20-40% annually",
-    features: [
-      "High-frequency trades",
-      "Small profit margins",
-      "Quick execution",
-      "Technical indicators",
-    ],
+    features: ["High-frequency trades", "Small profit margins", "Quick execution", "Technical indicators"],
     parameters: [
       {
         key: "profitTarget",
@@ -183,10 +162,10 @@ export const botStrategies: BotStrategy[] = [
       },
     ],
   },
-];
+]
 
 export function getBotStrategy(id: string): BotStrategy | undefined {
-  return botStrategies.find((strategy) => strategy.id === id);
+  return botStrategies.find((strategy) => strategy.id === id)
 }
 
 export function calculateEstimatedReturns(
@@ -203,23 +182,21 @@ export function calculateEstimatedReturns(
     "mean-reversion": { conservative: 0.06, realistic: 0.16, optimistic: 0.25 },
     "ai-adaptive": { conservative: 0.15, realistic: 0.35, optimistic: 0.55 },
     portfolio: { conservative: 0.04, realistic: 0.14, optimistic: 0.22 },
-  };
+  }
 
   const timeMultiplier = {
     "1m": 1 / 12,
     "3m": 3 / 12,
     "6m": 6 / 12,
     "1y": 1,
-  };
+  }
 
-  const returns =
-    baseReturns[strategy as keyof typeof baseReturns] || baseReturns.dca;
-  const multiplier = timeMultiplier[timeframe];
+  const returns = baseReturns[strategy as keyof typeof baseReturns] || baseReturns.dca
+  const multiplier = timeMultiplier[timeframe]
 
   return {
-    conservative:
-      investment * (1 + returns.conservative * multiplier) - investment,
+    conservative: investment * (1 + returns.conservative * multiplier) - investment,
     realistic: investment * (1 + returns.realistic * multiplier) - investment,
     optimistic: investment * (1 + returns.optimistic * multiplier) - investment,
-  };
+  }
 }

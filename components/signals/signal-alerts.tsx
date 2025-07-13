@@ -1,26 +1,14 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Dialog,
   DialogContent,
@@ -28,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog";
+} from "@/components/ui/dialog"
 import {
   Bell,
   Mail,
@@ -41,21 +29,21 @@ import {
   Clock,
   TrendingUp,
   AlertTriangle,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
+} from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface Alert {
-  id: string;
-  name: string;
-  condition: string;
-  symbol: string;
-  value: number;
-  operator: ">" | "<" | "=" | ">=" | "<=";
-  enabled: boolean;
-  channels: string[];
-  createdAt: string;
-  triggeredAt?: string;
-  status: "ACTIVE" | "TRIGGERED" | "PAUSED";
+  id: string
+  name: string
+  condition: string
+  symbol: string
+  value: number
+  operator: ">" | "<" | "=" | ">=" | "<="
+  enabled: boolean
+  channels: string[]
+  createdAt: string
+  triggeredAt?: string
+  status: "ACTIVE" | "TRIGGERED" | "PAUSED"
 }
 
 export function SignalAlerts() {
@@ -97,7 +85,7 @@ export function SignalAlerts() {
       createdAt: "2024-01-15T08:15:00Z",
       status: "PAUSED",
     },
-  ]);
+  ])
 
   const [alertSettings, setAlertSettings] = useState({
     pushNotifications: true,
@@ -110,53 +98,47 @@ export function SignalAlerts() {
       end: "08:00",
     },
     maxAlertsPerHour: 10,
-  });
+  })
 
   const toggleAlert = (id: string) => {
     setAlerts(
       alerts.map((alert) =>
-        alert.id === id
-          ? {
-              ...alert,
-              enabled: !alert.enabled,
-              status: alert.enabled ? "PAUSED" : "ACTIVE",
-            }
-          : alert,
+        alert.id === id ? { ...alert, enabled: !alert.enabled, status: alert.enabled ? "PAUSED" : "ACTIVE" } : alert,
       ),
-    );
-  };
+    )
+  }
 
   const deleteAlert = (id: string) => {
-    setAlerts(alerts.filter((alert) => alert.id !== id));
-  };
+    setAlerts(alerts.filter((alert) => alert.id !== id))
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "ACTIVE":
-        return "text-green-400 bg-green-400/10";
+        return "text-green-400 bg-green-400/10"
       case "TRIGGERED":
-        return "text-yellow-400 bg-yellow-400/10";
+        return "text-yellow-400 bg-yellow-400/10"
       case "PAUSED":
-        return "text-gray-400 bg-gray-400/10";
+        return "text-gray-400 bg-gray-400/10"
       default:
-        return "text-gray-400 bg-gray-400/10";
+        return "text-gray-400 bg-gray-400/10"
     }
-  };
+  }
 
   const getChannelIcon = (channel: string) => {
     switch (channel) {
       case "push":
-        return <Smartphone className="w-4 h-4" />;
+        return <Smartphone className="w-4 h-4" />
       case "email":
-        return <Mail className="w-4 h-4" />;
+        return <Mail className="w-4 h-4" />
       case "telegram":
-        return <MessageSquare className="w-4 h-4" />;
+        return <MessageSquare className="w-4 h-4" />
       case "sms":
-        return <Smartphone className="w-4 h-4" />;
+        return <Smartphone className="w-4 h-4" />
       default:
-        return <Bell className="w-4 h-4" />;
+        return <Bell className="w-4 h-4" />
     }
-  };
+  }
 
   return (
     <div className="space-y-6">
@@ -215,22 +197,13 @@ export function SignalAlerts() {
 
       <Tabs defaultValue="alerts" className="space-y-6">
         <TabsList className="bg-[#1A1B23] border-gray-800">
-          <TabsTrigger
-            value="alerts"
-            className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]"
-          >
+          <TabsTrigger value="alerts" className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]">
             Alert Rules
           </TabsTrigger>
-          <TabsTrigger
-            value="history"
-            className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]"
-          >
+          <TabsTrigger value="history" className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]">
             Alert History
           </TabsTrigger>
-          <TabsTrigger
-            value="settings"
-            className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]"
-          >
+          <TabsTrigger value="settings" className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]">
             Settings
           </TabsTrigger>
         </TabsList>
@@ -247,22 +220,15 @@ export function SignalAlerts() {
               </DialogTrigger>
               <DialogContent className="bg-[#1A1B23] border-gray-800">
                 <DialogHeader>
-                  <DialogTitle className="text-white">
-                    Create New Alert
-                  </DialogTitle>
+                  <DialogTitle className="text-white">Create New Alert</DialogTitle>
                   <DialogDescription>
-                    Set up a new alert rule to get notified when conditions are
-                    met.
+                    Set up a new alert rule to get notified when conditions are met.
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="alert-name">Alert Name</Label>
-                    <Input
-                      id="alert-name"
-                      placeholder="Enter alert name"
-                      className="bg-[#0F1015] border-gray-700"
-                    />
+                    <Input id="alert-name" placeholder="Enter alert name" className="bg-[#0F1015] border-gray-700" />
                   </div>
                   <div>
                     <Label htmlFor="symbol">Symbol</Label>
@@ -307,17 +273,10 @@ export function SignalAlerts() {
                     </div>
                     <div>
                       <Label htmlFor="value">Value</Label>
-                      <Input
-                        id="value"
-                        type="number"
-                        placeholder="0"
-                        className="bg-[#0F1015] border-gray-700"
-                      />
+                      <Input id="value" type="number" placeholder="0" className="bg-[#0F1015] border-gray-700" />
                     </div>
                   </div>
-                  <Button className="w-full bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]">
-                    Create Alert
-                  </Button>
+                  <Button className="w-full bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]">Create Alert</Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -329,32 +288,21 @@ export function SignalAlerts() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <Switch
-                        checked={alert.enabled}
-                        onCheckedChange={() => toggleAlert(alert.id)}
-                      />
+                      <Switch checked={alert.enabled} onCheckedChange={() => toggleAlert(alert.id)} />
                       <div>
                         <h4 className="font-medium text-white">{alert.name}</h4>
                         <p className="text-sm text-gray-400">
-                          {alert.symbol} {alert.condition} {alert.operator}{" "}
-                          {alert.value.toLocaleString()}
+                          {alert.symbol} {alert.condition} {alert.operator} {alert.value.toLocaleString()}
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <Badge
-                        className={cn("text-xs", getStatusColor(alert.status))}
-                      >
-                        {alert.status}
-                      </Badge>
+                      <Badge className={cn("text-xs", getStatusColor(alert.status))}>{alert.status}</Badge>
 
                       <div className="flex items-center gap-1">
                         {alert.channels.map((channel) => (
-                          <div
-                            key={channel}
-                            className="p-1 bg-gray-800 rounded"
-                          >
+                          <div key={channel} className="p-1 bg-gray-800 rounded">
                             {getChannelIcon(channel)}
                           </div>
                         ))}
@@ -364,11 +312,7 @@ export function SignalAlerts() {
                         <Button variant="ghost" size="sm">
                           <Edit className="w-4 h-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => deleteAlert(alert.id)}
-                        >
+                        <Button variant="ghost" size="sm" onClick={() => deleteAlert(alert.id)}>
                           <Trash2 className="w-4 h-4 text-red-400" />
                         </Button>
                       </div>
@@ -383,9 +327,7 @@ export function SignalAlerts() {
         <TabsContent value="history" className="space-y-4">
           <Card className="bg-[#1A1B23] border-gray-800">
             <CardHeader>
-              <CardTitle className="text-white">
-                Recent Alert Activity
-              </CardTitle>
+              <CardTitle className="text-white">Recent Alert Activity</CardTitle>
               <CardDescription>History of triggered alerts</CardDescription>
             </CardHeader>
             <CardContent>
@@ -427,9 +369,7 @@ export function SignalAlerts() {
                     </div>
                     <div className="text-right">
                       <p className="text-sm text-gray-400">{item.time}</p>
-                      <Badge className="text-xs text-yellow-400 bg-yellow-400/10">
-                        Triggered
-                      </Badge>
+                      <Badge className="text-xs text-yellow-400 bg-yellow-400/10">Triggered</Badge>
                     </div>
                   </div>
                 ))}
@@ -441,12 +381,8 @@ export function SignalAlerts() {
         <TabsContent value="settings" className="space-y-6">
           <Card className="bg-[#1A1B23] border-gray-800">
             <CardHeader>
-              <CardTitle className="text-white">
-                Notification Channels
-              </CardTitle>
-              <CardDescription>
-                Configure how you want to receive alerts
-              </CardDescription>
+              <CardTitle className="text-white">Notification Channels</CardTitle>
+              <CardDescription>Configure how you want to receive alerts</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
@@ -454,19 +390,12 @@ export function SignalAlerts() {
                   <Smartphone className="w-5 h-5 text-gray-400" />
                   <div>
                     <p className="font-medium text-white">Push Notifications</p>
-                    <p className="text-sm text-gray-400">
-                      Receive alerts on your device
-                    </p>
+                    <p className="text-sm text-gray-400">Receive alerts on your device</p>
                   </div>
                 </div>
                 <Switch
                   checked={alertSettings.pushNotifications}
-                  onCheckedChange={(checked) =>
-                    setAlertSettings({
-                      ...alertSettings,
-                      pushNotifications: checked,
-                    })
-                  }
+                  onCheckedChange={(checked) => setAlertSettings({ ...alertSettings, pushNotifications: checked })}
                 />
               </div>
 
@@ -474,22 +403,13 @@ export function SignalAlerts() {
                 <div className="flex items-center gap-3">
                   <Mail className="w-5 h-5 text-gray-400" />
                   <div>
-                    <p className="font-medium text-white">
-                      Email Notifications
-                    </p>
-                    <p className="text-sm text-gray-400">
-                      Receive alerts via email
-                    </p>
+                    <p className="font-medium text-white">Email Notifications</p>
+                    <p className="text-sm text-gray-400">Receive alerts via email</p>
                   </div>
                 </div>
                 <Switch
                   checked={alertSettings.emailNotifications}
-                  onCheckedChange={(checked) =>
-                    setAlertSettings({
-                      ...alertSettings,
-                      emailNotifications: checked,
-                    })
-                  }
+                  onCheckedChange={(checked) => setAlertSettings({ ...alertSettings, emailNotifications: checked })}
                 />
               </div>
 
@@ -497,22 +417,13 @@ export function SignalAlerts() {
                 <div className="flex items-center gap-3">
                   <MessageSquare className="w-5 h-5 text-gray-400" />
                   <div>
-                    <p className="font-medium text-white">
-                      Telegram Notifications
-                    </p>
-                    <p className="text-sm text-gray-400">
-                      Receive alerts on Telegram
-                    </p>
+                    <p className="font-medium text-white">Telegram Notifications</p>
+                    <p className="text-sm text-gray-400">Receive alerts on Telegram</p>
                   </div>
                 </div>
                 <Switch
                   checked={alertSettings.telegramNotifications}
-                  onCheckedChange={(checked) =>
-                    setAlertSettings({
-                      ...alertSettings,
-                      telegramNotifications: checked,
-                    })
-                  }
+                  onCheckedChange={(checked) => setAlertSettings({ ...alertSettings, telegramNotifications: checked })}
                 />
               </div>
             </CardContent>
@@ -527,19 +438,14 @@ export function SignalAlerts() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="font-medium text-white">Quiet Hours</p>
-                  <p className="text-sm text-gray-400">
-                    Disable alerts during specified hours
-                  </p>
+                  <p className="text-sm text-gray-400">Disable alerts during specified hours</p>
                 </div>
                 <Switch
                   checked={alertSettings.quietHours.enabled}
                   onCheckedChange={(checked) =>
                     setAlertSettings({
                       ...alertSettings,
-                      quietHours: {
-                        ...alertSettings.quietHours,
-                        enabled: checked,
-                      },
+                      quietHours: { ...alertSettings.quietHours, enabled: checked },
                     })
                   }
                 />
@@ -582,5 +488,5 @@ export function SignalAlerts() {
         </TabsContent>
       </Tabs>
     </div>
-  );
+  )
 }

@@ -1,42 +1,30 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Activity,
-  TrendingUp,
-  TrendingDown,
-  Filter,
-  ExternalLink,
-} from "lucide-react";
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Activity, TrendingUp, TrendingDown, Filter, ExternalLink } from "lucide-react"
 
 interface Trade {
-  id: string;
-  timestamp: string;
-  exchange: string;
-  pair: string;
-  side: "buy" | "sell";
-  type: "market" | "limit" | "stop";
-  amount: number;
-  price: number;
-  total: number;
-  fee: number;
-  status: "filled" | "partial" | "cancelled";
-  strategy: string;
-  pnl?: number;
+  id: string
+  timestamp: string
+  exchange: string
+  pair: string
+  side: "buy" | "sell"
+  type: "market" | "limit" | "stop"
+  amount: number
+  price: number
+  total: number
+  fee: number
+  status: "filled" | "partial" | "cancelled"
+  strategy: string
+  pnl?: number
 }
 
 export function TradeLogs() {
-  const [filter, setFilter] = useState("all");
+  const [filter, setFilter] = useState("all")
   const [trades] = useState<Trade[]>([
     {
       id: "1",
@@ -112,29 +100,26 @@ export function TradeLogs() {
       status: "cancelled",
       strategy: "Manual",
     },
-  ]);
+  ])
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "filled":
-        return "bg-green-500/10 text-green-400";
+        return "bg-green-500/10 text-green-400"
       case "partial":
-        return "bg-yellow-500/10 text-yellow-400";
+        return "bg-yellow-500/10 text-yellow-400"
       case "cancelled":
-        return "bg-red-500/10 text-red-400";
+        return "bg-red-500/10 text-red-400"
       default:
-        return "bg-gray-500/10 text-gray-400";
+        return "bg-gray-500/10 text-gray-400"
     }
-  };
+  }
 
   const getSideColor = (side: string) => {
-    return side === "buy" ? "text-green-400" : "text-red-400";
-  };
+    return side === "buy" ? "text-green-400" : "text-red-400"
+  }
 
-  const filteredTrades =
-    filter === "all"
-      ? trades
-      : trades.filter((trade) => trade.status === filter);
+  const filteredTrades = filter === "all" ? trades : trades.filter((trade) => trade.status === filter)
 
   return (
     <Card className="bg-gray-900/50 border-gray-800">
@@ -165,19 +150,12 @@ export function TradeLogs() {
       <CardContent>
         <div className="space-y-3 max-h-96 overflow-y-auto">
           {filteredTrades.map((trade) => (
-            <div
-              key={trade.id}
-              className="p-3 bg-gray-800/30 rounded-lg border border-gray-700"
-            >
+            <div key={trade.id} className="p-3 bg-gray-800/30 rounded-lg border border-gray-700">
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <div className="flex items-center space-x-2 mb-1">
-                    <h4 className="text-white font-medium text-sm">
-                      {trade.pair}
-                    </h4>
-                    <Badge className={getStatusColor(trade.status)}>
-                      {trade.status}
-                    </Badge>
+                    <h4 className="text-white font-medium text-sm">{trade.pair}</h4>
+                    <Badge className={getStatusColor(trade.status)}>{trade.status}</Badge>
                   </div>
                   <p className="text-gray-400 text-xs">
                     {trade.exchange} • {trade.strategy}
@@ -190,9 +168,7 @@ export function TradeLogs() {
                     ) : (
                       <TrendingDown className="w-3 h-3 text-red-400" />
                     )}
-                    <span
-                      className={`text-sm font-medium ${getSideColor(trade.side)}`}
-                    >
+                    <span className={`text-sm font-medium ${getSideColor(trade.side)}`}>
                       {trade.side.toUpperCase()}
                     </span>
                   </div>
@@ -207,15 +183,11 @@ export function TradeLogs() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">Price</p>
-                  <p className="text-sm text-white">
-                    ${trade.price.toFixed(4)}
-                  </p>
+                  <p className="text-sm text-white">${trade.price.toFixed(4)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">Total</p>
-                  <p className="text-sm text-white">
-                    ${trade.total.toFixed(2)}
-                  </p>
+                  <p className="text-sm text-white">${trade.total.toFixed(2)}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-400">Fee</p>
@@ -226,9 +198,7 @@ export function TradeLogs() {
               {trade.pnl && (
                 <div className="flex items-center justify-between pt-2 border-t border-gray-700">
                   <span className="text-xs text-gray-400">P&L</span>
-                  <span
-                    className={`text-sm font-medium ${trade.pnl >= 0 ? "text-green-400" : "text-red-400"}`}
-                  >
+                  <span className={`text-sm font-medium ${trade.pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
                     {trade.pnl >= 0 ? "+" : ""}${trade.pnl.toFixed(2)}
                   </span>
                 </div>
@@ -245,5 +215,5 @@ export function TradeLogs() {
         </div>
       </CardContent>
     </Card>
-  );
+  )
 }

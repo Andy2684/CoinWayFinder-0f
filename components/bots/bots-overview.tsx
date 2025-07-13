@@ -1,15 +1,8 @@
-"use client";
+"use client"
 
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  TrendingUp,
-  TrendingDown,
-  Bot,
-  DollarSign,
-  Activity,
-  Zap,
-} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { TrendingUp, TrendingDown, Bot, DollarSign, Activity, Zap } from "lucide-react"
 
 export function BotsOverview() {
   const stats = [
@@ -61,7 +54,7 @@ export function BotsOverview() {
       icon: TrendingDown,
       description: "Portfolio risk",
     },
-  ];
+  ]
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
@@ -94,5 +87,5 @@ export function BotsOverview() {
         </Card>
       ))}
     </div>
-  );
+  )
 }

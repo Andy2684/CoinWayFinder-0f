@@ -1,7 +1,7 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Check, Star } from "lucide-react";
-import Link from "next/link";
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Check, Star } from "lucide-react"
+import Link from "next/link"
 
 export function PricingSection() {
   const plans = [
@@ -10,12 +10,7 @@ export function PricingSection() {
       price: "$0",
       period: "3-day access",
       description: "Perfect for trying out our platform",
-      features: [
-        "Limited signals access",
-        "Basic market overview",
-        "Community support",
-        "Mobile app access",
-      ],
+      features: ["Limited signals access", "Basic market overview", "Community support", "Mobile app access"],
       cta: "Start Free",
       popular: false,
     },
@@ -24,13 +19,7 @@ export function PricingSection() {
       price: "$19",
       period: "/month",
       description: "Great for individual traders",
-      features: [
-        "DCA bot (3 pairs)",
-        "Telegram signals",
-        "Basic analytics",
-        "Email support",
-        "Risk management tools",
-      ],
+      features: ["DCA bot (3 pairs)", "Telegram signals", "Basic analytics", "Email support", "Risk management tools"],
       cta: "Get Started",
       popular: false,
     },
@@ -67,7 +56,7 @@ export function PricingSection() {
       cta: "Get VIP",
       popular: false,
     },
-  ];
+  ]
 
   return (
     <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gray-900/30">
@@ -78,8 +67,7 @@ export function PricingSection() {
             <span className="text-[#30D5C8]"> Trading Plan</span>
           </h2>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto mb-8">
-            Start with our free trial and upgrade as you grow your trading
-            portfolio
+            Start with our free trial and upgrade as you grow your trading portfolio
           </p>
 
           {/* Referral Program Banner */}
@@ -108,13 +96,9 @@ export function PricingSection() {
               )}
 
               <CardHeader className="text-center pb-4">
-                <CardTitle className="text-white text-xl mb-2">
-                  {plan.name}
-                </CardTitle>
+                <CardTitle className="text-white text-xl mb-2">{plan.name}</CardTitle>
                 <div className="mb-2">
-                  <span className="text-3xl font-bold text-[#30D5C8]">
-                    {plan.price}
-                  </span>
+                  <span className="text-3xl font-bold text-[#30D5C8]">{plan.price}</span>
                   <span className="text-gray-400">{plan.period}</span>
                 </div>
                 <p className="text-gray-300 text-sm">{plan.description}</p>
@@ -123,10 +107,7 @@ export function PricingSection() {
               <CardContent className="pt-0">
                 <ul className="space-y-3 mb-6">
                   {plan.features.map((feature, featureIndex) => (
-                    <li
-                      key={featureIndex}
-                      className="flex items-center text-gray-300"
-                    >
+                    <li key={featureIndex} className="flex items-center text-gray-300">
                       <Check className="w-4 h-4 text-[#30D5C8] mr-3 flex-shrink-0" />
                       <span className="text-sm">{feature}</span>
                     </li>
@@ -150,5 +131,5 @@ export function PricingSection() {
         </div>
       </div>
     </section>
-  );
+  )
 }

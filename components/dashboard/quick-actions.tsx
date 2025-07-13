@@ -1,83 +1,36 @@
-"use client";
+"use client"
 
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Plus,
-  Zap,
-  TrendingUp,
-  Settings,
-  Download,
-  Upload,
-  Bot,
-  AlertTriangle,
-  DollarSign,
-} from "lucide-react";
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Plus, Zap, TrendingUp, Settings, Download, Upload, Bot, AlertTriangle, DollarSign } from "lucide-react"
 
 export function QuickActions() {
-  const [isCreateBotOpen, setIsCreateBotOpen] = useState(false);
-  const [isQuickTradeOpen, setIsQuickTradeOpen] = useState(false);
+  const [isCreateBotOpen, setIsCreateBotOpen] = useState(false)
+  const [isQuickTradeOpen, setIsQuickTradeOpen] = useState(false)
 
   const quickStats = [
-    {
-      label: "Active Bots",
-      value: "12",
-      change: "+2",
-      color: "text-[#30D5C8]",
-    },
-    {
-      label: "Daily P&L",
-      value: "+$1,247",
-      change: "+8.2%",
-      color: "text-green-400",
-    },
-    {
-      label: "Win Rate",
-      value: "73.4%",
-      change: "+2.1%",
-      color: "text-blue-400",
-    },
-    {
-      label: "Risk Score",
-      value: "Medium",
-      change: "Stable",
-      color: "text-yellow-400",
-    },
-  ];
+    { label: "Active Bots", value: "12", change: "+2", color: "text-[#30D5C8]" },
+    { label: "Daily P&L", value: "+$1,247", change: "+8.2%", color: "text-green-400" },
+    { label: "Win Rate", value: "73.4%", change: "+2.1%", color: "text-blue-400" },
+    { label: "Risk Score", value: "Medium", change: "Stable", color: "text-yellow-400" },
+  ]
 
   return (
     <section className="mb-8">
       {/* Quick Stats Bar */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         {quickStats.map((stat, index) => (
-          <div
-            key={index}
-            className="bg-gray-900/30 rounded-lg p-4 border border-gray-800"
-          >
+          <div key={index} className="bg-gray-900/30 rounded-lg p-4 border border-gray-800">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-400">{stat.label}</p>
-                <p className={`text-lg font-bold ${stat.color}`}>
-                  {stat.value}
-                </p>
+                <p className={`text-lg font-bold ${stat.color}`}>{stat.value}</p>
               </div>
               <span className="text-xs text-gray-500">{stat.change}</span>
             </div>
@@ -110,11 +63,7 @@ export function QuickActions() {
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="bot-name">Bot Name</Label>
-                    <Input
-                      id="bot-name"
-                      placeholder="My Trading Bot"
-                      className="bg-gray-800 border-gray-700"
-                    />
+                    <Input id="bot-name" placeholder="My Trading Bot" className="bg-gray-800 border-gray-700" />
                   </div>
                   <div>
                     <Label htmlFor="strategy">Strategy</Label>
@@ -123,9 +72,7 @@ export function QuickActions() {
                         <SelectValue placeholder="Select strategy" />
                       </SelectTrigger>
                       <SelectContent className="bg-gray-900 border-gray-700">
-                        <SelectItem value="dca">
-                          DCA (Dollar Cost Average)
-                        </SelectItem>
+                        <SelectItem value="dca">DCA (Dollar Cost Average)</SelectItem>
                         <SelectItem value="grid">Grid Trading</SelectItem>
                         <SelectItem value="scalping">Scalping</SelectItem>
                         <SelectItem value="ai">AI Trend Following</SelectItem>
@@ -147,13 +94,8 @@ export function QuickActions() {
                     </Select>
                   </div>
                   <div className="flex space-x-2">
-                    <Button className="flex-1 bg-[#30D5C8] hover:bg-[#30D5C8]/90">
-                      Create Bot
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsCreateBotOpen(false)}
-                    >
+                    <Button className="flex-1 bg-[#30D5C8] hover:bg-[#30D5C8]/90">Create Bot</Button>
+                    <Button variant="outline" onClick={() => setIsCreateBotOpen(false)}>
                       Cancel
                     </Button>
                   </div>
@@ -203,20 +145,11 @@ export function QuickActions() {
                   </div>
                   <div>
                     <Label htmlFor="amount">Amount (USDT)</Label>
-                    <Input
-                      id="amount"
-                      placeholder="100"
-                      className="bg-gray-800 border-gray-700"
-                    />
+                    <Input id="amount" placeholder="100" className="bg-gray-800 border-gray-700" />
                   </div>
                   <div className="flex space-x-2">
-                    <Button className="flex-1 bg-green-500 hover:bg-green-600">
-                      Execute Trade
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsQuickTradeOpen(false)}
-                    >
+                    <Button className="flex-1 bg-green-500 hover:bg-green-600">Execute Trade</Button>
+                    <Button variant="outline" onClick={() => setIsQuickTradeOpen(false)}>
                       Cancel
                     </Button>
                   </div>
@@ -264,16 +197,12 @@ export function QuickActions() {
                 <AlertTriangle className="w-3 h-3 mr-1" />2 Alerts
               </Badge>
             </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-gray-400 hover:text-white"
-            >
+            <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
               View All Alerts
             </Button>
           </div>
         </CardContent>
       </Card>
     </section>
-  );
+  )
 }

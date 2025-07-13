@@ -1,14 +1,8 @@
-"use client";
+"use client"
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   LineChart,
   Line,
@@ -22,8 +16,8 @@ import {
   PieChart,
   Pie,
   Cell,
-} from "recharts";
-import { TrendingUp, Download } from "lucide-react";
+} from "recharts"
+import { TrendingUp, Download } from "lucide-react"
 
 export function BotPerformance() {
   // Mock performance data
@@ -36,7 +30,7 @@ export function BotPerformance() {
     { date: "Jan 25", profit: 567, cumulative: 1691 },
     { date: "Jan 30", profit: 334, cumulative: 2025 },
     { date: "Feb 5", profit: 822, cumulative: 2847 },
-  ];
+  ]
 
   const strategyPerformance = [
     { strategy: "DCA", profit: 1247, trades: 156, winRate: 78 },
@@ -44,7 +38,7 @@ export function BotPerformance() {
     { strategy: "Momentum", profit: 567, trades: 89, winRate: 82 },
     { strategy: "AI Adaptive", profit: 234, trades: 67, winRate: 76 },
     { strategy: "Scalping", profit: -93, trades: 145, winRate: 65 },
-  ];
+  ]
 
   const pairDistribution = [
     { name: "BTC/USDT", value: 35, color: "#F7931A" },
@@ -52,45 +46,21 @@ export function BotPerformance() {
     { name: "SOL/USDT", value: 15, color: "#9945FF" },
     { name: "ADA/USDT", value: 12, color: "#0033AD" },
     { name: "Others", value: 13, color: "#30D5C8" },
-  ];
+  ]
 
   const topPerformers = [
-    {
-      name: "BTC DCA Master",
-      profit: 1247.32,
-      profitPercent: 12.4,
-      pair: "BTC/USDT",
-    },
-    {
-      name: "ETH Grid Pro",
-      profit: 892.15,
-      profitPercent: 17.8,
-      pair: "ETH/USDT",
-    },
-    {
-      name: "AI Multi-Pair",
-      profit: 567.43,
-      profitPercent: 22.7,
-      pair: "Multiple",
-    },
-    {
-      name: "ADA Momentum",
-      profit: 234.89,
-      profitPercent: 9.4,
-      pair: "ADA/USDT",
-    },
-  ];
+    { name: "BTC DCA Master", profit: 1247.32, profitPercent: 12.4, pair: "BTC/USDT" },
+    { name: "ETH Grid Pro", profit: 892.15, profitPercent: 17.8, pair: "ETH/USDT" },
+    { name: "AI Multi-Pair", profit: 567.43, profitPercent: 22.7, pair: "Multiple" },
+    { name: "ADA Momentum", profit: 234.89, profitPercent: 9.4, pair: "ADA/USDT" },
+  ]
 
   return (
     <section>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-2xl font-bold text-white mb-2">
-            📊 Performance Analytics
-          </h2>
-          <p className="text-gray-300">
-            Detailed insights into your bot performance
-          </p>
+          <h2 className="text-2xl font-bold text-white mb-2">📊 Performance Analytics</h2>
+          <p className="text-gray-300">Detailed insights into your bot performance</p>
         </div>
         <div className="flex items-center space-x-2">
           <Select defaultValue="30d">
@@ -104,10 +74,7 @@ export function BotPerformance() {
               <SelectItem value="1y">Last year</SelectItem>
             </SelectContent>
           </Select>
-          <Button
-            variant="outline"
-            className="border-gray-600 text-white hover:bg-gray-800 bg-transparent"
-          >
+          <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-800 bg-transparent">
             <Download className="w-4 h-4 mr-2" />
             Export
           </Button>
@@ -182,15 +149,10 @@ export function BotPerformance() {
           <CardContent>
             <div className="space-y-4">
               {topPerformers.map((bot, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg"
-                >
+                <div key={index} className="flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
                   <div className="flex items-center space-x-4">
                     <div className="w-8 h-8 bg-[#30D5C8]/10 rounded-full flex items-center justify-center">
-                      <span className="text-[#30D5C8] font-bold text-sm">
-                        #{index + 1}
-                      </span>
+                      <span className="text-[#30D5C8] font-bold text-sm">#{index + 1}</span>
                     </div>
                     <div>
                       <p className="font-semibold text-white">{bot.name}</p>
@@ -198,12 +160,8 @@ export function BotPerformance() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-green-400">
-                      ${bot.profit.toFixed(2)}
-                    </p>
-                    <p className="text-sm text-green-400">
-                      +{bot.profitPercent}%
-                    </p>
+                    <p className="font-bold text-green-400">${bot.profit.toFixed(2)}</p>
+                    <p className="text-sm text-green-400">+{bot.profitPercent}%</p>
                   </div>
                 </div>
               ))}
@@ -239,10 +197,7 @@ export function BotPerformance() {
               {pairDistribution.map((pair, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: pair.color }}
-                    ></div>
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: pair.color }}></div>
                     <span className="text-sm text-gray-300">{pair.name}</span>
                   </div>
                   <span className="text-sm text-white">{pair.value}%</span>
@@ -253,5 +208,5 @@ export function BotPerformance() {
         </Card>
       </div>
     </section>
-  );
+  )
 }
