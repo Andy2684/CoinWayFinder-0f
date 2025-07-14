@@ -10,6 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Text is required" }, { status: 400 })
     }
 
+    // Вызов AI происходит только внутри обработки запроса
     const { text: analysis } = await generateText({
       model: xai("grok-3"),
       prompt: `Analyze the sentiment of this cryptocurrency-related text and provide a score from -1 (very negative) to 1 (very positive), along with key insights:
@@ -32,6 +33,9 @@ Respond in JSON format with:
     })
   } catch (error) {
     console.error("Sentiment analysis error:", error)
-    return NextResponse.json({ error: "Failed to analyze sentiment" }, { status: 500 })
+    return NextResponse.json(
+      { error: "Failed to analyze sentiment" },
+      { status: 500 }
+    )
   }
 }
