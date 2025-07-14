@@ -29,7 +29,7 @@ interface ApiKey {
   createdAt: string
 }
 
-export function ApiKeyManager() {
+export function APIKeyManager() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([
     {
       id: "1",
@@ -239,7 +239,9 @@ export function ApiKeyManager() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <div className="text-center">
               <h3 className="text-lg font-semibold mb-2">No API Keys Added</h3>
-              <p className="text-muted-foreground mb-4">Add your first exchange API key to start trading</p>
+              <p className="text-muted-foreground mb-4">
+                Add your first exchange API key to start trading
+              </p>
               <Button onClick={() => setIsAddingKey(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add API Key
@@ -252,4 +254,4 @@ export function ApiKeyManager() {
   )
 }
 
-export default ApiKeyManager
+export default APIKeyManager
