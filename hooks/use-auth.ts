@@ -1,12 +1,17 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react"
+import React, { createContext, useContext, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
-import axios from "axios"
+import { getMe, login as loginApi, logout as logoutApi, register as registerApi } from "@/lib/api"
+
+interface User {
+  id: string
+  email: string
+  name?: string
+}
 
 interface AuthContextType {
-  user: any
+  user: User | null
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   register: (email: string, password: string) => Promise<void>
@@ -15,16 +20,16 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState(null)
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
-        const response = await axios.get("/api/me")
-        setUser(response.data)
+        const data = await getMe()
+        setUser(data)
       } catch (error) {
         setUser(null)
       } finally {
@@ -36,65 +41,45 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [])
 
   const login = async (email: string, password: string) => {
-    setLoading(true)
-    try {
-      await axios.post("/api/login", { email, password })
-      const { data } = await axios.get("/api/me")
-      setUser(data)
-      toast.success("Login successful")
-      router.push("/")
-    } catch (error: any) {
-      toast.error("Login failed")
-    } finally {
-      setLoading(false)
-    }
+    await loginApi(email, password)
+    const data = await getMe()
+    setUser(data)
+    router.push("/")
   }
 
   const register = async (email: string, password: string) => {
-    setLoading(true)
-    try {
-      await axios.post("/api/register", { email, password })
-      toast.success("Registration successful. Please verify your email.")
-      router.push("/auth/verify-email")
-    } catch (error: any) {
-      toast.error("Registration failed")
-    } finally {
-      setLoading(false)
-    }
+    await registerApi(email, password)
+    const data = await getMe()
+    setUser(data)
+    router.push("/")
   }
 
   const logout = async () => {
-    setLoading(true)
-    try {
-      await axios.post("/api/logout")
-      setUser(null)
-      toast.success("Logged out successfully")
-      router.push("/auth/login")
-    } catch (error: any) {
-      toast.error("Logout failed")
-    } finally {
-      setLoading(false)
-    }
+    await logoutApi()
+    setUser(null)
+    router.push("/auth/login")
   }
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        login,
-        register,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
+    <React.Fragment>
+      <AuthContext.Provider
+        value={{
+          user,
+          loading,
+          login,
+          register,
+          logout,
+        }}
+      >
+        {children}
+      </AuthContext.Provider>
+    </React.Fragment>
   )
 }
 
 export const useAuth = () => {
   const context = useContext(AuthContext)
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider")
   }
   return context
