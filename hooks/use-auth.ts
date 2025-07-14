@@ -1,12 +1,6 @@
 "use client"
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react"
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 
 interface User {
   id: string
@@ -107,20 +101,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   return (
-    <>
-      <AuthContext.Provider
-        value={{
-          user,
-          loading,
-          login,
-          signup,
-          logout,
-          isAuthenticated: !!user,
-        }}
-      >
-        {children}
-      </AuthContext.Provider>
-    </>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        signup,
+        logout,
+        isAuthenticated: !!user,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
   )
 }
 
