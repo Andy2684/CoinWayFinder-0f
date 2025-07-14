@@ -10,140 +10,196 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Menu, TrendingUp, User, Settings, LogOut } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 
-const navigation = [
-  { name: "Home", href: "/" },
-  { name: "Signals", href: "/signals" },
-  { name: "Bots", href: "/bots" },
+const navItems = [
   { name: "Dashboard", href: "/dashboard" },
-  { name: "Integrations", href: "/integrations" },
+  { name: "Signals", href: "/signals" },
+  { name: "Trading Bots", href: "/bots" },
   { name: "News", href: "/news" },
+  { name: "Integrations", href: "/integrations" },
 ]
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user, logout, isAuthenticated } = useAuth()
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    await logout()
   }
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-gray-800 bg-[#191A1E]/95 backdrop-blur supports-[backdrop-filter]:bg-[#191A1E]/60">
-      <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
+    <nav className="bg-[#1A1B23] border-b border-gray-800 sticky top-0 z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-[#30D5C8] rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-5 h-5 text-[#191A1E]" />
-            </div>
-            <span className="text-xl font-bold text-white">CoinWayfinder</span>
-          </Link>
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center space-x-2">
+              <TrendingUp className="h-8 w-8 text-[#30D5C8]" />
+              <span className="text-xl font-bold text-white">CoinWayfinder</span>
+            </Link>
+          </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-8">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`text-sm font-medium transition-colors hover:text-[#30D5C8] ${
-                  pathname === item.href ? "text-[#30D5C8]" : "text-gray-300"
-                }`}
-              >
-                {item.name}
-              </Link>
-            ))}
-          </nav>
+          <div className="hidden md:flex items-center space-x-8">
+            {isAuthenticated &&
+              navItems.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    pathname === item.href
+                      ? "text-[#30D5C8] bg-[#30D5C8]/10"
+                      : "text-gray-300 hover:text-white hover:bg-gray-700"
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              ))}
+          </div>
 
           {/* User Menu / Auth Buttons */}
           <div className="flex items-center space-x-4">
-            {user ? (
+            {isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                      <AvatarImage src={user.avatar || "/placeholder.svg"} alt={`${user.firstName} ${user.lastName}`} />
                       <AvatarFallback className="bg-[#30D5C8] text-[#191A1E]">
-                        {user.name.charAt(0).toUpperCase()}
+                        {user.firstName?.charAt(0)}
+                        {user.lastName?.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56 bg-gray-900 border-gray-800" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none text-white">{user.name}</p>
-                      <p className="text-xs leading-none text-gray-400">{user.email}</p>
+                <DropdownMenuContent className="w-56 bg-gray-900 border-gray-700" align="end" forceMount>
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-1 leading-none">
+                      <p className="font-medium text-white">
+                        {user.firstName} {user.lastName}
+                      </p>
+                      <p className="w-[200px] truncate text-sm text-gray-400">{user.email}</p>
                     </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator className="bg-gray-800" />
-                  <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-gray-800">
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Profile</span>
+                  </div>
+                  <DropdownMenuSeparator className="bg-gray-700" />
+                  <DropdownMenuItem asChild className="text-gray-300 hover:bg-gray-800 hover:text-white">
+                    <Link href="/profile" className="flex items-center">
+                      <User className="mr-2 h-4 w-4" />
+                      Profile
+                    </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-gray-800">
-                    <Settings className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
+                  <DropdownMenuItem asChild className="text-gray-300 hover:bg-gray-800 hover:text-white">
+                    <Link href="/settings" className="flex items-center">
+                      <Settings className="mr-2 h-4 w-4" />
+                      Settings
+                    </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator className="bg-gray-800" />
-                  <DropdownMenuItem className="text-gray-300 hover:text-white hover:bg-gray-800" onClick={handleLogout}>
+                  <DropdownMenuSeparator className="bg-gray-700" />
+                  <DropdownMenuItem
+                    onClick={handleLogout}
+                    className="text-red-400 hover:bg-red-500/10 hover:text-red-300"
+                  >
                     <LogOut className="mr-2 h-4 w-4" />
-                    <span>Log out</span>
+                    Sign out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="hidden md:flex items-center space-x-2">
-                <Button variant="ghost" asChild className="text-gray-300 hover:text-white">
-                  <Link href="/auth/login">Sign In</Link>
-                </Button>
-                <Button asChild className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]">
-                  <Link href="/auth/signup">Sign Up</Link>
-                </Button>
+              <div className="hidden md:flex items-center space-x-4">
+                <Link href="/auth/login">
+                  <Button variant="ghost" className="text-gray-300 hover:text-white">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/auth/signup">
+                  <Button className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]">Sign Up</Button>
+                </Link>
               </div>
             )}
 
-            {/* Mobile Menu */}
+            {/* Mobile menu button */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" className="md:hidden">
-                  <Menu className="h-5 w-5" />
+                <Button variant="ghost" className="md:hidden" size="sm">
+                  <Menu className="h-6 w-6 text-gray-300" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] bg-gray-900 border-gray-800">
-                <div className="flex flex-col space-y-4 mt-8">
-                  {navigation.map((item) => (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className={`text-sm font-medium transition-colors hover:text-[#30D5C8] ${
-                        pathname === item.href ? "text-[#30D5C8]" : "text-gray-300"
-                      }`}
-                      onClick={() => setIsOpen(false)}
-                    >
-                      {item.name}
-                    </Link>
-                  ))}
+              <SheetContent side="right" className="w-[300px] bg-[#1A1B23] border-gray-800">
+                <div className="flex flex-col space-y-4 mt-4">
+                  {isAuthenticated && user && (
+                    <div className="flex items-center space-x-3 p-4 border-b border-gray-700">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage
+                          src={user.avatar || "/placeholder.svg"}
+                          alt={`${user.firstName} ${user.lastName}`}
+                        />
+                        <AvatarFallback className="bg-[#30D5C8] text-[#191A1E]">
+                          {user.firstName?.charAt(0)}
+                          {user.lastName?.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-white">
+                          {user.firstName} {user.lastName}
+                        </p>
+                        <p className="text-sm text-gray-400">{user.email}</p>
+                      </div>
+                    </div>
+                  )}
 
-                  {!user && (
-                    <div className="flex flex-col space-y-2 pt-4 border-t border-gray-800">
-                      <Button variant="ghost" asChild className="text-gray-300 hover:text-white justify-start">
-                        <Link href="/auth/login" onClick={() => setIsOpen(false)}>
+                  {isAuthenticated ? (
+                    <>
+                      {navItems.map((item) => (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          onClick={() => setIsOpen(false)}
+                          className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                            pathname === item.href
+                              ? "text-[#30D5C8] bg-[#30D5C8]/10"
+                              : "text-gray-300 hover:text-white hover:bg-gray-700"
+                          }`}
+                        >
+                          {item.name}
+                        </Link>
+                      ))}
+                      <div className="border-t border-gray-700 pt-4">
+                        <Link
+                          href="/profile"
+                          onClick={() => setIsOpen(false)}
+                          className="flex items-center px-4 py-2 text-gray-300 hover:text-white hover:bg-gray-700 rounded-md"
+                        >
+                          <User className="mr-2 h-4 w-4" />
+                          Profile
+                        </Link>
+                        <button
+                          onClick={() => {
+                            handleLogout()
+                            setIsOpen(false)
+                          }}
+                          className="flex items-center w-full px-4 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-md"
+                        >
+                          <LogOut className="mr-2 h-4 w-4" />
+                          Sign out
+                        </button>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="space-y-2">
+                      <Link href="/auth/login" onClick={() => setIsOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start text-gray-300 hover:text-white">
                           Sign In
-                        </Link>
-                      </Button>
-                      <Button asChild className="bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E] justify-start">
-                        <Link href="/auth/signup" onClick={() => setIsOpen(false)}>
-                          Sign Up
-                        </Link>
-                      </Button>
+                        </Button>
+                      </Link>
+                      <Link href="/auth/signup" onClick={() => setIsOpen(false)}>
+                        <Button className="w-full bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]">Sign Up</Button>
+                      </Link>
                     </div>
                   )}
                 </div>
@@ -152,6 +208,6 @@ export function Navigation() {
           </div>
         </div>
       </div>
-    </header>
+    </nav>
   )
 }

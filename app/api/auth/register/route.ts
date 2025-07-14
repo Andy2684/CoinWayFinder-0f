@@ -1,10 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import crypto from "crypto"
+import { v4 as uuidv4 } from "uuid"
 
-// Mock databases
-const users: any[] = []
-const pendingUsers: any[] = []
+// Mock user storage - replace with real database
+const mockUsers: any[] = []
 
 // Helper function to calculate age
 function calculateAge(birthDate: Date): number {
@@ -21,103 +20,89 @@ function calculateAge(birthDate: Date): number {
 
 export async function POST(request: NextRequest) {
   try {
-    const { firstName, lastName, username, email, password, confirmPassword, dateOfBirth, acceptTerms } =
-      await request.json()
+    const { firstName, lastName, username, email, password, dateOfBirth, acceptTerms } = await request.json()
 
     // Validation
-    if (!firstName || !lastName || !username || !email || !password || !confirmPassword || !dateOfBirth) {
-      return NextResponse.json({ error: "All fields are required" }, { status: 400 })
+    if (!firstName || !lastName || !username || !email || !password || !dateOfBirth) {
+      return NextResponse.json({ success: false, error: "All fields are required" }, { status: 400 })
     }
 
     if (!acceptTerms) {
-      return NextResponse.json({ error: "You must accept the terms and conditions" }, { status: 400 })
+      return NextResponse.json({ success: false, error: "You must accept the terms and conditions" }, { status: 400 })
     }
 
-    if (password !== confirmPassword) {
-      return NextResponse.json({ error: "Passwords do not match" }, { status: 400 })
+    // Check if email already exists
+    const existingUserByEmail = mockUsers.find((u) => u.email.toLowerCase() === email.toLowerCase())
+    if (existingUserByEmail) {
+      return NextResponse.json({ success: false, error: "Email already registered" }, { status: 409 })
     }
 
-    // Password strength validation
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/
-    if (!passwordRegex.test(password)) {
+    // Check if username already exists
+    const existingUserByUsername = mockUsers.find((u) => u.username.toLowerCase() === username.toLowerCase())
+    if (existingUserByUsername) {
+      return NextResponse.json({ success: false, error: "Username already taken" }, { status: 409 })
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
       return NextResponse.json(
-        { error: "Password must be at least 6 characters with uppercase, lowercase, and number" },
+        { success: false, error: "Password must be at least 8 characters long" },
         { status: 400 },
       )
     }
 
-    // Username validation
-    const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
-    if (!usernameRegex.test(username)) {
+    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
       return NextResponse.json(
-        { error: "Username must be 3-20 characters, alphanumeric and underscore only" },
+        {
+          success: false,
+          error: "Password must contain at least one uppercase letter, one lowercase letter, and one number",
+        },
         { status: 400 },
       )
     }
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: "Please enter a valid email address" }, { status: 400 })
-    }
-
-    // Age validation
+    // Validate age
     const birthDate = new Date(dateOfBirth)
     const age = calculateAge(birthDate)
     if (age < 18) {
-      return NextResponse.json({ error: "You must be at least 18 years old to register" }, { status: 400 })
-    }
-
-    // Check if user already exists
-    const existingUser = users.find((u) => u.email === email || u.username === username)
-    const existingPendingUser = pendingUsers.find((u) => u.email === email || u.username === username)
-
-    if (existingUser || existingPendingUser) {
-      return NextResponse.json({ error: "User with this email or username already exists" }, { status: 409 })
+      return NextResponse.json(
+        { success: false, error: "You must be at least 18 years old to register" },
+        { status: 400 },
+      )
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12)
+    const hashedPassword = await bcrypt.hash(password, 10)
 
-    // Generate verification token
-    const verificationToken = crypto.randomBytes(32).toString("hex")
-    const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
-
-    // Create pending user
+    // Create new user
     const newUser = {
-      id: crypto.randomUUID(),
+      id: uuidv4(),
+      email: email.toLowerCase(),
+      password: hashedPassword,
       firstName,
       lastName,
-      username,
-      email,
-      password: hashedPassword,
-      dateOfBirth: birthDate,
+      username: username.toLowerCase(),
       role: "user",
-      plan: "free",
-      isVerified: false,
-      verificationToken,
-      tokenExpiry,
-      createdAt: new Date(),
-      acceptedTerms: true,
+      plan: "starter",
+      isVerified: false, // In real app, send verification email
+      dateOfBirth,
+      createdAt: new Date().toISOString(),
+      preferences: {
+        theme: "dark",
+        notifications: true,
+        twoFactor: false,
+      },
     }
 
-    pendingUsers.push(newUser)
-
-    // In production, send verification email here
-    console.log(
-      `Verification link: ${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/auth/verify-email?token=${verificationToken}`,
-    )
+    // Add to mock database
+    mockUsers.push(newUser)
 
     return NextResponse.json({
       success: true,
-      message: "Registration successful! Please check your email to verify your account.",
-      userId: newUser.id,
+      message: "Account created successfully! Please check your email to verify your account.",
     })
   } catch (error) {
     console.error("Registration error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }
-
-// Export the users arrays for other routes to access
-export { users, pendingUsers }
