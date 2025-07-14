@@ -1,0 +1,7 @@
+   ▲ Next.js 15.2.4
+   - Local:        http://localhost:3001
+   - Network:      http://0.0.0.0:3001
+   - Environments: .env.local, .env
+
+ ✓ Starting...
+ ✓ Ready in 8.5s

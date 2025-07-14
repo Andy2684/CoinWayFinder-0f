@@ -1,281 +1,54 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-@layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 240 5.9% 10%;
-    --primary: 240 9% 10%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 240 10% 3.9%;
-    --radius: 0.5rem;
-    --chart-1: 12 76% 61%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 197 37% 24%;
-    --chart-4: 43 74% 66%;
-    --chart-5: 27 87% 67%;
-  }
-
-  .dark {
-    --background: 240 10% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 240 10% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 240 10% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 240 5.9% 10%;
-    --secondary: 240 3.7% 15.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
-    --accent: 240 3.7% 15.9%;
-    --accent-foreground: 0 0% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 240 4.9% 83.9%;
-    --radius: 0.5rem;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
-  }
+:root {
+  --bg-dark: #0d0e12;
+  --card-bg: #1a1c25;
+  --accent1: #14b8a6;
+  --accent2: #22d3ee;
+  --text-light: #e5e7eb;
+  --text-dark: #0d0e12;
 }
 
-@layer base {
-  * {
-    @apply border-border;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+body {
+  margin: 0;
+  background-color: var(--bg-dark);
+  color: var(--text-light);
+  font-family: sans-serif;
 }
 
-@layer components {
-  .gradient-bg {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  }
-
-  .crypto-card {
-    background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    @apply rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow;
-  }
-
-  .crypto-gradient-green {
-    background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-  }
-
-  .crypto-gradient-red {
-    background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
-  }
-
-  .profit-positive {
-    @apply text-green-600 dark:text-green-400;
-  }
-
-  .profit-negative {
-    @apply text-red-600 dark:text-red-400;
-  }
-
-  .animate-pulse-slow {
-    animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-
-  .gradient-text {
-    @apply bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent;
-  }
+a {
+  color: var(--accent1);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--accent2);
 }
 
-.profit {
-  @apply text-green-600 dark:text-green-400;
+button {
+  background: linear-gradient(90deg, var(--accent1), var(--accent2));
+  border: none;
+  color: var(--text-dark);
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: bold;
+}
+button:hover {
+  opacity: 0.9;
 }
 
-.loss {
-  @apply text-red-600 dark:text-red-400;
+input {
+  width: 100%;
+  padding: 10px;
+  border: 2px solid var(--accent1);
+  border-radius: 4px;
+  background-color: var(--card-bg);
+  color: var(--text-light);
+  margin-top: 4px;
+  box-sizing: border-box;
 }
 
-.neutral {
-  @apply text-gray-600 dark:text-gray-400;
-}
-
-@keyframes pulse-green {
-  0%, 100% {
-    background-color: rgba(34, 197, 94, 0.2);
-  }
-  50% {
-    background-color: rgba(34, 197, 94, 0.4);
-  }
-}
-
-@keyframes pulse-red {
-  0%, 100% {
-    background-color: rgba(239, 68, 68, 0.2);
-  }
-  50% {
-    background-color: rgba(239, 68, 68, 0.4);
-  }
-}
-
-.animate-pulse-green {
-  animation: pulse-green 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.animate-pulse-red {
-  animation: pulse-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-out;
-}
-
-.trading-chart {
-  background: linear-gradient(45deg, #1e3c72 0%, #2a5298 100%);
-  @apply rounded-lg border bg-card p-4;
-}
-
-.price-up {
-  @apply text-green-600 dark:text-green-400;
-}
-
-.price-down {
-  @apply text-red-600 dark:text-red-400;
-}
-
-.trading-chart .recharts-cartesian-axis-tick-value {
-  @apply fill-muted-foreground text-xs;
-}
-
-.trading-chart .recharts-cartesian-grid-horizontal line,
-.trading-chart .recharts-cartesian-grid-vertical line {
-  @apply stroke-border;
-}
-
-.signal-card {
-  @apply relative overflow-hidden rounded-lg border bg-card p-4 transition-all hover:shadow-md;
-}
-
-.signal-card.bullish {
-  @apply border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950;
-}
-
-.signal-card.bearish {
-  @apply border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950;
-}
-
-.signal-card.neutral {
-  @apply border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950;
-}
-
-.signal-strong {
-  @apply bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400;
-}
-
-.signal-moderate {
-  @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400;
-}
-
-.signal-weak {
-  @apply bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400;
-}
-
-.bot-status {
-  @apply inline-flex items-center rounded-full px-2 py-1 text-xs font-medium;
-}
-
-.bot-status.active {
-  @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300;
-}
-
-.bot-status.paused {
-  @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300;
-}
-
-.bot-status.stopped {
-  @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300;
-}
-
-.sentiment-positive {
-  @apply text-green-600 dark:text-green-400;
-}
-
-.sentiment-negative {
-  @apply text-red-600 dark:text-red-400;
-}
-
-.sentiment-neutral {
-  @apply text-yellow-600 dark:text-yellow-400;
-}
-
-.loading-skeleton {
-  @apply animate-pulse bg-muted rounded;
-}
-
-.loading-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-.custom-scrollbar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.custom-scrollbar::-webkit-scrollbar-track {
-  @apply bg-muted;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb {
-  @apply bg-muted-foreground/30 rounded-full;
-}
-
-.custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  @apply bg-muted-foreground/50;
-}
-
-.scrollbar-hide {
-  -ms-overflow-style: none;
-  scrollbar-width: none;
-}
-
-.scrollbar-hide::-webkit-scrollbar {
-  display: none;
-}
-
-@media (max-width: 768px) {
-  .trading-chart {
-    @apply text-sm;
-  }
-
-  .signal-card {
-    @apply p-3;
-  }
+.card {
+  background-color: var(--card-bg);
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
 }

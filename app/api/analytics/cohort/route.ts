@@ -1,71 +1,65 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
-import { getCohortAnalysis } from "@/lib/analytics/queries"
+import { db } from "@/lib/db"
+import { users } from "@/lib/db/schema"
+import { sql } from "drizzle-orm"
 
-// Helper function to get admin user
-async function getAdminUser(request: NextRequest) {
+export async function GET(request: Request) {
+  console.log("→ [Cohort] start handler")
+
+  // --- Авторизация JWT ---
   const authHeader = request.headers.get("authorization")
-
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null
+  if (!authHeader?.startsWith("Bearer ")) {
+    return NextResponse.json(
+      { success: false, error: "Unauthorized" },
+      { status: 401 }
+    )
   }
-
-  const token = authHeader.substring(7)
-
+  const token = authHeader.slice(7)
+  let payload: any
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key") as any
-
-    if (decoded.role !== "admin") {
-      return null
-    }
-
-    return decoded
+    payload = jwt.verify(token, process.env.JWT_SECRET || "your-secret-key")
   } catch {
-    return null
+    return NextResponse.json(
+      { success: false, error: "Invalid token" },
+      { status: 401 }
+    )
   }
-}
+  if (payload.role !== "admin") {
+    return NextResponse.json(
+      { success: false, error: "Admin access required" },
+      { status: 403 }
+    )
+  }
+  console.log("→ [Cohort] auth OK, user role:", payload.role)
+  // -------------------------------------------
 
-export async function GET(request: NextRequest) {
   try {
-    const adminUser = await getAdminUser(request)
+    console.log("→ [Cohort] about to run DB query")
 
-    if (!adminUser) {
-      return NextResponse.json({ success: false, error: "Admin access required" }, { status: 403 })
-    }
+    const rows = await db
+      .select({
+        month: sql<string>`TO_CHAR(${users.createdAt}, 'YYYY-MM')`,
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(users)
+      .groupBy(sql`TO_CHAR(${users.createdAt}, 'YYYY-MM')`)
 
-    const { searchParams } = new URL(request.url)
-    const startDateParam = searchParams.get("startDate")
-    const endDateParam = searchParams.get("endDate")
+    console.log("→ [Cohort] DB returned rows:", rows)
 
-    // Default to last 12 months for cohort analysis
-    const endDate = endDateParam ? new Date(endDateParam) : new Date()
-    const startDate = startDateParam ? new Date(startDateParam) : new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+    const data = rows.map(r => ({
+      month: r.month,
+      count: Number(r.count),
+    }))
 
-    const cohortData = await getCohortAnalysis(startDate, endDate)
+    console.log("→ [Cohort] mapped data:", data)
 
-    // Transform data for frontend consumption
-    const cohortTable: { [key: string]: { [key: number]: number } } = {}
-
-    cohortData.forEach(({ cohortMonth, periodNumber, userCount }) => {
-      if (!cohortTable[cohortMonth]) {
-        cohortTable[cohortMonth] = {}
-      }
-      cohortTable[cohortMonth][periodNumber] = userCount
-    })
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        dateRange: {
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-        },
-        cohortTable,
-        rawData: cohortData,
-      },
-    })
+    return NextResponse.json({ success: true, data })
   } catch (error) {
-    console.error("Error fetching cohort analysis:", error)
-    return NextResponse.json({ success: false, error: "Failed to fetch cohort analysis" }, { status: 500 })
+    console.error("→ [Cohort] ERROR:", error)
+    return NextResponse.json(
+      { success: false, error: "Failed to fetch cohort analysis" },
+      { status: 500 }
+    )
   }
 }

@@ -1,34 +1,18 @@
-import type React from "react"
+// app/layout.tsx
 import "./globals.css"
-import type { Metadata } from "next"
-import { Inter } from "next/font/google"
-import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProvider } from "@/components/auth/auth-provider"
-import { Toaster } from "@/components/ui/toaster"
+import { ReactNode } from "react"
 
-const inter = Inter({ subsets: ["latin"] })
+export const metadata = { title: "CoinWayfinder" }
 
-export const metadata: Metadata = {
-  title: "CoinWayfinder - AI-Powered Crypto Trading Platform",
-  description:
-    "Advanced cryptocurrency trading platform with AI-powered signals, automated bots, and comprehensive market analysis.",
-    generator: 'v0.dev'
-}
-
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
-          <AuthProvider>
-            {children}
-            <Toaster />
-          </AuthProvider>
-        </ThemeProvider>
+    <html lang="en">
+      <body>
+        <nav style={{ padding: 16, backgroundColor: "#111" }}>
+          <a href="/analytics" style={{ marginRight: 20 }}>Analytics</a>
+          <a href="/login">Login</a>
+        </nav>
+        <main>{children}</main>
       </body>
     </html>
   )
