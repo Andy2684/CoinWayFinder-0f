@@ -1,90 +1,26 @@
-import { type NextRequest, NextResponse } from "next/server"
-import bcrypt from "bcryptjs"
-import jwt from "jsonwebtoken"
-import { eq } from "drizzle-orm"
-import { db } from "@/lib/db"
-import { users } from "@/lib/db/schema"
+// app/api/auth/login/route.ts
+
+import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json()
+    const { email, password } = await request.json();
 
-    if (!email || !password) {
+    // Заглушка проверки учётных данных:
+    if (email === "test@example.com" && password === "password") {
+      const user = { id: "1", email };
+      return NextResponse.json({ success: true, user });
+    } else {
       return NextResponse.json(
-        { success: false, error: "Email and password are required" },
-        { status: 400 }
-      )
-    }
-
-    // Find user by email (only necessary columns)
-    const userRows = await db
-      .select({
-        id: users.id,
-        email: users.email,
-        passwordHash: users.passwordHash,
-        isActive: users.isActive,
-        role: users.role,
-      })
-      .from(users)
-      .where(eq(users.email, email.toLowerCase()))
-      .limit(1)
-
-    if (!userRows.length) {
-      return NextResponse.json(
-        { success: false, error: "Invalid email or password" },
+        { success: false, error: "Invalid credentials" },
         { status: 401 }
-      )
+      );
     }
-
-    const foundUser = userRows[0]
-
-    // Check if user is active
-    if (!foundUser.isActive) {
-      return NextResponse.json(
-        { success: false, error: "Account is deactivated" },
-        { status: 401 }
-      )
-    }
-
-    // Verify password
-    const isValidPassword = await bcrypt.compare(
-      password,
-      foundUser.passwordHash
-    )
-
-    if (!isValidPassword) {
-      return NextResponse.json(
-        { success: false, error: "Invalid email or password" },
-        { status: 401 }
-      )
-    }
-
-    // Temporarily disable updating last login to avoid the error
-    // await db
-    //   .update(users)
-    //   .set({ lastLoginAt: new Date() })
-    //   .where(eq(users.id, foundUser.id))
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { userId: foundUser.id, email: foundUser.email, role: foundUser.role },
-      process.env.JWT_SECRET || "your-secret-key",
-      { expiresIn: "7d" }
-    )
-
-    // Remove password from user object
-    const { passwordHash, ...userWithoutPassword } = foundUser
-
-    return NextResponse.json({
-      success: true,
-      token,
-      user: userWithoutPassword,
-    })
   } catch (error) {
-    console.error("Login error:", error)
+    console.error("Login error:", error);
     return NextResponse.json(
-      { success: false, error: "Internal server error" },
+      { success: false, error: "Failed to login" },
       { status: 500 }
-    )
+    );
   }
 }

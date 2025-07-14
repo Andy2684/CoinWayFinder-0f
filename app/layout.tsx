@@ -1,19 +1,21 @@
 // app/layout.tsx
-import "./globals.css"
-import { ReactNode } from "react"
+import "./globals.css";
+import { ReactNode } from "react";
+import { AuthProvider } from "@/components/auth/auth-provider";
 
-export const metadata = { title: "CoinWayfinder" }
+export const metadata = {
+  title: "CoinWayfinder",
+  description: "Crypto analytics and tools",
+};
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <nav style={{ padding: 16, backgroundColor: "#111" }}>
-          <a href="/analytics" style={{ marginRight: 20 }}>Analytics</a>
-          <a href="/login">Login</a>
-        </nav>
-        <main>{children}</main>
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
-  )
+  );
 }

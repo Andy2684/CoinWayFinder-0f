@@ -1,52 +1,35 @@
-"use client"
+// components/auth/protected-route.tsx
 
-import type React from "react"
+"use client";
 
-import { useAuth } from "./auth-provider"
-import { useRouter } from "next/navigation"
-import { useEffect } from "react"
-import { Loader2 } from "lucide-react"
+import { ReactNode, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "./auth-provider";
 
 interface ProtectedRouteProps {
-  children: React.ReactNode
-  requiredRole?: string
+  children: ReactNode;
+  requiredRole?: string; // опционально, если будете проверять роли
 }
 
 export function ProtectedRoute({ children, requiredRole }: ProtectedRouteProps) {
-  const { user, loading, isAuthenticated } = useAuth()
-  const router = useRouter()
+  const { user } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
-      router.push("/auth/login")
+    // Если нет пользователя — редиректим на страницу логина
+    if (!user) {
+      router.replace("/auth/login");
     }
-  }, [loading, isAuthenticated, router])
+    // Если нужна проверка роли:
+    if (requiredRole && user && (user as any).role !== requiredRole) {
+      router.replace("/auth/login");
+    }
+  }, [user, requiredRole, router]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#191A1E] flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-[#30D5C8] mx-auto mb-4" />
-          <p className="text-gray-400">Loading...</p>
-        </div>
-      </div>
-    )
+  // Пока user ещё не загружен, можно вернуть null или спиннер
+  if (!user) {
+    return null;
   }
 
-  if (!isAuthenticated) {
-    return null
-  }
-
-  if (requiredRole && user?.role !== requiredRole) {
-    return (
-      <div className="min-h-screen bg-[#191A1E] flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-white mb-4">Access Denied</h1>
-          <p className="text-gray-400">You don't have permission to access this page.</p>
-        </div>
-      </div>
-    )
-  }
-
-  return <>{children}</>
+  return <>{children}</>;
 }

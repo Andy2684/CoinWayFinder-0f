@@ -1,12 +1,17 @@
-"use client"
+// app/profile/page.tsx
+"use client";
+export const dynamic = "force-dynamic";
 
-import { ProfilePage } from "@/components/profile/profile-page"
-import { ProtectedRoute } from "@/components/auth/protected-route"
+import { AuthProvider } from "@/components/auth/auth-provider";
+import { ProtectedRoute } from "@/components/auth/protected-route";
+import { ProfilePageComponent } from "@/components/profile/profile-page";
 
 export default function Profile() {
   return (
-    <ProtectedRoute>
-      <ProfilePage />
-    </ProtectedRoute>
-  )
+    <AuthProvider>
+      <ProtectedRoute>
+        <ProfilePageComponent />
+      </ProtectedRoute>
+    </AuthProvider>
+  );
 }
