@@ -1,113 +1,123 @@
-```typescript
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+"use client"
 
-// Определение типа для объекта пользователя
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react"
+
 interface User {
-  id: string;
-  email: string;
-  name?: string;
+  id: string
+  name: string
+  email: string
+  role: string
 }
 
-// Определение типа для контекста аутентификации
 interface AuthContextType {
-  user: User | null;
-  loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  user: User | null
+  loading: boolean
+  login: (email: string, password: string) => Promise<void>
+  signup: (name: string, email: string, password: string) => Promise<void>
+  logout: () => void
+  isAuthenticated: boolean
 }
 
-// Создание контекста аутентификации
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Пропсы для провайдера
-interface AuthProviderProps {
-  children: ReactNode;
-}
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
-// Провайдер контекста аутентификации
-export function AuthProvider({ children }: AuthProviderProps) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  // Проверка состояния аутентификации при загрузке
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // Пример: Проверка токена в localStorage (замените на вашу логику)
-        const token = localStorage.getItem('authToken');
-        if (token) {
-          // Мок-данные пользователя (замените на реальный запрос к API)
-          const mockUser: User = {
-            id: '1',
-            email: 'user@example.com',
-            name: 'Test User',
-          };
-          setUser(mockUser);
-        }
-      } catch (error) {
-        console.error('Ошибка при проверке аутентификации:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
+    checkAuth()
+  }, [])
 
-    checkAuth();
-  }, []);
-
-  // Функция входа
-  const login = async (email: string, password: string) => {
+  const checkAuth = async () => {
     try {
-      setLoading(true);
-      // Пример: Мок-аутентификация (замените на запрос к вашему API)
-      // Например, используйте fetch или библиотеку, такую как axios
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Неверные учетные данные');
+      const token = localStorage.getItem("auth-token")
+      if (!token) {
+        setLoading(false)
+        return
       }
 
-      const { user, token } = await response.json();
-      setUser(user);
-      localStorage.setItem('authToken', token);
+      const response = await fetch("/api/auth/me", {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        setUser(data.user)
+      } else {
+        localStorage.removeItem("auth-token")
+      }
     } catch (error) {
-      console.error('Ошибка входа:', error);
-      throw new Error('Ошибка входа. Пожалуйста, попробуйте снова.');
+      console.error("Auth check failed:", error)
+      localStorage.removeItem("auth-token")
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
-  // Функция выхода
+  const login = async (email: string, password: string) => {
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    })
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || "Login failed")
+    }
+
+    localStorage.setItem("auth-token", data.token)
+    setUser(data.user)
+  }
+
+  const signup = async (name: string, email: string, password: string) => {
+    const response = await fetch("/api/auth/register", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, email, password }),
+    })
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || "Signup failed")
+    }
+
+    localStorage.setItem("auth-token", data.token)
+    setUser(data.user)
+  }
+
   const logout = () => {
-    setUser(null);
-    localStorage.removeItem('authToken');
-  };
+    localStorage.removeItem("auth-token")
+    setUser(null)
+    window.location.href = "/auth/login"
+  }
 
-  // Возвращаем провайдер контекста с исправленным синтаксисом
   return (
     <AuthContext.Provider
       value={{
         user,
         loading,
         login,
+        signup,
         logout,
+        isAuthenticated: !!user,
       }}
     >
       {children}
     </AuthContext.Provider>
-  );
+  )
 }
 
-// Кастомный хук для использования контекста аутентификации
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth должен использоваться внутри AuthProvider');
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider")
   }
-  return context;
+  return context
 }
-```
