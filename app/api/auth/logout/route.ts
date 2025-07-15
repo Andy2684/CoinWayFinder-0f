@@ -1,6 +1,6 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
     // In a real application, you might want to:
     // 1. Add the token to a blacklist
@@ -13,6 +13,6 @@ export async function POST() {
     })
   } catch (error) {
     console.error("Logout error:", error)
-    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
