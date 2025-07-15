@@ -1,17 +1,13 @@
-import { HeroSection } from "@/components/hero-section"
-import { FeaturesSection } from "@/components/features-section"
-import { PricingSection } from "@/components/pricing-section"
-import { CTASection } from "@/components/cta-section"
-import { Footer } from "@/components/footer"
+// app/page.tsx
+import { ProtectedRoute } from '../components/auth/protected-route';
 
-export default function HomePage() {
+export default function Home() {
   return (
-    <div className="min-h-screen">
-      <HeroSection />
-      <FeaturesSection />
-      <PricingSection />
-      <CTASection />
-      <Footer />
-    </div>
-  )
+    <ProtectedRoute>
+      <main>
+        <h1>Welcome to CoinWayFinder</h1>
+        <p>This is a protected page. Only authenticated users can see this.</p>
+      </main>
+    </ProtectedRoute>
+  );
 }

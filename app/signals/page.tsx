@@ -1,37 +1,27 @@
-import { ProtectedRoute } from "@/components/auth/protected-route"
-import { SignalFeed } from "@/components/signals/signal-feed"
-import { SignalPerformance } from "@/components/signals/signal-performance"
-import { SignalAlerts } from "@/components/signals/signal-alerts"
-import { SignalFilters } from "@/components/signals/signal-filters"
-import { CreateSignalDialog } from "@/components/signals/create-signal-dialog"
+"use client";
+
+import { useState } from "react";
+import SignalFilters from "@/components/signals/signal-filters";
+import { SignalPerformance } from "@/components/signals/signal-performance";
+import { SignalAlerts } from "@/components/signals/signal-alerts";
+import { CreateSignalDialog } from "@/components/signals/create-signal-dialog";
 
 export default function SignalsPage() {
+  const [filters, setFilters] = useState<string[]>([]);
+
+  const handleFiltersChange = (newFilters: string[]) => {
+    setFilters(newFilters);
+  };
+
   return (
-    <ProtectedRoute>
-      <div className="container mx-auto px-4 py-8 space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-white">Trading Signals</h1>
-            <p className="text-gray-400 mt-2">AI-powered trading recommendations and market insights</p>
-          </div>
-          <CreateSignalDialog />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <div className="lg:col-span-1">
-            <SignalFilters />
-          </div>
-
-          <div className="lg:col-span-2 space-y-8">
-            <SignalFeed />
-          </div>
-
-          <div className="lg:col-span-1 space-y-8">
-            <SignalPerformance />
-            <SignalAlerts />
-          </div>
-        </div>
+    <div className="p-4 space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold">Signals</h1>
+        <CreateSignalDialog />
       </div>
-    </ProtectedRoute>
-  )
+      <SignalFilters filters={filters} onFiltersChange={handleFiltersChange} />
+      <SignalPerformance />
+      <SignalAlerts />
+    </div>
+  );
 }
