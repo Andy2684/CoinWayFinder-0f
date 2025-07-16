@@ -1,14 +1,14 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { SignalCard } from "./signal-card"
-import { Card, CardContent } from "@/components/ui/card"
-import { Loader2, TrendingUp } from "lucide-react"
+import { useState, useEffect } from 'react'
+import { SignalCard } from './signal-card'
+import { Card, CardContent } from '@/components/ui/card'
+import { Loader2, TrendingUp } from 'lucide-react'
 
 interface Signal {
   id: string
   symbol: string
-  type: "BUY" | "SELL"
+  type: 'BUY' | 'SELL'
   strategy: string
   exchange: string
   timeframe: string
@@ -20,10 +20,10 @@ interface Signal {
   pnl: number
   pnlPercentage: number
   progress: number
-  riskLevel: "LOW" | "MEDIUM" | "HIGH"
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH'
   aiAnalysis: string
   createdAt: string
-  status: "ACTIVE" | "COMPLETED" | "STOPPED"
+  status: 'ACTIVE' | 'COMPLETED' | 'STOPPED'
 }
 
 interface SignalFeedProps {
@@ -38,12 +38,12 @@ export function SignalFeed({ filters }: SignalFeedProps) {
   useEffect(() => {
     const mockSignals: Signal[] = [
       {
-        id: "1",
-        symbol: "BTC/USDT",
-        type: "BUY",
-        strategy: "Trend Following",
-        exchange: "Binance",
-        timeframe: "4H",
+        id: '1',
+        symbol: 'BTC/USDT',
+        type: 'BUY',
+        strategy: 'Trend Following',
+        exchange: 'Binance',
+        timeframe: '4H',
         confidence: 87,
         entryPrice: 43250,
         targetPrice: 45800,
@@ -52,19 +52,19 @@ export function SignalFeed({ filters }: SignalFeedProps) {
         pnl: 870,
         pnlPercentage: 2.01,
         progress: 34,
-        riskLevel: "MEDIUM",
+        riskLevel: 'MEDIUM',
         aiAnalysis:
-          "Strong bullish momentum with RSI showing oversold conditions. Volume profile indicates institutional accumulation.",
-        createdAt: "2024-01-15T10:30:00Z",
-        status: "ACTIVE",
+          'Strong bullish momentum with RSI showing oversold conditions. Volume profile indicates institutional accumulation.',
+        createdAt: '2024-01-15T10:30:00Z',
+        status: 'ACTIVE',
       },
       {
-        id: "2",
-        symbol: "ETH/USDT",
-        type: "SELL",
-        strategy: "Mean Reversion",
-        exchange: "Bybit",
-        timeframe: "1H",
+        id: '2',
+        symbol: 'ETH/USDT',
+        type: 'SELL',
+        strategy: 'Mean Reversion',
+        exchange: 'Bybit',
+        timeframe: '1H',
         confidence: 92,
         entryPrice: 2580,
         targetPrice: 2420,
@@ -73,18 +73,19 @@ export function SignalFeed({ filters }: SignalFeedProps) {
         pnl: 70,
         pnlPercentage: 2.71,
         progress: 44,
-        riskLevel: "LOW",
-        aiAnalysis: "Overbought conditions on multiple timeframes. Bearish divergence detected on MACD.",
-        createdAt: "2024-01-15T09:15:00Z",
-        status: "ACTIVE",
+        riskLevel: 'LOW',
+        aiAnalysis:
+          'Overbought conditions on multiple timeframes. Bearish divergence detected on MACD.',
+        createdAt: '2024-01-15T09:15:00Z',
+        status: 'ACTIVE',
       },
       {
-        id: "3",
-        symbol: "SOL/USDT",
-        type: "BUY",
-        strategy: "Breakout",
-        exchange: "KuCoin",
-        timeframe: "15M",
+        id: '3',
+        symbol: 'SOL/USDT',
+        type: 'BUY',
+        strategy: 'Breakout',
+        exchange: 'KuCoin',
+        timeframe: '15M',
         confidence: 78,
         entryPrice: 98.5,
         targetPrice: 105.2,
@@ -93,18 +94,19 @@ export function SignalFeed({ filters }: SignalFeedProps) {
         pnl: 2.8,
         pnlPercentage: 2.84,
         progress: 42,
-        riskLevel: "HIGH",
-        aiAnalysis: "Clean breakout above resistance with strong volume confirmation. Target confluence at 105.20.",
-        createdAt: "2024-01-15T08:45:00Z",
-        status: "ACTIVE",
+        riskLevel: 'HIGH',
+        aiAnalysis:
+          'Clean breakout above resistance with strong volume confirmation. Target confluence at 105.20.',
+        createdAt: '2024-01-15T08:45:00Z',
+        status: 'ACTIVE',
       },
       {
-        id: "4",
-        symbol: "ADA/USDT",
-        type: "BUY",
-        strategy: "Support/Resistance",
-        exchange: "Binance",
-        timeframe: "2H",
+        id: '4',
+        symbol: 'ADA/USDT',
+        type: 'BUY',
+        strategy: 'Support/Resistance',
+        exchange: 'Binance',
+        timeframe: '2H',
         confidence: 85,
         entryPrice: 0.485,
         targetPrice: 0.52,
@@ -113,18 +115,19 @@ export function SignalFeed({ filters }: SignalFeedProps) {
         pnl: 0.013,
         pnlPercentage: 2.68,
         progress: 37,
-        riskLevel: "MEDIUM",
-        aiAnalysis: "Bounce from key support level with bullish engulfing pattern. Good risk-reward ratio.",
-        createdAt: "2024-01-15T07:20:00Z",
-        status: "ACTIVE",
+        riskLevel: 'MEDIUM',
+        aiAnalysis:
+          'Bounce from key support level with bullish engulfing pattern. Good risk-reward ratio.',
+        createdAt: '2024-01-15T07:20:00Z',
+        status: 'ACTIVE',
       },
       {
-        id: "5",
-        symbol: "MATIC/USDT",
-        type: "SELL",
-        strategy: "Trend Following",
-        exchange: "Bybit",
-        timeframe: "30M",
+        id: '5',
+        symbol: 'MATIC/USDT',
+        type: 'SELL',
+        strategy: 'Trend Following',
+        exchange: 'Bybit',
+        timeframe: '30M',
         confidence: 81,
         entryPrice: 0.825,
         targetPrice: 0.78,
@@ -133,18 +136,19 @@ export function SignalFeed({ filters }: SignalFeedProps) {
         pnl: 0.02,
         pnlPercentage: 2.42,
         progress: 44,
-        riskLevel: "MEDIUM",
-        aiAnalysis: "Bearish trend continuation with lower highs and lower lows. Volume supporting the move.",
-        createdAt: "2024-01-15T06:10:00Z",
-        status: "ACTIVE",
+        riskLevel: 'MEDIUM',
+        aiAnalysis:
+          'Bearish trend continuation with lower highs and lower lows. Volume supporting the move.',
+        createdAt: '2024-01-15T06:10:00Z',
+        status: 'ACTIVE',
       },
       {
-        id: "6",
-        symbol: "LINK/USDT",
-        type: "BUY",
-        strategy: "Momentum",
-        exchange: "Binance",
-        timeframe: "1H",
+        id: '6',
+        symbol: 'LINK/USDT',
+        type: 'BUY',
+        strategy: 'Momentum',
+        exchange: 'Binance',
+        timeframe: '1H',
         confidence: 89,
         entryPrice: 14.25,
         targetPrice: 15.8,
@@ -153,10 +157,11 @@ export function SignalFeed({ filters }: SignalFeedProps) {
         pnl: 0.7,
         pnlPercentage: 4.91,
         progress: 45,
-        riskLevel: "LOW",
-        aiAnalysis: "Strong momentum breakout with institutional buying pressure. Technical indicators aligned.",
-        createdAt: "2024-01-15T05:30:00Z",
-        status: "ACTIVE",
+        riskLevel: 'LOW',
+        aiAnalysis:
+          'Strong momentum breakout with institutional buying pressure. Technical indicators aligned.',
+        createdAt: '2024-01-15T05:30:00Z',
+        status: 'ACTIVE',
       },
     ]
 

@@ -1,38 +1,43 @@
-import { Card, CardContent } from "@/components/ui/card"
-import { Bot, MessageSquare, TrendingUp, Shield, BarChart3, Zap } from "lucide-react"
+import { Card, CardContent } from '@/components/ui/card'
+import { Bot, MessageSquare, TrendingUp, Shield, BarChart3, Zap } from 'lucide-react'
 
 export function FeaturesSection() {
   const features = [
     {
       icon: MessageSquare,
-      title: "AI Signals via Telegram",
+      title: 'AI Signals via Telegram',
       description:
-        "Receive real-time crypto trading signals with buy/sell recommendations, TP, and SL levels directly in Telegram.",
+        'Receive real-time crypto trading signals with buy/sell recommendations, TP, and SL levels directly in Telegram.',
     },
     {
       icon: Bot,
-      title: "Auto DCA Bots",
-      description: "Set up automated Dollar Cost Averaging bots with customizable risk settings and pair selection.",
+      title: 'Auto DCA Bots',
+      description:
+        'Set up automated Dollar Cost Averaging bots with customizable risk settings and pair selection.',
     },
     {
       icon: TrendingUp,
-      title: "Real-time Market Scanners",
-      description: "Advanced market scanning algorithms that identify profitable trading opportunities 24/7.",
+      title: 'Real-time Market Scanners',
+      description:
+        'Advanced market scanning algorithms that identify profitable trading opportunities 24/7.',
     },
     {
       icon: Shield,
-      title: "Risk Management Tools",
-      description: "Built-in stop-loss, take-profit, and trailing stop features to protect your investments.",
+      title: 'Risk Management Tools',
+      description:
+        'Built-in stop-loss, take-profit, and trailing stop features to protect your investments.',
     },
     {
       icon: BarChart3,
-      title: "Analytics Dashboard",
-      description: "Comprehensive portfolio tracking with P&L analysis, trade history, and performance metrics.",
+      title: 'Analytics Dashboard',
+      description:
+        'Comprehensive portfolio tracking with P&L analysis, trade history, and performance metrics.',
     },
     {
       icon: Zap,
-      title: "GPT-Based Market Analysis",
-      description: "AI-powered market summaries and insights to help you make informed trading decisions.",
+      title: 'GPT-Based Market Analysis',
+      description:
+        'AI-powered market summaries and insights to help you make informed trading decisions.',
     },
   ]
 
@@ -51,7 +56,10 @@ export function FeaturesSection() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
-            <Card key={index} className="bg-gray-900/50 border-gray-800 hover:border-[#30D5C8]/50 transition-colors">
+            <Card
+              key={index}
+              className="bg-gray-900/50 border-gray-800 hover:border-[#30D5C8]/50 transition-colors"
+            >
               <CardContent className="p-6">
                 <div className="w-12 h-12 bg-[#30D5C8]/10 rounded-lg flex items-center justify-center mb-4">
                   <feature.icon className="w-6 h-6 text-[#30D5C8]" />

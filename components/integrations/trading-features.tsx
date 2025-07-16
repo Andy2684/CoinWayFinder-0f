@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import { Button } from '@/components/ui/button'
 import {
   TrendingUp,
   BarChart3,
@@ -15,193 +15,193 @@ import {
   Activity,
   Target,
   Settings,
-} from "lucide-react"
+} from 'lucide-react'
 
 export function TradingFeatures() {
   const features = [
     {
-      category: "Trading Execution",
+      category: 'Trading Execution',
       icon: TrendingUp,
-      color: "text-green-400",
+      color: 'text-green-400',
       items: [
         {
-          name: "Spot Trading",
-          description: "Execute spot trades across all connected exchanges",
+          name: 'Spot Trading',
+          description: 'Execute spot trades across all connected exchanges',
           enabled: true,
-          exchanges: ["Binance", "Coinbase", "Kraken"],
+          exchanges: ['Binance', 'Coinbase', 'Kraken'],
         },
         {
-          name: "Futures Trading",
-          description: "Trade futures contracts with leverage",
+          name: 'Futures Trading',
+          description: 'Trade futures contracts with leverage',
           enabled: true,
-          exchanges: ["Binance", "Bybit", "OKX"],
+          exchanges: ['Binance', 'Bybit', 'OKX'],
         },
         {
-          name: "Margin Trading",
-          description: "Trade with borrowed funds for increased exposure",
+          name: 'Margin Trading',
+          description: 'Trade with borrowed funds for increased exposure',
           enabled: false,
-          exchanges: ["Binance", "Kraken"],
+          exchanges: ['Binance', 'Kraken'],
         },
         {
-          name: "Options Trading",
-          description: "Trade crypto options contracts",
+          name: 'Options Trading',
+          description: 'Trade crypto options contracts',
           enabled: false,
-          exchanges: ["Bybit", "OKX"],
+          exchanges: ['Bybit', 'OKX'],
         },
       ],
     },
     {
-      category: "Order Management",
+      category: 'Order Management',
       icon: Target,
-      color: "text-blue-400",
+      color: 'text-blue-400',
       items: [
         {
-          name: "Smart Order Routing",
-          description: "Automatically route orders to best available exchange",
+          name: 'Smart Order Routing',
+          description: 'Automatically route orders to best available exchange',
           enabled: true,
-          exchanges: ["All Connected"],
+          exchanges: ['All Connected'],
         },
         {
-          name: "Order Splitting",
-          description: "Split large orders across multiple exchanges",
+          name: 'Order Splitting',
+          description: 'Split large orders across multiple exchanges',
           enabled: true,
-          exchanges: ["All Connected"],
+          exchanges: ['All Connected'],
         },
         {
-          name: "Iceberg Orders",
-          description: "Hide large order sizes with iceberg execution",
+          name: 'Iceberg Orders',
+          description: 'Hide large order sizes with iceberg execution',
           enabled: false,
-          exchanges: ["Binance", "OKX"],
+          exchanges: ['Binance', 'OKX'],
         },
         {
-          name: "TWAP Orders",
-          description: "Time-weighted average price execution",
+          name: 'TWAP Orders',
+          description: 'Time-weighted average price execution',
           enabled: false,
-          exchanges: ["Professional"],
+          exchanges: ['Professional'],
         },
       ],
     },
     {
-      category: "Risk Management",
+      category: 'Risk Management',
       icon: Shield,
-      color: "text-red-400",
+      color: 'text-red-400',
       items: [
         {
-          name: "Position Limits",
-          description: "Set maximum position sizes per exchange",
+          name: 'Position Limits',
+          description: 'Set maximum position sizes per exchange',
           enabled: true,
-          exchanges: ["All Connected"],
+          exchanges: ['All Connected'],
         },
         {
-          name: "Daily Loss Limits",
-          description: "Automatic trading halt on daily loss threshold",
+          name: 'Daily Loss Limits',
+          description: 'Automatic trading halt on daily loss threshold',
           enabled: true,
-          exchanges: ["All Connected"],
+          exchanges: ['All Connected'],
         },
         {
-          name: "Correlation Monitoring",
-          description: "Monitor position correlation across exchanges",
+          name: 'Correlation Monitoring',
+          description: 'Monitor position correlation across exchanges',
           enabled: false,
-          exchanges: ["Professional"],
+          exchanges: ['Professional'],
         },
         {
-          name: "Liquidation Protection",
-          description: "Early warning system for margin positions",
+          name: 'Liquidation Protection',
+          description: 'Early warning system for margin positions',
           enabled: true,
-          exchanges: ["Margin Enabled"],
+          exchanges: ['Margin Enabled'],
         },
       ],
     },
     {
-      category: "Data & Analytics",
+      category: 'Data & Analytics',
       icon: BarChart3,
-      color: "text-purple-400",
+      color: 'text-purple-400',
       items: [
         {
-          name: "Real-time Data",
-          description: "Live price feeds and order book data",
+          name: 'Real-time Data',
+          description: 'Live price feeds and order book data',
           enabled: true,
-          exchanges: ["All Connected"],
+          exchanges: ['All Connected'],
         },
         {
-          name: "Historical Data",
-          description: "Access to historical OHLCV and trade data",
+          name: 'Historical Data',
+          description: 'Access to historical OHLCV and trade data',
           enabled: true,
-          exchanges: ["All Connected"],
+          exchanges: ['All Connected'],
         },
         {
-          name: "Cross-Exchange Analytics",
-          description: "Compare prices and volumes across exchanges",
+          name: 'Cross-Exchange Analytics',
+          description: 'Compare prices and volumes across exchanges',
           enabled: true,
-          exchanges: ["All Connected"],
+          exchanges: ['All Connected'],
         },
         {
-          name: "Custom Indicators",
-          description: "Build and deploy custom technical indicators",
+          name: 'Custom Indicators',
+          description: 'Build and deploy custom technical indicators',
           enabled: false,
-          exchanges: ["Professional"],
+          exchanges: ['Professional'],
         },
       ],
     },
     {
-      category: "Automation",
+      category: 'Automation',
       icon: Zap,
-      color: "text-yellow-400",
+      color: 'text-yellow-400',
       items: [
         {
-          name: "Trading Bots",
-          description: "Deploy automated trading strategies",
+          name: 'Trading Bots',
+          description: 'Deploy automated trading strategies',
           enabled: true,
-          exchanges: ["All Connected"],
+          exchanges: ['All Connected'],
         },
         {
-          name: "Portfolio Rebalancing",
-          description: "Automatic portfolio rebalancing across exchanges",
+          name: 'Portfolio Rebalancing',
+          description: 'Automatic portfolio rebalancing across exchanges',
           enabled: true,
-          exchanges: ["All Connected"],
+          exchanges: ['All Connected'],
         },
         {
-          name: "Arbitrage Detection",
-          description: "Identify and execute arbitrage opportunities",
+          name: 'Arbitrage Detection',
+          description: 'Identify and execute arbitrage opportunities',
           enabled: false,
-          exchanges: ["Multiple Required"],
+          exchanges: ['Multiple Required'],
         },
         {
-          name: "Grid Trading",
-          description: "Automated grid trading strategies",
+          name: 'Grid Trading',
+          description: 'Automated grid trading strategies',
           enabled: true,
-          exchanges: ["All Connected"],
+          exchanges: ['All Connected'],
         },
       ],
     },
     {
-      category: "Notifications",
+      category: 'Notifications',
       icon: Bell,
-      color: "text-[#30D5C8]",
+      color: 'text-[#30D5C8]',
       items: [
         {
-          name: "Trade Notifications",
-          description: "Get notified of all trade executions",
+          name: 'Trade Notifications',
+          description: 'Get notified of all trade executions',
           enabled: true,
-          exchanges: ["All Connected"],
+          exchanges: ['All Connected'],
         },
         {
-          name: "Price Alerts",
-          description: "Custom price alerts across all exchanges",
+          name: 'Price Alerts',
+          description: 'Custom price alerts across all exchanges',
           enabled: true,
-          exchanges: ["All Connected"],
+          exchanges: ['All Connected'],
         },
         {
-          name: "Balance Alerts",
-          description: "Low balance and margin call notifications",
+          name: 'Balance Alerts',
+          description: 'Low balance and margin call notifications',
           enabled: true,
-          exchanges: ["All Connected"],
+          exchanges: ['All Connected'],
         },
         {
-          name: "System Alerts",
-          description: "API errors and system status notifications",
+          name: 'System Alerts',
+          description: 'API errors and system status notifications',
           enabled: true,
-          exchanges: ["All Connected"],
+          exchanges: ['All Connected'],
         },
       ],
     },
@@ -211,7 +211,9 @@ export function TradingFeatures() {
     <section className="mb-12">
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-white mb-2">⚡ Trading Features</h2>
-        <p className="text-gray-300">Configure available trading features across your connected exchanges</p>
+        <p className="text-gray-300">
+          Configure available trading features across your connected exchanges
+        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -225,7 +227,10 @@ export function TradingFeatures() {
             </CardHeader>
             <CardContent className="space-y-4">
               {category.items.map((feature, featureIndex) => (
-                <div key={featureIndex} className="flex items-start justify-between p-4 bg-gray-800/30 rounded-lg">
+                <div
+                  key={featureIndex}
+                  className="flex items-start justify-between p-4 bg-gray-800/30 rounded-lg"
+                >
                   <div className="flex-1">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="text-white font-medium">{feature.name}</h4>
@@ -234,7 +239,11 @@ export function TradingFeatures() {
                     <p className="text-gray-400 text-sm mb-3">{feature.description}</p>
                     <div className="flex flex-wrap gap-1">
                       {feature.exchanges.map((exchange, exchangeIndex) => (
-                        <Badge key={exchangeIndex} variant="outline" className="text-xs border-gray-600 text-gray-300">
+                        <Badge
+                          key={exchangeIndex}
+                          variant="outline"
+                          className="text-xs border-gray-600 text-gray-300"
+                        >
                           {exchange}
                         </Badge>
                       ))}
@@ -252,11 +261,16 @@ export function TradingFeatures() {
         <CardContent className="p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-white mb-2">Feature Configuration Summary</h3>
+              <h3 className="text-lg font-semibold text-white mb-2">
+                Feature Configuration Summary
+              </h3>
               <p className="text-gray-400">Manage global settings for all trading features</p>
             </div>
             <div className="flex items-center space-x-2">
-              <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-800 bg-transparent">
+              <Button
+                variant="outline"
+                className="border-gray-600 text-white hover:bg-gray-800 bg-transparent"
+              >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Sync All
               </Button>

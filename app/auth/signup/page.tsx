@@ -1,10 +1,10 @@
 // app/auth/signup/page.tsx
-import SignupForm from '../../../components/auth/signup-form';
+import SignupForm from '../../../components/auth/signup-form'
 
 export default function SignupPage() {
   return (
     <main>
       <SignupForm />
     </main>
-  );
+  )
 }

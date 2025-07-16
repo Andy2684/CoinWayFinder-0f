@@ -17,20 +17,20 @@ export async function sendNewsAlert({ chatId, article }: TelegramNewsAlert) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN
 
   if (!botToken) {
-    console.error("Telegram bot token not configured")
+    console.error('Telegram bot token not configured')
     return false
   }
 
   const sentimentEmoji = {
-    positive: "🟢",
-    negative: "🔴",
-    neutral: "⚪",
+    positive: '🟢',
+    negative: '🔴',
+    neutral: '⚪',
   }
 
   const categoryEmoji = {
-    crypto: "🪙",
-    stocks: "📈",
-    economy: "🏦",
+    crypto: '🪙',
+    stocks: '📈',
+    economy: '🏦',
   }
 
   const message = `
@@ -40,7 +40,7 @@ ${categoryEmoji[article.category as keyof typeof categoryEmoji]} *${article.cate
 
 📝 ${article.summary}
 
-${article.aiSummary ? `🧠 *AI Analysis:* ${article.aiSummary}` : ""}
+${article.aiSummary ? `🧠 *AI Analysis:* ${article.aiSummary}` : ''}
 
 📊 *Source:* ${article.source}
 🔗 [Read More](${article.url})
@@ -48,19 +48,19 @@ ${article.aiSummary ? `🧠 *AI Analysis:* ${article.aiSummary}` : ""}
 
   try {
     const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: chatId,
         text: message,
-        parse_mode: "Markdown",
+        parse_mode: 'Markdown',
         disable_web_page_preview: false,
       }),
     })
 
     return response.ok
   } catch (error) {
-    console.error("Error sending Telegram news alert:", error)
+    console.error('Error sending Telegram news alert:', error)
     return false
   }
 }
@@ -77,9 +77,9 @@ ${topArticles
 ${index + 1}. *${article.title}*
    ${article.category.toUpperCase()} | ${article.sentiment.toUpperCase()}
    ${article.aiSummary || article.summary}
-`,
+`
   )
-  .join("\n")}
+  .join('\n')}
 
 💡 *Trading Tip:* Stay informed but don't let news drive emotional decisions. Stick to your strategy!
 
@@ -90,18 +90,18 @@ Use /settings to customize your news preferences.
 
   try {
     const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chat_id: chatId,
         text: message,
-        parse_mode: "Markdown",
+        parse_mode: 'Markdown',
       }),
     })
 
     return response.ok
   } catch (error) {
-    console.error("Error sending daily digest:", error)
+    console.error('Error sending daily digest:', error)
     return false
   }
 }

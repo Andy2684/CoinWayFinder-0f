@@ -1,7 +1,7 @@
 export interface Signal {
   id: string
   symbol: string
-  type: "BUY" | "SELL"
+  type: 'BUY' | 'SELL'
   strategy: string
   exchange: string
   timeframe: string
@@ -13,10 +13,10 @@ export interface Signal {
   pnl: number
   pnlPercentage: number
   progress: number
-  riskLevel: "LOW" | "MEDIUM" | "HIGH"
+  riskLevel: 'LOW' | 'MEDIUM' | 'HIGH'
   aiAnalysis: string
   createdAt: string
-  status: "ACTIVE" | "COMPLETED" | "STOPPED"
+  status: 'ACTIVE' | 'COMPLETED' | 'STOPPED'
 }
 
 export interface SignalFilters {
@@ -47,31 +47,31 @@ export interface AlertRule {
   condition: string
   symbol: string
   value: number
-  operator: ">" | "<" | "=" | ">=" | "<="
+  operator: '>' | '<' | '=' | '>=' | '<='
   enabled: boolean
   channels: string[]
   createdAt: string
   triggeredAt?: string
-  status: "ACTIVE" | "TRIGGERED" | "PAUSED"
+  status: 'ACTIVE' | 'TRIGGERED' | 'PAUSED'
 }
 
 class SignalsAPI {
-  private baseUrl = "/api/signals"
+  private baseUrl = '/api/signals'
 
   async getSignals(filters?: SignalFilters): Promise<{ data: Signal[]; total: number }> {
     const params = new URLSearchParams()
 
     if (filters?.symbols?.length) {
-      params.append("symbols", filters.symbols.join(","))
+      params.append('symbols', filters.symbols.join(','))
     }
     if (filters?.strategies?.length) {
-      params.append("strategies", filters.strategies.join(","))
+      params.append('strategies', filters.strategies.join(','))
     }
     if (filters?.exchanges?.length) {
-      params.append("exchanges", filters.exchanges.join(","))
+      params.append('exchanges', filters.exchanges.join(','))
     }
     if (filters?.status) {
-      params.append("status", filters.status)
+      params.append('status', filters.status)
     }
 
     const response = await fetch(`${this.baseUrl}?${params}`)
@@ -86,9 +86,9 @@ class SignalsAPI {
 
   async createSignal(signalData: Partial<Signal>): Promise<Signal> {
     const response = await fetch(this.baseUrl, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(signalData),
     })
@@ -104,9 +104,9 @@ class SignalsAPI {
 
   async updateSignal(id: string, updates: Partial<Signal>): Promise<void> {
     const response = await fetch(this.baseUrl, {
-      method: "PUT",
+      method: 'PUT',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({ id, ...updates }),
     })
@@ -120,7 +120,7 @@ class SignalsAPI {
 
   async deleteSignal(id: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}?id=${id}`, {
-      method: "DELETE",
+      method: 'DELETE',
     })
 
     const result = await response.json()
@@ -154,9 +154,9 @@ class SignalsAPI {
 
   async createAlert(alertData: Partial<AlertRule>): Promise<AlertRule> {
     const response = await fetch(`${this.baseUrl}/alerts`, {
-      method: "POST",
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify(alertData),
     })
@@ -172,9 +172,9 @@ class SignalsAPI {
 
   async updateAlert(id: string, updates: Partial<AlertRule>): Promise<void> {
     const response = await fetch(`${this.baseUrl}/alerts`, {
-      method: "PUT",
+      method: 'PUT',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({ id, ...updates }),
     })
@@ -188,7 +188,7 @@ class SignalsAPI {
 
   async deleteAlert(id: string): Promise<void> {
     const response = await fetch(`${this.baseUrl}/alerts?id=${id}`, {
-      method: "DELETE",
+      method: 'DELETE',
     })
 
     const result = await response.json()
@@ -202,7 +202,7 @@ class SignalsAPI {
   calculateProgress(signal: Signal): number {
     const { entryPrice, targetPrice, currentPrice, type } = signal
 
-    if (type === "BUY") {
+    if (type === 'BUY') {
       const totalDistance = targetPrice - entryPrice
       const currentDistance = currentPrice - entryPrice
       return Math.max(0, Math.min(100, (currentDistance / totalDistance) * 100))
@@ -217,7 +217,7 @@ class SignalsAPI {
     const { entryPrice, currentPrice, type } = signal
 
     let pnl: number
-    if (type === "BUY") {
+    if (type === 'BUY') {
       pnl = currentPrice - entryPrice
     } else {
       pnl = entryPrice - currentPrice
@@ -233,7 +233,7 @@ class SignalsAPI {
 
     let reward: number, risk: number
 
-    if (type === "BUY") {
+    if (type === 'BUY') {
       reward = targetPrice - entryPrice
       risk = entryPrice - stopLoss
     } else {
@@ -245,40 +245,40 @@ class SignalsAPI {
   }
 
   formatPrice(price: number, decimals = 2): string {
-    return price.toLocaleString("en-US", {
+    return price.toLocaleString('en-US', {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     })
   }
 
   formatPercentage(percentage: number, decimals = 2): string {
-    const sign = percentage >= 0 ? "+" : ""
+    const sign = percentage >= 0 ? '+' : ''
     return `${sign}${percentage.toFixed(decimals)}%`
   }
 
   getSignalStatusColor(status: string): string {
     switch (status) {
-      case "ACTIVE":
-        return "text-green-400 bg-green-400/10"
-      case "COMPLETED":
-        return "text-blue-400 bg-blue-400/10"
-      case "STOPPED":
-        return "text-red-400 bg-red-400/10"
+      case 'ACTIVE':
+        return 'text-green-400 bg-green-400/10'
+      case 'COMPLETED':
+        return 'text-blue-400 bg-blue-400/10'
+      case 'STOPPED':
+        return 'text-red-400 bg-red-400/10'
       default:
-        return "text-gray-400 bg-gray-400/10"
+        return 'text-gray-400 bg-gray-400/10'
     }
   }
 
   getRiskLevelColor(risk: string): string {
     switch (risk) {
-      case "LOW":
-        return "text-green-400 bg-green-400/10"
-      case "MEDIUM":
-        return "text-yellow-400 bg-yellow-400/10"
-      case "HIGH":
-        return "text-red-400 bg-red-400/10"
+      case 'LOW':
+        return 'text-green-400 bg-green-400/10'
+      case 'MEDIUM':
+        return 'text-yellow-400 bg-yellow-400/10'
+      case 'HIGH':
+        return 'text-red-400 bg-red-400/10'
       default:
-        return "text-gray-400 bg-gray-400/10"
+        return 'text-gray-400 bg-gray-400/10'
     }
   }
 }

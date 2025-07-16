@@ -1,96 +1,96 @@
-"use client"
+'use client'
 
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { CheckCircle, XCircle, AlertCircle, Shield, Activity, Globe } from "lucide-react"
+import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { CheckCircle, XCircle, AlertCircle, Shield, Activity, Globe } from 'lucide-react'
 
 export function IntegrationStatus() {
   const stats = [
     {
-      title: "Connected Exchanges",
-      value: "3",
-      total: "12",
+      title: 'Connected Exchanges',
+      value: '3',
+      total: '12',
       icon: CheckCircle,
-      color: "text-green-400",
-      description: "Active connections",
+      color: 'text-green-400',
+      description: 'Active connections',
     },
     {
-      title: "API Keys",
-      value: "5",
-      total: "∞",
+      title: 'API Keys',
+      value: '5',
+      total: '∞',
       icon: Shield,
-      color: "text-[#30D5C8]",
-      description: "Securely stored",
+      color: 'text-[#30D5C8]',
+      description: 'Securely stored',
     },
     {
-      title: "Trading Pairs",
-      value: "2,847",
-      total: "",
+      title: 'Trading Pairs',
+      value: '2,847',
+      total: '',
       icon: Activity,
-      color: "text-blue-400",
-      description: "Available pairs",
+      color: 'text-blue-400',
+      description: 'Available pairs',
     },
     {
-      title: "Global Coverage",
-      value: "150+",
-      total: "",
+      title: 'Global Coverage',
+      value: '150+',
+      total: '',
       icon: Globe,
-      color: "text-purple-400",
-      description: "Countries supported",
+      color: 'text-purple-400',
+      description: 'Countries supported',
     },
   ]
 
   const recentActivity = [
     {
-      exchange: "Binance",
-      action: "API Key Connected",
-      status: "success",
-      time: "2 hours ago",
+      exchange: 'Binance',
+      action: 'API Key Connected',
+      status: 'success',
+      time: '2 hours ago',
     },
     {
-      exchange: "Coinbase Pro",
-      action: "Balance Sync",
-      status: "success",
-      time: "15 minutes ago",
+      exchange: 'Coinbase Pro',
+      action: 'Balance Sync',
+      status: 'success',
+      time: '15 minutes ago',
     },
     {
-      exchange: "Bybit",
-      action: "Connection Test",
-      status: "pending",
-      time: "5 minutes ago",
+      exchange: 'Bybit',
+      action: 'Connection Test',
+      status: 'pending',
+      time: '5 minutes ago',
     },
     {
-      exchange: "KuCoin",
-      action: "API Limit Reached",
-      status: "warning",
-      time: "1 hour ago",
+      exchange: 'KuCoin',
+      action: 'API Limit Reached',
+      status: 'warning',
+      time: '1 hour ago',
     },
   ]
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "success":
-        return "text-green-400"
-      case "warning":
-        return "text-yellow-400"
-      case "error":
-        return "text-red-400"
-      case "pending":
-        return "text-blue-400"
+      case 'success':
+        return 'text-green-400'
+      case 'warning':
+        return 'text-yellow-400'
+      case 'error':
+        return 'text-red-400'
+      case 'pending':
+        return 'text-blue-400'
       default:
-        return "text-gray-400"
+        return 'text-gray-400'
     }
   }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case "success":
+      case 'success':
         return <CheckCircle className="w-4 h-4 text-green-400" />
-      case "warning":
+      case 'warning':
         return <AlertCircle className="w-4 h-4 text-yellow-400" />
-      case "error":
+      case 'error':
         return <XCircle className="w-4 h-4 text-red-400" />
-      case "pending":
+      case 'pending':
         return <AlertCircle className="w-4 h-4 text-blue-400" />
       default:
         return <AlertCircle className="w-4 h-4 text-gray-400" />
@@ -105,7 +105,9 @@ export function IntegrationStatus() {
           <Card key={index} className="bg-gray-900/50 border-gray-800">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <div className={`w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center`}>
+                <div
+                  className={`w-10 h-10 bg-gray-800 rounded-lg flex items-center justify-center`}
+                >
                   <stat.icon className={`w-5 h-5 ${stat.color}`} />
                 </div>
                 {stat.total && (
@@ -133,7 +135,10 @@ export function IntegrationStatus() {
           <h3 className="text-lg font-semibold text-white mb-4">Recent Activity</h3>
           <div className="space-y-3">
             {recentActivity.map((activity, index) => (
-              <div key={index} className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg">
+              <div
+                key={index}
+                className="flex items-center justify-between p-3 bg-gray-800/50 rounded-lg"
+              >
                 <div className="flex items-center space-x-3">
                   {getStatusIcon(activity.status)}
                   <div>
@@ -142,7 +147,10 @@ export function IntegrationStatus() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <Badge variant="outline" className={`text-xs border-gray-600 ${getStatusColor(activity.status)}`}>
+                  <Badge
+                    variant="outline"
+                    className={`text-xs border-gray-600 ${getStatusColor(activity.status)}`}
+                  >
                     {activity.status}
                   </Badge>
                   <p className="text-xs text-gray-500 mt-1">{activity.time}</p>

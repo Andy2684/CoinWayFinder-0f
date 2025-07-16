@@ -1,41 +1,41 @@
-import Link from "next/link"
-import { TrendingUp, MessageSquare, Mail } from "lucide-react"
+import Link from 'next/link'
+import { TrendingUp, MessageSquare, Mail } from 'lucide-react'
 
 export function Footer() {
   const footerSections = [
     {
-      title: "Product",
+      title: 'Product',
       links: [
-        { href: "/signals", label: "Signals" },
-        { href: "/bots", label: "Trading Bots" },
-        { href: "/pricing", label: "Pricing" },
-        { href: "/dashboard", label: "Dashboard" },
+        { href: '/signals', label: 'Signals' },
+        { href: '/bots', label: 'Trading Bots' },
+        { href: '/pricing', label: 'Pricing' },
+        { href: '/dashboard', label: 'Dashboard' },
       ],
     },
     {
-      title: "Resources",
+      title: 'Resources',
       links: [
-        { href: "/blog", label: "Blog" },
-        { href: "/about", label: "About Us" },
-        { href: "/legal/terms", label: "Terms of Use" },
-        { href: "/legal/privacy", label: "Privacy Policy" },
+        { href: '/blog', label: 'Blog' },
+        { href: '/about', label: 'About Us' },
+        { href: '/legal/terms', label: 'Terms of Use' },
+        { href: '/legal/privacy', label: 'Privacy Policy' },
       ],
     },
     {
-      title: "Support",
+      title: 'Support',
       links: [
-        { href: "/legal/disclaimer", label: "Risk Disclaimer" },
-        { href: "mailto:support@coinwayfinder.com", label: "Contact Support" },
-        { href: "https://t.me/andis_fx_signals_bot", label: "Telegram Bot" },
+        { href: '/legal/disclaimer', label: 'Risk Disclaimer' },
+        { href: 'mailto:support@coinwayfinder.com', label: 'Contact Support' },
+        { href: 'https://t.me/andis_fx_signals_bot', label: 'Telegram Bot' },
       ],
     },
     {
-      title: "Languages",
+      title: 'Languages',
       links: [
-        { href: "/en", label: "English" },
-        { href: "/ru", label: "Русский" },
-        { href: "/es", label: "Español" },
-        { href: "/pt", label: "Português" },
+        { href: '/en', label: 'English' },
+        { href: '/ru', label: 'Русский' },
+        { href: '/es', label: 'Español' },
+        { href: '/pt', label: 'Português' },
       ],
     },
   ]
@@ -56,10 +56,16 @@ export function Footer() {
               AI-powered crypto trading assistant delivering smart signals and automated bots.
             </p>
             <div className="flex space-x-4">
-              <Link href="https://t.me/andis_fx_signals_bot" className="text-gray-400 hover:text-[#30D5C8]">
+              <Link
+                href="https://t.me/andis_fx_signals_bot"
+                className="text-gray-400 hover:text-[#30D5C8]"
+              >
                 <MessageSquare className="w-5 h-5" />
               </Link>
-              <Link href="mailto:support@coinwayfinder.com" className="text-gray-400 hover:text-[#30D5C8]">
+              <Link
+                href="mailto:support@coinwayfinder.com"
+                className="text-gray-400 hover:text-[#30D5C8]"
+              >
                 <Mail className="w-5 h-5" />
               </Link>
             </div>
@@ -72,7 +78,10 @@ export function Footer() {
               <ul className="space-y-2">
                 {section.links.map((link, linkIndex) => (
                   <li key={linkIndex}>
-                    <Link href={link.href} className="text-gray-400 hover:text-[#30D5C8] text-sm transition-colors">
+                    <Link
+                      href={link.href}
+                      className="text-gray-400 hover:text-[#30D5C8] text-sm transition-colors"
+                    >
                       {link.label}
                     </Link>
                   </li>

@@ -1,5 +1,5 @@
 // app/page.tsx
-import { ProtectedRoute } from '../components/auth/protected-route';
+import { ProtectedRoute } from '../components/auth/protected-route'
 
 export default function Home() {
   return (
@@ -9,5 +9,5 @@ export default function Home() {
         <p>This is a protected page. Only authenticated users can see this.</p>
       </main>
     </ProtectedRoute>
-  );
+  )
 }

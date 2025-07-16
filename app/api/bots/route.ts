@@ -1,28 +1,28 @@
-import { type NextRequest, NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from 'next/server'
 
 // Mock bot data
 const mockBots = [
   {
-    id: "1",
-    name: "DCA Bitcoin Bot",
-    strategy: "DCA",
-    status: "active",
-    pair: "BTC/USDT",
+    id: '1',
+    name: 'DCA Bitcoin Bot',
+    strategy: 'DCA',
+    status: 'active',
+    pair: 'BTC/USDT',
     profit: 12.5,
     trades: 45,
     created_at: new Date().toISOString(),
     config: {
       amount: 100,
-      interval: "1h",
+      interval: '1h',
       target_profit: 15,
     },
   },
   {
-    id: "2",
-    name: "Grid Trading ETH",
-    strategy: "Grid",
-    status: "paused",
-    pair: "ETH/USDT",
+    id: '2',
+    name: 'Grid Trading ETH',
+    strategy: 'Grid',
+    status: 'paused',
+    pair: 'ETH/USDT',
     profit: -2.3,
     trades: 23,
     created_at: new Date().toISOString(),
@@ -41,8 +41,8 @@ export async function GET() {
       data: mockBots,
     })
   } catch (error) {
-    console.error("Get bots error:", error)
-    return NextResponse.json({ error: "Failed to fetch bots" }, { status: 500 })
+    console.error('Get bots error:', error)
+    return NextResponse.json({ error: 'Failed to fetch bots' }, { status: 500 })
   }
 }
 
@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     const newBot = {
       id: Date.now().toString(),
       ...botData,
-      status: "active",
+      status: 'active',
       profit: 0,
       trades: 0,
       created_at: new Date().toISOString(),
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       data: newBot,
     })
   } catch (error) {
-    console.error("Create bot error:", error)
-    return NextResponse.json({ error: "Failed to create bot" }, { status: 500 })
+    console.error('Create bot error:', error)
+    return NextResponse.json({ error: 'Failed to create bot' }, { status: 500 })
   }
 }

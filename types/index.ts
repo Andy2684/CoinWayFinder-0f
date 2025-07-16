@@ -19,14 +19,14 @@ export interface DashboardConfig {
 export interface Signal {
   id: string
   symbol: string
-  type: "BUY" | "SELL"
+  type: 'BUY' | 'SELL'
   price: number
   targetPrice: number
   stopLoss: number
   confidence: number
   timeframe: string
   exchange: string
-  status: "ACTIVE" | "COMPLETED" | "CANCELLED"
+  status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
   createdAt: string
   pnl?: number
   analysis: string
@@ -36,7 +36,7 @@ export interface Bot {
   id: string
   name: string
   strategy: string
-  status: "ACTIVE" | "PAUSED" | "STOPPED"
+  status: 'ACTIVE' | 'PAUSED' | 'STOPPED'
   pnl: number
   trades: number
   winRate: number
@@ -46,7 +46,7 @@ export interface Bot {
 export interface Exchange {
   id: string
   name: string
-  status: "CONNECTED" | "DISCONNECTED" | "ERROR"
+  status: 'CONNECTED' | 'DISCONNECTED' | 'ERROR'
   apiKey?: string
   permissions: string[]
   lastSync: string

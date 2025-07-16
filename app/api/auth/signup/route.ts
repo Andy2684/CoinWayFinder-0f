@@ -1,6 +1,6 @@
-import { type NextRequest, NextResponse } from "next/server"
-import bcrypt from "bcryptjs"
-import jwt from "jsonwebtoken"
+import { type NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
+import jwt from 'jsonwebtoken'
 
 // Mock user database - replace with real database
 const users: any[] = []
@@ -10,17 +10,23 @@ export async function POST(request: NextRequest) {
     const { name, email, password, acceptTerms } = await request.json()
 
     if (!name || !email || !password || !acceptTerms) {
-      return NextResponse.json({ error: "All fields are required and terms must be accepted" }, { status: 400 })
+      return NextResponse.json(
+        { error: 'All fields are required and terms must be accepted' },
+        { status: 400 }
+      )
     }
 
     if (password.length < 8) {
-      return NextResponse.json({ error: "Password must be at least 8 characters long" }, { status: 400 })
+      return NextResponse.json(
+        { error: 'Password must be at least 8 characters long' },
+        { status: 400 }
+      )
     }
 
     // Check if user already exists
     const existingUser = users.find((u) => u.email === email)
     if (existingUser) {
-      return NextResponse.json({ error: "User with this email already exists" }, { status: 409 })
+      return NextResponse.json({ error: 'User with this email already exists' }, { status: 409 })
     }
 
     // Hash password
@@ -32,16 +38,20 @@ export async function POST(request: NextRequest) {
       email,
       name,
       password: hashedPassword,
-      plan: "free" as const,
+      plan: 'free' as const,
       createdAt: new Date().toISOString(),
     }
 
     users.push(newUser)
 
     // Generate JWT token
-    const token = jwt.sign({ userId: newUser.id, email: newUser.email }, process.env.JWT_SECRET || "your-secret-key", {
-      expiresIn: "7d",
-    })
+    const token = jwt.sign(
+      { userId: newUser.id, email: newUser.email },
+      process.env.JWT_SECRET || 'your-secret-key',
+      {
+        expiresIn: '7d',
+      }
+    )
 
     // Return user data (without password)
     const { password: _, ...userWithoutPassword } = newUser
@@ -52,7 +62,7 @@ export async function POST(request: NextRequest) {
       user: userWithoutPassword,
     })
   } catch (error) {
-    console.error("Signup error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error('Signup error:', error)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

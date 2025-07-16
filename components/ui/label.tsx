@@ -1,12 +1,12 @@
-"use client";
+'use client'
 
-import { LabelHTMLAttributes } from "react";
+import { LabelHTMLAttributes } from 'react'
 
 export interface LabelProps extends LabelHTMLAttributes<HTMLLabelElement> {
-  children: React.ReactNode;
+  children: React.ReactNode
 }
 
-export function Label({ children, className = "", ...props }: LabelProps) {
+export function Label({ children, className = '', ...props }: LabelProps) {
   return (
     <label
       {...props}
@@ -14,5 +14,5 @@ export function Label({ children, className = "", ...props }: LabelProps) {
     >
       {children}
     </label>
-  );
+  )
 }

@@ -1,6 +1,6 @@
-"use client"
+'use client'
 
-import * as React from "react"
+import * as React from 'react'
 import {
   Dialog,
   DialogTrigger,
@@ -8,10 +8,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 
 interface CreateSignalDialogProps {
   children?: React.ReactNode
@@ -19,12 +19,12 @@ interface CreateSignalDialogProps {
 
 export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
   const [open, setOpen] = React.useState(false)
-  const [title, setTitle] = React.useState("")
-  const [description, setDescription] = React.useState("")
+  const [title, setTitle] = React.useState('')
+  const [description, setDescription] = React.useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("Signal submitted:", { title, description })
+    console.log('Signal submitted:', { title, description })
     setOpen(false)
   }
 
@@ -40,9 +40,7 @@ export function CreateSignalDialog({ children }: CreateSignalDialogProps) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Create Signal</DialogTitle>
-          <DialogDescription>
-            Fill in the details for the new trading signal.
-          </DialogDescription>
+          <DialogDescription>Fill in the details for the new trading signal.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="grid gap-4 py-4">
           <Input

@@ -1,14 +1,20 @@
-"use client"
+'use client'
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useState } from 'react'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Dialog,
   DialogContent,
@@ -16,7 +22,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog'
 import {
   Bell,
   Mail,
@@ -29,8 +35,8 @@ import {
   Clock,
   TrendingUp,
   AlertTriangle,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface Alert {
   id: string
@@ -38,52 +44,52 @@ interface Alert {
   condition: string
   symbol: string
   value: number
-  operator: ">" | "<" | "=" | ">=" | "<="
+  operator: '>' | '<' | '=' | '>=' | '<='
   enabled: boolean
   channels: string[]
   createdAt: string
   triggeredAt?: string
-  status: "ACTIVE" | "TRIGGERED" | "PAUSED"
+  status: 'ACTIVE' | 'TRIGGERED' | 'PAUSED'
 }
 
 export function SignalAlerts() {
   const [alerts, setAlerts] = useState<Alert[]>([
     {
-      id: "1",
-      name: "BTC Price Alert",
-      condition: "Price",
-      symbol: "BTC/USDT",
+      id: '1',
+      name: 'BTC Price Alert',
+      condition: 'Price',
+      symbol: 'BTC/USDT',
       value: 45000,
-      operator: ">",
+      operator: '>',
       enabled: true,
-      channels: ["push", "telegram"],
-      createdAt: "2024-01-15T10:00:00Z",
-      status: "ACTIVE",
+      channels: ['push', 'telegram'],
+      createdAt: '2024-01-15T10:00:00Z',
+      status: 'ACTIVE',
     },
     {
-      id: "2",
-      name: "ETH Volume Spike",
-      condition: "Volume",
-      symbol: "ETH/USDT",
+      id: '2',
+      name: 'ETH Volume Spike',
+      condition: 'Volume',
+      symbol: 'ETH/USDT',
       value: 1000000,
-      operator: ">",
+      operator: '>',
       enabled: true,
-      channels: ["email", "push"],
-      createdAt: "2024-01-15T09:30:00Z",
-      triggeredAt: "2024-01-15T11:45:00Z",
-      status: "TRIGGERED",
+      channels: ['email', 'push'],
+      createdAt: '2024-01-15T09:30:00Z',
+      triggeredAt: '2024-01-15T11:45:00Z',
+      status: 'TRIGGERED',
     },
     {
-      id: "3",
-      name: "SOL RSI Oversold",
-      condition: "RSI",
-      symbol: "SOL/USDT",
+      id: '3',
+      name: 'SOL RSI Oversold',
+      condition: 'RSI',
+      symbol: 'SOL/USDT',
       value: 30,
-      operator: "<",
+      operator: '<',
       enabled: false,
-      channels: ["telegram"],
-      createdAt: "2024-01-15T08:15:00Z",
-      status: "PAUSED",
+      channels: ['telegram'],
+      createdAt: '2024-01-15T08:15:00Z',
+      status: 'PAUSED',
     },
   ])
 
@@ -94,8 +100,8 @@ export function SignalAlerts() {
     smsNotifications: false,
     quietHours: {
       enabled: true,
-      start: "22:00",
-      end: "08:00",
+      start: '22:00',
+      end: '08:00',
     },
     maxAlertsPerHour: 10,
   })
@@ -103,8 +109,10 @@ export function SignalAlerts() {
   const toggleAlert = (id: string) => {
     setAlerts(
       alerts.map((alert) =>
-        alert.id === id ? { ...alert, enabled: !alert.enabled, status: alert.enabled ? "PAUSED" : "ACTIVE" } : alert,
-      ),
+        alert.id === id
+          ? { ...alert, enabled: !alert.enabled, status: alert.enabled ? 'PAUSED' : 'ACTIVE' }
+          : alert
+      )
     )
   }
 
@@ -114,26 +122,26 @@ export function SignalAlerts() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "ACTIVE":
-        return "text-green-400 bg-green-400/10"
-      case "TRIGGERED":
-        return "text-yellow-400 bg-yellow-400/10"
-      case "PAUSED":
-        return "text-gray-400 bg-gray-400/10"
+      case 'ACTIVE':
+        return 'text-green-400 bg-green-400/10'
+      case 'TRIGGERED':
+        return 'text-yellow-400 bg-yellow-400/10'
+      case 'PAUSED':
+        return 'text-gray-400 bg-gray-400/10'
       default:
-        return "text-gray-400 bg-gray-400/10"
+        return 'text-gray-400 bg-gray-400/10'
     }
   }
 
   const getChannelIcon = (channel: string) => {
     switch (channel) {
-      case "push":
+      case 'push':
         return <Smartphone className="w-4 h-4" />
-      case "email":
+      case 'email':
         return <Mail className="w-4 h-4" />
-      case "telegram":
+      case 'telegram':
         return <MessageSquare className="w-4 h-4" />
-      case "sms":
+      case 'sms':
         return <Smartphone className="w-4 h-4" />
       default:
         return <Bell className="w-4 h-4" />
@@ -150,7 +158,7 @@ export function SignalAlerts() {
               <div>
                 <p className="text-sm text-gray-400">Active Alerts</p>
                 <p className="text-2xl font-bold text-green-400">
-                  {alerts.filter((a) => a.status === "ACTIVE").length}
+                  {alerts.filter((a) => a.status === 'ACTIVE').length}
                 </p>
               </div>
               <Bell className="w-8 h-8 text-green-400" />
@@ -197,13 +205,22 @@ export function SignalAlerts() {
 
       <Tabs defaultValue="alerts" className="space-y-6">
         <TabsList className="bg-[#1A1B23] border-gray-800">
-          <TabsTrigger value="alerts" className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]">
+          <TabsTrigger
+            value="alerts"
+            className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]"
+          >
             Alert Rules
           </TabsTrigger>
-          <TabsTrigger value="history" className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]">
+          <TabsTrigger
+            value="history"
+            className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]"
+          >
             Alert History
           </TabsTrigger>
-          <TabsTrigger value="settings" className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]">
+          <TabsTrigger
+            value="settings"
+            className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-[#191A1E]"
+          >
             Settings
           </TabsTrigger>
         </TabsList>
@@ -228,7 +245,11 @@ export function SignalAlerts() {
                 <div className="space-y-4">
                   <div>
                     <Label htmlFor="alert-name">Alert Name</Label>
-                    <Input id="alert-name" placeholder="Enter alert name" className="bg-[#0F1015] border-gray-700" />
+                    <Input
+                      id="alert-name"
+                      placeholder="Enter alert name"
+                      className="bg-[#0F1015] border-gray-700"
+                    />
                   </div>
                   <div>
                     <Label htmlFor="symbol">Symbol</Label>
@@ -264,19 +285,26 @@ export function SignalAlerts() {
                           <SelectValue placeholder="Op" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value=">">{">"}</SelectItem>
-                          <SelectItem value="<">{"<"}</SelectItem>
-                          <SelectItem value=">=">{"≥"}</SelectItem>
-                          <SelectItem value="<=">{"≤"}</SelectItem>
+                          <SelectItem value=">">{'>'}</SelectItem>
+                          <SelectItem value="<">{'<'}</SelectItem>
+                          <SelectItem value=">=">{'≥'}</SelectItem>
+                          <SelectItem value="<=">{'≤'}</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
                       <Label htmlFor="value">Value</Label>
-                      <Input id="value" type="number" placeholder="0" className="bg-[#0F1015] border-gray-700" />
+                      <Input
+                        id="value"
+                        type="number"
+                        placeholder="0"
+                        className="bg-[#0F1015] border-gray-700"
+                      />
                     </div>
                   </div>
-                  <Button className="w-full bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]">Create Alert</Button>
+                  <Button className="w-full bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]">
+                    Create Alert
+                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -288,17 +316,23 @@ export function SignalAlerts() {
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                      <Switch checked={alert.enabled} onCheckedChange={() => toggleAlert(alert.id)} />
+                      <Switch
+                        checked={alert.enabled}
+                        onCheckedChange={() => toggleAlert(alert.id)}
+                      />
                       <div>
                         <h4 className="font-medium text-white">{alert.name}</h4>
                         <p className="text-sm text-gray-400">
-                          {alert.symbol} {alert.condition} {alert.operator} {alert.value.toLocaleString()}
+                          {alert.symbol} {alert.condition} {alert.operator}{' '}
+                          {alert.value.toLocaleString()}
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <Badge className={cn("text-xs", getStatusColor(alert.status))}>{alert.status}</Badge>
+                      <Badge className={cn('text-xs', getStatusColor(alert.status))}>
+                        {alert.status}
+                      </Badge>
 
                       <div className="flex items-center gap-1">
                         {alert.channels.map((channel) => (
@@ -334,28 +368,28 @@ export function SignalAlerts() {
               <div className="space-y-4">
                 {[
                   {
-                    time: "2 hours ago",
-                    alert: "BTC Price Alert",
-                    message: "BTC/USDT crossed above $45,000",
-                    status: "triggered",
+                    time: '2 hours ago',
+                    alert: 'BTC Price Alert',
+                    message: 'BTC/USDT crossed above $45,000',
+                    status: 'triggered',
                   },
                   {
-                    time: "4 hours ago",
-                    alert: "ETH Volume Spike",
-                    message: "ETH/USDT volume exceeded 1M",
-                    status: "triggered",
+                    time: '4 hours ago',
+                    alert: 'ETH Volume Spike',
+                    message: 'ETH/USDT volume exceeded 1M',
+                    status: 'triggered',
                   },
                   {
-                    time: "6 hours ago",
-                    alert: "SOL RSI Alert",
-                    message: "SOL/USDT RSI dropped below 30",
-                    status: "triggered",
+                    time: '6 hours ago',
+                    alert: 'SOL RSI Alert',
+                    message: 'SOL/USDT RSI dropped below 30',
+                    status: 'triggered',
                   },
                   {
-                    time: "8 hours ago",
-                    alert: "ADA Support Level",
-                    message: "ADA/USDT bounced from support",
-                    status: "triggered",
+                    time: '8 hours ago',
+                    alert: 'ADA Support Level',
+                    message: 'ADA/USDT bounced from support',
+                    status: 'triggered',
                   },
                 ].map((item, index) => (
                   <div
@@ -395,7 +429,9 @@ export function SignalAlerts() {
                 </div>
                 <Switch
                   checked={alertSettings.pushNotifications}
-                  onCheckedChange={(checked) => setAlertSettings({ ...alertSettings, pushNotifications: checked })}
+                  onCheckedChange={(checked) =>
+                    setAlertSettings({ ...alertSettings, pushNotifications: checked })
+                  }
                 />
               </div>
 
@@ -409,7 +445,9 @@ export function SignalAlerts() {
                 </div>
                 <Switch
                   checked={alertSettings.emailNotifications}
-                  onCheckedChange={(checked) => setAlertSettings({ ...alertSettings, emailNotifications: checked })}
+                  onCheckedChange={(checked) =>
+                    setAlertSettings({ ...alertSettings, emailNotifications: checked })
+                  }
                 />
               </div>
 
@@ -423,7 +461,9 @@ export function SignalAlerts() {
                 </div>
                 <Switch
                   checked={alertSettings.telegramNotifications}
-                  onCheckedChange={(checked) => setAlertSettings({ ...alertSettings, telegramNotifications: checked })}
+                  onCheckedChange={(checked) =>
+                    setAlertSettings({ ...alertSettings, telegramNotifications: checked })
+                  }
                 />
               </div>
             </CardContent>

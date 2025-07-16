@@ -1,10 +1,10 @@
 // components/news/news-feed.tsx
-"use client";
+'use client'
 
-import { NewsItem } from "@/lib/news";
+import { NewsItem } from '@/lib/news'
 
 interface NewsFeedProps {
-  items: NewsItem[];
+  items: NewsItem[]
 }
 
 export default function NewsFeed({ items }: NewsFeedProps) {
@@ -20,11 +20,9 @@ export default function NewsFeed({ items }: NewsFeedProps) {
           >
             {item.title}
           </a>
-          <div className="text-xs text-gray-500">
-            {new Date(item.publishedAt).toLocaleString()}
-          </div>
+          <div className="text-xs text-gray-500">{new Date(item.publishedAt).toLocaleString()}</div>
         </li>
       ))}
     </ul>
-  );
+  )
 }

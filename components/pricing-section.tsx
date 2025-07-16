@@ -1,59 +1,70 @@
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Check, Star } from "lucide-react"
-import Link from "next/link"
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Check, Star } from 'lucide-react'
+import Link from 'next/link'
 
 export function PricingSection() {
   const plans = [
     {
-      name: "Free",
-      price: "$0",
-      period: "3-day access",
-      description: "Perfect for trying out our platform",
-      features: ["Limited signals access", "Basic market overview", "Community support", "Mobile app access"],
-      cta: "Start Free",
-      popular: false,
-    },
-    {
-      name: "Basic",
-      price: "$19",
-      period: "/month",
-      description: "Great for individual traders",
-      features: ["DCA bot (3 pairs)", "Telegram signals", "Basic analytics", "Email support", "Risk management tools"],
-      cta: "Get Started",
-      popular: false,
-    },
-    {
-      name: "Pro",
-      price: "$49",
-      period: "/month",
-      description: "Most popular for serious traders",
+      name: 'Free',
+      price: '$0',
+      period: '3-day access',
+      description: 'Perfect for trying out our platform',
       features: [
-        "Full access (10 pairs)",
-        "AI-powered signals",
-        "Advanced analytics",
-        "Priority support",
-        "Custom bot strategies",
-        "Portfolio tracking",
+        'Limited signals access',
+        'Basic market overview',
+        'Community support',
+        'Mobile app access',
       ],
-      cta: "Go Pro",
+      cta: 'Start Free',
+      popular: false,
+    },
+    {
+      name: 'Basic',
+      price: '$19',
+      period: '/month',
+      description: 'Great for individual traders',
+      features: [
+        'DCA bot (3 pairs)',
+        'Telegram signals',
+        'Basic analytics',
+        'Email support',
+        'Risk management tools',
+      ],
+      cta: 'Get Started',
+      popular: false,
+    },
+    {
+      name: 'Pro',
+      price: '$49',
+      period: '/month',
+      description: 'Most popular for serious traders',
+      features: [
+        'Full access (10 pairs)',
+        'AI-powered signals',
+        'Advanced analytics',
+        'Priority support',
+        'Custom bot strategies',
+        'Portfolio tracking',
+      ],
+      cta: 'Go Pro',
       popular: true,
     },
     {
-      name: "VIP",
-      price: "$99",
-      period: "/month",
-      description: "For professional traders",
+      name: 'VIP',
+      price: '$99',
+      period: '/month',
+      description: 'For professional traders',
       features: [
-        "Unlimited pairs (20+)",
-        "Auto-trade execution",
-        "Advanced portfolio view",
-        "Dedicated support",
-        "Custom integrations",
-        "API access",
-        "White-label options",
+        'Unlimited pairs (20+)',
+        'Auto-trade execution',
+        'Advanced portfolio view',
+        'Dedicated support',
+        'Custom integrations',
+        'API access',
+        'White-label options',
       ],
-      cta: "Get VIP",
+      cta: 'Get VIP',
       popular: false,
     },
   ]
@@ -84,7 +95,7 @@ export function PricingSection() {
             <Card
               key={index}
               className={`relative bg-gray-900/50 border-gray-800 hover:border-[#30D5C8]/50 transition-all ${
-                plan.popular ? "ring-2 ring-[#30D5C8]/50 scale-105" : ""
+                plan.popular ? 'ring-2 ring-[#30D5C8]/50 scale-105' : ''
               }`}
             >
               {plan.popular && (
@@ -118,8 +129,8 @@ export function PricingSection() {
                   <Button
                     className={`w-full ${
                       plan.popular
-                        ? "bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]"
-                        : "bg-gray-800 hover:bg-gray-700 text-white"
+                        ? 'bg-[#30D5C8] hover:bg-[#30D5C8]/90 text-[#191A1E]'
+                        : 'bg-gray-800 hover:bg-gray-700 text-white'
                     }`}
                   >
                     {plan.cta}

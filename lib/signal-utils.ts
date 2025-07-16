@@ -1,9 +1,9 @@
-import type { Signal } from "./signals-api"
+import type { Signal } from './signals-api'
 
 export function calculateSignalProgress(signal: Signal): number {
   const { type, entryPrice, currentPrice, targetPrice } = signal
 
-  if (type === "BUY") {
+  if (type === 'BUY') {
     if (currentPrice <= entryPrice) return 0
     if (currentPrice >= targetPrice) return 100
     return ((currentPrice - entryPrice) / (targetPrice - entryPrice)) * 100
@@ -17,7 +17,7 @@ export function calculateSignalProgress(signal: Signal): number {
 export function calculatePnL(signal: Signal): { pnl: number; pnlPercentage: number } {
   const { type, entryPrice, currentPrice } = signal
 
-  if (type === "BUY") {
+  if (type === 'BUY') {
     const pnl = currentPrice - entryPrice
     const pnlPercentage = (pnl / entryPrice) * 100
     return { pnl, pnlPercentage }
@@ -32,12 +32,12 @@ export function calculateRiskReward(
   entryPrice: number,
   targetPrice: number,
   stopLoss: number,
-  type: "BUY" | "SELL",
+  type: 'BUY' | 'SELL'
 ): number | null {
   if (!entryPrice || !targetPrice || !stopLoss) return null
 
-  const reward = type === "BUY" ? targetPrice - entryPrice : entryPrice - targetPrice
-  const risk = type === "BUY" ? entryPrice - stopLoss : stopLoss - entryPrice
+  const reward = type === 'BUY' ? targetPrice - entryPrice : entryPrice - targetPrice
+  const risk = type === 'BUY' ? entryPrice - stopLoss : stopLoss - entryPrice
 
   if (risk <= 0) return null
 
@@ -46,27 +46,27 @@ export function calculateRiskReward(
 
 export function getSignalStatusColor(status: string): string {
   switch (status) {
-    case "ACTIVE":
-      return "bg-blue-500"
-    case "COMPLETED":
-      return "bg-green-500"
-    case "STOPPED":
-      return "bg-red-500"
+    case 'ACTIVE':
+      return 'bg-blue-500'
+    case 'COMPLETED':
+      return 'bg-green-500'
+    case 'STOPPED':
+      return 'bg-red-500'
     default:
-      return "bg-gray-500"
+      return 'bg-gray-500'
   }
 }
 
 export function getRiskLevelColor(risk: string): string {
   switch (risk) {
-    case "LOW":
-      return "bg-green-100 text-green-800"
-    case "MEDIUM":
-      return "bg-yellow-100 text-yellow-800"
-    case "HIGH":
-      return "bg-red-100 text-red-800"
+    case 'LOW':
+      return 'bg-green-100 text-green-800'
+    case 'MEDIUM':
+      return 'bg-yellow-100 text-yellow-800'
+    case 'HIGH':
+      return 'bg-red-100 text-red-800'
     default:
-      return "bg-gray-100 text-gray-800"
+      return 'bg-gray-100 text-gray-800'
   }
 }
 
@@ -79,43 +79,45 @@ export function formatTimeAgo(dateString: string): string {
     return `${diffInSeconds} seconds ago`
   } else if (diffInSeconds < 3600) {
     const minutes = Math.floor(diffInSeconds / 60)
-    return `${minutes} minute${minutes > 1 ? "s" : ""} ago`
+    return `${minutes} minute${minutes > 1 ? 's' : ''} ago`
   } else if (diffInSeconds < 86400) {
     const hours = Math.floor(diffInSeconds / 3600)
-    return `${hours} hour${hours > 1 ? "s" : ""} ago`
+    return `${hours} hour${hours > 1 ? 's' : ''} ago`
   } else {
     const days = Math.floor(diffInSeconds / 86400)
-    return `${days} day${days > 1 ? "s" : ""} ago`
+    return `${days} day${days > 1 ? 's' : ''} ago`
   }
 }
 
 export function validateSignalData(signalData: Partial<Signal>): string[] {
   const errors: string[] = []
 
-  if (!signalData.symbol) errors.push("Symbol is required")
-  if (!signalData.type) errors.push("Signal type is required")
-  if (!signalData.strategy) errors.push("Strategy is required")
-  if (!signalData.entryPrice || signalData.entryPrice <= 0) errors.push("Valid entry price is required")
-  if (!signalData.targetPrice || signalData.targetPrice <= 0) errors.push("Valid target price is required")
-  if (!signalData.stopLoss || signalData.stopLoss <= 0) errors.push("Valid stop loss is required")
-  if (!signalData.timeframe) errors.push("Timeframe is required")
-  if (!signalData.exchange) errors.push("Exchange is required")
+  if (!signalData.symbol) errors.push('Symbol is required')
+  if (!signalData.type) errors.push('Signal type is required')
+  if (!signalData.strategy) errors.push('Strategy is required')
+  if (!signalData.entryPrice || signalData.entryPrice <= 0)
+    errors.push('Valid entry price is required')
+  if (!signalData.targetPrice || signalData.targetPrice <= 0)
+    errors.push('Valid target price is required')
+  if (!signalData.stopLoss || signalData.stopLoss <= 0) errors.push('Valid stop loss is required')
+  if (!signalData.timeframe) errors.push('Timeframe is required')
+  if (!signalData.exchange) errors.push('Exchange is required')
 
   // Validate price logic
   if (signalData.entryPrice && signalData.targetPrice && signalData.stopLoss) {
-    if (signalData.type === "BUY") {
+    if (signalData.type === 'BUY') {
       if (signalData.targetPrice <= signalData.entryPrice) {
-        errors.push("Target price must be higher than entry price for BUY signals")
+        errors.push('Target price must be higher than entry price for BUY signals')
       }
       if (signalData.stopLoss >= signalData.entryPrice) {
-        errors.push("Stop loss must be lower than entry price for BUY signals")
+        errors.push('Stop loss must be lower than entry price for BUY signals')
       }
-    } else if (signalData.type === "SELL") {
+    } else if (signalData.type === 'SELL') {
       if (signalData.targetPrice >= signalData.entryPrice) {
-        errors.push("Target price must be lower than entry price for SELL signals")
+        errors.push('Target price must be lower than entry price for SELL signals')
       }
       if (signalData.stopLoss <= signalData.entryPrice) {
-        errors.push("Stop loss must be higher than entry price for SELL signals")
+        errors.push('Stop loss must be higher than entry price for SELL signals')
       }
     }
   }
@@ -171,7 +173,11 @@ export function filterSignals(signals: Signal[], filters: any): Signal[] {
     }
 
     // Status filter
-    if (filters.status && filters.status !== "all" && signal.status !== filters.status.toUpperCase()) {
+    if (
+      filters.status &&
+      filters.status !== 'all' &&
+      signal.status !== filters.status.toUpperCase()
+    ) {
       return false
     }
 

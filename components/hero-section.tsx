@@ -1,6 +1,6 @@
-import { Button } from "@/components/ui/button"
-import { ArrowRight, Bot } from "lucide-react"
-import Link from "next/link"
+import { Button } from '@/components/ui/button'
+import { ArrowRight, Bot } from 'lucide-react'
+import Link from 'next/link'
 
 export function HeroSection() {
   return (
@@ -24,8 +24,8 @@ export function HeroSection() {
 
           {/* Subheadline */}
           <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Get real-time crypto signals, automated DCA bots, and AI-driven market analysis delivered directly to your
-            Telegram. Start trading smarter, not harder.
+            Get real-time crypto signals, automated DCA bots, and AI-driven market analysis
+            delivered directly to your Telegram. Start trading smarter, not harder.
           </p>
 
           {/* CTA Buttons */}
