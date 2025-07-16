@@ -1,32 +1,17 @@
 'use client'
 
-import React from 'react'
-import { useAuth } from '@/components/auth/auth-provider'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 
 export default function Navigation() {
-  const { user, logout } = useAuth()
-
   return (
-    <div className="flex items-center gap-4 px-4 py-2 border-b">
-      <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-        <Avatar className="h-8 w-8">
-          <AvatarImage src={user?.avatar || '/placeholder.svg'} alt={user?.name || 'User'} />
-          <AvatarFallback className="bg-[#30D5C8] text-[#191A1E]">
-            {user?.name?.charAt(0).toUpperCase() || 'U'}
-          </AvatarFallback>
-        </Avatar>
-      </Button>
-
-      <div className="flex flex-col justify-center">
-        <span className="text-sm font-medium text-foreground">{user?.name || 'Гость'}</span>
-        <span className="text-xs text-muted-foreground">{user?.email}</span>
+    <nav className="bg-white shadow p-4">
+      <div className="max-w-6xl mx-auto flex justify-between items-center">
+        <Link href="/" className="font-bold text-xl">CoinWayfinder</Link>
+        <div className="flex gap-4">
+          <Link href="/dashboard">Dashboard</Link>
+          <Link href="/bots">Bots</Link>
+        </div>
       </div>
-
-      <Button variant="outline" size="sm" className="ml-auto" onClick={logout}>
-        Выйти
-      </Button>
-    </div>
+    </nav>
   )
 }

@@ -1,17 +1,7 @@
-/* app/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ==== Базовые переменные и стили ==== */
-@layer base {
-  :root {
-    /* Цвет фона и текста */
-    --background: 255 255% 100%;
-    --foreground: 0 0% 0%;
-  }
-
-  html {
-    @apply bg-white text-black dark:bg-black dark:text-white;
-  }
+body {
+  @apply bg-white text-black antialiased;
 }

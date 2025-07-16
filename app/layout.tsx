@@ -1,16 +1,20 @@
-// app/layout.tsx
+import './globals.css'
 import { AuthProvider } from '../context/auth-context'
+import Navigation from '@/components/navigation'
 
 export const metadata = {
   title: 'CoinWayFinder',
-  description: 'Your app description',
+  description: 'AI Crypto Platform',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <AuthProvider>{children}</AuthProvider>
+        <AuthProvider>
+          <Navigation />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   )
