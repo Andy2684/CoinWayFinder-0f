@@ -1,38 +1,21 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Label } from '@/components/ui/label'
-import { Switch } from '@/components/ui/switch'
-import { Badge } from '@/components/ui/badge'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import {
-  Shield,
-  Key,
-  Lock,
-  Eye,
-  AlertTriangle,
-  CheckCircle,
-  Clock,
-  Smartphone,
-  Globe,
-  Activity,
-} from 'lucide-react'
+import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { Badge } from "@/components/ui/badge"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Shield, Key, Lock, Eye, AlertTriangle, CheckCircle, Clock, Smartphone, Globe, Activity } from "lucide-react"
 
 export function SecuritySettings() {
   const [securitySettings, setSecuritySettings] = useState({
     twoFactorAuth: true,
     ipWhitelist: true,
-    sessionTimeout: '30',
+    sessionTimeout: "30",
     apiKeyRotation: true,
-    encryptionLevel: 'AES-256',
+    encryptionLevel: "AES-256",
     auditLogging: true,
     suspiciousActivityDetection: true,
     withdrawalConfirmation: true,
@@ -42,118 +25,118 @@ export function SecuritySettings() {
 
   const securityFeatures = [
     {
-      title: 'Two-Factor Authentication',
-      description: 'Require 2FA for all API operations',
+      title: "Two-Factor Authentication",
+      description: "Require 2FA for all API operations",
       icon: Smartphone,
       enabled: securitySettings.twoFactorAuth,
       critical: true,
-      status: 'active',
+      status: "active",
     },
     {
-      title: 'IP Whitelisting',
-      description: 'Restrict API access to approved IP addresses',
+      title: "IP Whitelisting",
+      description: "Restrict API access to approved IP addresses",
       icon: Globe,
       enabled: securitySettings.ipWhitelist,
       critical: true,
-      status: 'active',
+      status: "active",
     },
     {
-      title: 'API Key Rotation',
-      description: 'Automatically rotate API keys every 90 days',
+      title: "API Key Rotation",
+      description: "Automatically rotate API keys every 90 days",
       icon: Key,
       enabled: securitySettings.apiKeyRotation,
       critical: false,
-      status: 'active',
+      status: "active",
     },
     {
-      title: 'Audit Logging',
-      description: 'Log all API calls and trading activities',
+      title: "Audit Logging",
+      description: "Log all API calls and trading activities",
       icon: Activity,
       enabled: securitySettings.auditLogging,
       critical: true,
-      status: 'active',
+      status: "active",
     },
     {
-      title: 'Suspicious Activity Detection',
-      description: 'AI-powered detection of unusual trading patterns',
+      title: "Suspicious Activity Detection",
+      description: "AI-powered detection of unusual trading patterns",
       icon: Eye,
       enabled: securitySettings.suspiciousActivityDetection,
       critical: false,
-      status: 'active',
+      status: "active",
     },
     {
-      title: 'Device Verification',
-      description: 'Verify new devices before allowing access',
+      title: "Device Verification",
+      description: "Verify new devices before allowing access",
       icon: Lock,
       enabled: securitySettings.deviceVerification,
       critical: true,
-      status: 'active',
+      status: "active",
     },
   ]
 
   const securityLogs = [
     {
-      timestamp: '2024-01-07 14:30:22',
-      event: 'API Key Created',
-      exchange: 'Binance',
-      ip: '192.168.1.100',
-      status: 'success',
-      details: 'New API key added for trading bot',
+      timestamp: "2024-01-07 14:30:22",
+      event: "API Key Created",
+      exchange: "Binance",
+      ip: "192.168.1.100",
+      status: "success",
+      details: "New API key added for trading bot",
     },
     {
-      timestamp: '2024-01-07 13:15:45',
-      event: 'Login Attempt',
-      exchange: 'System',
-      ip: '10.0.0.1',
-      status: 'success',
-      details: 'Successful login with 2FA',
+      timestamp: "2024-01-07 13:15:45",
+      event: "Login Attempt",
+      exchange: "System",
+      ip: "10.0.0.1",
+      status: "success",
+      details: "Successful login with 2FA",
     },
     {
-      timestamp: '2024-01-07 12:45:12',
-      event: 'Suspicious Activity',
-      exchange: 'Bybit',
-      ip: '192.168.1.100',
-      status: 'warning',
-      details: 'Unusual trading volume detected',
+      timestamp: "2024-01-07 12:45:12",
+      event: "Suspicious Activity",
+      exchange: "Bybit",
+      ip: "192.168.1.100",
+      status: "warning",
+      details: "Unusual trading volume detected",
     },
     {
-      timestamp: '2024-01-07 11:20:33',
-      event: 'API Rate Limit',
-      exchange: 'KuCoin',
-      ip: '192.168.1.100',
-      status: 'error',
-      details: 'Rate limit exceeded, requests throttled',
+      timestamp: "2024-01-07 11:20:33",
+      event: "API Rate Limit",
+      exchange: "KuCoin",
+      ip: "192.168.1.100",
+      status: "error",
+      details: "Rate limit exceeded, requests throttled",
     },
     {
-      timestamp: '2024-01-07 10:05:18',
-      event: 'Key Rotation',
-      exchange: 'Coinbase',
-      ip: 'System',
-      status: 'success',
-      details: 'Automatic API key rotation completed',
+      timestamp: "2024-01-07 10:05:18",
+      event: "Key Rotation",
+      exchange: "Coinbase",
+      ip: "System",
+      status: "success",
+      details: "Automatic API key rotation completed",
     },
   ]
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'success':
-        return 'text-green-400'
-      case 'warning':
-        return 'text-yellow-400'
-      case 'error':
-        return 'text-red-400'
+      case "success":
+        return "text-green-400"
+      case "warning":
+        return "text-yellow-400"
+      case "error":
+        return "text-red-400"
       default:
-        return 'text-gray-400'
+        return "text-gray-400"
     }
   }
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'success':
+      case "success":
         return <CheckCircle className="w-4 h-4 text-green-400" />
-      case 'warning':
+      case "warning":
         return <AlertTriangle className="w-4 h-4 text-yellow-400" />
-      case 'error':
+      case "error":
         return <AlertTriangle className="w-4 h-4 text-red-400" />
       default:
         return <Clock className="w-4 h-4 text-gray-400" />
@@ -164,9 +147,7 @@ export function SecuritySettings() {
     <section>
       <div className="mb-8">
         <h2 className="text-2xl font-bold text-white mb-2">🔒 Security Settings</h2>
-        <p className="text-gray-300">
-          Configure security measures to protect your trading accounts
-        </p>
+        <p className="text-gray-300">Configure security measures to protect your trading accounts</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -181,10 +162,7 @@ export function SecuritySettings() {
             </CardHeader>
             <CardContent className="space-y-4">
               {securityFeatures.map((feature, index) => (
-                <div
-                  key={index}
-                  className="flex items-start justify-between p-4 bg-gray-800/30 rounded-lg"
-                >
+                <div key={index} className="flex items-start justify-between p-4 bg-gray-800/30 rounded-lg">
                   <div className="flex items-start space-x-3">
                     <div className="w-10 h-10 bg-gray-700 rounded-lg flex items-center justify-center">
                       <feature.icon className="w-5 h-5 text-gray-300" />
@@ -193,10 +171,7 @@ export function SecuritySettings() {
                       <div className="flex items-center space-x-2 mb-1">
                         <h4 className="text-white font-medium">{feature.title}</h4>
                         {feature.critical && (
-                          <Badge
-                            variant="outline"
-                            className="border-red-500/20 text-red-400 text-xs"
-                          >
+                          <Badge variant="outline" className="border-red-500/20 text-red-400 text-xs">
                             Critical
                           </Badge>
                         )}
@@ -206,11 +181,7 @@ export function SecuritySettings() {
                   </div>
                   <div className="flex items-center space-x-2">
                     <Badge
-                      className={
-                        feature.enabled
-                          ? 'bg-green-500/10 text-green-400'
-                          : 'bg-gray-500/10 text-gray-400'
-                      }
+                      className={feature.enabled ? "bg-green-500/10 text-green-400" : "bg-gray-500/10 text-gray-400"}
                     >
                       {feature.status}
                     </Badge>
@@ -234,9 +205,7 @@ export function SecuritySettings() {
                   </Label>
                   <Select
                     value={securitySettings.sessionTimeout}
-                    onValueChange={(value) =>
-                      setSecuritySettings({ ...securitySettings, sessionTimeout: value })
-                    }
+                    onValueChange={(value) => setSecuritySettings({ ...securitySettings, sessionTimeout: value })}
                   >
                     <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
                       <SelectValue />
@@ -256,9 +225,7 @@ export function SecuritySettings() {
                   </Label>
                   <Select
                     value={securitySettings.encryptionLevel}
-                    onValueChange={(value) =>
-                      setSecuritySettings({ ...securitySettings, encryptionLevel: value })
-                    }
+                    onValueChange={(value) => setSecuritySettings({ ...securitySettings, encryptionLevel: value })}
                   >
                     <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
                       <SelectValue />
@@ -299,8 +266,7 @@ export function SecuritySettings() {
                   <h4 className="text-yellow-400 font-semibold">Security Recommendation</h4>
                 </div>
                 <p className="text-yellow-300 text-sm">
-                  Enable all critical security features and use hardware 2FA devices for maximum
-                  protection.
+                  Enable all critical security features and use hardware 2FA devices for maximum protection.
                 </p>
               </div>
             </CardContent>
@@ -328,10 +294,7 @@ export function SecuritySettings() {
             <CardContent>
               <div className="space-y-3 max-h-96 overflow-y-auto">
                 {securityLogs.map((log, index) => (
-                  <div
-                    key={index}
-                    className="flex items-start space-x-3 p-3 bg-gray-800/30 rounded-lg"
-                  >
+                  <div key={index} className="flex items-start space-x-3 p-3 bg-gray-800/30 rounded-lg">
                     <div className="flex-shrink-0 mt-1">{getStatusIcon(log.status)}</div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">

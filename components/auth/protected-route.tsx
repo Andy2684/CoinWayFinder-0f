@@ -1,41 +1,52 @@
-// components/auth/protected-route.tsx
-'use client'
+"use client"
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { useAuth } from '../../context/auth-context'
+import type React from "react"
+
+import { useAuth } from "./auth-provider"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
+import { Loader2 } from "lucide-react"
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  requiredRole?: string
+  requireAuth?: boolean
   redirectTo?: string
 }
 
-export function ProtectedRoute({
-  children,
-  requiredRole,
-  redirectTo = '/auth/login',
-}: ProtectedRouteProps) {
-  const { user, loading, isAuthenticated } = useAuth()
+export function ProtectedRoute({ children, requireAuth = true, redirectTo = "/auth/login" }: ProtectedRouteProps) {
+  const { user, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
     if (!loading) {
-      if (!isAuthenticated) {
+      if (requireAuth && !user) {
         router.push(redirectTo)
-      } else if (requiredRole && user?.role !== requiredRole) {
-        router.push(redirectTo)
+      } else if (!requireAuth && user) {
+        router.push("/dashboard")
       }
     }
-  }, [loading, isAuthenticated, user, requiredRole, redirectTo, router])
+  }, [user, loading, requireAuth, redirectTo, router])
 
   if (loading) {
-    return <div>Loading...</div> // Replace with your loading component
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex items-center space-x-2">
+          <Loader2 className="h-6 w-6 animate-spin" />
+          <span>Loading...</span>
+        </div>
+      </div>
+    )
   }
 
-  if (!isAuthenticated || (requiredRole && user?.role !== requiredRole)) {
-    return null // Prevent rendering until redirection
+  if (requireAuth && !user) {
+    return null
+  }
+
+  if (!requireAuth && user) {
+    return null
   }
 
   return <>{children}</>
 }
+
+export default ProtectedRoute

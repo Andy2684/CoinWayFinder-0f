@@ -1,73 +1,152 @@
-'use client'
+"use client"
 
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
-import { useRouter } from 'next/navigation'
+import type React from "react"
+import { createContext, useContext, useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 
-// ✅ Расширенный тип User
 interface User {
+  id: string
   email: string
-  name: string
-  avatar?: string
+  firstName: string
+  lastName: string
+  username: string
+  role: "user" | "admin"
+  plan: string
+  isVerified: boolean
 }
 
 interface AuthContextType {
   user: User | null
   loading: boolean
   isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<{ success: boolean }>
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  register: (userData: any) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
 }
 
-export const AuthContext = createContext<AuthContextType | null>(null)
+export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState<boolean>(true)
+  const [loading, setLoading] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
-    // Имитация проверки сессии (в будущем — localStorage, cookies, API)
-    setTimeout(() => {
-      setLoading(false)
-    }, 500)
+    checkAuth()
   }, [])
 
+  const checkAuth = async () => {
+    try {
+      const token = localStorage.getItem("auth-token")
+      if (!token) {
+        setLoading(false)
+        return
+      }
+
+      const response = await fetch("/api/auth/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      if (response.ok) {
+        const userData = await response.json()
+        setUser(userData.user)
+      } else {
+        localStorage.removeItem("auth-token")
+      }
+    } catch (error) {
+      console.error("Auth check failed:", error)
+      localStorage.removeItem("auth-token")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const login = async (email: string, password: string) => {
-    // В реальности — вызов API
-    setUser({
-      email,
-      name: 'Demo User',
-      avatar: 'https://i.pravatar.cc/100', // можно заменить на null или динамическое значение
-    })
-    return { success: true }
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        localStorage.setItem("auth-token", data.token)
+        setUser(data.user)
+        return { success: true }
+      } else {
+        return { success: false, error: data.error || "Login failed" }
+      }
+    } catch (error) {
+      return { success: false, error: "Network error" }
+    }
+  }
+
+  const register = async (userData: any) => {
+    try {
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userData),
+      })
+
+      const data = await response.json()
+
+      if (response.ok && data.success) {
+        localStorage.setItem("auth-token", data.token)
+        setUser(data.user)
+        return { success: true }
+      } else {
+        return { success: false, error: data.error || "Registration failed" }
+      }
+    } catch (error) {
+      return { success: false, error: "Network error" }
+    }
   }
 
   const logout = async () => {
-    setUser(null)
-    router.push('/auth/login')
+    try {
+      const token = localStorage.getItem("auth-token")
+      if (token) {
+        await fetch("/api/auth/logout", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+      }
+    } catch (error) {
+      console.error("Logout error:", error)
+    } finally {
+      localStorage.removeItem("auth-token")
+      setUser(null)
+      router.push("/")
+    }
   }
 
-  const isAuthenticated = !!user
+  const value = {
+    user,
+    loading,
+    isAuthenticated: !!user,
+    login,
+    register,
+    logout,
+  }
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        isAuthenticated,
-        login,
-        logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  )
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
   const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider')
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider")
   }
   return context
 }

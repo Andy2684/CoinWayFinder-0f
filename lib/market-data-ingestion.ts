@@ -1,6 +1,6 @@
 // Real-time market data ingestion from multiple exchanges
 
-import { ExchangeAdapterFactory } from './exchange-adapters'
+import { ExchangeAdapterFactory } from "./exchange-adapters"
 
 export interface MarketData {
   symbol: string
@@ -51,11 +51,7 @@ export class MarketDataManager {
   }
 
   // Subscribe to order book updates for a symbol
-  subscribeOrderBook(
-    symbol: string,
-    exchange: string,
-    callback: (data: OrderBookData) => void
-  ): void {
+  subscribeOrderBook(symbol: string, exchange: string, callback: (data: OrderBookData) => void): void {
     const key = `${exchange}:${symbol}:orderbook`
 
     if (!this.orderBookSubscribers.has(key)) {
@@ -85,11 +81,7 @@ export class MarketDataManager {
   }
 
   // Unsubscribe from order book updates
-  unsubscribeOrderBook(
-    symbol: string,
-    exchange: string,
-    callback: (data: OrderBookData) => void
-  ): void {
+  unsubscribeOrderBook(symbol: string, exchange: string, callback: (data: OrderBookData) => void): void {
     const key = `${exchange}:${symbol}:orderbook`
     const subscribers = this.orderBookSubscribers.get(key)
 
@@ -138,7 +130,7 @@ export class MarketDataManager {
     return results
       .filter(
         (result): result is PromiseFulfilledResult<MarketData> =>
-          result.status === 'fulfilled' && result.value !== null
+          result.status === "fulfilled" && result.value !== null,
       )
       .map((result) => result.value)
   }
@@ -146,7 +138,7 @@ export class MarketDataManager {
   // Get best bid/ask across exchanges
   async getBestPrice(
     symbol: string,
-    exchanges: string[]
+    exchanges: string[],
   ): Promise<{
     bestBid: { price: number; exchange: string } | null
     bestAsk: { price: number; exchange: string } | null
@@ -163,14 +155,14 @@ export class MarketDataManager {
           console.error(`Error fetching order book for ${symbol} on ${exchange}:`, error)
           return null
         }
-      })
+      }),
     )
 
     let bestBid: { price: number; exchange: string } | null = null
     let bestAsk: { price: number; exchange: string } | null = null
 
     orderBooks.forEach((result) => {
-      if (result.status === 'fulfilled' && result.value) {
+      if (result.status === "fulfilled" && result.value) {
         const { bids, asks, exchange } = result.value
 
         if (bids.length > 0) {
@@ -196,9 +188,9 @@ export class MarketDataManager {
     try {
       // Use public API endpoints that don't require authentication
       switch (exchange.toLowerCase()) {
-        case 'binance':
+        case "binance":
           return await this.fetchBinanceTicker(symbol)
-        case 'bybit':
+        case "bybit":
           return await this.fetchBybitTicker(symbol)
         default:
           console.warn(`Ticker fetching not implemented for ${exchange}`)
@@ -218,7 +210,7 @@ export class MarketDataManager {
       const data = await response.json()
       return {
         symbol: data.symbol,
-        exchange: 'binance',
+        exchange: "binance",
         price: Number.parseFloat(data.lastPrice),
         volume: Number.parseFloat(data.volume),
         change: Number.parseFloat(data.priceChange),
@@ -228,16 +220,14 @@ export class MarketDataManager {
         timestamp: Date.now(),
       }
     } catch (error) {
-      console.error('Error fetching Binance ticker:', error)
+      console.error("Error fetching Binance ticker:", error)
       return null
     }
   }
 
   private async fetchBybitTicker(symbol: string): Promise<MarketData | null> {
     try {
-      const response = await fetch(
-        `https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`
-      )
+      const response = await fetch(`https://api.bybit.com/v5/market/tickers?category=spot&symbol=${symbol}`)
       if (!response.ok) return null
 
       const data = await response.json()
@@ -246,7 +236,7 @@ export class MarketDataManager {
       const ticker = data.result.list[0]
       return {
         symbol: ticker.symbol,
-        exchange: 'bybit',
+        exchange: "bybit",
         price: Number.parseFloat(ticker.lastPrice),
         volume: Number.parseFloat(ticker.volume24h),
         change: Number.parseFloat(ticker.price24hPcnt) * Number.parseFloat(ticker.lastPrice),
@@ -256,7 +246,7 @@ export class MarketDataManager {
         timestamp: Date.now(),
       }
     } catch (error) {
-      console.error('Error fetching Bybit ticker:', error)
+      console.error("Error fetching Bybit ticker:", error)
       return null
     }
   }
@@ -337,13 +327,10 @@ export class MarketDataManager {
 
     if (attempts < this.maxReconnectAttempts) {
       this.reconnectAttempts.set(key, attempts + 1)
-      setTimeout(
-        () => {
-          console.log(`Attempting to reconnect ${key} (attempt ${attempts + 1})`)
-          reconnectFn()
-        },
-        this.reconnectDelay * Math.pow(2, attempts)
-      ) // Exponential backoff
+      setTimeout(() => {
+        console.log(`Attempting to reconnect ${key} (attempt ${attempts + 1})`)
+        reconnectFn()
+      }, this.reconnectDelay * Math.pow(2, attempts)) // Exponential backoff
     } else {
       console.error(`Max reconnection attempts reached for ${key}`)
     }
@@ -353,56 +340,52 @@ export class MarketDataManager {
   async getPopularPairs(exchange: string): Promise<string[]> {
     try {
       switch (exchange.toLowerCase()) {
-        case 'binance':
+        case "binance":
           return await this.getBinancePopularPairs()
-        case 'bybit':
+        case "bybit":
           return await this.getBybitPopularPairs()
         default:
-          return ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT']
+          return ["BTCUSDT", "ETHUSDT", "BNBUSDT", "ADAUSDT", "SOLUSDT"]
       }
     } catch (error) {
       console.error(`Error fetching popular pairs for ${exchange}:`, error)
-      return ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT']
+      return ["BTCUSDT", "ETHUSDT", "BNBUSDT", "ADAUSDT", "SOLUSDT"]
     }
   }
 
   private async getBinancePopularPairs(): Promise<string[]> {
     try {
-      const response = await fetch('https://api.binance.com/api/v3/ticker/24hr')
-      if (!response.ok) throw new Error('Failed to fetch Binance tickers')
+      const response = await fetch("https://api.binance.com/api/v3/ticker/24hr")
+      if (!response.ok) throw new Error("Failed to fetch Binance tickers")
 
       const tickers = await response.json()
       return tickers
-        .filter((ticker: any) => ticker.symbol.endsWith('USDT'))
-        .sort(
-          (a: any, b: any) => Number.parseFloat(b.quoteVolume) - Number.parseFloat(a.quoteVolume)
-        )
+        .filter((ticker: any) => ticker.symbol.endsWith("USDT"))
+        .sort((a: any, b: any) => Number.parseFloat(b.quoteVolume) - Number.parseFloat(a.quoteVolume))
         .slice(0, 20)
         .map((ticker: any) => ticker.symbol)
     } catch (error) {
-      console.error('Error fetching Binance popular pairs:', error)
-      return ['BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'ADAUSDT', 'SOLUSDT']
+      console.error("Error fetching Binance popular pairs:", error)
+      return ["BTCUSDT", "ETHUSDT", "BNBUSDT", "ADAUSDT", "SOLUSDT"]
     }
   }
 
   private async getBybitPopularPairs(): Promise<string[]> {
     try {
-      const response = await fetch('https://api.bybit.com/v5/market/tickers?category=spot')
-      if (!response.ok) throw new Error('Failed to fetch Bybit tickers')
+      const response = await fetch("https://api.bybit.com/v5/market/tickers?category=spot")
+      if (!response.ok) throw new Error("Failed to fetch Bybit tickers")
 
       const data = await response.json()
-      if (data.retCode !== 0) throw new Error('Bybit API error')
+      if (data.retCode !== 0) throw new Error("Bybit API error")
 
       return data.result.list
-        .filter((ticker: any) => ticker.symbol.endsWith('USDT'))
-        .sort(
-          (a: any, b: any) => Number.parseFloat(b.turnover24h) - Number.parseFloat(a.turnover24h)
-        )
+        .filter((ticker: any) => ticker.symbol.endsWith("USDT"))
+        .sort((a: any, b: any) => Number.parseFloat(b.turnover24h) - Number.parseFloat(a.turnover24h))
         .slice(0, 20)
         .map((ticker: any) => ticker.symbol)
     } catch (error) {
-      console.error('Error fetching Bybit popular pairs:', error)
-      return ['BTCUSDT', 'ETHUSDT', 'SOLUSDT', 'ADAUSDT', 'DOTUSDT']
+      console.error("Error fetching Bybit popular pairs:", error)
+      return ["BTCUSDT", "ETHUSDT", "SOLUSDT", "ADAUSDT", "DOTUSDT"]
     }
   }
 }

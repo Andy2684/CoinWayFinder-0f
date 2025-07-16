@@ -1,17 +1,17 @@
 // Unified trade execution engine with retry logic and risk protection
 
-import { ExchangeAdapterFactory, type ExchangeAdapter } from './exchange-adapters'
+import { ExchangeAdapterFactory, type ExchangeAdapter } from "./exchange-adapters"
 
 export interface TradeOrder {
   id: string
   exchangeId: string
   symbol: string
-  side: 'buy' | 'sell'
-  type: 'market' | 'limit' | 'stop'
+  side: "buy" | "sell"
+  type: "market" | "limit" | "stop"
   amount: number
   price?: number
   stopPrice?: number
-  timeInForce?: 'GTC' | 'IOC' | 'FOK'
+  timeInForce?: "GTC" | "IOC" | "FOK"
   strategy: string
   maxRetries: number
   retryDelay: number
@@ -75,7 +75,7 @@ export class TradeExecutionEngine {
 
     // Execute with retry logic
     let retries = 0
-    let lastError = ''
+    let lastError = ""
 
     while (retries <= order.maxRetries) {
       try {
@@ -91,7 +91,7 @@ export class TradeExecutionEngine {
             exchange: order.exchangeId,
           }
         } else {
-          lastError = result.error || 'Unknown error'
+          lastError = result.error || "Unknown error"
           retries++
 
           if (retries <= order.maxRetries) {
@@ -99,7 +99,7 @@ export class TradeExecutionEngine {
           }
         }
       } catch (error) {
-        lastError = error instanceof Error ? error.message : 'Execution failed'
+        lastError = error instanceof Error ? error.message : "Execution failed"
         retries++
 
         if (retries <= order.maxRetries) {
@@ -119,29 +119,24 @@ export class TradeExecutionEngine {
 
   private async executeOnExchange(
     adapter: ExchangeAdapter,
-    order: TradeOrder
+    order: TradeOrder,
   ): Promise<{ success: boolean; orderId?: string; error?: string }> {
     try {
       let result: any
 
       switch (order.type) {
-        case 'market':
+        case "market":
           result = await adapter.placeMarketOrder(order.symbol, order.side, order.amount)
           break
-        case 'limit':
+        case "limit":
           if (!order.price) {
-            throw new Error('Price required for limit order')
+            throw new Error("Price required for limit order")
           }
-          result = await adapter.placeLimitOrder(
-            order.symbol,
-            order.side,
-            order.amount,
-            order.price
-          )
+          result = await adapter.placeLimitOrder(order.symbol, order.side, order.amount, order.price)
           break
-        case 'stop':
+        case "stop":
           // Implementation depends on exchange-specific stop order logic
-          throw new Error('Stop orders not yet implemented')
+          throw new Error("Stop orders not yet implemented")
         default:
           throw new Error(`Unsupported order type: ${order.type}`)
       }
@@ -152,23 +147,23 @@ export class TradeExecutionEngine {
       if (orderId) {
         return { success: true, orderId }
       } else {
-        return { success: false, error: 'Order ID not found in response' }
+        return { success: false, error: "Order ID not found in response" }
       }
     } catch (error) {
       return {
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown execution error',
+        error: error instanceof Error ? error.message : "Unknown execution error",
       }
     }
   }
 
   private extractOrderId(result: any, exchangeId: string): string | null {
     switch (exchangeId) {
-      case 'binance':
+      case "binance":
         return result.orderId?.toString() || null
-      case 'bybit':
+      case "bybit":
         return result.result?.orderId || null
-      case 'okx':
+      case "okx":
         return result.data?.[0]?.ordId || null
       default:
         return result.orderId || result.id || null
@@ -181,10 +176,7 @@ export class TradeExecutionEngine {
       return { passed: false, reason: `Trading pair ${order.symbol} is blocked` }
     }
 
-    if (
-      this.riskLimits.allowedPairs.length > 0 &&
-      !this.riskLimits.allowedPairs.includes(order.symbol)
-    ) {
+    if (this.riskLimits.allowedPairs.length > 0 && !this.riskLimits.allowedPairs.includes(order.symbol)) {
       return { passed: false, reason: `Trading pair ${order.symbol} is not in allowed list` }
     }
 
@@ -207,10 +199,7 @@ export class TradeExecutionEngine {
 
     // Check daily loss limit
     if (this.dailyLoss >= this.riskLimits.maxDailyLoss) {
-      return {
-        passed: false,
-        reason: `Daily loss limit of $${this.riskLimits.maxDailyLoss} reached`,
-      }
+      return { passed: false, reason: `Daily loss limit of $${this.riskLimits.maxDailyLoss} reached` }
     }
 
     return { passed: true }
@@ -263,12 +252,12 @@ export class TradeExecutionEngine {
   public emergencyStop(): void {
     this.isProcessing = false
     this.executionQueue.length = 0
-    console.log('Emergency stop activated - all trading halted')
+    console.log("Emergency stop activated - all trading halted")
   }
 
   public resume(): void {
     this.isProcessing = true
     this.processQueue()
-    console.log('Trading resumed')
+    console.log("Trading resumed")
   }
 }

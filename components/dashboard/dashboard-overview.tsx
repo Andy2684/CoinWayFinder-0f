@@ -1,9 +1,9 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { TrendingUp, TrendingDown, DollarSign, Activity, Bot, Globe } from 'lucide-react'
+import { useState } from "react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { TrendingUp, TrendingDown, DollarSign, Activity, Bot, Globe } from "lucide-react"
 
 export function DashboardOverview() {
   const [stats, setStats] = useState({
@@ -14,7 +14,7 @@ export function DashboardOverview() {
     totalTrades: 1847,
     winRate: 73.4,
     connectedExchanges: 5,
-    systemStatus: 'operational',
+    systemStatus: "operational",
   })
 
   const [marketSummary, setMarketSummary] = useState({
@@ -22,46 +22,46 @@ export function DashboardOverview() {
     btcChange: 2.3,
     ethPrice: 3456.78,
     ethChange: -1.2,
-    totalMarketCap: '2.1T',
+    totalMarketCap: "2.1T",
     fearGreedIndex: 72,
   })
 
   const overviewCards = [
     {
-      title: 'Total Portfolio Value',
+      title: "Total Portfolio Value",
       value: `$${stats.totalBalance.toLocaleString()}`,
       change: `+$${stats.totalPnL.toFixed(2)}`,
       changePercent: `+${stats.pnlPercent}%`,
       icon: DollarSign,
-      color: 'text-green-400',
-      bgColor: 'bg-green-500/10',
+      color: "text-green-400",
+      bgColor: "bg-green-500/10",
     },
     {
-      title: 'Active Strategies',
+      title: "Active Strategies",
       value: stats.activeStrategies.toString(),
-      change: '3 running',
-      changePercent: '2 paused',
+      change: "3 running",
+      changePercent: "2 paused",
       icon: Bot,
-      color: 'text-[#30D5C8]',
-      bgColor: 'bg-[#30D5C8]/10',
+      color: "text-[#30D5C8]",
+      bgColor: "bg-[#30D5C8]/10",
     },
     {
-      title: 'Win Rate',
+      title: "Win Rate",
       value: `${stats.winRate}%`,
       change: `${stats.totalTrades} trades`,
-      changePercent: '+2.1% vs last month',
+      changePercent: "+2.1% vs last month",
       icon: TrendingUp,
-      color: 'text-blue-400',
-      bgColor: 'bg-blue-500/10',
+      color: "text-blue-400",
+      bgColor: "bg-blue-500/10",
     },
     {
-      title: 'Connected Exchanges',
+      title: "Connected Exchanges",
       value: stats.connectedExchanges.toString(),
-      change: 'All operational',
-      changePercent: '99.9% uptime',
+      change: "All operational",
+      changePercent: "99.9% uptime",
       icon: Globe,
-      color: 'text-purple-400',
-      bgColor: 'bg-purple-500/10',
+      color: "text-purple-400",
+      bgColor: "bg-purple-500/10",
     },
   ]
 
@@ -70,15 +70,10 @@ export function DashboardOverview() {
       {/* Main Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {overviewCards.map((card, index) => (
-          <Card
-            key={index}
-            className="bg-gray-900/50 border-gray-800 hover:border-[#30D5C8]/50 transition-colors"
-          >
+          <Card key={index} className="bg-gray-900/50 border-gray-800 hover:border-[#30D5C8]/50 transition-colors">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <div
-                  className={`w-12 h-12 ${card.bgColor} rounded-lg flex items-center justify-center`}
-                >
+                <div className={`w-12 h-12 ${card.bgColor} rounded-lg flex items-center justify-center`}>
                   <card.icon className={`w-6 h-6 ${card.color}`} />
                 </div>
                 <Badge variant="outline" className="border-gray-600 text-gray-300">
@@ -112,17 +107,15 @@ export function DashboardOverview() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             <div className="text-center">
               <p className="text-xs text-gray-400 mb-1">BTC/USD</p>
-              <p className="text-lg font-bold text-white">
-                ${marketSummary.btcPrice.toLocaleString()}
-              </p>
+              <p className="text-lg font-bold text-white">${marketSummary.btcPrice.toLocaleString()}</p>
               <div className="flex items-center justify-center space-x-1">
                 {marketSummary.btcChange > 0 ? (
                   <TrendingUp className="w-3 h-3 text-green-400" />
                 ) : (
                   <TrendingDown className="w-3 h-3 text-red-400" />
                 )}
-                <span className={marketSummary.btcChange > 0 ? 'text-green-400' : 'text-red-400'}>
-                  {marketSummary.btcChange > 0 ? '+' : ''}
+                <span className={marketSummary.btcChange > 0 ? "text-green-400" : "text-red-400"}>
+                  {marketSummary.btcChange > 0 ? "+" : ""}
                   {marketSummary.btcChange}%
                 </span>
               </div>
@@ -130,17 +123,15 @@ export function DashboardOverview() {
 
             <div className="text-center">
               <p className="text-xs text-gray-400 mb-1">ETH/USD</p>
-              <p className="text-lg font-bold text-white">
-                ${marketSummary.ethPrice.toLocaleString()}
-              </p>
+              <p className="text-lg font-bold text-white">${marketSummary.ethPrice.toLocaleString()}</p>
               <div className="flex items-center justify-center space-x-1">
                 {marketSummary.ethChange > 0 ? (
                   <TrendingUp className="w-3 h-3 text-green-400" />
                 ) : (
                   <TrendingDown className="w-3 h-3 text-red-400" />
                 )}
-                <span className={marketSummary.ethChange > 0 ? 'text-green-400' : 'text-red-400'}>
-                  {marketSummary.ethChange > 0 ? '+' : ''}
+                <span className={marketSummary.ethChange > 0 ? "text-green-400" : "text-red-400"}>
+                  {marketSummary.ethChange > 0 ? "+" : ""}
                   {marketSummary.ethChange}%
                 </span>
               </div>

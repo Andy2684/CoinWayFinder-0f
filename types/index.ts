@@ -1,53 +1,50 @@
-export interface MainNavItem {
-  title: string
-  href: string
-  disabled?: boolean
+export interface User {
+  id: string
+  email: string
+  firstName?: string
+  lastName?: string
+  username?: string
+  role: "user" | "admin"
+  isEmailVerified: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-export interface SidebarNavItem {
-  title: string
-  href: string
-  icon: any
-  disabled?: boolean
-}
-
-export interface DashboardConfig {
-  mainNav: MainNavItem[]
-  sidebarNav: SidebarNavItem[]
-}
-
-export interface Signal {
+export interface TradingSignal {
   id: string
   symbol: string
-  type: 'BUY' | 'SELL'
+  type: "buy" | "sell"
   price: number
-  targetPrice: number
-  stopLoss: number
   confidence: number
-  timeframe: string
-  exchange: string
-  status: 'ACTIVE' | 'COMPLETED' | 'CANCELLED'
-  createdAt: string
-  pnl?: number
-  analysis: string
+  timestamp: string
+  status: "active" | "executed" | "expired"
+  description: string
 }
 
-export interface Bot {
+export interface TradingBot {
   id: string
   name: string
   strategy: string
-  status: 'ACTIVE' | 'PAUSED' | 'STOPPED'
-  pnl: number
+  status: "active" | "paused" | "stopped"
+  profit: number
   trades: number
-  winRate: number
   createdAt: string
 }
 
-export interface Exchange {
+export interface MarketData {
+  symbol: string
+  price: number
+  change24h: number
+  volume: number
+  marketCap: number
+}
+
+export interface NewsItem {
   id: string
-  name: string
-  status: 'CONNECTED' | 'DISCONNECTED' | 'ERROR'
-  apiKey?: string
-  permissions: string[]
-  lastSync: string
+  title: string
+  content: string
+  source: string
+  sentiment: "positive" | "negative" | "neutral"
+  timestamp: string
+  url?: string
 }

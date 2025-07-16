@@ -1,6 +1,6 @@
 // Exchange-specific adapters for unified API interface with real API connections
 
-import crypto from 'crypto'
+import crypto from "crypto"
 
 export interface ExchangeAdapter {
   id: string
@@ -8,8 +8,8 @@ export interface ExchangeAdapter {
   authenticate(credentials: any): Promise<boolean>
   getBalance(): Promise<any>
   getOrderBook(symbol: string): Promise<any>
-  placeLimitOrder(symbol: string, side: 'buy' | 'sell', amount: number, price: number): Promise<any>
-  placeMarketOrder(symbol: string, side: 'buy' | 'sell', amount: number): Promise<any>
+  placeLimitOrder(symbol: string, side: "buy" | "sell", amount: number, price: number): Promise<any>
+  placeMarketOrder(symbol: string, side: "buy" | "sell", amount: number): Promise<any>
   cancelOrder(orderId: string): Promise<any>
   getOpenOrders(): Promise<any>
   getTradeHistory(): Promise<any>
@@ -19,14 +19,14 @@ export interface ExchangeAdapter {
 }
 
 export class BinanceAdapter implements ExchangeAdapter {
-  id = 'binance'
-  name = 'Binance'
-  private apiKey = ''
-  private secretKey = ''
-  private baseUrl = 'https://api.binance.com'
-  private wsUrl = 'wss://stream.binance.com:9443/ws'
-  private testnetUrl = 'https://testnet.binance.vision'
-  private testnetWsUrl = 'wss://testnet.binance.vision/ws'
+  id = "binance"
+  name = "Binance"
+  private apiKey = ""
+  private secretKey = ""
+  private baseUrl = "https://api.binance.com"
+  private wsUrl = "wss://stream.binance.com:9443/ws"
+  private testnetUrl = "https://testnet.binance.vision"
+  private testnetWsUrl = "wss://testnet.binance.vision/ws"
   private isTestnet = false
   private rateLimitRemaining = 1200
 
@@ -47,14 +47,11 @@ export class BinanceAdapter implements ExchangeAdapter {
       const queryString = `timestamp=${timestamp}`
       const signature = this.createSignature(queryString)
 
-      const response = await fetch(
-        `${this.baseUrl}/api/v3/account?${queryString}&signature=${signature}`,
-        {
-          headers: {
-            'X-MBX-APIKEY': this.apiKey,
-          },
-        }
-      )
+      const response = await fetch(`${this.baseUrl}/api/v3/account?${queryString}&signature=${signature}`, {
+        headers: {
+          "X-MBX-APIKEY": this.apiKey,
+        },
+      })
 
       if (response.ok) {
         const data = await response.json()
@@ -62,7 +59,7 @@ export class BinanceAdapter implements ExchangeAdapter {
       }
       return false
     } catch (error) {
-      console.error('Binance authentication error:', error)
+      console.error("Binance authentication error:", error)
       return false
     }
   }
@@ -72,14 +69,11 @@ export class BinanceAdapter implements ExchangeAdapter {
     const queryString = `timestamp=${timestamp}`
     const signature = this.createSignature(queryString)
 
-    const response = await fetch(
-      `${this.baseUrl}/api/v3/account?${queryString}&signature=${signature}`,
-      {
-        headers: {
-          'X-MBX-APIKEY': this.apiKey,
-        },
-      }
-    )
+    const response = await fetch(`${this.baseUrl}/api/v3/account?${queryString}&signature=${signature}`, {
+      headers: {
+        "X-MBX-APIKEY": this.apiKey,
+      },
+    })
 
     if (!response.ok) {
       throw new Error(`Binance API error: ${response.statusText}`)
@@ -88,8 +82,7 @@ export class BinanceAdapter implements ExchangeAdapter {
     const data = await response.json()
     return {
       balances: data.balances.filter(
-        (balance: any) =>
-          Number.parseFloat(balance.free) > 0 || Number.parseFloat(balance.locked) > 0
+        (balance: any) => Number.parseFloat(balance.free) > 0 || Number.parseFloat(balance.locked) > 0,
       ),
       accountType: data.accountType,
       canTrade: data.canTrade,
@@ -108,30 +101,19 @@ export class BinanceAdapter implements ExchangeAdapter {
     const data = await response.json()
     return {
       symbol,
-      bids: data.bids.map((bid: string[]) => [
-        Number.parseFloat(bid[0]),
-        Number.parseFloat(bid[1]),
-      ]),
-      asks: data.asks.map((ask: string[]) => [
-        Number.parseFloat(ask[0]),
-        Number.parseFloat(ask[1]),
-      ]),
+      bids: data.bids.map((bid: string[]) => [Number.parseFloat(bid[0]), Number.parseFloat(bid[1])]),
+      asks: data.asks.map((ask: string[]) => [Number.parseFloat(ask[0]), Number.parseFloat(ask[1])]),
       lastUpdateId: data.lastUpdateId,
     }
   }
 
-  async placeLimitOrder(
-    symbol: string,
-    side: 'buy' | 'sell',
-    amount: number,
-    price: number
-  ): Promise<any> {
+  async placeLimitOrder(symbol: string, side: "buy" | "sell", amount: number, price: number): Promise<any> {
     const timestamp = Date.now()
     const params = {
       symbol,
       side: side.toUpperCase(),
-      type: 'LIMIT',
-      timeInForce: 'GTC',
+      type: "LIMIT",
+      timeInForce: "GTC",
       quantity: amount.toString(),
       price: price.toString(),
       timestamp: timestamp.toString(),
@@ -141,10 +123,10 @@ export class BinanceAdapter implements ExchangeAdapter {
     const signature = this.createSignature(queryString)
 
     const response = await fetch(`${this.baseUrl}/api/v3/order`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'X-MBX-APIKEY': this.apiKey,
-        'Content-Type': 'application/x-www-form-urlencoded',
+        "X-MBX-APIKEY": this.apiKey,
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body: `${queryString}&signature=${signature}`,
     })
@@ -157,12 +139,12 @@ export class BinanceAdapter implements ExchangeAdapter {
     return response.json()
   }
 
-  async placeMarketOrder(symbol: string, side: 'buy' | 'sell', amount: number): Promise<any> {
+  async placeMarketOrder(symbol: string, side: "buy" | "sell", amount: number): Promise<any> {
     const timestamp = Date.now()
     const params = {
       symbol,
       side: side.toUpperCase(),
-      type: 'MARKET',
+      type: "MARKET",
       quantity: amount.toString(),
       timestamp: timestamp.toString(),
     }
@@ -171,10 +153,10 @@ export class BinanceAdapter implements ExchangeAdapter {
     const signature = this.createSignature(queryString)
 
     const response = await fetch(`${this.baseUrl}/api/v3/order`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'X-MBX-APIKEY': this.apiKey,
-        'Content-Type': 'application/x-www-form-urlencoded',
+        "X-MBX-APIKEY": this.apiKey,
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body: `${queryString}&signature=${signature}`,
     })
@@ -198,10 +180,10 @@ export class BinanceAdapter implements ExchangeAdapter {
     const signature = this.createSignature(queryString)
 
     const response = await fetch(`${this.baseUrl}/api/v3/order`, {
-      method: 'DELETE',
+      method: "DELETE",
       headers: {
-        'X-MBX-APIKEY': this.apiKey,
-        'Content-Type': 'application/x-www-form-urlencoded',
+        "X-MBX-APIKEY": this.apiKey,
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body: `${queryString}&signature=${signature}`,
     })
@@ -219,14 +201,11 @@ export class BinanceAdapter implements ExchangeAdapter {
     const queryString = `timestamp=${timestamp}`
     const signature = this.createSignature(queryString)
 
-    const response = await fetch(
-      `${this.baseUrl}/api/v3/openOrders?${queryString}&signature=${signature}`,
-      {
-        headers: {
-          'X-MBX-APIKEY': this.apiKey,
-        },
-      }
-    )
+    const response = await fetch(`${this.baseUrl}/api/v3/openOrders?${queryString}&signature=${signature}`, {
+      headers: {
+        "X-MBX-APIKEY": this.apiKey,
+      },
+    })
 
     if (!response.ok) {
       throw new Error(`Binance API error: ${response.statusText}`)
@@ -240,14 +219,11 @@ export class BinanceAdapter implements ExchangeAdapter {
     const queryString = `timestamp=${timestamp}`
     const signature = this.createSignature(queryString)
 
-    const response = await fetch(
-      `${this.baseUrl}/api/v3/myTrades?${queryString}&signature=${signature}`,
-      {
-        headers: {
-          'X-MBX-APIKEY': this.apiKey,
-        },
-      }
-    )
+    const response = await fetch(`${this.baseUrl}/api/v3/myTrades?${queryString}&signature=${signature}`, {
+      headers: {
+        "X-MBX-APIKEY": this.apiKey,
+      },
+    })
 
     if (!response.ok) {
       throw new Error(`Binance API error: ${response.statusText}`)
@@ -264,16 +240,16 @@ export class BinanceAdapter implements ExchangeAdapter {
         const data = JSON.parse(event.data)
         callback(this.normalizeTicker(data))
       } catch (error) {
-        console.error('WebSocket ticker error:', error)
+        console.error("WebSocket ticker error:", error)
       }
     }
 
     ws.onerror = (error) => {
-      console.error('WebSocket ticker connection error:', error)
+      console.error("WebSocket ticker connection error:", error)
     }
 
     ws.onclose = () => {
-      console.log('WebSocket ticker connection closed')
+      console.log("WebSocket ticker connection closed")
       // Implement reconnection logic here
       setTimeout(() => this.subscribeToTicker(symbol, callback), 5000)
     }
@@ -287,16 +263,16 @@ export class BinanceAdapter implements ExchangeAdapter {
         const data = JSON.parse(event.data)
         callback(this.normalizeOrderBook(data))
       } catch (error) {
-        console.error('WebSocket orderbook error:', error)
+        console.error("WebSocket orderbook error:", error)
       }
     }
 
     ws.onerror = (error) => {
-      console.error('WebSocket orderbook connection error:', error)
+      console.error("WebSocket orderbook connection error:", error)
     }
 
     ws.onclose = () => {
-      console.log('WebSocket orderbook connection closed')
+      console.log("WebSocket orderbook connection closed")
       // Implement reconnection logic here
       setTimeout(() => this.subscribeToOrderBook(symbol, callback), 5000)
     }
@@ -307,7 +283,7 @@ export class BinanceAdapter implements ExchangeAdapter {
   }
 
   private createSignature(queryString: string): string {
-    return crypto.createHmac('sha256', this.secretKey).update(queryString).digest('hex')
+    return crypto.createHmac("sha256", this.secretKey).update(queryString).digest("hex")
   }
 
   private normalizeTicker(data: any): any {
@@ -329,12 +305,8 @@ export class BinanceAdapter implements ExchangeAdapter {
   private normalizeOrderBook(data: any): any {
     return {
       symbol: data.s,
-      bids:
-        data.b?.map((bid: string[]) => [Number.parseFloat(bid[0]), Number.parseFloat(bid[1])]) ||
-        [],
-      asks:
-        data.a?.map((ask: string[]) => [Number.parseFloat(ask[0]), Number.parseFloat(ask[1])]) ||
-        [],
+      bids: data.b?.map((bid: string[]) => [Number.parseFloat(bid[0]), Number.parseFloat(bid[1])]) || [],
+      asks: data.a?.map((ask: string[]) => [Number.parseFloat(ask[0]), Number.parseFloat(ask[1])]) || [],
       lastUpdateId: data.u,
       timestamp: data.E,
     }
@@ -342,14 +314,14 @@ export class BinanceAdapter implements ExchangeAdapter {
 }
 
 export class BybitAdapter implements ExchangeAdapter {
-  id = 'bybit'
-  name = 'Bybit'
-  private apiKey = ''
-  private secretKey = ''
-  private baseUrl = 'https://api.bybit.com'
-  private wsUrl = 'wss://stream.bybit.com/v5/public/spot'
-  private testnetUrl = 'https://api-testnet.bybit.com'
-  private testnetWsUrl = 'wss://stream-testnet.bybit.com/v5/public/spot'
+  id = "bybit"
+  name = "Bybit"
+  private apiKey = ""
+  private secretKey = ""
+  private baseUrl = "https://api.bybit.com"
+  private wsUrl = "wss://stream.bybit.com/v5/public/spot"
+  private testnetUrl = "https://api-testnet.bybit.com"
+  private testnetWsUrl = "wss://stream-testnet.bybit.com/v5/public/spot"
   private isTestnet = false
   private rateLimitRemaining = 120
 
@@ -367,19 +339,16 @@ export class BybitAdapter implements ExchangeAdapter {
 
     try {
       const timestamp = Date.now().toString()
-      const signature = this.createSignature(timestamp, '')
+      const signature = this.createSignature(timestamp, "")
 
-      const response = await fetch(
-        `${this.baseUrl}/v5/account/wallet-balance?accountType=UNIFIED`,
-        {
-          headers: {
-            'X-BAPI-API-KEY': this.apiKey,
-            'X-BAPI-TIMESTAMP': timestamp,
-            'X-BAPI-SIGN': signature,
-            'X-BAPI-RECV-WINDOW': '5000',
-          },
-        }
-      )
+      const response = await fetch(`${this.baseUrl}/v5/account/wallet-balance?accountType=UNIFIED`, {
+        headers: {
+          "X-BAPI-API-KEY": this.apiKey,
+          "X-BAPI-TIMESTAMP": timestamp,
+          "X-BAPI-SIGN": signature,
+          "X-BAPI-RECV-WINDOW": "5000",
+        },
+      })
 
       if (response.ok) {
         const data = await response.json()
@@ -387,21 +356,21 @@ export class BybitAdapter implements ExchangeAdapter {
       }
       return false
     } catch (error) {
-      console.error('Bybit authentication error:', error)
+      console.error("Bybit authentication error:", error)
       return false
     }
   }
 
   async getBalance(): Promise<any> {
     const timestamp = Date.now().toString()
-    const signature = this.createSignature(timestamp, '')
+    const signature = this.createSignature(timestamp, "")
 
     const response = await fetch(`${this.baseUrl}/v5/account/wallet-balance?accountType=UNIFIED`, {
       headers: {
-        'X-BAPI-API-KEY': this.apiKey,
-        'X-BAPI-TIMESTAMP': timestamp,
-        'X-BAPI-SIGN': signature,
-        'X-BAPI-RECV-WINDOW': '5000',
+        "X-BAPI-API-KEY": this.apiKey,
+        "X-BAPI-TIMESTAMP": timestamp,
+        "X-BAPI-SIGN": signature,
+        "X-BAPI-RECV-WINDOW": "5000",
       },
     })
 
@@ -423,9 +392,7 @@ export class BybitAdapter implements ExchangeAdapter {
   }
 
   async getOrderBook(symbol: string): Promise<any> {
-    const response = await fetch(
-      `${this.baseUrl}/v5/market/orderbook?category=spot&symbol=${symbol}&limit=50`
-    )
+    const response = await fetch(`${this.baseUrl}/v5/market/orderbook?category=spot&symbol=${symbol}&limit=50`)
 
     if (!response.ok) {
       throw new Error(`Bybit API error: ${response.statusText}`)
@@ -438,30 +405,19 @@ export class BybitAdapter implements ExchangeAdapter {
 
     return {
       symbol,
-      bids: data.result.b.map((bid: string[]) => [
-        Number.parseFloat(bid[0]),
-        Number.parseFloat(bid[1]),
-      ]),
-      asks: data.result.a.map((ask: string[]) => [
-        Number.parseFloat(ask[0]),
-        Number.parseFloat(ask[1]),
-      ]),
+      bids: data.result.b.map((bid: string[]) => [Number.parseFloat(bid[0]), Number.parseFloat(bid[1])]),
+      asks: data.result.a.map((ask: string[]) => [Number.parseFloat(ask[0]), Number.parseFloat(ask[1])]),
       timestamp: data.result.ts,
     }
   }
 
-  async placeLimitOrder(
-    symbol: string,
-    side: 'buy' | 'sell',
-    amount: number,
-    price: number
-  ): Promise<any> {
+  async placeLimitOrder(symbol: string, side: "buy" | "sell", amount: number, price: number): Promise<any> {
     const timestamp = Date.now().toString()
     const params = {
-      category: 'spot',
+      category: "spot",
       symbol,
       side: side.charAt(0).toUpperCase() + side.slice(1),
-      orderType: 'Limit',
+      orderType: "Limit",
       qty: amount.toString(),
       price: price.toString(),
     }
@@ -469,13 +425,13 @@ export class BybitAdapter implements ExchangeAdapter {
     const signature = this.createSignature(timestamp, JSON.stringify(params))
 
     const response = await fetch(`${this.baseUrl}/v5/order/create`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'X-BAPI-API-KEY': this.apiKey,
-        'X-BAPI-TIMESTAMP': timestamp,
-        'X-BAPI-SIGN': signature,
-        'X-BAPI-RECV-WINDOW': '5000',
-        'Content-Type': 'application/json',
+        "X-BAPI-API-KEY": this.apiKey,
+        "X-BAPI-TIMESTAMP": timestamp,
+        "X-BAPI-SIGN": signature,
+        "X-BAPI-RECV-WINDOW": "5000",
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(params),
     })
@@ -492,26 +448,26 @@ export class BybitAdapter implements ExchangeAdapter {
     return data.result
   }
 
-  async placeMarketOrder(symbol: string, side: 'buy' | 'sell', amount: number): Promise<any> {
+  async placeMarketOrder(symbol: string, side: "buy" | "sell", amount: number): Promise<any> {
     const timestamp = Date.now().toString()
     const params = {
-      category: 'spot',
+      category: "spot",
       symbol,
       side: side.charAt(0).toUpperCase() + side.slice(1),
-      orderType: 'Market',
+      orderType: "Market",
       qty: amount.toString(),
     }
 
     const signature = this.createSignature(timestamp, JSON.stringify(params))
 
     const response = await fetch(`${this.baseUrl}/v5/order/create`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'X-BAPI-API-KEY': this.apiKey,
-        'X-BAPI-TIMESTAMP': timestamp,
-        'X-BAPI-SIGN': signature,
-        'X-BAPI-RECV-WINDOW': '5000',
-        'Content-Type': 'application/json',
+        "X-BAPI-API-KEY": this.apiKey,
+        "X-BAPI-TIMESTAMP": timestamp,
+        "X-BAPI-SIGN": signature,
+        "X-BAPI-RECV-WINDOW": "5000",
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(params),
     })
@@ -531,20 +487,20 @@ export class BybitAdapter implements ExchangeAdapter {
   async cancelOrder(orderId: string): Promise<any> {
     const timestamp = Date.now().toString()
     const params = {
-      category: 'spot',
+      category: "spot",
       orderId,
     }
 
     const signature = this.createSignature(timestamp, JSON.stringify(params))
 
     const response = await fetch(`${this.baseUrl}/v5/order/cancel`, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'X-BAPI-API-KEY': this.apiKey,
-        'X-BAPI-TIMESTAMP': timestamp,
-        'X-BAPI-SIGN': signature,
-        'X-BAPI-RECV-WINDOW': '5000',
-        'Content-Type': 'application/json',
+        "X-BAPI-API-KEY": this.apiKey,
+        "X-BAPI-TIMESTAMP": timestamp,
+        "X-BAPI-SIGN": signature,
+        "X-BAPI-RECV-WINDOW": "5000",
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(params),
     })
@@ -563,14 +519,14 @@ export class BybitAdapter implements ExchangeAdapter {
 
   async getOpenOrders(): Promise<any> {
     const timestamp = Date.now().toString()
-    const signature = this.createSignature(timestamp, '')
+    const signature = this.createSignature(timestamp, "")
 
     const response = await fetch(`${this.baseUrl}/v5/order/realtime?category=spot`, {
       headers: {
-        'X-BAPI-API-KEY': this.apiKey,
-        'X-BAPI-TIMESTAMP': timestamp,
-        'X-BAPI-SIGN': signature,
-        'X-BAPI-RECV-WINDOW': '5000',
+        "X-BAPI-API-KEY": this.apiKey,
+        "X-BAPI-TIMESTAMP": timestamp,
+        "X-BAPI-SIGN": signature,
+        "X-BAPI-RECV-WINDOW": "5000",
       },
     })
 
@@ -588,14 +544,14 @@ export class BybitAdapter implements ExchangeAdapter {
 
   async getTradeHistory(): Promise<any> {
     const timestamp = Date.now().toString()
-    const signature = this.createSignature(timestamp, '')
+    const signature = this.createSignature(timestamp, "")
 
     const response = await fetch(`${this.baseUrl}/v5/execution/list?category=spot`, {
       headers: {
-        'X-BAPI-API-KEY': this.apiKey,
-        'X-BAPI-TIMESTAMP': timestamp,
-        'X-BAPI-SIGN': signature,
-        'X-BAPI-RECV-WINDOW': '5000',
+        "X-BAPI-API-KEY": this.apiKey,
+        "X-BAPI-TIMESTAMP": timestamp,
+        "X-BAPI-SIGN": signature,
+        "X-BAPI-RECV-WINDOW": "5000",
       },
     })
 
@@ -617,29 +573,29 @@ export class BybitAdapter implements ExchangeAdapter {
     ws.onopen = () => {
       ws.send(
         JSON.stringify({
-          op: 'subscribe',
+          op: "subscribe",
           args: [`tickers.${symbol}`],
-        })
+        }),
       )
     }
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
-        if (data.topic?.includes('tickers')) {
+        if (data.topic?.includes("tickers")) {
           callback(this.normalizeTicker(data.data))
         }
       } catch (error) {
-        console.error('WebSocket ticker error:', error)
+        console.error("WebSocket ticker error:", error)
       }
     }
 
     ws.onerror = (error) => {
-      console.error('WebSocket ticker connection error:', error)
+      console.error("WebSocket ticker connection error:", error)
     }
 
     ws.onclose = () => {
-      console.log('WebSocket ticker connection closed')
+      console.log("WebSocket ticker connection closed")
       setTimeout(() => this.subscribeToTicker(symbol, callback), 5000)
     }
   }
@@ -650,29 +606,29 @@ export class BybitAdapter implements ExchangeAdapter {
     ws.onopen = () => {
       ws.send(
         JSON.stringify({
-          op: 'subscribe',
+          op: "subscribe",
           args: [`orderbook.50.${symbol}`],
-        })
+        }),
       )
     }
 
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
-        if (data.topic?.includes('orderbook')) {
+        if (data.topic?.includes("orderbook")) {
           callback(this.normalizeOrderBook(data.data))
         }
       } catch (error) {
-        console.error('WebSocket orderbook error:', error)
+        console.error("WebSocket orderbook error:", error)
       }
     }
 
     ws.onerror = (error) => {
-      console.error('WebSocket orderbook connection error:', error)
+      console.error("WebSocket orderbook connection error:", error)
     }
 
     ws.onclose = () => {
-      console.log('WebSocket orderbook connection closed')
+      console.log("WebSocket orderbook connection closed")
       setTimeout(() => this.subscribeToOrderBook(symbol, callback), 5000)
     }
   }
@@ -682,8 +638,8 @@ export class BybitAdapter implements ExchangeAdapter {
   }
 
   private createSignature(timestamp: string, params: string): string {
-    const message = timestamp + this.apiKey + '5000' + params
-    return crypto.createHmac('sha256', this.secretKey).update(message).digest('hex')
+    const message = timestamp + this.apiKey + "5000" + params
+    return crypto.createHmac("sha256", this.secretKey).update(message).digest("hex")
   }
 
   private normalizeTicker(data: any): any {
@@ -703,12 +659,8 @@ export class BybitAdapter implements ExchangeAdapter {
   private normalizeOrderBook(data: any): any {
     return {
       symbol: data.s,
-      bids:
-        data.b?.map((bid: string[]) => [Number.parseFloat(bid[0]), Number.parseFloat(bid[1])]) ||
-        [],
-      asks:
-        data.a?.map((ask: string[]) => [Number.parseFloat(ask[0]), Number.parseFloat(ask[1])]) ||
-        [],
+      bids: data.b?.map((bid: string[]) => [Number.parseFloat(bid[0]), Number.parseFloat(bid[1])]) || [],
+      asks: data.a?.map((ask: string[]) => [Number.parseFloat(ask[0]), Number.parseFloat(ask[1])]) || [],
       timestamp: data.ts,
     }
   }
@@ -727,7 +679,7 @@ export class ExchangeAdapterFactory {
     if (!factory) return null
 
     const adapter = factory()
-    if ('isTestnet' in adapter) {
+    if ("isTestnet" in adapter) {
       ;(adapter as any).isTestnet = testnet
     }
     return adapter
@@ -739,8 +691,8 @@ export class ExchangeAdapterFactory {
 
   static initialize(): void {
     // Register all available adapters
-    this.registerAdapter('binance', () => new BinanceAdapter())
-    this.registerAdapter('bybit', () => new BybitAdapter())
+    this.registerAdapter("binance", () => new BinanceAdapter())
+    this.registerAdapter("bybit", () => new BybitAdapter())
     // Add more adapters as needed
   }
 }

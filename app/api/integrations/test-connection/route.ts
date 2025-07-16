@@ -1,5 +1,5 @@
-import { type NextRequest, NextResponse } from 'next/server'
-import { ExchangeAdapterFactory } from '@/lib/exchange-adapters'
+import { type NextRequest, NextResponse } from "next/server"
+import { ExchangeAdapterFactory } from "@/lib/exchange-adapters"
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,9 +9,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Missing exchange ID or credentials',
+          error: "Missing exchange ID or credentials",
         },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
@@ -20,9 +20,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: 'API key and secret key are required',
+          error: "API key and secret key are required",
         },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
@@ -32,9 +32,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Unsupported exchange',
+          error: "Unsupported exchange",
         },
-        { status: 400 }
+        { status: 400 },
       )
     }
 
@@ -45,9 +45,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: 'Authentication failed. Please check your API credentials.',
+          error: "Authentication failed. Please check your API credentials.",
         },
-        { status: 401 }
+        { status: 401 },
       )
     }
 
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({
         success: true,
-        message: 'Connection successful',
+        message: "Connection successful",
         data: {
           exchange: adapter.name,
           exchangeId: adapter.id,
@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
           accountInfo: {
             hasBalance: Array.isArray(balance.balances) ? balance.balances.length > 0 : true,
             balanceCount: Array.isArray(balance.balances) ? balance.balances.length : 0,
-            accountType: balance.accountType || 'spot',
+            accountType: balance.accountType || "spot",
             canTrade: balance.canTrade !== false,
             canWithdraw: balance.canWithdraw !== false,
             canDeposit: balance.canDeposit !== false,
@@ -82,12 +82,12 @@ export async function POST(request: NextRequest) {
     } catch (balanceError) {
       // Authentication succeeded but balance fetch failed
       // This might be due to permissions or other issues
-      console.error('Balance fetch error:', balanceError)
+      console.error("Balance fetch error:", balanceError)
 
       return NextResponse.json({
         success: true,
-        message: 'Authentication successful, but limited access detected',
-        warning: 'Could not fetch account balance. Check API key permissions.',
+        message: "Authentication successful, but limited access detected",
+        warning: "Could not fetch account balance. Check API key permissions.",
         data: {
           exchange: adapter.name,
           exchangeId: adapter.id,
@@ -96,7 +96,7 @@ export async function POST(request: NextRequest) {
           accountInfo: {
             hasBalance: false,
             balanceCount: 0,
-            accountType: 'unknown',
+            accountType: "unknown",
             canTrade: false,
             canWithdraw: false,
             canDeposit: false,
@@ -106,24 +106,21 @@ export async function POST(request: NextRequest) {
       })
     }
   } catch (error) {
-    console.error('Connection test error:', error)
+    console.error("Connection test error:", error)
 
     // Provide more specific error messages
-    let errorMessage = 'Connection test failed'
+    let errorMessage = "Connection test failed"
     let statusCode = 500
 
     if (error instanceof Error) {
-      if (
-        error.message.includes('Authentication failed') ||
-        error.message.includes('Invalid API')
-      ) {
-        errorMessage = 'Invalid API credentials'
+      if (error.message.includes("Authentication failed") || error.message.includes("Invalid API")) {
+        errorMessage = "Invalid API credentials"
         statusCode = 401
-      } else if (error.message.includes('Rate limit')) {
-        errorMessage = 'Rate limit exceeded. Please try again later.'
+      } else if (error.message.includes("Rate limit")) {
+        errorMessage = "Rate limit exceeded. Please try again later."
         statusCode = 429
-      } else if (error.message.includes('Network') || error.message.includes('fetch')) {
-        errorMessage = 'Network error. Please check your connection.'
+      } else if (error.message.includes("Network") || error.message.includes("fetch")) {
+        errorMessage = "Network error. Please check your connection."
         statusCode = 503
       } else {
         errorMessage = error.message
@@ -134,9 +131,9 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: errorMessage,
-        details: process.env.NODE_ENV === 'development' ? error : undefined,
+        details: process.env.NODE_ENV === "development" ? error : undefined,
       },
-      { status: statusCode }
+      { status: statusCode },
     )
   }
 }

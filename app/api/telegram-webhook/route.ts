@@ -1,4 +1,4 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,13 +9,13 @@ export async function POST(request: NextRequest) {
       const { chat, text } = update.message
 
       // Simple command handling
-      if (text === '/start') {
+      if (text === "/start") {
         // Send welcome message
         console.log(`Welcome message sent to chat ${chat.id}`)
-      } else if (text === '/price') {
+      } else if (text === "/price") {
         // Send price information
         console.log(`Price information sent to chat ${chat.id}`)
-      } else if (text === '/signals') {
+      } else if (text === "/signals") {
         // Send trading signals
         console.log(`Trading signals sent to chat ${chat.id}`)
       }
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Telegram webhook error:', error)
-    return NextResponse.json({ error: 'Failed to process webhook' }, { status: 500 })
+    console.error("Telegram webhook error:", error)
+    return NextResponse.json({ error: "Failed to process webhook" }, { status: 500 })
   }
 }

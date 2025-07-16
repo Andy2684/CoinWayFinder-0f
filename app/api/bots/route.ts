@@ -1,70 +1,77 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from "next/server"
+import jwt from "jsonwebtoken"
+import { getTradingBotsByUser, createTradingBot } from "@/lib/database"
 
-// Mock bot data
-const mockBots = [
-  {
-    id: '1',
-    name: 'DCA Bitcoin Bot',
-    strategy: 'DCA',
-    status: 'active',
-    pair: 'BTC/USDT',
-    profit: 12.5,
-    trades: 45,
-    created_at: new Date().toISOString(),
-    config: {
-      amount: 100,
-      interval: '1h',
-      target_profit: 15,
-    },
-  },
-  {
-    id: '2',
-    name: 'Grid Trading ETH',
-    strategy: 'Grid',
-    status: 'paused',
-    pair: 'ETH/USDT',
-    profit: -2.3,
-    trades: 23,
-    created_at: new Date().toISOString(),
-    config: {
-      grid_size: 10,
-      upper_limit: 4000,
-      lower_limit: 3000,
-    },
-  },
-]
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const authHeader = request.headers.get("authorization")
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "No token provided" }, { status: 401 })
+    }
+
+    const token = authHeader.substring(7)
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string }
+
+    const bots = await getTradingBotsByUser(decoded.userId)
+
     return NextResponse.json({
       success: true,
-      data: mockBots,
+      bots: bots.map((bot) => ({
+        id: bot.id,
+        name: bot.name,
+        strategy: bot.strategy,
+        status: bot.status,
+        pnl: Number.parseFloat(bot.pnl || "0"),
+        trades: bot.trades_count,
+        winRate: Number.parseFloat(bot.win_rate || "0"),
+        createdAt: bot.created_at,
+      })),
     })
   } catch (error) {
-    console.error('Get bots error:', error)
-    return NextResponse.json({ error: 'Failed to fetch bots' }, { status: 500 })
+    console.error("Get bots error:", error)
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const botData = await request.json()
-
-    const newBot = {
-      id: Date.now().toString(),
-      ...botData,
-      status: 'active',
-      profit: 0,
-      trades: 0,
-      created_at: new Date().toISOString(),
+    const authHeader = request.headers.get("authorization")
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "No token provided" }, { status: 401 })
     }
+
+    const token = authHeader.substring(7)
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string }
+
+    const { name, strategy } = await request.json()
+
+    if (!name || !strategy) {
+      return NextResponse.json({ success: false, error: "Name and strategy are required" }, { status: 400 })
+    }
+
+    const bot = await createTradingBot({
+      name,
+      strategy,
+      userId: decoded.userId,
+    })
 
     return NextResponse.json({
       success: true,
-      data: newBot,
+      bot: {
+        id: bot.id,
+        name: bot.name,
+        strategy: bot.strategy,
+        status: bot.status,
+        pnl: Number.parseFloat(bot.pnl || "0"),
+        trades: bot.trades_count,
+        winRate: Number.parseFloat(bot.win_rate || "0"),
+        createdAt: bot.created_at,
+      },
     })
   } catch (error) {
-    console.error('Create bot error:', error)
-    return NextResponse.json({ error: 'Failed to create bot' }, { status: 500 })
+    console.error("Create bot error:", error)
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

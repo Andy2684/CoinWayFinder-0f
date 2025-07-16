@@ -1,10 +1,10 @@
-// app/auth/signup/page.tsx
-import SignupForm from '../../../components/auth/signup-form'
+import SignupForm from "@/components/auth/signup-form"
+import { ProtectedRoute } from "@/components/auth/protected-route"
 
 export default function SignupPage() {
   return (
-    <main>
+    <ProtectedRoute requireAuth={false}>
       <SignupForm />
-    </main>
+    </ProtectedRoute>
   )
 }

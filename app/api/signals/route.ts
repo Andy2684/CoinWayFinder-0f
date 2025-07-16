@@ -1,178 +1,90 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from "next/server"
+import jwt from "jsonwebtoken"
+import { getTradingSignals, createTradingSignal } from "@/lib/database"
 
-// Mock data for signals
-const mockSignals = [
-  {
-    id: '1',
-    symbol: 'BTC/USDT',
-    type: 'BUY',
-    strategy: 'Trend Following',
-    exchange: 'Binance',
-    timeframe: '4H',
-    confidence: 87,
-    entryPrice: 43250,
-    targetPrice: 45800,
-    stopLoss: 41900,
-    currentPrice: 44120,
-    pnl: 870,
-    pnlPercentage: 2.01,
-    progress: 34,
-    riskLevel: 'MEDIUM',
-    aiAnalysis:
-      'Strong bullish momentum with RSI showing oversold conditions. Volume profile indicates institutional accumulation.',
-    createdAt: '2024-01-15T10:30:00Z',
-    status: 'ACTIVE',
-  },
-  {
-    id: '2',
-    symbol: 'ETH/USDT',
-    type: 'SELL',
-    strategy: 'Mean Reversion',
-    exchange: 'Bybit',
-    timeframe: '1H',
-    confidence: 92,
-    entryPrice: 2580,
-    targetPrice: 2420,
-    stopLoss: 2650,
-    currentPrice: 2510,
-    pnl: 70,
-    pnlPercentage: 2.71,
-    progress: 44,
-    riskLevel: 'LOW',
-    aiAnalysis:
-      'Overbought conditions on multiple timeframes. Bearish divergence detected on MACD.',
-    createdAt: '2024-01-15T09:15:00Z',
-    status: 'ACTIVE',
-  },
-]
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const symbols = searchParams.get('symbols')?.split(',') || []
-    const strategies = searchParams.get('strategies')?.split(',') || []
-    const exchanges = searchParams.get('exchanges')?.split(',') || []
-    const status = searchParams.get('status')
+    const limit = Number.parseInt(searchParams.get("limit") || "50")
+    const offset = Number.parseInt(searchParams.get("offset") || "0")
 
-    let filteredSignals = mockSignals
-
-    // Apply filters
-    if (symbols.length > 0) {
-      filteredSignals = filteredSignals.filter((signal) => symbols.includes(signal.symbol))
-    }
-
-    if (strategies.length > 0) {
-      filteredSignals = filteredSignals.filter((signal) => strategies.includes(signal.strategy))
-    }
-
-    if (exchanges.length > 0) {
-      filteredSignals = filteredSignals.filter((signal) => exchanges.includes(signal.exchange))
-    }
-
-    if (status) {
-      filteredSignals = filteredSignals.filter((signal) => signal.status === status)
-    }
+    const signals = await getTradingSignals(limit, offset)
 
     return NextResponse.json({
       success: true,
-      data: filteredSignals,
-      total: filteredSignals.length,
+      signals: signals.map((signal) => ({
+        id: signal.id,
+        symbol: signal.symbol,
+        type: signal.type,
+        price: Number.parseFloat(signal.price),
+        targetPrice: signal.target_price ? Number.parseFloat(signal.target_price) : null,
+        stopLoss: signal.stop_loss ? Number.parseFloat(signal.stop_loss) : null,
+        confidence: signal.confidence,
+        timeframe: signal.timeframe,
+        exchange: signal.exchange,
+        status: signal.status,
+        analysis: signal.analysis,
+        pnl: signal.pnl ? Number.parseFloat(signal.pnl) : null,
+        createdAt: signal.created_at,
+      })),
     })
   } catch (error) {
-    console.error('Error fetching signals:', error)
-    return NextResponse.json({ success: false, error: 'Failed to fetch signals' }, { status: 500 })
+    console.error("Get signals error:", error)
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-
-    // Validate required fields
-    const requiredFields = [
-      'symbol',
-      'type',
-      'strategy',
-      'exchange',
-      'entryPrice',
-      'targetPrice',
-      'stopLoss',
-    ]
-    for (const field of requiredFields) {
-      if (!body[field]) {
-        return NextResponse.json(
-          { success: false, error: `Missing required field: ${field}` },
-          { status: 400 }
-        )
-      }
+    const authHeader = request.headers.get("authorization")
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "No token provided" }, { status: 401 })
     }
 
-    // Create new signal
-    const newSignal = {
-      id: Date.now().toString(),
-      ...body,
-      currentPrice: body.entryPrice,
-      pnl: 0,
-      pnlPercentage: 0,
-      progress: 0,
-      createdAt: new Date().toISOString(),
-      status: 'ACTIVE',
+    const token = authHeader.substring(7)
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string }
+
+    const { symbol, type, price, targetPrice, stopLoss, confidence, timeframe, exchange, analysis } =
+      await request.json()
+
+    if (!symbol || !type || !price || confidence === undefined) {
+      return NextResponse.json({ success: false, error: "Missing required fields" }, { status: 400 })
     }
 
-    // In a real app, you would save this to a database
-    console.log('Creating new signal:', newSignal)
+    const signal = await createTradingSignal({
+      symbol,
+      type,
+      price: Number.parseFloat(price),
+      targetPrice: targetPrice ? Number.parseFloat(targetPrice) : undefined,
+      stopLoss: stopLoss ? Number.parseFloat(stopLoss) : undefined,
+      confidence: Number.parseInt(confidence),
+      timeframe,
+      exchange,
+      analysis,
+      createdBy: decoded.userId,
+    })
 
     return NextResponse.json({
       success: true,
-      data: newSignal,
-      message: 'Signal created successfully',
+      signal: {
+        id: signal.id,
+        symbol: signal.symbol,
+        type: signal.type,
+        price: Number.parseFloat(signal.price),
+        targetPrice: signal.target_price ? Number.parseFloat(signal.target_price) : null,
+        stopLoss: signal.stop_loss ? Number.parseFloat(signal.stop_loss) : null,
+        confidence: signal.confidence,
+        timeframe: signal.timeframe,
+        exchange: signal.exchange,
+        status: signal.status,
+        analysis: signal.analysis,
+        createdAt: signal.created_at,
+      },
     })
   } catch (error) {
-    console.error('Error creating signal:', error)
-    return NextResponse.json({ success: false, error: 'Failed to create signal' }, { status: 500 })
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { id, ...updates } = body
-
-    if (!id) {
-      return NextResponse.json({ success: false, error: 'Signal ID is required' }, { status: 400 })
-    }
-
-    // In a real app, you would update the signal in the database
-    console.log('Updating signal:', id, updates)
-
-    return NextResponse.json({
-      success: true,
-      message: 'Signal updated successfully',
-    })
-  } catch (error) {
-    console.error('Error updating signal:', error)
-    return NextResponse.json({ success: false, error: 'Failed to update signal' }, { status: 500 })
-  }
-}
-
-export async function DELETE(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get('id')
-
-    if (!id) {
-      return NextResponse.json({ success: false, error: 'Signal ID is required' }, { status: 400 })
-    }
-
-    // In a real app, you would delete the signal from the database
-    console.log('Deleting signal:', id)
-
-    return NextResponse.json({
-      success: true,
-      message: 'Signal deleted successfully',
-    })
-  } catch (error) {
-    console.error('Error deleting signal:', error)
-    return NextResponse.json({ success: false, error: 'Failed to delete signal' }, { status: 500 })
+    console.error("Create signal error:", error)
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

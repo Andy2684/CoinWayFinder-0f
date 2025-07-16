@@ -1,9 +1,9 @@
-import { ProtectedRoute } from '@/components/auth/protected-route'
-import { ApiKeyManager } from '@/components/integrations/api-key-manager'
-import { ExchangeIntegrations } from '@/components/integrations/exchange-integrations'
-import { IntegrationStatus } from '@/components/integrations/integration-status'
-import { SecuritySettings } from '@/components/integrations/security-settings'
-import { TradingFeatures } from '@/components/integrations/trading-features'
+import { ProtectedRoute } from "@/components/auth/protected-route"
+import { ApiKeyManager } from "@/components/integrations/api-key-manager"
+import { ExchangeIntegrations } from "@/components/integrations/exchange-integrations"
+import { IntegrationStatus } from "@/components/integrations/integration-status"
+import { SecuritySettings } from "@/components/integrations/security-settings"
+import { TradingFeatures } from "@/components/integrations/trading-features"
 
 export default function IntegrationsPage() {
   return (

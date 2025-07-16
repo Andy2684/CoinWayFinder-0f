@@ -1,12 +1,12 @@
-'use client'
+"use client"
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
-import { Eye, EyeOff, Trash2, Plus } from 'lucide-react'
+import { useState } from "react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { Eye, EyeOff, Trash2, Plus } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -15,14 +15,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+} from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface ApiKey {
   id: string
@@ -38,23 +32,23 @@ interface ApiKey {
 export function ApiKeyManager() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([
     {
-      id: '1',
-      exchange: 'binance',
-      name: 'Binance Main',
-      key: 'abc123***',
-      secret: '***hidden***',
+      id: "1",
+      exchange: "binance",
+      name: "Binance Main",
+      key: "abc123***",
+      secret: "***hidden***",
       isActive: true,
-      createdAt: '2024-01-15',
+      createdAt: "2024-01-15",
     },
   ])
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({})
   const [isAddingKey, setIsAddingKey] = useState(false)
   const [newKey, setNewKey] = useState({
-    exchange: '',
-    name: '',
-    key: '',
-    secret: '',
-    passphrase: '',
+    exchange: "",
+    name: "",
+    key: "",
+    secret: "",
+    passphrase: "",
   })
 
   const toggleSecretVisibility = (keyId: string) => {
@@ -73,11 +67,11 @@ export function ApiKeyManager() {
       secret: newKey.secret,
       passphrase: newKey.passphrase,
       isActive: true,
-      createdAt: new Date().toISOString().split('T')[0],
+      createdAt: new Date().toISOString().split("T")[0],
     }
 
     setApiKeys((prev) => [...prev, apiKey])
-    setNewKey({ exchange: '', name: '', key: '', secret: '', passphrase: '' })
+    setNewKey({ exchange: "", name: "", key: "", secret: "", passphrase: "" })
     setIsAddingKey(false)
   }
 
@@ -86,11 +80,11 @@ export function ApiKeyManager() {
   }
 
   const exchanges = [
-    { value: 'binance', label: 'Binance' },
-    { value: 'coinbase', label: 'Coinbase Pro' },
-    { value: 'kraken', label: 'Kraken' },
-    { value: 'bybit', label: 'Bybit' },
-    { value: 'okx', label: 'OKX' },
+    { value: "binance", label: "Binance" },
+    { value: "coinbase", label: "Coinbase Pro" },
+    { value: "kraken", label: "Kraken" },
+    { value: "bybit", label: "Bybit" },
+    { value: "okx", label: "OKX" },
   ]
 
   return (
@@ -110,9 +104,7 @@ export function ApiKeyManager() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add New API Key</DialogTitle>
-              <DialogDescription>
-                Add a new exchange API key to enable trading functionality.
-              </DialogDescription>
+              <DialogDescription>Add a new exchange API key to enable trading functionality.</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -161,7 +153,7 @@ export function ApiKeyManager() {
                   placeholder="Your secret key"
                 />
               </div>
-              {newKey.exchange === 'okx' && (
+              {newKey.exchange === "okx" && (
                 <div>
                   <Label htmlFor="passphrase">Passphrase</Label>
                   <Input
@@ -197,13 +189,12 @@ export function ApiKeyManager() {
                 <div>
                   <CardTitle className="flex items-center gap-2">
                     {apiKey.name}
-                    <Badge variant={apiKey.isActive ? 'default' : 'secondary'}>
-                      {apiKey.isActive ? 'Active' : 'Inactive'}
+                    <Badge variant={apiKey.isActive ? "default" : "secondary"}>
+                      {apiKey.isActive ? "Active" : "Inactive"}
                     </Badge>
                   </CardTitle>
                   <CardDescription>
-                    {exchanges.find((e) => e.value === apiKey.exchange)?.label} • Created{' '}
-                    {apiKey.createdAt}
+                    {exchanges.find((e) => e.value === apiKey.exchange)?.label} • Created {apiKey.createdAt}
                   </CardDescription>
                 </div>
                 <Button variant="outline" size="sm" onClick={() => handleDeleteKey(apiKey.id)}>
@@ -217,20 +208,12 @@ export function ApiKeyManager() {
                   <Label className="text-sm font-medium">API Key</Label>
                   <div className="flex items-center gap-2 mt-1">
                     <Input
-                      value={showSecrets[apiKey.id] ? apiKey.key : apiKey.key.slice(0, 8) + '***'}
+                      value={showSecrets[apiKey.id] ? apiKey.key : apiKey.key.slice(0, 8) + "***"}
                       readOnly
                       className="font-mono text-sm"
                     />
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => toggleSecretVisibility(apiKey.id)}
-                    >
-                      {showSecrets[apiKey.id] ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
+                    <Button variant="outline" size="sm" onClick={() => toggleSecretVisibility(apiKey.id)}>
+                      {showSecrets[apiKey.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </Button>
                   </div>
                 </div>
@@ -238,10 +221,10 @@ export function ApiKeyManager() {
                   <Label className="text-sm font-medium">Secret Key</Label>
                   <div className="flex items-center gap-2 mt-1">
                     <Input
-                      value={showSecrets[apiKey.id] ? apiKey.secret : '***hidden***'}
+                      value={showSecrets[apiKey.id] ? apiKey.secret : "***hidden***"}
                       readOnly
                       className="font-mono text-sm"
-                      type={showSecrets[apiKey.id] ? 'text' : 'password'}
+                      type={showSecrets[apiKey.id] ? "text" : "password"}
                     />
                   </div>
                 </div>
@@ -256,9 +239,7 @@ export function ApiKeyManager() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <div className="text-center">
               <h3 className="text-lg font-semibold mb-2">No API Keys Added</h3>
-              <p className="text-muted-foreground mb-4">
-                Add your first exchange API key to start trading
-              </p>
+              <p className="text-muted-foreground mb-4">Add your first exchange API key to start trading</p>
               <Button onClick={() => setIsAddingKey(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Add API Key

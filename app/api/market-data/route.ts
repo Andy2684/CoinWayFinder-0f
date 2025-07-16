@@ -1,14 +1,14 @@
-import { type NextRequest, NextResponse } from 'next/server'
-import { marketDataManager } from '@/lib/market-data-ingestion'
+import { type NextRequest, NextResponse } from "next/server"
+import { marketDataManager } from "@/lib/market-data-ingestion"
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const symbols = searchParams.get('symbols')?.split(',') || ['BTCUSDT']
-    const exchange = searchParams.get('exchange') || 'binance'
-    const type = searchParams.get('type') || 'ticker'
+    const symbols = searchParams.get("symbols")?.split(",") || ["BTCUSDT"]
+    const exchange = searchParams.get("exchange") || "binance"
+    const type = searchParams.get("type") || "ticker"
 
-    if (type === 'popular-pairs') {
+    if (type === "popular-pairs") {
       const popularPairs = await marketDataManager.getPopularPairs(exchange)
       return NextResponse.json({
         success: true,
@@ -18,8 +18,8 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    if (type === 'aggregated' && symbols.length === 1) {
-      const exchanges = searchParams.get('exchanges')?.split(',') || ['binance', 'bybit']
+    if (type === "aggregated" && symbols.length === 1) {
+      const exchanges = searchParams.get("exchanges")?.split(",") || ["binance", "bybit"]
       const aggregatedData = await marketDataManager.getAggregatedMarketData(symbols[0], exchanges)
 
       return NextResponse.json({
@@ -31,8 +31,8 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    if (type === 'best-price' && symbols.length === 1) {
-      const exchanges = searchParams.get('exchanges')?.split(',') || ['binance', 'bybit']
+    if (type === "best-price" && symbols.length === 1) {
+      const exchanges = searchParams.get("exchanges")?.split(",") || ["binance", "bybit"]
       const bestPrice = await marketDataManager.getBestPrice(symbols[0], exchanges)
 
       return NextResponse.json({
@@ -55,15 +55,15 @@ export async function GET(request: NextRequest) {
       timestamp: Date.now(),
     })
   } catch (error) {
-    console.error('Market data API error:', error)
+    console.error("Market data API error:", error)
 
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch market data',
+        error: error instanceof Error ? error.message : "Failed to fetch market data",
         timestamp: Date.now(),
       },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     const { action, symbol, exchange, exchanges } = await request.json()
 
     switch (action) {
-      case 'subscribe-ticker':
+      case "subscribe-ticker":
         // In a real implementation, this would set up WebSocket connections
         // For now, we'll return the current ticker data
         const tickerData = await marketDataManager.getMarketData([symbol], exchange)
@@ -83,48 +83,45 @@ export async function POST(request: NextRequest) {
           data: tickerData[0] || null,
         })
 
-      case 'get-best-price':
-        const bestPrice = await marketDataManager.getBestPrice(
-          symbol,
-          exchanges || ['binance', 'bybit']
-        )
+      case "get-best-price":
+        const bestPrice = await marketDataManager.getBestPrice(symbol, exchanges || ["binance", "bybit"])
         return NextResponse.json({
           success: true,
           data: bestPrice,
           symbol,
-          exchanges: exchanges || ['binance', 'bybit'],
+          exchanges: exchanges || ["binance", "bybit"],
         })
 
-      case 'get-aggregated':
+      case "get-aggregated":
         const aggregatedData = await marketDataManager.getAggregatedMarketData(
           symbol,
-          exchanges || ['binance', 'bybit']
+          exchanges || ["binance", "bybit"],
         )
         return NextResponse.json({
           success: true,
           data: aggregatedData,
           symbol,
-          exchanges: exchanges || ['binance', 'bybit'],
+          exchanges: exchanges || ["binance", "bybit"],
         })
 
       default:
         return NextResponse.json(
           {
             success: false,
-            error: 'Invalid action',
+            error: "Invalid action",
           },
-          { status: 400 }
+          { status: 400 },
         )
     }
   } catch (error) {
-    console.error('Market data POST API error:', error)
+    console.error("Market data POST API error:", error)
 
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : 'Failed to process market data request',
+        error: error instanceof Error ? error.message : "Failed to process market data request",
       },
-      { status: 500 }
+      { status: 500 },
     )
   }
 }
