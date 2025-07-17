@@ -1,3 +1,4 @@
+
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { BotsOverview } from "@/components/bots/bots-overview"
 import { ActiveBots } from "@/components/bots/active-bots"
@@ -31,5 +32,26 @@ export default function BotsPage() {
         </div>
       </div>
     </ProtectedRoute>
+
+'use client'
+
+import { useAuth } from '@/components/auth/auth-provider'
+import { useEffect } from 'react'
+
+export default function BotsPage() {
+  const { user, isAuthenticated } = useAuth()
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      console.log('Not authenticated — redirect or hide bots')
+    }
+  }, [isAuthenticated])
+
+  return (
+    <div className="container py-10">
+      <h1 className="text-2xl font-bold mb-4">My Bots</h1>
+      {/* TODO: здесь будет список ботов */}
+    </div>
+
   )
 }

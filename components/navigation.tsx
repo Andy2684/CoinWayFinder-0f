@@ -9,6 +9,7 @@ import { Menu, TrendingUp, Bot, BarChart3, Newspaper, LogOut, User, Moon, Sun } 
 import { useTheme } from "next-themes"
 import { useAuth } from "@/hooks/use-auth"
 
+
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -184,6 +185,22 @@ export default function Navigation() {
           </div>
         </div>
       </div>
+
+export function Navigation() {
+  return (
+    <nav>
+      <ul>
+        <li>
+          <Link href="/">Главная</Link>
+        </li>
+        <li>
+          <Link href="/bots">Боты</Link>
+        </li>
+        <li>
+          <Link href="/analytics">Аналитика</Link>
+        </li>
+      </ul>
+
     </nav>
   )
 }

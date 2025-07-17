@@ -1,5 +1,6 @@
 "use client"
 
+
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -22,9 +23,18 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
   register: (userData: any) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
+
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react'
+
+export type AuthContextType = {
+  user: any
+  isAuthenticated: boolean
+  loading: boolean
+
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -140,13 +150,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
   }
 
+
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Имитация получения пользователя
+    setTimeout(() => {
+      setUser(null)
+      setLoading(false)
+    }, 300)
+  }, [])
+
+  const value: AuthContextType = {
+    user,
+    isAuthenticated: !!user,
+    loading,
+  }
+
+
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-export function useAuth() {
+export const useAuth = () => {
   const context = useContext(AuthContext)
+
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider")
   }
+
+  if (!context) throw new Error('useAuth must be used within an AuthProvider')
+
   return context
 }

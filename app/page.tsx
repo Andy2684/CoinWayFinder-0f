@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useEffect } from "react"
@@ -27,5 +28,13 @@ export default function HomePage() {
         <Footer />
       </div>
     </div>
+
+export default function HomePage() {
+  return (
+    <main className="p-4">
+      <h1 className="text-3xl font-bold">Добро пожаловать в CoinWayFinder</h1>
+      <p>Аналитика, боты и инструменты для трейдеров криптовалют</p>
+    </main>
+
   )
 }

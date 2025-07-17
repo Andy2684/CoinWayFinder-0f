@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss"
 
 const config: Config = {
@@ -9,6 +10,13 @@ const config: Config = {
     "*.{js,ts,jsx,tsx,mdx}",
   ],
   prefix: "",
+
+// tailwind.config.ts
+import type { Config } from 'tailwindcss'
+
+const config: Config = {
+  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
+
   theme: {
     container: {
       center: true,
@@ -165,7 +173,12 @@ const config: Config = {
       },
     },
   },
+
   plugins: [require("tailwindcss-animate")],
 } satisfies Config
+
+  plugins: [],
+}
+
 
 export default config
