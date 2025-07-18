@@ -1,22 +1,15 @@
-
 import type { Config } from "tailwindcss"
 
 const config: Config = {
   darkMode: ["class"],
   content: [
-    "./pages/**/*.{js,ts,jsx,tsx,mdx}",
-    "./components/**/*.{js,ts,jsx,tsx,mdx}",
-    "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./pages/**/*.{ts,tsx}",
+    "./components/**/*.{ts,tsx}",
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
     "*.{js,ts,jsx,tsx,mdx}",
   ],
   prefix: "",
-
-// tailwind.config.ts
-import type { Config } from 'tailwindcss'
-
-const config: Config = {
-  content: ['./app/**/*.{ts,tsx}', './components/**/*.{ts,tsx}'],
-
   theme: {
     container: {
       center: true,
@@ -60,17 +53,39 @@ const config: Config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
-        // Custom crypto colors
+        chart: {
+          "1": "hsl(var(--chart-1))",
+          "2": "hsl(var(--chart-2))",
+          "3": "hsl(var(--chart-3))",
+          "4": "hsl(var(--chart-4))",
+          "5": "hsl(var(--chart-5))",
+        },
+        // Crypto-specific colors
         crypto: {
-          green: "#10b981",
-          "green-dark": "#059669",
-          "green-darker": "#047857",
-          "green-darkest": "#065f46",
-          red: "#ef4444",
-          "red-dark": "#dc2626",
-          "red-darker": "#b91c1c",
-          gold: "#f59e0b",
-          "gold-dark": "#d97706",
+          green: {
+            50: "#f0fdf4",
+            100: "#dcfce7",
+            200: "#bbf7d0",
+            300: "#86efac",
+            400: "#4ade80",
+            500: "#22c55e",
+            600: "#16a34a",
+            700: "#15803d",
+            800: "#166534",
+            900: "#14532d",
+          },
+          red: {
+            50: "#fef2f2",
+            100: "#fee2e2",
+            200: "#fecaca",
+            300: "#fca5a5",
+            400: "#f87171",
+            500: "#ef4444",
+            600: "#dc2626",
+            700: "#b91c1c",
+            800: "#991b1b",
+            900: "#7f1d1d",
+          },
         },
       },
       borderRadius: {
@@ -87,98 +102,57 @@ const config: Config = {
           from: { height: "var(--radix-accordion-content-height)" },
           to: { height: "0" },
         },
-        "fade-in": {
-          "0%": { opacity: "0", transform: "translateY(10px)" },
-          "100%": { opacity: "1", transform: "translateY(0)" },
-        },
-        "slide-in": {
-          "0%": { transform: "translateX(-100%)" },
-          "100%": { transform: "translateX(0)" },
-        },
-        "pulse-green": {
-          "0%, 100%": { boxShadow: "0 0 0 0 rgba(16, 185, 129, 0.7)" },
-          "70%": { boxShadow: "0 0 0 10px rgba(16, 185, 129, 0)" },
-        },
-        "gradient-shift": {
+        gradient: {
           "0%": { backgroundPosition: "0% 50%" },
           "50%": { backgroundPosition: "100% 50%" },
           "100%": { backgroundPosition: "0% 50%" },
         },
-        "hero-gradient": {
-          "0%": { backgroundPosition: "0% 50%" },
-          "25%": { backgroundPosition: "100% 50%" },
-          "50%": { backgroundPosition: "50% 100%" },
-          "75%": { backgroundPosition: "50% 0%" },
-          "100%": { backgroundPosition: "0% 50%" },
+        floating: {
+          "0%, 100%": { transform: "translateY(0px)" },
+          "50%": { transform: "translateY(-20px)" },
         },
-        "skeleton-wave": {
-          "0%": { backgroundPosition: "-200% 0" },
-          "100%": { backgroundPosition: "200% 0" },
+        "pulse-green": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.5" },
         },
-        "market-pulse": {
-          "0%": { backgroundColor: "rgba(16, 185, 129, 0.1)" },
-          "50%": { backgroundColor: "rgba(16, 185, 129, 0.2)" },
-          "100%": { backgroundColor: "rgba(16, 185, 129, 0.1)" },
+        slideUp: {
+          from: { opacity: "0", transform: "translateY(30px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
         },
-        "status-pulse": {
-          "0%": { boxShadow: "0 0 0 0 rgba(16, 185, 129, 0.7)" },
-          "70%": { boxShadow: "0 0 0 10px rgba(16, 185, 129, 0)" },
-          "100%": { boxShadow: "0 0 0 0 rgba(16, 185, 129, 0)" },
+        fadeIn: {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
         },
-        float: {
-          "0%": { transform: "translateY(0px)" },
-          "50%": { transform: "translateY(-10px)" },
-          "100%": { transform: "translateY(0px)" },
+        scaleIn: {
+          from: { opacity: "0", transform: "scale(0.9)" },
+          to: { opacity: "1", transform: "scale(1)" },
         },
-        glow: {
-          "0%": { boxShadow: "0 0 5px rgba(16, 185, 129, 0.5)" },
-          "50%": { boxShadow: "0 0 20px rgba(16, 185, 129, 0.8)" },
-          "100%": { boxShadow: "0 0 5px rgba(16, 185, 129, 0.5)" },
+        shimmer: {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
         },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        "fade-in": "fade-in 0.5s ease-out",
-        "slide-in": "slide-in 0.3s ease-out",
-        "pulse-green": "pulse-green 2s infinite",
-        "gradient-shift": "gradient-shift 8s ease infinite",
-        "hero-gradient": "hero-gradient 12s ease infinite",
-        "skeleton-wave": "skeleton-wave 2s ease infinite",
-        "market-pulse": "market-pulse 2s ease infinite",
-        "status-pulse": "status-pulse 3s ease infinite",
-        float: "float 3s ease-in-out infinite",
-        glow: "glow 2s ease-in-out infinite",
+        gradient: "gradient 12s ease infinite",
+        floating: "floating 6s ease-in-out infinite",
+        "pulse-green": "pulse-green 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        slideUp: "slideUp 0.5s ease-out",
+        fadeIn: "fadeIn 0.6s ease-out",
+        scaleIn: "scaleIn 0.3s ease-out",
+        shimmer: "shimmer 1.5s infinite",
+      },
+      backdropBlur: {
+        xs: "2px",
       },
       transitionProperty: {
         height: "height",
         spacing: "margin, padding",
-        bg: "background-color",
-        all: "all",
-      },
-      transitionDuration: {
-        "0": "0ms",
-        "75": "75ms",
-        "100": "100ms",
-        "150": "150ms",
-        "200": "200ms",
-        "300": "300ms",
-        "500": "500ms",
-        "700": "700ms",
-        "1000": "1000ms",
-      },
-      transitionTimingFunction: {
-        bounce: "cubic-bezier(0.68, -0.55, 0.265, 1.55)",
-        smooth: "cubic-bezier(0.4, 0, 0.2, 1)",
       },
     },
   },
-
   plugins: [require("tailwindcss-animate")],
 } satisfies Config
-
-  plugins: [],
-}
-
 
 export default config

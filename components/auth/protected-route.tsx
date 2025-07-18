@@ -1,4 +1,3 @@
-
 "use client"
 
 import type React from "react"
@@ -11,17 +10,6 @@ import { Loader2 } from "lucide-react"
 interface ProtectedRouteProps {
   children: React.ReactNode
   requireAuth?: boolean
-
-'use client'
-
-import { useRouter } from 'next/navigation'
-import { ReactNode, useEffect } from 'react'
-import { useAuth } from '@/context/auth-context'
-
-type ProtectedRouteProps = {
-  children: ReactNode
-  requiredRole?: string
-
   redirectTo?: string
 }
 
@@ -30,20 +18,14 @@ export function ProtectedRoute({ children, requireAuth = true, redirectTo = "/au
   const router = useRouter()
 
   useEffect(() => {
-
     if (!loading) {
       if (requireAuth && !user) {
         router.push(redirectTo)
       } else if (!requireAuth && user) {
         router.push("/dashboard")
       }
-
-    if (!loading && (!isAuthenticated || (requiredRole && user?.role !== requiredRole))) {
-      router.replace(redirectTo)
-
     }
   }, [user, loading, requireAuth, redirectTo, router])
-
 
   if (loading) {
     return (
@@ -61,9 +43,6 @@ export function ProtectedRoute({ children, requireAuth = true, redirectTo = "/au
   }
 
   if (!requireAuth && user) {
-
-  if (loading || !isAuthenticated) {
-
     return null
   }
 

@@ -1,40 +1,23 @@
-
 "use client"
 
-import { useEffect } from "react"
 import HeroSection from "@/components/hero-section"
 import FeaturesSection from "@/components/features-section"
 import PricingSection from "@/components/pricing-section"
 import CTASection from "@/components/cta-section"
 import Footer from "@/components/footer"
+import Navigation from "@/components/navigation"
 
 export default function HomePage() {
-  useEffect(() => {
-    // Add smooth scrolling class to body
-    document.body.classList.add("page-transition")
-
-    return () => {
-      document.body.classList.remove("page-transition")
-    }
-  }, [])
-
   return (
-    <div className="landing-bg min-h-screen">
-      <HeroSection />
-      <div className="bg-background transition-colors duration-500">
+    <div className="min-h-screen bg-background transition-colors duration-300">
+      <Navigation />
+      <main className="transition-all duration-300">
+        <HeroSection />
         <FeaturesSection />
         <PricingSection />
         <CTASection />
-        <Footer />
-      </div>
+      </main>
+      <Footer />
     </div>
-
-export default function HomePage() {
-  return (
-    <main className="p-4">
-      <h1 className="text-3xl font-bold">Добро пожаловать в CoinWayFinder</h1>
-      <p>Аналитика, боты и инструменты для трейдеров криптовалют</p>
-    </main>
-
   )
 }

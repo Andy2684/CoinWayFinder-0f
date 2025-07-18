@@ -40,6 +40,14 @@ export async function getUserById(id: string) {
   return user
 }
 
+export async function getUserByUsername(username: string) {
+  const [user] = await sql`
+    SELECT id, email, username, first_name, last_name, role, is_email_verified, created_at
+    FROM users WHERE username = ${username}
+  `
+  return user
+}
+
 // Trading signals functions
 export async function getTradingSignals(limit = 50, offset = 0) {
   return await sql`
@@ -80,6 +88,14 @@ export async function createTradingSignal(signalData: {
 
 // Trading bots functions
 export async function getTradingBots(userId: string) {
+  return await sql`
+    SELECT * FROM trading_bots 
+    WHERE created_by = ${userId}
+    ORDER BY created_at DESC
+  `
+}
+
+export async function getTradingBotsByUser(userId: string) {
   return await sql`
     SELECT * FROM trading_bots 
     WHERE created_by = ${userId}
@@ -211,6 +227,10 @@ export async function getNewsArticles(limit = 50, symbols?: string[]) {
   `
 }
 
+export async function getNewsItems(limit = 50, symbols?: string[]) {
+  return getNewsArticles(limit, symbols)
+}
+
 export async function createNewsArticle(newsData: {
   title: string
   content?: string
@@ -234,6 +254,19 @@ export async function createNewsArticle(newsData: {
     RETURNING *
   `
   return article
+}
+
+export async function createNewsItem(newsData: {
+  title: string
+  content?: string
+  source?: string
+  url?: string
+  sentiment?: string
+  sentimentScore?: number
+  symbols?: string[]
+  publishedAt?: Date
+}) {
+  return createNewsArticle(newsData)
 }
 
 // Risk management functions
