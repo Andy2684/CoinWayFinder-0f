@@ -2,43 +2,43 @@
 
 import type React from "react"
 
-import { useAuth } from "@/components/auth/auth-provider"
+import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
-import DashboardHeader from "@/components/dashboard/dashboard-header"
+import { Loader2 } from "lucide-react"
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  const { isAuthenticated, loading } = useAuth()
+  const { user, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    if (!loading && !user) {
       router.push("/auth/login")
     }
-  }, [isAuthenticated, loading, router])
+  }, [user, loading, router])
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-[#30D5C8] mx-auto mb-4" />
+          <p className="text-white">Loading your dashboard...</p>
+        </div>
       </div>
     )
   }
 
-  if (!isAuthenticated) {
+  if (!user) {
     return null
   }
 
   return (
-    <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">
-      <div className="flex flex-col">
-        <DashboardHeader />
-        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">{children}</main>
-      </div>
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+      <div className="container mx-auto px-4 py-8">{children}</div>
     </div>
   )
 }

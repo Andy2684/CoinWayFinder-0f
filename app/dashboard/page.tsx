@@ -14,6 +14,7 @@ import {
   RefreshCw,
   Eye,
   EyeOff,
+  Plus,
 } from "lucide-react"
 import { RealtimeMarketTicker } from "@/components/dashboard/realtime-market-ticker"
 import { RealtimeOrderBook } from "@/components/dashboard/realtime-order-book"
@@ -256,7 +257,7 @@ export default function DashboardPage() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button className="bg-[#30D5C8] hover:bg-[#30D5C8]/80 text-black font-medium">
-              <Bot className="w-4 h-4 mr-2" />
+              <Plus className="w-4 h-4 mr-2" />
               Create New Bot
             </Button>
             <Button variant="outline" className="border-gray-600 text-white hover:bg-gray-800 bg-transparent">

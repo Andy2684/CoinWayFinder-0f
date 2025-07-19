@@ -1,157 +1,87 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
-import { wsManager, type MarketDataUpdate, type OrderBookUpdate, type TradeUpdate } from "@/lib/websocket-manager"
+import { useState, useEffect } from "react"
+import { wsManager, type MarketData, type OrderBook, type Trade } from "@/lib/websocket-manager"
 
-export function useRealtimeMarketData(symbols: string[]) {
-  const [data, setData] = useState<Record<string, MarketDataUpdate>>({})
-  const [isConnected, setIsConnected] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const unsubscribeRef = useRef<(() => void) | null>(null)
+export function useRealtimeMarketData(symbols: string[] = []) {
+  const [marketData, setMarketData] = useState<Record<string, MarketData>>({})
+  const [connectionStatus, setConnectionStatus] = useState<"connected" | "connecting" | "disconnected">("disconnected")
 
   useEffect(() => {
     if (symbols.length === 0) return
 
-    setError(null)
-    setIsConnected(false)
+    const unsubscribeFunctions: (() => void)[] = []
 
-    const handleMarketData = (update: MarketDataUpdate) => {
-      setData((prev) => ({
-        ...prev,
-        [update.symbol]: update,
-      }))
-      setIsConnected(true)
-    }
-
-    const handleError = (error: any) => {
-      setError(error.message || "Connection error")
-      setIsConnected(false)
-    }
-
-    try {
-      unsubscribeRef.current = wsManager.subscribeToMarketData(symbols, handleMarketData)
-
-      // Check connection status periodically
-      const statusInterval = setInterval(() => {
-        const status = wsManager.getConnectionStatus(`market:${symbols.join(",")}`)
-        setIsConnected(status === "connected")
-      }, 5000)
-
-      return () => {
-        if (unsubscribeRef.current) {
-          unsubscribeRef.current()
+    symbols.forEach((symbol) => {
+      const unsubscribe = wsManager.subscribe(`market_${symbol}`, (message) => {
+        if (message.type === "price_update") {
+          setMarketData((prev) => ({
+            ...prev,
+            [symbol]: message.data,
+          }))
         }
-        clearInterval(statusInterval)
-      }
-    } catch (error) {
-      handleError(error)
-    }
-  }, [symbols.join(",")])
+      })
+      unsubscribeFunctions.push(unsubscribe)
+    })
 
-  const reconnect = useCallback(() => {
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current()
-    }
-    // Trigger re-subscription by updating symbols
-    setData({})
-    setError(null)
-  }, [])
+    setConnectionStatus("connected")
 
-  return {
-    data: Object.values(data),
-    isConnected,
-    error,
-    reconnect,
-  }
+    return () => {
+      unsubscribeFunctions.forEach((unsub) => unsub())
+      setConnectionStatus("disconnected")
+    }
+  }, [symbols])
+
+  return { marketData, connectionStatus }
 }
 
 export function useRealtimeOrderBook(symbol: string) {
-  const [orderBook, setOrderBook] = useState<OrderBookUpdate | null>(null)
-  const [isConnected, setIsConnected] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const unsubscribeRef = useRef<(() => void) | null>(null)
+  const [orderBook, setOrderBook] = useState<OrderBook | null>(null)
+  const [connectionStatus, setConnectionStatus] = useState<"connected" | "connecting" | "disconnected">("disconnected")
 
   useEffect(() => {
     if (!symbol) return
 
-    setError(null)
-    setIsConnected(false)
-
-    const handleOrderBook = (update: OrderBookUpdate) => {
-      setOrderBook(update)
-      setIsConnected(true)
-    }
-
-    const handleError = (error: any) => {
-      setError(error.message || "Connection error")
-      setIsConnected(false)
-    }
-
-    try {
-      unsubscribeRef.current = wsManager.subscribeToOrderBook(symbol, handleOrderBook)
-
-      return () => {
-        if (unsubscribeRef.current) {
-          unsubscribeRef.current()
-        }
+    const unsubscribe = wsManager.subscribe(`orderbook_${symbol}`, (message) => {
+      if (message.type === "order_book") {
+        setOrderBook(message.data)
       }
-    } catch (error) {
-      handleError(error)
+    })
+
+    setConnectionStatus("connected")
+
+    return () => {
+      unsubscribe()
+      setConnectionStatus("disconnected")
     }
   }, [symbol])
 
-  return {
-    orderBook,
-    isConnected,
-    error,
-  }
+  return { orderBook, connectionStatus }
 }
 
-export function useRealtimeTrades() {
-  const [trades, setTrades] = useState<TradeUpdate[]>([])
-  const [isConnected, setIsConnected] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const unsubscribeRef = useRef<(() => void) | null>(null)
-  const maxTrades = 50
+export function useRealtimeTrades(symbol: string, limit = 50) {
+  const [trades, setTrades] = useState<Trade[]>([])
+  const [connectionStatus, setConnectionStatus] = useState<"connected" | "connecting" | "disconnected">("disconnected")
 
   useEffect(() => {
-    setError(null)
-    setIsConnected(false)
+    if (!symbol) return
 
-    const handleTrade = (trade: TradeUpdate) => {
-      setTrades((prev) => {
-        const newTrades = [trade, ...prev].slice(0, maxTrades)
-        return newTrades
-      })
-      setIsConnected(true)
-    }
-
-    const handleError = (error: any) => {
-      setError(error.message || "Connection error")
-      setIsConnected(false)
-    }
-
-    try {
-      unsubscribeRef.current = wsManager.subscribeToTrades(handleTrade)
-
-      return () => {
-        if (unsubscribeRef.current) {
-          unsubscribeRef.current()
-        }
+    const unsubscribe = wsManager.subscribe(`trades_${symbol}`, (message) => {
+      if (message.type === "trade") {
+        setTrades((prev) => {
+          const newTrades = [message.data, ...prev].slice(0, limit)
+          return newTrades
+        })
       }
-    } catch (error) {
-      handleError(error)
+    })
+
+    setConnectionStatus("connected")
+
+    return () => {
+      unsubscribe()
+      setConnectionStatus("disconnected")
     }
-  }, [])
+  }, [symbol, limit])
 
-  const clearTrades = useCallback(() => {
-    setTrades([])
-  }, [])
-
-  return {
-    trades,
-    isConnected,
-    error,
-    clearTrades,
-  }
+  return { trades, connectionStatus }
 }
