@@ -1,17 +1,16 @@
 "use client"
 
-import type React from "react"
-import { AuthContext, useAuthProvider, useAuth } from "@/hooks/use-auth"
+import type { ReactNode } from "react"
+import { AuthContext, useAuthLogic } from "@/hooks/use-auth"
+
+export { useAuth } from "@/hooks/use-auth"
 
 interface AuthProviderProps {
-  children: React.ReactNode
+  children: ReactNode
 }
 
 export function AuthProvider({ children }: AuthProviderProps) {
-  const authValue = useAuthProvider()
+  const auth = useAuthLogic()
 
-  return <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>
 }
-
-// Re-export useAuth for convenience
-export { useAuth }
