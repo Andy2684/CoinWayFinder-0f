@@ -20,7 +20,7 @@ interface AuthContextType {
   loading: boolean
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  register: (userData: any) => Promise<{ success: boolean; error?: string }>
+  signup: (userData: any) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
 }
 
@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      const token = localStorage.getItem("auth-token")
+      const token = getCookie("auth-token")
       if (!token) {
         setLoading(false)
         return
@@ -53,11 +53,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userData = await response.json()
         setUser(userData.user)
       } else {
-        localStorage.removeItem("auth-token")
+        deleteCookie("auth-token")
       }
     } catch (error) {
       console.error("Auth check failed:", error)
-      localStorage.removeItem("auth-token")
+      deleteCookie("auth-token")
     } finally {
       setLoading(false)
     }
@@ -76,7 +76,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json()
 
       if (response.ok && data.success) {
-        // For public platform, just return success without storing auth state
+        setCookie("auth-token", data.token, 7) // 7 days
+        setUser(data.user)
         return { success: true }
       } else {
         return { success: false, error: data.error || "Login failed" }
@@ -86,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const register = async (userData: any) => {
+  const signup = async (userData: any) => {
     try {
       const response = await fetch("/api/auth/register", {
         method: "POST",
@@ -99,7 +100,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json()
 
       if (response.ok && data.success) {
-        // Don't store token or set user state for public platform
+        setCookie("auth-token", data.token, 7) // 7 days
+        setUser(data.user)
         return { success: true }
       } else {
         return { success: false, error: data.error || "Registration failed" }
@@ -111,7 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      const token = localStorage.getItem("auth-token")
+      const token = getCookie("auth-token")
       if (token) {
         await fetch("/api/auth/logout", {
           method: "POST",
@@ -123,7 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Logout error:", error)
     } finally {
-      localStorage.removeItem("auth-token")
+      deleteCookie("auth-token")
       setUser(null)
       router.push("/")
     }
@@ -134,7 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loading,
     isAuthenticated: !!user,
     login,
-    register,
+    signup,
     logout,
   }
 
@@ -147,4 +149,26 @@ export function useAuth() {
     throw new Error("useAuth must be used within an AuthProvider")
   }
   return context
+}
+
+// Cookie utility functions
+function setCookie(name: string, value: string, days: number) {
+  const expires = new Date()
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000)
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;secure;samesite=strict`
+}
+
+function getCookie(name: string): string | null {
+  const nameEQ = name + "="
+  const ca = document.cookie.split(";")
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i]
+    while (c.charAt(0) === " ") c = c.substring(1, c.length)
+    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length)
+  }
+  return null
+}
+
+function deleteCookie(name: string) {
+  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`
 }

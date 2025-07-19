@@ -125,9 +125,9 @@ export default function SignupForm() {
       const result = await signup(formData)
 
       if (result.success) {
-        setSuccess("Registration successful! Welcome to Coinwayfinder!")
+        setSuccess("Registration successful! Redirecting to your dashboard...")
         setTimeout(() => {
-          router.push("/thank-you")
+          router.push("/dashboard")
         }, 2000)
       } else {
         setError(result.error || "Registration failed")

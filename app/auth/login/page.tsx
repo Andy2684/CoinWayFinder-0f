@@ -1,4 +1,3 @@
-"use client"
 import LoginForm from "@/components/auth/login-form"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 

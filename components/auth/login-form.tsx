@@ -9,16 +9,19 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react"
+import { Eye, EyeOff, CheckCircle, XCircle, Loader2 } from "lucide-react"
 import { useAuth } from "./auth-provider"
 import Link from "next/link"
 
 export default function LoginForm() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  })
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
 
   const { login } = useAuth()
   const router = useRouter()
@@ -27,12 +30,16 @@ export default function LoginForm() {
     e.preventDefault()
     setLoading(true)
     setError("")
+    setSuccess("")
 
     try {
-      const result = await login(email, password)
+      const result = await login(formData.email, formData.password)
 
       if (result.success) {
-        router.push("/dashboard")
+        setSuccess("Login successful! Redirecting to your dashboard...")
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 1500)
       } else {
         setError(result.error || "Login failed")
       }
@@ -41,6 +48,11 @@ export default function LoginForm() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+    setError("")
   }
 
   return (
@@ -54,8 +66,15 @@ export default function LoginForm() {
           <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
+                <XCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {success && (
+              <Alert className="border-green-200 bg-green-50 text-green-800">
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
 
@@ -64,8 +83,8 @@ export default function LoginForm() {
               <Input
                 id="email"
                 type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={formData.email}
+                onChange={(e) => handleInputChange("email", e.target.value)}
                 placeholder="Enter your email"
                 required
               />
@@ -77,8 +96,8 @@ export default function LoginForm() {
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  value={formData.password}
+                  onChange={(e) => handleInputChange("password", e.target.value)}
                   placeholder="Enter your password"
                   required
                 />
@@ -100,11 +119,11 @@ export default function LoginForm() {
               </Link>
             </div>
 
-            <Button type="submit" className="w-full" disabled={loading || !email || !password}>
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
+                  Signing In...
                 </>
               ) : (
                 "Sign In"
@@ -116,18 +135,6 @@ export default function LoginForm() {
               <Link href="/auth/signup" className="text-sm text-blue-600 hover:underline">
                 Sign up
               </Link>
-            </div>
-
-            <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <p className="text-sm font-medium mb-2">Demo Credentials:</p>
-              <div className="space-y-1 text-sm text-gray-600">
-                <p>
-                  <strong>Demo User:</strong> demo@coinwayfinder.com / password
-                </p>
-                <p>
-                  <strong>Admin:</strong> admin@coinwayfinder.com / AdminPass123!
-                </p>
-              </div>
             </div>
           </form>
         </CardContent>

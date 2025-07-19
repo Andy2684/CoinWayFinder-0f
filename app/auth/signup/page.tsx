@@ -1,5 +1,10 @@
 import SignupForm from "@/components/auth/signup-form"
+import { ProtectedRoute } from "@/components/auth/protected-route"
 
 export default function SignupPage() {
-  return <SignupForm />
+  return (
+    <ProtectedRoute requireAuth={false}>
+      <SignupForm />
+    </ProtectedRoute>
+  )
 }
