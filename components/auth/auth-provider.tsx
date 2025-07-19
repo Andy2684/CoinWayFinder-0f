@@ -37,7 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      const token = getCookie("auth-token")
+      const token = getToken()
       if (!token) {
         setLoading(false)
         return
@@ -53,11 +53,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const userData = await response.json()
         setUser(userData.user)
       } else {
-        deleteCookie("auth-token")
+        removeToken()
       }
     } catch (error) {
       console.error("Auth check failed:", error)
-      deleteCookie("auth-token")
+      removeToken()
     } finally {
       setLoading(false)
     }
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json()
 
       if (response.ok && data.success) {
-        setCookie("auth-token", data.token, 7) // 7 days
+        setToken(data.token)
         setUser(data.user)
         return { success: true }
       } else {
@@ -100,8 +100,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json()
 
       if (response.ok && data.success) {
-        setCookie("auth-token", data.token, 7) // 7 days
-        setUser(data.user)
+        // Don't automatically log in after signup
+        // Just redirect to thank you page
+        router.push("/thank-you")
         return { success: true }
       } else {
         return { success: false, error: data.error || "Registration failed" }
@@ -113,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      const token = getCookie("auth-token")
+      const token = getToken()
       if (token) {
         await fetch("/api/auth/logout", {
           method: "POST",
@@ -125,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Logout error:", error)
     } finally {
-      deleteCookie("auth-token")
+      removeToken()
       setUser(null)
       router.push("/")
     }
@@ -151,24 +152,22 @@ export function useAuth() {
   return context
 }
 
-// Cookie utility functions
-function setCookie(name: string, value: string, days: number) {
-  const expires = new Date()
-  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000)
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;secure;samesite=strict`
+// Token utility functions
+function setToken(token: string) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("auth-token", token)
+  }
 }
 
-function getCookie(name: string): string | null {
-  const nameEQ = name + "="
-  const ca = document.cookie.split(";")
-  for (let i = 0; i < ca.length; i++) {
-    let c = ca[i]
-    while (c.charAt(0) === " ") c = c.substring(1, c.length)
-    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length)
+function getToken(): string | null {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("auth-token")
   }
   return null
 }
 
-function deleteCookie(name: string) {
-  document.cookie = `${name}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`
+function removeToken() {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("auth-token")
+  }
 }

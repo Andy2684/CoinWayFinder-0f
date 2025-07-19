@@ -1,59 +1,59 @@
 import { type NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import jwt from "jsonwebtoken"
 
-// Mock user database - replace with real database
+// Mock database - replace with real database
 const users: any[] = []
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, password, acceptTerms } = await request.json()
+    const body = await request.json()
+    const { email, password, firstName, lastName, username } = body
 
-    if (!name || !email || !password || !acceptTerms) {
-      return NextResponse.json({ error: "All fields are required and terms must be accepted" }, { status: 400 })
+    // Validation
+    if (!email || !password || !firstName || !lastName || !username) {
+      return NextResponse.json({ success: false, error: "All fields are required" }, { status: 400 })
     }
 
-    if (password.length < 8) {
-      return NextResponse.json({ error: "Password must be at least 8 characters long" }, { status: 400 })
+    if (password.length < 6) {
+      return NextResponse.json({ success: false, error: "Password must be at least 6 characters" }, { status: 400 })
     }
 
     // Check if user already exists
-    const existingUser = users.find((u) => u.email === email)
+    const existingUser = users.find((u) => u.email === email || u.username === username)
     if (existingUser) {
-      return NextResponse.json({ error: "User with this email already exists" }, { status: 409 })
+      return NextResponse.json(
+        { success: false, error: "User with this email or username already exists" },
+        { status: 400 },
+      )
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await bcrypt.hash(password, 12)
 
-    // Create new user
+    // Create user
     const newUser = {
       id: Date.now().toString(),
       email,
-      firstName: name.split(" ")[0] || name,
-      lastName: name.split(" ").slice(1).join(" ") || "",
       password: hashedPassword,
-      plan: "free" as const,
+      firstName,
+      lastName,
+      username,
+      role: "user",
+      plan: "free",
+      isVerified: false,
       createdAt: new Date().toISOString(),
     }
 
     users.push(newUser)
 
-    // Generate JWT token
-    const token = jwt.sign({ userId: newUser.id, email: newUser.email }, process.env.JWT_SECRET || "your-secret-key", {
-      expiresIn: "7d",
-    })
-
-    // Return user data (without password)
-    const { password: _, ...userWithoutPassword } = newUser
-
+    // Don't create token or login automatically
+    // Just return success for redirect to thank-you page
     return NextResponse.json({
       success: true,
-      token,
-      user: userWithoutPassword,
+      message: "Account created successfully",
     })
   } catch (error) {
     console.error("Signup error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }
