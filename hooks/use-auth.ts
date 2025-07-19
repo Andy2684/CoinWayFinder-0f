@@ -128,7 +128,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/")
   }
 
-  const authValue: AuthContextType = {
+  const authValue = {
     user,
     loading,
     login,
