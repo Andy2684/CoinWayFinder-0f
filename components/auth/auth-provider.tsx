@@ -76,8 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json()
 
       if (response.ok && data.success) {
-        localStorage.setItem("auth-token", data.token)
-        setUser(data.user)
+        // For public platform, just return success without storing auth state
         return { success: true }
       } else {
         return { success: false, error: data.error || "Login failed" }
@@ -100,8 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const data = await response.json()
 
       if (response.ok && data.success) {
-        localStorage.setItem("auth-token", data.token)
-        setUser(data.user)
+        // Don't store token or set user state for public platform
         return { success: true }
       } else {
         return { success: false, error: data.error || "Registration failed" }
