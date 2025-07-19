@@ -190,3 +190,6 @@ export function Navigation() {
     </nav>
   )
 }
+
+// Default export for backward compatibility
+export default Navigation

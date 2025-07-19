@@ -1,32 +1,48 @@
 "use client"
 
 import type React from "react"
-import { createContext, useEffect, useState } from "react"
+import { createContext, useContext, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth as useAuthFromProvider } from "@/components/auth/auth-provider"
 
 interface User {
   id: string
   email: string
   firstName: string
   lastName: string
-  createdAt: string
 }
 
 interface AuthContextType {
   user: User | null
+  isAuthenticated: boolean
   loading: boolean
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  signup: (userData: {
-    firstName: string
-    lastName: string
-    email: string
-    password: string
-  }) => Promise<{ success: boolean; error?: string }>
-  logout: () => void
+  login: (email: string, password: string) => Promise<boolean>
+  signup: (email: string, password: string, firstName: string, lastName: string) => Promise<boolean>
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+// Mock user database
+const mockUsers: User[] = [
+  {
+    id: "1",
+    email: "demo@coinwayfinder.com",
+    firstName: "Demo",
+    lastName: "User",
+  },
+  {
+    id: "2",
+    email: "admin@coinwayfinder.com",
+    firstName: "Admin",
+    lastName: "User",
+  },
+]
+
+// Mock passwords (in real app, these would be hashed)
+const mockPasswords: Record<string, string> = {
+  "demo@coinwayfinder.com": "password",
+  "admin@coinwayfinder.com": "AdminPass123!",
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -34,107 +50,90 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
-    checkAuth()
+    // Check for stored user on mount
+    const storedUser = localStorage.getItem("coinwayfinder_user")
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser))
+      } catch (error) {
+        localStorage.removeItem("coinwayfinder_user")
+      }
+    }
+    setLoading(false)
   }, [])
 
-  const checkAuth = async () => {
-    try {
-      const token = localStorage.getItem("auth-token")
-      if (!token) {
-        setLoading(false)
-        return
-      }
+  const login = async (email: string, password: string): Promise<boolean> => {
+    setLoading(true)
 
-      const response = await fetch("/api/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
+    // Simulate API delay
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      if (response.ok) {
-        const data = await response.json()
-        setUser(data.user)
-      } else {
-        localStorage.removeItem("auth-token")
-      }
-    } catch (error) {
-      console.error("Auth check failed:", error)
-      localStorage.removeItem("auth-token")
-    } finally {
+    // Check credentials
+    const foundUser = mockUsers.find((u) => u.email === email)
+    const correctPassword = mockPasswords[email]
+
+    if (foundUser && correctPassword === password) {
+      setUser(foundUser)
+      localStorage.setItem("coinwayfinder_user", JSON.stringify(foundUser))
       setLoading(false)
+      return true
     }
+
+    setLoading(false)
+    return false
   }
 
-  const login = async (email: string, password: string) => {
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      })
+  const signup = async (email: string, password: string, firstName: string, lastName: string): Promise<boolean> => {
+    setLoading(true)
 
-      const data = await response.json()
+    // Simulate API delay
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      if (response.ok && data.success) {
-        localStorage.setItem("auth-token", data.token)
-        setUser(data.user)
-        return { success: true }
-      } else {
-        return { success: false, error: data.error || "Login failed" }
-      }
-    } catch (error) {
-      return { success: false, error: "Network error occurred" }
+    // Check if user already exists
+    const existingUser = mockUsers.find((u) => u.email === email)
+    if (existingUser) {
+      setLoading(false)
+      return false
     }
+
+    // Create new user
+    const newUser: User = {
+      id: Date.now().toString(),
+      email,
+      firstName,
+      lastName,
+    }
+
+    // Add to mock database
+    mockUsers.push(newUser)
+    mockPasswords[email] = password
+
+    setLoading(false)
+    return true
   }
 
-  const signup = async (userData: {
-    firstName: string
-    lastName: string
-    email: string
-    password: string
-  }) => {
-    try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: `${userData.firstName} ${userData.lastName}`,
-          email: userData.email,
-          password: userData.password,
-          acceptTerms: true,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        localStorage.setItem("auth-token", data.token)
-        setUser(data.user)
-        return { success: true }
-      } else {
-        return { success: false, error: data.error || "Registration failed" }
-      }
-    } catch (error) {
-      console.error("Signup error:", error)
-      return { success: false, error: "Network error occurred" }
-    }
-  }
-
-  const logout = () => {
-    localStorage.removeItem("auth-token")
+  const logout = async (): Promise<void> => {
     setUser(null)
+    localStorage.removeItem("coinwayfinder_user")
     router.push("/")
   }
 
-  return <AuthContext.Provider value={{ user, loading, login, signup, logout }}>{children}</AuthContext.Provider>
+  const value: AuthContextType = {
+    user,
+    isAuthenticated: !!user,
+    loading,
+    login,
+    signup,
+    logout,
+  }
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-// Re-export the useAuth hook from the auth provider
-export const useAuth = useAuthFromProvider
-
-// Export the types as well
-export type { User, AuthContextType } from "@/components/auth/auth-provider"
+export function useAuth(): AuthContextType {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider")
+  }
+  return context
+}
