@@ -1,126 +1,126 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// Mock news data with realistic crypto news
+// Mock news data with realistic crypto content
 const mockNews = [
   {
     id: "1",
     title: "Bitcoin Reaches New All-Time High Above $75,000",
     summary: "Bitcoin surged to unprecedented levels as institutional adoption continues to drive demand.",
     content:
-      "Bitcoin has reached a new all-time high above $75,000, marking a significant milestone in the cryptocurrency's journey. The surge comes amid increased institutional adoption and growing acceptance of Bitcoin as a store of value. Major corporations continue to add Bitcoin to their treasury reserves, while regulatory clarity in key markets has boosted investor confidence.",
-    source: "CryptoNews",
-    author: "Sarah Johnson",
-    published_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-    url: "https://example.com/bitcoin-ath",
-    image_url: "/placeholder.svg?height=200&width=400&text=Bitcoin+ATH",
+      "Bitcoin has reached a new all-time high above $75,000, marking a significant milestone in the cryptocurrency's journey. The surge comes amid increased institutional adoption and growing acceptance of Bitcoin as a store of value. Major corporations continue to add Bitcoin to their treasury reserves, while regulatory clarity in key markets has boosted investor confidence. Technical analysis suggests strong momentum with key resistance levels being broken decisively.",
+    author: "Sarah Chen",
+    publishedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+    imageUrl: "/placeholder.svg?height=200&width=400&text=Bitcoin+Chart",
+    tags: ["Bitcoin", "ATH", "Institutional", "Price"],
     sentiment: "positive" as const,
-    impact_score: 9,
-    tags: ["Bitcoin", "ATH", "Institutional", "Bullish"],
+    impactScore: 9,
+    source: "CryptoDaily",
+    category: "Market Analysis",
   },
   {
     id: "2",
-    title: "Ethereum 2.0 Staking Rewards Hit Record Levels",
-    summary: "Ethereum staking yields reach new highs as network activity surges post-merge.",
+    title: "Ethereum 2.0 Staking Rewards Hit Record Participation",
+    summary: "Over 32 million ETH now staked as validators rush to secure the network and earn rewards.",
     content:
-      "Ethereum 2.0 staking rewards have reached record levels, with validators earning higher yields than ever before. The increased activity on the Ethereum network, combined with the successful transition to Proof of Stake, has created favorable conditions for stakers. Network fees and MEV rewards have contributed to the enhanced staking yields.",
-    source: "EthereumDaily",
-    author: "Michael Chen",
-    published_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-    url: "https://example.com/eth-staking",
-    image_url: "/placeholder.svg?height=200&width=400&text=Ethereum+Staking",
+      "Ethereum's proof-of-stake network has reached a new milestone with over 32 million ETH now staked by validators. This represents approximately 26% of the total ETH supply, demonstrating strong confidence in the network's future. The high participation rate has led to more stable staking rewards and enhanced network security. Recent protocol upgrades have made staking more accessible to retail investors through liquid staking solutions.",
+    author: "Michael Rodriguez",
+    publishedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+    imageUrl: "/placeholder.svg?height=200&width=400&text=Ethereum+Staking",
+    tags: ["Ethereum", "Staking", "ETH2", "Validators"],
     sentiment: "positive" as const,
-    impact_score: 7,
-    tags: ["Ethereum", "Staking", "DeFi", "Yield"],
+    impactScore: 7,
+    source: "BlockchainNews",
+    category: "Technology",
   },
   {
     id: "3",
-    title: "Major DeFi Protocol Suffers $50M Exploit",
-    summary: "A popular DeFi lending protocol lost $50 million in a sophisticated smart contract attack.",
+    title: "DeFi Protocol Suffers $50M Exploit Due to Smart Contract Vulnerability",
+    summary: "A major DeFi lending protocol lost $50 million in a sophisticated flash loan attack.",
     content:
-      "A major DeFi lending protocol has suffered a $50 million exploit due to a vulnerability in its smart contract code. The attack involved a complex flash loan manipulation that drained funds from the protocol's liquidity pools. The team has paused the protocol and is working with security firms to investigate the incident.",
-    source: "DeFiWatch",
-    author: "Alex Rodriguez",
-    published_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
-    url: "https://example.com/defi-exploit",
-    image_url: "/placeholder.svg?height=200&width=400&text=DeFi+Exploit",
-    sentiment: "negative" as const,
-    impact_score: 8,
+      "A prominent DeFi lending protocol has fallen victim to a sophisticated exploit that drained approximately $50 million from its treasury. The attack utilized a complex flash loan mechanism to manipulate price oracles and extract funds. Security researchers have identified the vulnerability in the protocol's smart contract code, which has since been patched. This incident highlights the ongoing security challenges facing the DeFi ecosystem and the importance of thorough code audits.",
+    author: "Alex Thompson",
+    publishedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
+    imageUrl: "/placeholder.svg?height=200&width=400&text=DeFi+Security",
     tags: ["DeFi", "Security", "Exploit", "Flash Loan"],
+    sentiment: "negative" as const,
+    impactScore: 8,
+    source: "DeFiWatch",
+    category: "Security",
   },
   {
     id: "4",
-    title: "Central Bank Digital Currency Pilot Launches",
-    summary: "Major economy launches CBDC pilot program with retail and institutional participants.",
+    title: "Central Bank Digital Currency Pilot Program Launches in Major Economy",
+    summary: "A G7 nation begins testing its digital currency with select financial institutions.",
     content:
-      "A major central bank has officially launched its Central Bank Digital Currency (CBDC) pilot program, involving both retail and institutional participants. The pilot will test various use cases including cross-border payments, retail transactions, and programmable money features. This represents a significant step toward mainstream digital currency adoption.",
-    source: "FinanceToday",
-    author: "Emma Thompson",
-    published_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
-    url: "https://example.com/cbdc-pilot",
-    image_url: "/placeholder.svg?height=200&width=400&text=CBDC+Launch",
-    sentiment: "neutral" as const,
-    impact_score: 6,
+      "A major G7 economy has officially launched its Central Bank Digital Currency (CBDC) pilot program, marking a significant step toward mainstream digital currency adoption. The program involves collaboration with major banks and fintech companies to test real-world use cases. Initial focus areas include cross-border payments, retail transactions, and interoperability with existing payment systems. The pilot is expected to run for 12 months before potential wider rollout.",
+    author: "Emma Wilson",
+    publishedAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
+    imageUrl: "/placeholder.svg?height=200&width=400&text=CBDC+Launch",
     tags: ["CBDC", "Central Bank", "Digital Currency", "Pilot"],
+    sentiment: "neutral" as const,
+    impactScore: 6,
+    source: "FinanceToday",
+    category: "Regulation",
   },
   {
     id: "5",
-    title: "NFT Market Shows Signs of Recovery",
-    summary: "NFT trading volumes increase 40% as new utility-focused projects gain traction.",
+    title: "NFT Marketplace Introduces Zero-Fee Trading to Compete with OpenSea",
+    summary: "A rising NFT platform eliminates trading fees to attract creators and collectors.",
     content:
-      "The NFT market is showing signs of recovery with trading volumes increasing by 40% over the past month. New utility-focused NFT projects are gaining traction, moving beyond simple profile pictures to offer real-world benefits and integration with DeFi protocols. Gaming NFTs and metaverse assets are leading the recovery.",
-    source: "NFTInsider",
-    author: "David Kim",
-    published_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
-    url: "https://example.com/nft-recovery",
-    image_url: "/placeholder.svg?height=200&width=400&text=NFT+Recovery",
+      "A prominent NFT marketplace has announced the elimination of all trading fees in a bold move to compete with established platforms like OpenSea. The platform will instead generate revenue through premium services and partnerships. This decision comes as NFT trading volumes have declined from their 2021 peaks, forcing platforms to innovate to attract users. The move has been welcomed by creators who previously paid significant fees on transactions.",
+    author: "David Park",
+    publishedAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
+    imageUrl: "/placeholder.svg?height=200&width=400&text=NFT+Marketplace",
+    tags: ["NFT", "Marketplace", "Zero Fees", "Competition"],
     sentiment: "positive" as const,
-    impact_score: 5,
-    tags: ["NFT", "Recovery", "Gaming", "Utility"],
+    impactScore: 5,
+    source: "NFTInsider",
+    category: "NFTs",
   },
   {
     id: "6",
-    title: "Regulatory Clarity Boosts Crypto Adoption",
-    summary: "New regulatory framework provides clear guidelines for crypto businesses and investors.",
+    title: "Regulatory Uncertainty Causes Crypto Exchange to Exit Major Market",
+    summary: "Unclear regulations force a top-10 exchange to cease operations in a key jurisdiction.",
     content:
-      "New regulatory guidelines have provided much-needed clarity for the cryptocurrency industry. The comprehensive framework addresses key areas including custody, trading, and taxation of digital assets. Industry leaders praise the balanced approach that promotes innovation while ensuring consumer protection.",
-    source: "RegulatoryNews",
-    author: "Jennifer Walsh",
-    published_at: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(), // 18 hours ago
-    url: "https://example.com/crypto-regulation",
-    image_url: "/placeholder.svg?height=200&width=400&text=Crypto+Regulation",
-    sentiment: "positive" as const,
-    impact_score: 8,
-    tags: ["Regulation", "Compliance", "Adoption", "Framework"],
+      "A major cryptocurrency exchange has announced its withdrawal from a significant market due to regulatory uncertainty and compliance challenges. The exchange cited unclear guidelines and potential legal risks as primary factors in the decision. This move affects millions of users who must transfer their assets to other platforms or international services. The development highlights the ongoing regulatory challenges facing the cryptocurrency industry globally.",
+    author: "Lisa Chang",
+    publishedAt: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(), // 16 hours ago
+    imageUrl: "/placeholder.svg?height=200&width=400&text=Exchange+Exit",
+    tags: ["Regulation", "Exchange", "Compliance", "Market Exit"],
+    sentiment: "negative" as const,
+    impactScore: 7,
+    source: "CryptoRegulatory",
+    category: "Regulation",
   },
   {
     id: "7",
-    title: "Layer 2 Solutions See Massive Growth",
-    summary: "Ethereum Layer 2 networks process record transaction volumes as fees remain low.",
+    title: "Layer 2 Scaling Solution Processes 1 Million Transactions in Single Day",
+    summary: "Ethereum Layer 2 network achieves new throughput milestone with minimal fees.",
     content:
-      "Ethereum Layer 2 solutions have processed record transaction volumes while maintaining low fees. Optimistic rollups and zk-rollups are seeing increased adoption from both users and developers. The growth in Layer 2 activity demonstrates the success of Ethereum's scaling roadmap.",
-    source: "Layer2Daily",
-    author: "Robert Chang",
-    published_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-    url: "https://example.com/layer2-growth",
-    image_url: "/placeholder.svg?height=200&width=400&text=Layer+2+Growth",
+      "An Ethereum Layer 2 scaling solution has achieved a significant milestone by processing over 1 million transactions in a single day while maintaining average fees below $0.01. This achievement demonstrates the potential of Layer 2 technologies to address Ethereum's scalability challenges. The network has seen increased adoption from DeFi protocols and NFT platforms seeking lower transaction costs. Developer activity on the platform has increased by 300% over the past quarter.",
+    author: "Ryan Kumar",
+    publishedAt: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString(), // 20 hours ago
+    imageUrl: "/placeholder.svg?height=200&width=400&text=Layer+2+Scaling",
+    tags: ["Layer 2", "Scaling", "Ethereum", "Transactions"],
     sentiment: "positive" as const,
-    impact_score: 6,
-    tags: ["Layer 2", "Scaling", "Ethereum", "Rollups"],
+    impactScore: 6,
+    source: "TechCrypto",
+    category: "Technology",
   },
   {
     id: "8",
-    title: "Crypto Market Volatility Concerns Investors",
-    summary: "High volatility in crypto markets raises concerns about institutional adoption pace.",
+    title: "Institutional Crypto Custody Platform Secures $100M Series B Funding",
+    summary: "Growing institutional demand drives major investment in crypto infrastructure.",
     content:
-      "Recent high volatility in cryptocurrency markets has raised concerns among institutional investors about the pace of adoption. While long-term fundamentals remain strong, short-term price swings continue to challenge risk management strategies. Analysts suggest that market maturity will eventually reduce volatility.",
-    source: "MarketAnalysis",
-    author: "Lisa Park",
-    published_at: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(), // 30 hours ago
-    url: "https://example.com/market-volatility",
-    image_url: "/placeholder.svg?height=200&width=400&text=Market+Volatility",
-    sentiment: "negative" as const,
-    impact_score: 4,
-    tags: ["Volatility", "Institutional", "Risk", "Markets"],
+      "A leading institutional cryptocurrency custody platform has secured $100 million in Series B funding, reflecting growing institutional interest in digital assets. The funding round was led by prominent venture capital firms and will be used to expand global operations and enhance security infrastructure. The platform currently holds over $10 billion in digital assets for institutional clients including pension funds, hedge funds, and family offices. This investment signals continued institutional adoption despite market volatility.",
+    author: "Jennifer Martinez",
+    publishedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 24 hours ago
+    imageUrl: "/placeholder.svg?height=200&width=400&text=Custody+Funding",
+    tags: ["Institutional", "Custody", "Funding", "Infrastructure"],
+    sentiment: "positive" as const,
+    impactScore: 5,
+    source: "InvestmentNews",
+    category: "Business",
   },
 ]
 
@@ -130,8 +130,7 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search")?.toLowerCase()
     const sentiment = searchParams.get("sentiment")
     const sortBy = searchParams.get("sortBy") || "date"
-    const limit = Number.parseInt(searchParams.get("limit") || "10")
-    const offset = Number.parseInt(searchParams.get("offset") || "0")
+    const category = searchParams.get("category")
 
     let filteredNews = [...mockNews]
 
@@ -151,36 +150,40 @@ export async function GET(request: NextRequest) {
       filteredNews = filteredNews.filter((article) => article.sentiment === sentiment)
     }
 
+    // Apply category filter
+    if (category && category !== "all") {
+      filteredNews = filteredNews.filter((article) => article.category === category)
+    }
+
     // Apply sorting
     switch (sortBy) {
       case "date":
-        filteredNews.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime())
+        filteredNews.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
         break
       case "sentiment":
-        const sentimentOrder = { positive: 3, neutral: 2, negative: 1 }
-        filteredNews.sort((a, b) => sentimentOrder[b.sentiment] - sentimentOrder[a.sentiment])
+        filteredNews.sort((a, b) => {
+          const sentimentOrder = { positive: 3, neutral: 2, negative: 1 }
+          return sentimentOrder[b.sentiment] - sentimentOrder[a.sentiment]
+        })
         break
       case "impact":
-        filteredNews.sort((a, b) => b.impact_score - a.impact_score)
+        filteredNews.sort((a, b) => b.impactScore - a.impactScore)
         break
     }
 
-    // Apply pagination
-    const paginatedNews = filteredNews.slice(offset, offset + limit)
-    const total = filteredNews.length
-
     return NextResponse.json({
       success: true,
-      data: paginatedNews,
-      pagination: {
-        total,
-        limit,
-        offset,
-        hasMore: offset + limit < total,
-      },
+      data: filteredNews,
+      total: filteredNews.length,
     })
   } catch (error) {
     console.error("News API error:", error)
-    return NextResponse.json({ success: false, error: "Failed to fetch news" }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to fetch news",
+      },
+      { status: 500 },
+    )
   }
 }

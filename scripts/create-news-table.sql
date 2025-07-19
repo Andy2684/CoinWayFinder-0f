@@ -2,217 +2,242 @@
 CREATE TABLE IF NOT EXISTS news_articles (
     id SERIAL PRIMARY KEY,
     title VARCHAR(500) NOT NULL,
-    summary TEXT,
+    summary TEXT NOT NULL,
     content TEXT NOT NULL,
-    source VARCHAR(100) NOT NULL,
-    author VARCHAR(100),
-    published_at TIMESTAMP WITH TIME ZONE NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    url VARCHAR(1000) UNIQUE,
+    author VARCHAR(255) NOT NULL,
+    published_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     image_url VARCHAR(1000),
-    sentiment VARCHAR(20) CHECK (sentiment IN ('positive', 'negative', 'neutral')),
-    impact_score INTEGER CHECK (impact_score >= 1 AND impact_score <= 10),
-    tags TEXT[], -- PostgreSQL array for tags
-    category VARCHAR(50),
-    is_featured BOOLEAN DEFAULT FALSE,
-    view_count INTEGER DEFAULT 0,
-    like_count INTEGER DEFAULT 0,
-    share_count INTEGER DEFAULT 0
+    tags TEXT[] DEFAULT '{}',
+    sentiment VARCHAR(20) CHECK (sentiment IN ('positive', 'negative', 'neutral')) DEFAULT 'neutral',
+    impact_score INTEGER CHECK (impact_score >= 1 AND impact_score <= 10) DEFAULT 5,
+    source VARCHAR(255) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create indexes for better performance
+-- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_news_published_at ON news_articles(published_at DESC);
 CREATE INDEX IF NOT EXISTS idx_news_sentiment ON news_articles(sentiment);
 CREATE INDEX IF NOT EXISTS idx_news_impact_score ON news_articles(impact_score DESC);
-CREATE INDEX IF NOT EXISTS idx_news_source ON news_articles(source);
 CREATE INDEX IF NOT EXISTS idx_news_category ON news_articles(category);
-CREATE INDEX IF NOT EXISTS idx_news_featured ON news_articles(is_featured) WHERE is_featured = TRUE;
+CREATE INDEX IF NOT EXISTS idx_news_source ON news_articles(source);
 CREATE INDEX IF NOT EXISTS idx_news_tags ON news_articles USING GIN(tags);
 
--- Full-text search index
+-- Create full-text search index
 CREATE INDEX IF NOT EXISTS idx_news_search ON news_articles USING GIN(
-    to_tsvector('english', title || ' ' || COALESCE(summary, '') || ' ' || content)
+    to_tsvector('english', title || ' ' || summary || ' ' || content)
 );
 
--- Create trigger to update updated_at timestamp
+-- Create function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
+    NEW.updated_at = NOW();
     RETURN NEW;
 END;
 $$ language 'plpgsql';
 
-CREATE TRIGGER update_news_articles_updated_at 
-    BEFORE UPDATE ON news_articles 
-    FOR EACH ROW 
+-- Create trigger to automatically update updated_at
+DROP TRIGGER IF EXISTS update_news_articles_updated_at ON news_articles;
+CREATE TRIGGER update_news_articles_updated_at
+    BEFORE UPDATE ON news_articles
+    FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- Insert sample data
-INSERT INTO news_articles (
-    title, summary, content, source, author, published_at, url, image_url, 
-    sentiment, impact_score, tags, category
-) VALUES 
+-- Insert sample news data
+INSERT INTO news_articles (title, summary, content, author, published_at, image_url, tags, sentiment, impact_score, source, category) VALUES
 (
     'Bitcoin Reaches New All-Time High Above $75,000',
     'Bitcoin surged to unprecedented levels as institutional adoption continues to drive demand.',
-    'Bitcoin has reached a new all-time high above $75,000, marking a significant milestone in the cryptocurrency''s journey. The surge comes amid increased institutional adoption and growing acceptance of Bitcoin as a store of value. Major corporations continue to add Bitcoin to their treasury reserves, while regulatory clarity in key markets has boosted investor confidence.',
-    'CryptoNews',
-    'Sarah Johnson',
+    'Bitcoin has reached a new all-time high above $75,000, marking a significant milestone in the cryptocurrency''s journey. The surge comes amid increased institutional adoption and growing acceptance of Bitcoin as a store of value. Major corporations continue to add Bitcoin to their treasury reserves, while regulatory clarity in key markets has boosted investor confidence. Technical analysis suggests strong momentum with key resistance levels being broken decisively.',
+    'Sarah Chen',
     NOW() - INTERVAL '2 hours',
-    'https://example.com/bitcoin-ath',
-    '/placeholder.svg?height=200&width=400&text=Bitcoin+ATH',
+    '/placeholder.svg?height=200&width=400&text=Bitcoin+Chart',
+    ARRAY['Bitcoin', 'ATH', 'Institutional', 'Price'],
     'positive',
     9,
-    ARRAY['Bitcoin', 'ATH', 'Institutional', 'Bullish'],
-    'Market'
+    'CryptoDaily',
+    'Market Analysis'
 ),
 (
-    'Ethereum 2.0 Staking Rewards Hit Record Levels',
-    'Ethereum staking yields reach new highs as network activity surges post-merge.',
-    'Ethereum 2.0 staking rewards have reached record levels, with validators earning higher yields than ever before. The increased activity on the Ethereum network, combined with the successful transition to Proof of Stake, has created favorable conditions for stakers. Network fees and MEV rewards have contributed to the enhanced staking yields.',
-    'EthereumDaily',
-    'Michael Chen',
+    'Ethereum 2.0 Staking Rewards Hit Record Participation',
+    'Over 32 million ETH now staked as validators rush to secure the network and earn rewards.',
+    'Ethereum''s proof-of-stake network has reached a new milestone with over 32 million ETH now staked by validators. This represents approximately 26% of the total ETH supply, demonstrating strong confidence in the network''s future. The high participation rate has led to more stable staking rewards and enhanced network security. Recent protocol upgrades have made staking more accessible to retail investors through liquid staking solutions.',
+    'Michael Rodriguez',
     NOW() - INTERVAL '4 hours',
-    'https://example.com/eth-staking',
     '/placeholder.svg?height=200&width=400&text=Ethereum+Staking',
+    ARRAY['Ethereum', 'Staking', 'ETH2', 'Validators'],
     'positive',
     7,
-    ARRAY['Ethereum', 'Staking', 'DeFi', 'Yield'],
+    'BlockchainNews',
     'Technology'
 ),
 (
-    'Major DeFi Protocol Suffers $50M Exploit',
-    'A popular DeFi lending protocol lost $50 million in a sophisticated smart contract attack.',
-    'A major DeFi lending protocol has suffered a $50 million exploit due to a vulnerability in its smart contract code. The attack involved a complex flash loan manipulation that drained funds from the protocol''s liquidity pools. The team has paused the protocol and is working with security firms to investigate the incident.',
-    'DeFiWatch',
-    'Alex Rodriguez',
+    'DeFi Protocol Suffers $50M Exploit Due to Smart Contract Vulnerability',
+    'A major DeFi lending protocol lost $50 million in a sophisticated flash loan attack.',
+    'A prominent DeFi lending protocol has fallen victim to a sophisticated exploit that drained approximately $50 million from its treasury. The attack utilized a complex flash loan mechanism to manipulate price oracles and extract funds. Security researchers have identified the vulnerability in the protocol''s smart contract code, which has since been patched. This incident highlights the ongoing security challenges facing the DeFi ecosystem and the importance of thorough code audits.',
+    'Alex Thompson',
     NOW() - INTERVAL '6 hours',
-    'https://example.com/defi-exploit',
-    '/placeholder.svg?height=200&width=400&text=DeFi+Exploit',
+    '/placeholder.svg?height=200&width=400&text=DeFi+Security',
+    ARRAY['DeFi', 'Security', 'Exploit', 'Flash Loan'],
     'negative',
     8,
-    ARRAY['DeFi', 'Security', 'Exploit', 'Flash Loan'],
+    'DeFiWatch',
     'Security'
 ),
 (
-    'Central Bank Digital Currency Pilot Launches',
-    'Major economy launches CBDC pilot program with retail and institutional participants.',
-    'A major central bank has officially launched its Central Bank Digital Currency (CBDC) pilot program, involving both retail and institutional participants. The pilot will test various use cases including cross-border payments, retail transactions, and programmable money features. This represents a significant step toward mainstream digital currency adoption.',
-    'FinanceToday',
-    'Emma Thompson',
+    'Central Bank Digital Currency Pilot Program Launches in Major Economy',
+    'A G7 nation begins testing its digital currency with select financial institutions.',
+    'A major G7 economy has officially launched its Central Bank Digital Currency (CBDC) pilot program, marking a significant step toward mainstream digital currency adoption. The program involves collaboration with major banks and fintech companies to test real-world use cases. Initial focus areas include cross-border payments, retail transactions, and interoperability with existing payment systems. The pilot is expected to run for 12 months before potential wider rollout.',
+    'Emma Wilson',
     NOW() - INTERVAL '8 hours',
-    'https://example.com/cbdc-pilot',
     '/placeholder.svg?height=200&width=400&text=CBDC+Launch',
+    ARRAY['CBDC', 'Central Bank', 'Digital Currency', 'Pilot'],
     'neutral',
     6,
-    ARRAY['CBDC', 'Central Bank', 'Digital Currency', 'Pilot'],
+    'FinanceToday',
     'Regulation'
 ),
 (
-    'NFT Market Shows Signs of Recovery',
-    'NFT trading volumes increase 40% as new utility-focused projects gain traction.',
-    'The NFT market is showing signs of recovery with trading volumes increasing by 40% over the past month. New utility-focused NFT projects are gaining traction, moving beyond simple profile pictures to offer real-world benefits and integration with DeFi protocols. Gaming NFTs and metaverse assets are leading the recovery.',
-    'NFTInsider',
-    'David Kim',
+    'NFT Marketplace Introduces Zero-Fee Trading to Compete with OpenSea',
+    'A rising NFT platform eliminates trading fees to attract creators and collectors.',
+    'A prominent NFT marketplace has announced the elimination of all trading fees in a bold move to compete with established platforms like OpenSea. The platform will instead generate revenue through premium services and partnerships. This decision comes as NFT trading volumes have declined from their 2021 peaks, forcing platforms to innovate to attract users. The move has been welcomed by creators who previously paid significant fees on transactions.',
+    'David Park',
     NOW() - INTERVAL '12 hours',
-    'https://example.com/nft-recovery',
-    '/placeholder.svg?height=200&width=400&text=NFT+Recovery',
+    '/placeholder.svg?height=200&width=400&text=NFT+Marketplace',
+    ARRAY['NFT', 'Marketplace', 'Zero Fees', 'Competition'],
     'positive',
     5,
-    ARRAY['NFT', 'Recovery', 'Gaming', 'Utility'],
-    'Market'
+    'NFTInsider',
+    'NFTs'
 ),
 (
-    'Regulatory Clarity Boosts Crypto Adoption',
-    'New regulatory framework provides clear guidelines for crypto businesses and investors.',
-    'New regulatory guidelines have provided much-needed clarity for the cryptocurrency industry. The comprehensive framework addresses key areas including custody, trading, and taxation of digital assets. Industry leaders praise the balanced approach that promotes innovation while ensuring consumer protection.',
-    'RegulatoryNews',
-    'Jennifer Walsh',
-    NOW() - INTERVAL '18 hours',
-    'https://example.com/crypto-regulation',
-    '/placeholder.svg?height=200&width=400&text=Crypto+Regulation',
-    'positive',
-    8,
-    ARRAY['Regulation', 'Compliance', 'Adoption', 'Framework'],
+    'Regulatory Uncertainty Causes Crypto Exchange to Exit Major Market',
+    'Unclear regulations force a top-10 exchange to cease operations in a key jurisdiction.',
+    'A major cryptocurrency exchange has announced its withdrawal from a significant market due to regulatory uncertainty and compliance challenges. The exchange cited unclear guidelines and potential legal risks as primary factors in the decision. This move affects millions of users who must transfer their assets to other platforms or international services. The development highlights the ongoing regulatory challenges facing the cryptocurrency industry globally.',
+    'Lisa Chang',
+    NOW() - INTERVAL '16 hours',
+    '/placeholder.svg?height=200&width=400&text=Exchange+Exit',
+    ARRAY['Regulation', 'Exchange', 'Compliance', 'Market Exit'],
+    'negative',
+    7,
+    'CryptoRegulatory',
     'Regulation'
 ),
 (
-    'Layer 2 Solutions See Massive Growth',
-    'Ethereum Layer 2 networks process record transaction volumes as fees remain low.',
-    'Ethereum Layer 2 solutions have processed record transaction volumes while maintaining low fees. Optimistic rollups and zk-rollups are seeing increased adoption from both users and developers. The growth in Layer 2 activity demonstrates the success of Ethereum''s scaling roadmap.',
-    'Layer2Daily',
-    'Robert Chang',
-    NOW() - INTERVAL '24 hours',
-    'https://example.com/layer2-growth',
-    '/placeholder.svg?height=200&width=400&text=Layer+2+Growth',
+    'Layer 2 Scaling Solution Processes 1 Million Transactions in Single Day',
+    'Ethereum Layer 2 network achieves new throughput milestone with minimal fees.',
+    'An Ethereum Layer 2 scaling solution has achieved a significant milestone by processing over 1 million transactions in a single day while maintaining average fees below $0.01. This achievement demonstrates the potential of Layer 2 technologies to address Ethereum''s scalability challenges. The network has seen increased adoption from DeFi protocols and NFT platforms seeking lower transaction costs. Developer activity on the platform has increased by 300% over the past quarter.',
+    'Ryan Kumar',
+    NOW() - INTERVAL '20 hours',
+    '/placeholder.svg?height=200&width=400&text=Layer+2+Scaling',
+    ARRAY['Layer 2', 'Scaling', 'Ethereum', 'Transactions'],
     'positive',
     6,
-    ARRAY['Layer 2', 'Scaling', 'Ethereum', 'Rollups'],
+    'TechCrypto',
     'Technology'
 ),
 (
-    'Crypto Market Volatility Concerns Investors',
-    'High volatility in crypto markets raises concerns about institutional adoption pace.',
-    'Recent high volatility in cryptocurrency markets has raised concerns among institutional investors about the pace of adoption. While long-term fundamentals remain strong, short-term price swings continue to challenge risk management strategies. Analysts suggest that market maturity will eventually reduce volatility.',
-    'MarketAnalysis',
-    'Lisa Park',
-    NOW() - INTERVAL '30 hours',
-    'https://example.com/market-volatility',
-    '/placeholder.svg?height=200&width=400&text=Market+Volatility',
-    'negative',
-    4,
-    ARRAY['Volatility', 'Institutional', 'Risk', 'Markets'],
-    'Market'
+    'Institutional Crypto Custody Platform Secures $100M Series B Funding',
+    'Growing institutional demand drives major investment in crypto infrastructure.',
+    'A leading institutional cryptocurrency custody platform has secured $100 million in Series B funding, reflecting growing institutional interest in digital assets. The funding round was led by prominent venture capital firms and will be used to expand global operations and enhance security infrastructure. The platform currently holds over $10 billion in digital assets for institutional clients including pension funds, hedge funds, and family offices. This investment signals continued institutional adoption despite market volatility.',
+    'Jennifer Martinez',
+    NOW() - INTERVAL '24 hours',
+    '/placeholder.svg?height=200&width=400&text=Custody+Funding',
+    ARRAY['Institutional', 'Custody', 'Funding', 'Infrastructure'],
+    'positive',
+    5,
+    'InvestmentNews',
+    'Business'
 );
 
--- Create view for featured articles
-CREATE OR REPLACE VIEW featured_news AS
-SELECT * FROM news_articles 
-WHERE is_featured = TRUE 
+-- Create view for recent news with computed fields
+CREATE OR REPLACE VIEW recent_news AS
+SELECT 
+    *,
+    EXTRACT(EPOCH FROM (NOW() - published_at))/3600 as hours_ago,
+    CASE 
+        WHEN EXTRACT(EPOCH FROM (NOW() - published_at))/3600 < 1 THEN 'Just now'
+        WHEN EXTRACT(EPOCH FROM (NOW() - published_at))/3600 < 24 THEN 
+            EXTRACT(EPOCH FROM (NOW() - published_at))/3600 || 'h ago'
+        ELSE 
+            EXTRACT(EPOCH FROM (NOW() - published_at))/(3600*24) || 'd ago'
+    END as time_ago
+FROM news_articles
+WHERE published_at >= NOW() - INTERVAL '30 days'
 ORDER BY published_at DESC;
 
--- Create view for recent high-impact news
-CREATE OR REPLACE VIEW high_impact_news AS
-SELECT * FROM news_articles 
-WHERE impact_score >= 7 
-AND published_at >= NOW() - INTERVAL '7 days'
-ORDER BY impact_score DESC, published_at DESC;
-
 -- Create function for full-text search
-CREATE OR REPLACE FUNCTION search_news(search_query TEXT)
+CREATE OR REPLACE FUNCTION search_news(search_term TEXT)
 RETURNS TABLE(
     id INTEGER,
     title VARCHAR(500),
     summary TEXT,
     content TEXT,
-    source VARCHAR(100),
-    author VARCHAR(100),
+    author VARCHAR(255),
     published_at TIMESTAMP WITH TIME ZONE,
-    url VARCHAR(1000),
     image_url VARCHAR(1000),
+    tags TEXT[],
     sentiment VARCHAR(20),
     impact_score INTEGER,
-    tags TEXT[],
-    category VARCHAR(50),
+    source VARCHAR(255),
+    category VARCHAR(100),
     rank REAL
 ) AS $$
 BEGIN
     RETURN QUERY
     SELECT 
-        n.id, n.title, n.summary, n.content, n.source, n.author,
-        n.published_at, n.url, n.image_url, n.sentiment, n.impact_score,
-        n.tags, n.category,
-        ts_rank(to_tsvector('english', n.title || ' ' || COALESCE(n.summary, '') || ' ' || n.content), 
-                plainto_tsquery('english', search_query)) as rank
+        n.id,
+        n.title,
+        n.summary,
+        n.content,
+        n.author,
+        n.published_at,
+        n.image_url,
+        n.tags,
+        n.sentiment,
+        n.impact_score,
+        n.source,
+        n.category,
+        ts_rank(to_tsvector('english', n.title || ' ' || n.summary || ' ' || n.content), 
+                plainto_tsquery('english', search_term)) as rank
     FROM news_articles n
-    WHERE to_tsvector('english', n.title || ' ' || COALESCE(n.summary, '') || ' ' || n.content) 
-          @@ plainto_tsquery('english', search_query)
+    WHERE to_tsvector('english', n.title || ' ' || n.summary || ' ' || n.content) 
+          @@ plainto_tsquery('english', search_term)
     ORDER BY rank DESC, n.published_at DESC;
 END;
 $$ LANGUAGE plpgsql;
 
+-- Create materialized view for analytics
+CREATE MATERIALIZED VIEW IF NOT EXISTS news_analytics AS
+SELECT 
+    DATE(published_at) as date,
+    category,
+    sentiment,
+    COUNT(*) as article_count,
+    AVG(impact_score) as avg_impact_score,
+    ARRAY_AGG(DISTINCT unnest(tags)) as popular_tags
+FROM news_articles
+WHERE published_at >= NOW() - INTERVAL '90 days'
+GROUP BY DATE(published_at), category, sentiment
+ORDER BY date DESC;
+
+-- Create index on materialized view
+CREATE INDEX IF NOT EXISTS idx_news_analytics_date ON news_analytics(date DESC);
+
+-- Create function to refresh analytics
+CREATE OR REPLACE FUNCTION refresh_news_analytics()
+RETURNS VOID AS $$
+BEGIN
+    REFRESH MATERIALIZED VIEW news_analytics;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Grant permissions (adjust as needed for your setup)
--- GRANT SELECT, INSERT, UPDATE, DELETE ON news_articles TO your_app_user;
--- GRANT USAGE, SELECT ON SEQUENCE news_articles_id_seq TO your_app_user;
+-- GRANT SELECT ON news_articles TO your_app_user;
+-- GRANT SELECT ON recent_news TO your_app_user;
+-- GRANT EXECUTE ON FUNCTION search_news(TEXT) TO your_app_user;
+-- GRANT SELECT ON news_analytics TO your_app_user;
+
+COMMIT;
