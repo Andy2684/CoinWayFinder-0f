@@ -126,7 +126,6 @@ export function LoginForm() {
             Sign up
           </Link>
         </div>
-        <div className="text-xs text-center text-muted-foreground">Demo: demo@coinwayfinder.com / password</div>
       </CardFooter>
     </Card>
   )

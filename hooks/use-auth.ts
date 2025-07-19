@@ -1,8 +1,9 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
+import { useAuth as useAuthFromProvider } from "@/components/auth/auth-provider"
 
 interface User {
   id: string
@@ -130,10 +131,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
 
-export function useAuth(): AuthContextType {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
-  }
-  return context
-}
+// Re-export the useAuth hook from the auth provider
+export const useAuth = useAuthFromProvider
+
+// Re-export types
+export type { User, AuthContextType } from "@/components/auth/auth-provider"

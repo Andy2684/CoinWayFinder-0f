@@ -16,28 +16,25 @@ export default function ThankYouPage() {
                 <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
               </div>
               <CardTitle className="text-2xl font-bold">Welcome to Coinwayfinder!</CardTitle>
-              <CardDescription>
+              <CardDescription className="text-base">
                 Your account has been created successfully. You can now sign in to access your trading dashboard.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2 text-sm text-muted-foreground">
-                <p>🚀 Access advanced trading signals</p>
-                <p>🤖 Create automated trading bots</p>
-                <p>📊 Track your portfolio performance</p>
-                <p>📰 Stay updated with crypto news</p>
+                <p>✅ Account created</p>
+                <p>✅ Email verified</p>
+                <p>✅ Ready to trade</p>
               </div>
-              <div className="space-y-2">
-                <Button asChild className="w-full">
-                  <Link href="/auth/login">
-                    Sign In to Dashboard
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Link>
-                </Button>
-                <Button variant="outline" asChild className="w-full bg-transparent">
-                  <Link href="/">Return to Home</Link>
-                </Button>
-              </div>
+              <Button asChild className="w-full">
+                <Link href="/auth/login">
+                  Sign In to Dashboard
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+              <Button variant="outline" asChild className="w-full bg-transparent">
+                <Link href="/">Return to Home</Link>
+              </Button>
             </CardContent>
           </Card>
         </div>
