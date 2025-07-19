@@ -3,16 +3,16 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProvider } from "@/components/auth/auth-provider"
-import { Toaster } from "@/components/ui/toaster"
+import { AuthProvider } from "@/hooks/use-auth"
+import { Toaster } from "@/components/ui/sonner"
 import Navigation from "@/components/navigation"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "CoinWayFinder - AI-Powered Trading Platform",
+  title: "CoinWayFinder - AI-Powered Crypto Trading",
   description:
-    "Discover profitable trading opportunities with our advanced AI algorithms. Get real-time signals, automated bots, and comprehensive market analysis.",
+    "Maximize your crypto profits with advanced AI algorithms, real-time signals, and automated trading bots.",
     generator: 'v0.dev'
 }
 
@@ -24,7 +24,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <AuthProvider>
             <Navigation />
             {children}

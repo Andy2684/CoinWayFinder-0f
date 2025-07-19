@@ -1,91 +1,132 @@
+"use client"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { TrendingUp, Bot, Shield, Zap, BarChart3, Bell, Globe, Users } from "lucide-react"
+import { Bot, TrendingUp, Shield, Zap, BarChart3, Users, Clock, Target, Brain, Smartphone } from "lucide-react"
 
 export default function FeaturesSection() {
   const features = [
     {
-      icon: TrendingUp,
-      title: "AI Trading Signals",
-      description: "Get real-time trading signals powered by advanced machine learning algorithms with 94% accuracy.",
-      badge: "Most Popular",
+      icon: Bot,
+      title: "AI Trading Bots",
+      description: "Automated trading strategies powered by advanced machine learning algorithms that work 24/7.",
+      badge: "Popular",
     },
     {
-      icon: Bot,
-      title: "Automated Trading Bots",
-      description: "Deploy intelligent trading bots that execute trades 24/7 based on your preferred strategies.",
+      icon: TrendingUp,
+      title: "Real-time Signals",
+      description: "Get instant notifications for profitable trading opportunities across all major cryptocurrencies.",
       badge: "New",
+    },
+    {
+      icon: BarChart3,
+      title: "Market Analysis",
+      description: "Comprehensive market insights and analytics to help you make informed trading decisions.",
+      badge: null,
     },
     {
       icon: Shield,
       title: "Risk Management",
-      description:
-        "Advanced risk controls including stop-loss, take-profit, and position sizing to protect your capital.",
-      badge: null,
-    },
-    {
-      icon: BarChart3,
-      title: "Portfolio Analytics",
-      description: "Comprehensive portfolio tracking with detailed performance metrics and profit/loss analysis.",
-      badge: null,
-    },
-    {
-      icon: Bell,
-      title: "Smart Alerts",
-      description:
-        "Customizable alerts for price movements, signal triggers, and portfolio changes via multiple channels.",
-      badge: null,
-    },
-    {
-      icon: Globe,
-      title: "Multi-Exchange Support",
-      description:
-        "Connect to major exchanges including Binance, Coinbase, Kraken, and more with secure API integration.",
+      description: "Advanced risk management tools to protect your investments and minimize losses.",
       badge: null,
     },
     {
       icon: Zap,
-      title: "Real-time Data",
-      description: "Lightning-fast market data processing with sub-second latency for optimal trade execution.",
+      title: "Lightning Fast",
+      description: "Execute trades in milliseconds with our high-performance trading infrastructure.",
       badge: null,
     },
     {
       icon: Users,
       title: "Community Insights",
-      description: "Access to exclusive trading community with expert analysis and strategy sharing.",
-      badge: "Premium",
+      description: "Learn from successful traders and share strategies with our active community.",
+      badge: null,
+    },
+    {
+      icon: Clock,
+      title: "24/7 Monitoring",
+      description: "Continuous market monitoring ensures you never miss a profitable opportunity.",
+      badge: null,
+    },
+    {
+      icon: Target,
+      title: "Precision Trading",
+      description: "High-accuracy signals with detailed entry and exit points for maximum profits.",
+      badge: null,
+    },
+    {
+      icon: Brain,
+      title: "Smart Analytics",
+      description: "AI-powered analytics that learn from market patterns and adapt to changing conditions.",
+      badge: "AI",
     },
   ]
 
   return (
-    <section className="py-24 bg-background">
+    <section id="features" className="py-20 bg-gray-50">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Everything You Need to Trade Successfully</h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            Our comprehensive platform provides all the tools and insights you need to make profitable trading decisions
+          <Badge variant="secondary" className="mb-4">
+            <Smartphone className="w-4 h-4 mr-2" />
+            Features
+          </Badge>
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            Everything You Need to <span className="text-emerald-600">Succeed</span>
+          </h2>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Our comprehensive suite of tools and features is designed to give you the edge in cryptocurrency trading.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
-            <Card key={index} className="relative hover:shadow-lg transition-shadow duration-300">
+            <Card key={index} className="hover:shadow-lg transition-shadow duration-300 border-0 shadow-md">
               <CardHeader>
                 <div className="flex items-center justify-between mb-2">
-                  <feature.icon className="w-8 h-8 text-emerald-600" />
+                  <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                    <feature.icon className="w-6 h-6 text-emerald-600" />
+                  </div>
                   {feature.badge && (
-                    <Badge variant={feature.badge === "New" ? "default" : "secondary"} className="text-xs">
+                    <Badge variant={feature.badge === "Popular" ? "default" : "secondary"} className="text-xs">
                       {feature.badge}
                     </Badge>
                   )}
                 </div>
-                <CardTitle className="text-lg">{feature.title}</CardTitle>
+                <CardTitle className="text-xl">{feature.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <CardDescription className="text-sm leading-relaxed">{feature.description}</CardDescription>
+                <CardDescription className="text-gray-600 leading-relaxed">{feature.description}</CardDescription>
               </CardContent>
             </Card>
           ))}
+        </div>
+
+        {/* Additional Info Section */}
+        <div className="mt-20 text-center">
+          <div className="bg-white rounded-2xl p-8 shadow-lg border">
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">Trusted by Over 50,000+ Traders Worldwide</h3>
+            <p className="text-gray-600 mb-6">
+              Join thousands of successful traders who are already using our platform to maximize their profits.
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-emerald-600">50K+</div>
+                <div className="text-sm text-gray-500">Active Users</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-emerald-600">$100M+</div>
+                <div className="text-sm text-gray-500">Volume Traded</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-emerald-600">99.9%</div>
+                <div className="text-sm text-gray-500">Uptime</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-emerald-600">24/7</div>
+                <div className="text-sm text-gray-500">Support</div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
