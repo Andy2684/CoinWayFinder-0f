@@ -16,7 +16,7 @@ interface AuthContextType {
   user: User | null
   loading: boolean
   login: (email: string, password: string) => Promise<boolean>
-  signup: (email: string, password: string, name: string) => Promise<boolean>
+  signup: (data: { firstName: string; lastName: string; email: string; password: string }) => Promise<boolean>
   logout: () => void
 }
 
@@ -88,14 +88,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const signup = async (email: string, password: string, name: string): Promise<boolean> => {
+  const signup = async (data: {
+    firstName: string
+    lastName: string
+    email: string
+    password: string
+  }): Promise<boolean> => {
     setLoading(true)
 
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // Check if user already exists
-    const existingUser = DEMO_USERS.find((u) => u.email === email)
+    const existingUser = DEMO_USERS.find((u) => u.email === data.email)
     if (existingUser) {
       toast.error("User already exists")
       setLoading(false)
@@ -103,16 +108,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Create new user
-    const nameParts = name.split(" ")
-    const firstName = nameParts[0] || ""
-    const lastName = nameParts.slice(1).join(" ") || ""
-
     const newUser: User = {
       id: Date.now().toString(),
-      email,
-      name,
-      firstName,
-      lastName,
+      email: data.email,
+      name: `${data.firstName} ${data.lastName}`,
+      firstName: data.firstName,
+      lastName: data.lastName,
     }
     setUser(newUser)
     localStorage.setItem("user", JSON.stringify(newUser))
@@ -128,15 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/")
   }
 
-  const authContextValue: AuthContextType = {
-    user,
-    loading,
-    login,
-    signup,
-    logout,
-  }
-
-  return <AuthContext.Provider value={authContextValue}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, loading, login, signup, logout }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

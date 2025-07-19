@@ -4,41 +4,43 @@ CREATE TABLE IF NOT EXISTS news_articles (
     title VARCHAR(500) NOT NULL,
     summary TEXT NOT NULL,
     content TEXT NOT NULL,
-    author VARCHAR(255) NOT NULL,
-    published_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    source VARCHAR(100) NOT NULL,
+    author VARCHAR(100) NOT NULL,
+    published_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    url VARCHAR(1000) UNIQUE NOT NULL,
     image_url VARCHAR(1000),
+    category VARCHAR(50) NOT NULL,
     tags TEXT[] NOT NULL DEFAULT '{}',
-    sentiment VARCHAR(20) NOT NULL CHECK (sentiment IN ('positive', 'negative', 'neutral')),
-    impact_score INTEGER NOT NULL CHECK (impact_score >= 1 AND impact_score <= 10),
-    source VARCHAR(255) NOT NULL,
-    category VARCHAR(100) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    view_count INTEGER NOT NULL DEFAULT 0,
-    external_id VARCHAR(255) UNIQUE,
-    slug VARCHAR(500) UNIQUE
+    sentiment VARCHAR(20) CHECK (sentiment IN ('positive', 'negative', 'neutral')) NOT NULL DEFAULT 'neutral',
+    impact_score INTEGER CHECK (impact_score >= 1 AND impact_score <= 10) NOT NULL DEFAULT 5,
+    view_count INTEGER DEFAULT 0,
+    is_featured BOOLEAN DEFAULT FALSE,
+    is_published BOOLEAN DEFAULT TRUE
 );
 
--- Create indexes for better performance
+-- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_news_published_at ON news_articles(published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_news_category ON news_articles(category);
 CREATE INDEX IF NOT EXISTS idx_news_sentiment ON news_articles(sentiment);
 CREATE INDEX IF NOT EXISTS idx_news_impact_score ON news_articles(impact_score DESC);
-CREATE INDEX IF NOT EXISTS idx_news_category ON news_articles(category);
-CREATE INDEX IF NOT EXISTS idx_news_source ON news_articles(source);
-CREATE INDEX IF NOT EXISTS idx_news_tags ON news_articles USING GIN(tags);
-CREATE INDEX IF NOT EXISTS idx_news_active ON news_articles(is_active) WHERE is_active = TRUE;
+CREATE INDEX IF NOT EXISTS idx_news_is_featured ON news_articles(is_featured) WHERE is_featured = TRUE;
+CREATE INDEX IF NOT EXISTS idx_news_is_published ON news_articles(is_published) WHERE is_published = TRUE;
 
--- Create full-text search index
-CREATE INDEX IF NOT EXISTS idx_news_search ON news_articles USING GIN(
-    to_tsvector('english', title || ' ' || summary || ' ' || content)
+-- Create GIN index for full-text search
+CREATE INDEX IF NOT EXISTS idx_news_search ON news_articles USING GIN (
+    to_tsvector('english', title || ' ' || summary || ' ' || content || ' ' || array_to_string(tags, ' '))
 );
+
+-- Create GIN index for tags array
+CREATE INDEX IF NOT EXISTS idx_news_tags ON news_articles USING GIN (tags);
 
 -- Create function to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_at = NOW();
+    NEW.updated_at = CURRENT_TIMESTAMP;
     RETURN NEW;
 END;
 $$ language 'plpgsql';
@@ -50,189 +52,170 @@ CREATE TRIGGER update_news_articles_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at_column();
 
--- Create function to generate slug from title
-CREATE OR REPLACE FUNCTION generate_slug(title TEXT)
-RETURNS TEXT AS $$
+-- Create function to increment view count
+CREATE OR REPLACE FUNCTION increment_view_count(article_id INTEGER)
+RETURNS VOID AS $$
 BEGIN
-    RETURN lower(regexp_replace(regexp_replace(title, '[^a-zA-Z0-9\s]', '', 'g'), '\s+', '-', 'g'));
+    UPDATE news_articles 
+    SET view_count = view_count + 1 
+    WHERE id = article_id;
 END;
 $$ LANGUAGE plpgsql;
 
--- Create trigger to automatically generate slug
-CREATE OR REPLACE FUNCTION set_article_slug()
-RETURNS TRIGGER AS $$
-BEGIN
-    IF NEW.slug IS NULL OR NEW.slug = '' THEN
-        NEW.slug = generate_slug(NEW.title);
-        -- Ensure uniqueness
-        WHILE EXISTS (SELECT 1 FROM news_articles WHERE slug = NEW.slug AND id != COALESCE(NEW.id, 0)) LOOP
-            NEW.slug = NEW.slug || '-' || extract(epoch from now())::integer;
-        END LOOP;
-    END IF;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS set_news_article_slug ON news_articles;
-CREATE TRIGGER set_news_article_slug
-    BEFORE INSERT OR UPDATE ON news_articles
-    FOR EACH ROW
-    EXECUTE FUNCTION set_article_slug();
-
--- Insert sample data
-INSERT INTO news_articles (
-    title, summary, content, author, published_at, image_url, tags, 
-    sentiment, impact_score, source, category, external_id
-) VALUES 
-(
-    'Bitcoin Reaches New All-Time High as Institutional Adoption Surges',
-    'Bitcoin has broken through previous resistance levels, reaching a new all-time high of $73,000 as major institutions continue to add BTC to their balance sheets.',
-    'Bitcoin has achieved a significant milestone today, breaking through the $73,000 barrier for the first time in its history. This surge comes amid increased institutional adoption, with several Fortune 500 companies announcing Bitcoin purchases. The rally has been fueled by growing acceptance of Bitcoin as a store of value and hedge against inflation. Market analysts suggest that the current bull run could continue as more institutional investors enter the space. The cryptocurrency has gained over 150% year-to-date, outperforming traditional assets like gold and the S&P 500.',
-    'Sarah Chen',
-    NOW() - INTERVAL '2 hours',
-    '/placeholder.svg?height=200&width=400&text=Bitcoin+ATH',
-    ARRAY['Bitcoin', 'Cryptocurrency', 'Institutional', 'ATH'],
-    'positive',
-    9,
-    'CryptoDaily',
-    'Market Analysis',
-    'btc-ath-2024-001'
-),
-(
-    'Ethereum 2.0 Staking Rewards Hit Record Low as Network Matures',
-    'Ethereum staking rewards have dropped to their lowest levels since the merge, indicating network maturation and increased validator participation.',
-    'Ethereum''s proof-of-stake network is showing signs of maturation as staking rewards have declined to approximately 3.2% annually, the lowest since the successful merge in September 2022. This decrease is attributed to the growing number of validators securing the network, which now exceeds 900,000 active validators. While lower rewards might seem concerning, analysts view this as a positive sign of network decentralization and security. The reduction in rewards is also contributing to Ethereum''s deflationary pressure, with more ETH being burned than issued in recent weeks.',
-    'Michael Rodriguez',
-    NOW() - INTERVAL '4 hours',
-    '/placeholder.svg?height=200&width=400&text=Ethereum+Staking',
-    ARRAY['Ethereum', 'Staking', 'ETH2', 'Validators'],
-    'neutral',
-    6,
-    'BlockchainNews',
-    'Technology',
-    'eth-staking-2024-001'
-),
-(
-    'DeFi Protocol Suffers $50M Exploit Due to Smart Contract Vulnerability',
-    'A major DeFi lending protocol has been exploited for $50 million due to a reentrancy vulnerability in its smart contract code.',
-    'The DeFi space has been rocked by another major exploit, with a prominent lending protocol losing approximately $50 million to hackers. The attack exploited a reentrancy vulnerability in the protocol''s smart contract, allowing the attacker to drain funds from multiple pools. This incident highlights the ongoing security challenges facing the DeFi ecosystem, despite multiple audits of the affected protocol. The team has paused all protocol operations and is working with security firms to assess the damage. Users are advised to withdraw their funds from similar protocols as a precautionary measure.',
-    'Alex Thompson',
-    NOW() - INTERVAL '6 hours',
-    '/placeholder.svg?height=200&width=400&text=DeFi+Exploit',
-    ARRAY['DeFi', 'Security', 'Exploit', 'Smart Contracts'],
-    'negative',
-    8,
-    'DeFiWatch',
-    'Security',
-    'defi-exploit-2024-001'
-),
-(
-    'Central Bank Digital Currencies Gain Momentum with New Pilot Programs',
-    'Several central banks have announced new CBDC pilot programs, signaling accelerated adoption of digital currencies by governments worldwide.',
-    'The race for central bank digital currencies (CBDCs) is heating up as five major economies have announced new pilot programs this week. The European Central Bank, Bank of Japan, and Reserve Bank of Australia are among those launching comprehensive testing phases for their digital currencies. These initiatives aim to modernize payment systems, improve financial inclusion, and maintain monetary sovereignty in an increasingly digital economy. The pilots will test various aspects including privacy, scalability, and interoperability with existing financial infrastructure. Industry experts predict that at least 10 major CBDCs will be operational by 2025.',
-    'Emma Watson',
-    NOW() - INTERVAL '8 hours',
-    '/placeholder.svg?height=200&width=400&text=CBDC+Pilots',
-    ARRAY['CBDC', 'Central Banks', 'Digital Currency', 'Government'],
-    'positive',
-    7,
-    'FinTechToday',
-    'Regulation',
-    'cbdc-pilots-2024-001'
-),
-(
-    'NFT Market Shows Signs of Recovery with Blue-Chip Collections Leading',
-    'The NFT market is experiencing a resurgence with blue-chip collections seeing increased trading volume and floor prices rising across major marketplaces.',
-    'After months of declining activity, the NFT market is showing promising signs of recovery. Blue-chip collections like CryptoPunks, Bored Ape Yacht Club, and Art Blocks have seen significant increases in trading volume over the past week. Floor prices for these premium collections have risen by 15-30%, indicating renewed investor confidence. The recovery is attributed to improved market sentiment, new utility announcements from major projects, and the integration of NFTs into gaming and metaverse platforms. OpenSea and Blur have reported their highest weekly volumes in six months.',
-    'David Kim',
-    NOW() - INTERVAL '12 hours',
-    '/placeholder.svg?height=200&width=400&text=NFT+Recovery',
-    ARRAY['NFT', 'Digital Art', 'Collectibles', 'Marketplace'],
-    'positive',
-    5,
-    'NFTInsider',
-    'NFTs',
-    'nft-recovery-2024-001'
-),
-(
-    'Layer 2 Solutions See Explosive Growth as Ethereum Gas Fees Remain High',
-    'Ethereum Layer 2 networks have processed record transaction volumes as users seek alternatives to high mainnet gas fees.',
-    'Ethereum''s Layer 2 ecosystem is experiencing unprecedented growth, with networks like Arbitrum, Optimism, and Polygon processing record transaction volumes. The surge in L2 adoption comes as Ethereum mainnet gas fees remain elevated due to increased network activity. Arbitrum alone has processed over 2 million transactions in a single day, while Optimism has seen a 400% increase in daily active users over the past month. This growth is driving innovation in the L2 space, with new solutions focusing on improved user experience and lower costs. The success of L2s is crucial for Ethereum''s scalability roadmap.',
-    'Lisa Park',
-    NOW() - INTERVAL '16 hours',
-    '/placeholder.svg?height=200&width=400&text=Layer+2+Growth',
-    ARRAY['Layer 2', 'Ethereum', 'Scaling', 'Gas Fees'],
-    'positive',
-    6,
-    'L2Beat',
-    'Technology',
-    'l2-growth-2024-001'
-),
-(
-    'Regulatory Clarity Emerges as SEC Provides New Guidance on Crypto Assets',
-    'The SEC has released comprehensive guidance on cryptocurrency classification, providing much-needed clarity for the industry.',
-    'The Securities and Exchange Commission has published new guidance clarifying how it will classify various cryptocurrency assets, marking a significant step toward regulatory clarity in the United States. The guidance establishes clear criteria for determining whether a digital asset constitutes a security, focusing on factors such as decentralization, utility, and investor expectations. This development has been welcomed by industry participants who have long sought clearer regulatory frameworks. The guidance is expected to facilitate institutional adoption and encourage innovation while maintaining investor protection. Legal experts suggest this could pave the way for more crypto ETF approvals.',
-    'Robert Johnson',
-    NOW() - INTERVAL '20 hours',
-    '/placeholder.svg?height=200&width=400&text=SEC+Guidance',
-    ARRAY['Regulation', 'SEC', 'Compliance', 'Legal'],
-    'positive',
-    8,
-    'RegulatoryNews',
-    'Regulation',
-    'sec-guidance-2024-001'
-),
-(
-    'Web3 Gaming Sector Attracts $2B in Venture Capital Funding This Quarter',
-    'The Web3 gaming sector has secured record venture capital funding, with investors betting on the future of blockchain-based gaming experiences.',
-    'The Web3 gaming sector has reached a new milestone with $2 billion in venture capital funding secured in the current quarter, representing a 150% increase from the previous quarter. Major gaming studios and blockchain startups are attracting significant investment as they develop play-to-earn games, NFT-based gaming assets, and decentralized gaming platforms. Notable funding rounds include a $200 million Series B for a metaverse gaming platform and a $150 million investment in a blockchain gaming infrastructure company. Investors are particularly interested in games that combine traditional gaming mechanics with blockchain technology to create sustainable economic models.',
-    'Jennifer Lee',
-    NOW() - INTERVAL '24 hours',
-    '/placeholder.svg?height=200&width=400&text=Web3+Gaming',
-    ARRAY['Web3', 'Gaming', 'Venture Capital', 'Investment'],
-    'positive',
-    7,
-    'GameFi Daily',
-    'Gaming',
-    'web3-gaming-2024-001'
-)
-ON CONFLICT (external_id) DO NOTHING;
-
--- Create view for active articles with computed fields
-CREATE OR REPLACE VIEW active_news_articles AS
+-- Create view for published articles with calculated metrics
+CREATE OR REPLACE VIEW published_news AS
 SELECT 
     id,
     title,
     summary,
     content,
+    source,
     author,
     published_at,
+    created_at,
+    updated_at,
+    url,
     image_url,
+    category,
     tags,
     sentiment,
     impact_score,
-    source,
-    category,
-    created_at,
-    updated_at,
     view_count,
-    slug,
-    EXTRACT(EPOCH FROM (NOW() - published_at))/3600 as hours_ago,
+    is_featured,
+    EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - published_at))/3600 AS hours_since_published,
     CASE 
-        WHEN EXTRACT(EPOCH FROM (NOW() - published_at))/3600 < 1 THEN 'Just now'
-        WHEN EXTRACT(EPOCH FROM (NOW() - published_at))/3600 < 24 THEN 
-            EXTRACT(EPOCH FROM (NOW() - published_at))/3600 || 'h ago'
+        WHEN EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - published_at))/3600 < 1 THEN 'Just now'
+        WHEN EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - published_at))/3600 < 24 THEN 
+            EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - published_at))/3600 || 'h ago'
         ELSE 
-            EXTRACT(EPOCH FROM (NOW() - published_at))/(3600*24) || 'd ago'
-    END as time_ago
+            EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - published_at))/(3600*24) || 'd ago'
+    END AS time_ago
 FROM news_articles 
-WHERE is_active = TRUE;
+WHERE is_published = TRUE;
 
--- Create function for full-text search
-CREATE OR REPLACE FUNCTION search_news_articles(
-    search_query TEXT DEFAULT '',
-    sentiment_filter TEXT DEFAULT 'all',
-    sort_by TEXT DEFAULT 'date',
+-- Insert sample news data
+INSERT INTO news_articles (
+    title, summary, content, source, author, published_at, url, image_url, 
+    category, tags, sentiment, impact_score
+) VALUES 
+(
+    'Bitcoin Reaches New All-Time High as Institutional Adoption Surges',
+    'Bitcoin has broken through previous resistance levels, reaching a new all-time high of $73,000 as major institutions continue to add BTC to their balance sheets.',
+    'Bitcoin''s remarkable surge to new heights has been driven by unprecedented institutional adoption. Major corporations including MicroStrategy, Tesla, and Square have allocated significant portions of their treasury reserves to Bitcoin. The cryptocurrency''s limited supply of 21 million coins, combined with growing demand from institutional investors, has created a perfect storm for price appreciation. Market analysts predict this trend will continue as more Fortune 500 companies recognize Bitcoin as a legitimate store of value and hedge against inflation.',
+    'CryptoDaily',
+    'Sarah Johnson',
+    CURRENT_TIMESTAMP - INTERVAL '2 hours',
+    'https://cryptodaily.com/bitcoin-ath-institutional-adoption',
+    '/placeholder.svg?height=200&width=400&text=Bitcoin+Chart',
+    'Market Analysis',
+    ARRAY['Bitcoin', 'BTC', 'Institutional', 'ATH', 'Investment'],
+    'positive',
+    9
+),
+(
+    'Ethereum 2.0 Staking Rewards Hit Record Levels',
+    'Ethereum validators are earning unprecedented rewards as network activity surges and staking participation reaches new milestones.',
+    'The Ethereum network has seen a dramatic increase in staking rewards, with validators now earning an average of 8.5% APY. This surge is attributed to increased network activity, higher transaction fees, and the successful implementation of EIP-1559. The proof-of-stake consensus mechanism has proven to be both energy-efficient and profitable for participants. With over 18 million ETH now staked, representing approximately 15% of the total supply, the network''s security and decentralization continue to strengthen.',
+    'EthereumInsider',
+    'Michael Chen',
+    CURRENT_TIMESTAMP - INTERVAL '4 hours',
+    'https://ethereuminsider.com/eth2-staking-rewards-record',
+    '/placeholder.svg?height=200&width=400&text=Ethereum+Staking',
+    'DeFi',
+    ARRAY['Ethereum', 'ETH', 'Staking', 'Rewards', 'PoS'],
+    'positive',
+    7
+),
+(
+    'Major DeFi Protocol Suffers $50M Exploit',
+    'A popular decentralized finance protocol has been exploited for $50 million due to a smart contract vulnerability.',
+    'The DeFi space has been shaken by another major exploit, with hackers draining $50 million from a prominent lending protocol. The attack exploited a vulnerability in the protocol''s flash loan mechanism, allowing the attacker to manipulate price oracles and drain funds. This incident highlights the ongoing security challenges in the DeFi ecosystem, where complex smart contracts can contain subtle vulnerabilities. The protocol team has paused all operations and is working with security firms to investigate the breach and potentially recover funds.',
+    'DeFiWatch',
+    'Alex Rodriguez',
+    CURRENT_TIMESTAMP - INTERVAL '6 hours',
+    'https://defiwatch.com/major-protocol-exploit-50m',
+    '/placeholder.svg?height=200&width=400&text=DeFi+Security',
+    'Security',
+    ARRAY['DeFi', 'Exploit', 'Security', 'Smart Contracts', 'Hack'],
+    'negative',
+    8
+),
+(
+    'Central Bank Digital Currencies Gain Momentum Globally',
+    'Multiple countries announce progress on their CBDC initiatives, with pilot programs showing promising results.',
+    'Central Bank Digital Currencies (CBDCs) are gaining significant traction worldwide, with over 100 countries now exploring or developing their own digital currencies. China''s digital yuan has completed successful pilot programs in major cities, while the European Central Bank has advanced its digital euro project. The Bank of England and Federal Reserve are also conducting extensive research into CBDCs. These developments could reshape the global financial system, offering benefits such as improved payment efficiency, financial inclusion, and monetary policy transmission.',
+    'GlobalFinance',
+    'Emma Thompson',
+    CURRENT_TIMESTAMP - INTERVAL '8 hours',
+    'https://globalfinance.com/cbdc-momentum-global',
+    '/placeholder.svg?height=200&width=400&text=CBDC+Global',
+    'Regulation',
+    ARRAY['CBDC', 'Central Bank', 'Digital Currency', 'Regulation', 'Government'],
+    'neutral',
+    6
+),
+(
+    'NFT Market Shows Signs of Recovery After Prolonged Downturn',
+    'Non-fungible token sales volume increases 40% this month as new utility-focused projects gain traction.',
+    'The NFT market is showing signs of recovery after months of declining activity. Trading volume has increased by 40% this month, driven by new projects that focus on utility rather than speculation. Gaming NFTs, music rights tokens, and real-world asset tokenization are leading the recovery. Major brands are also re-entering the space with more thoughtful approaches, focusing on community building and long-term value creation rather than quick cash grabs. This shift towards utility-based NFTs suggests a maturing market.',
+    'NFTTrends',
+    'David Kim',
+    CURRENT_TIMESTAMP - INTERVAL '12 hours',
+    'https://nfttrends.com/nft-market-recovery-signs',
+    '/placeholder.svg?height=200&width=400&text=NFT+Recovery',
+    'NFTs',
+    ARRAY['NFT', 'Recovery', 'Utility', 'Gaming', 'Brands'],
+    'positive',
+    5
+),
+(
+    'Layer 2 Solutions See Explosive Growth in Transaction Volume',
+    'Ethereum Layer 2 networks process record-breaking transaction volumes as users seek lower fees and faster confirmations.',
+    'Layer 2 scaling solutions for Ethereum have experienced explosive growth, with combined transaction volumes reaching new all-time highs. Arbitrum, Optimism, and Polygon have seen their daily transaction counts increase by over 300% in the past quarter. This growth is driven by users seeking alternatives to Ethereum''s high gas fees and slower confirmation times. DeFi protocols, NFT marketplaces, and gaming applications are increasingly deploying on Layer 2 networks, creating a thriving ecosystem that maintains Ethereum''s security while offering improved user experience.',
+    'Layer2News',
+    'Jennifer Walsh',
+    CURRENT_TIMESTAMP - INTERVAL '16 hours',
+    'https://layer2news.com/l2-explosive-growth-volume',
+    '/placeholder.svg?height=200&width=400&text=Layer+2+Growth',
+    'Technology',
+    ARRAY['Layer 2', 'Scaling', 'Arbitrum', 'Optimism', 'Polygon'],
+    'positive',
+    7
+),
+(
+    'Regulatory Clarity Emerges as SEC Provides New Crypto Guidelines',
+    'The Securities and Exchange Commission releases comprehensive guidelines for cryptocurrency classification and compliance.',
+    'The SEC has released new comprehensive guidelines that provide much-needed clarity for the cryptocurrency industry. The guidelines establish clear criteria for determining whether a digital asset should be classified as a security, commodity, or utility token. This regulatory clarity is expected to boost institutional adoption and reduce compliance uncertainty for crypto businesses. The guidelines also outline registration requirements for crypto exchanges and provide safe harbor provisions for certain types of tokens. Industry leaders have welcomed these developments as a positive step toward mainstream adoption.',
+    'RegulatoryUpdate',
+    'Robert Martinez',
+    CURRENT_TIMESTAMP - INTERVAL '20 hours',
+    'https://regulatoryupdate.com/sec-crypto-guidelines-clarity',
+    '/placeholder.svg?height=200&width=400&text=SEC+Guidelines',
+    'Regulation',
+    ARRAY['SEC', 'Regulation', 'Guidelines', 'Compliance', 'Legal'],
+    'positive',
+    8
+),
+(
+    'Crypto Mining Industry Shifts Toward Renewable Energy',
+    'Major mining operations announce commitments to 100% renewable energy as environmental concerns drive industry transformation.',
+    'The cryptocurrency mining industry is undergoing a significant transformation as major operations commit to using 100% renewable energy. Leading mining companies have announced partnerships with solar and wind energy providers, with some operations already achieving carbon neutrality. This shift is driven by both environmental concerns and economic incentives, as renewable energy costs continue to decline. The Bitcoin Mining Council reports that over 58% of the network now uses sustainable energy sources, up from 36% last year. This trend is expected to accelerate as ESG considerations become increasingly important for institutional investors.',
+    'GreenCrypto',
+    'Lisa Anderson',
+    CURRENT_TIMESTAMP - INTERVAL '24 hours',
+    'https://greencrypto.com/mining-renewable-energy-shift',
+    '/placeholder.svg?height=200&width=400&text=Green+Mining',
+    'Environment',
+    ARRAY['Mining', 'Renewable Energy', 'Sustainability', 'ESG', 'Environment'],
+    'positive',
+    6
+);
+
+-- Create additional utility functions
+CREATE OR REPLACE FUNCTION search_news(
+    search_term TEXT DEFAULT NULL,
+    sentiment_filter TEXT DEFAULT NULL,
+    category_filter TEXT DEFAULT NULL,
     limit_count INTEGER DEFAULT 10,
     offset_count INTEGER DEFAULT 0
 )
@@ -241,77 +224,65 @@ RETURNS TABLE (
     title VARCHAR(500),
     summary TEXT,
     content TEXT,
-    author VARCHAR(255),
+    source VARCHAR(100),
+    author VARCHAR(100),
     published_at TIMESTAMP WITH TIME ZONE,
+    url VARCHAR(1000),
     image_url VARCHAR(1000),
+    category VARCHAR(50),
     tags TEXT[],
     sentiment VARCHAR(20),
     impact_score INTEGER,
-    source VARCHAR(255),
-    category VARCHAR(100),
-    time_ago TEXT,
-    relevance_score REAL
+    view_count INTEGER,
+    time_ago TEXT
 ) AS $$
 BEGIN
     RETURN QUERY
     SELECT 
-        a.id,
-        a.title,
-        a.summary,
-        a.content,
-        a.author,
-        a.published_at,
-        a.image_url,
-        a.tags,
-        a.sentiment,
-        a.impact_score,
-        a.source,
-        a.category,
-        CASE 
-            WHEN EXTRACT(EPOCH FROM (NOW() - a.published_at))/3600 < 1 THEN 'Just now'
-            WHEN EXTRACT(EPOCH FROM (NOW() - a.published_at))/3600 < 24 THEN 
-                FLOOR(EXTRACT(EPOCH FROM (NOW() - a.published_at))/3600)::TEXT || 'h ago'
-            ELSE 
-                FLOOR(EXTRACT(EPOCH FROM (NOW() - a.published_at))/(3600*24))::TEXT || 'd ago'
-        END as time_ago,
-        CASE 
-            WHEN search_query = '' THEN 1.0
-            ELSE ts_rank(to_tsvector('english', a.title || ' ' || a.summary || ' ' || a.content), plainto_tsquery('english', search_query))
-        END as relevance_score
-    FROM news_articles a
-    WHERE a.is_active = TRUE
-        AND (search_query = '' OR 
-             to_tsvector('english', a.title || ' ' || a.summary || ' ' || a.content) @@ plainto_tsquery('english', search_query) OR
-             EXISTS (SELECT 1 FROM unnest(a.tags) tag WHERE LOWER(tag) LIKE '%' || LOWER(search_query) || '%'))
-        AND (sentiment_filter = 'all' OR a.sentiment = sentiment_filter)
-    ORDER BY 
-        CASE 
-            WHEN sort_by = 'date' THEN a.published_at
-        END DESC,
-        CASE 
-            WHEN sort_by = 'impact' THEN a.impact_score
-        END DESC,
-        CASE 
-            WHEN sort_by = 'sentiment' THEN 
-                CASE a.sentiment 
-                    WHEN 'positive' THEN 3
-                    WHEN 'neutral' THEN 2
-                    WHEN 'negative' THEN 1
-                END
-        END DESC,
-        relevance_score DESC
+        n.id,
+        n.title,
+        n.summary,
+        n.content,
+        n.source,
+        n.author,
+        n.published_at,
+        n.url,
+        n.image_url,
+        n.category,
+        n.tags,
+        n.sentiment,
+        n.impact_score,
+        n.view_count,
+        pn.time_ago
+    FROM news_articles n
+    JOIN published_news pn ON n.id = pn.id
+    WHERE 
+        (search_term IS NULL OR 
+         to_tsvector('english', n.title || ' ' || n.summary || ' ' || n.content || ' ' || array_to_string(n.tags, ' ')) 
+         @@ plainto_tsquery('english', search_term))
+        AND (sentiment_filter IS NULL OR n.sentiment = sentiment_filter)
+        AND (category_filter IS NULL OR n.category = category_filter)
+        AND n.is_published = TRUE
+    ORDER BY n.published_at DESC
     LIMIT limit_count
     OFFSET offset_count;
 END;
 $$ LANGUAGE plpgsql;
 
--- Create function to increment view count
-CREATE OR REPLACE FUNCTION increment_view_count(article_id INTEGER)
-RETURNS VOID AS $$
+-- Create function to get trending tags
+CREATE OR REPLACE FUNCTION get_trending_tags(limit_count INTEGER DEFAULT 10)
+RETURNS TABLE (tag TEXT, count BIGINT) AS $$
 BEGIN
-    UPDATE news_articles 
-    SET view_count = view_count + 1 
-    WHERE id = article_id AND is_active = TRUE;
+    RETURN QUERY
+    SELECT 
+        unnest(tags) as tag,
+        COUNT(*) as count
+    FROM news_articles 
+    WHERE is_published = TRUE 
+        AND published_at > CURRENT_TIMESTAMP - INTERVAL '7 days'
+    GROUP BY unnest(tags)
+    ORDER BY count DESC, tag ASC
+    LIMIT limit_count;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -319,32 +290,32 @@ $$ LANGUAGE plpgsql;
 CREATE MATERIALIZED VIEW IF NOT EXISTS news_analytics AS
 SELECT 
     DATE(published_at) as date,
-    sentiment,
     category,
+    sentiment,
     COUNT(*) as article_count,
     AVG(impact_score) as avg_impact_score,
     SUM(view_count) as total_views
 FROM news_articles 
-WHERE is_active = TRUE
-GROUP BY DATE(published_at), sentiment, category
+WHERE is_published = TRUE
+GROUP BY DATE(published_at), category, sentiment
 ORDER BY date DESC;
 
 -- Create index on materialized view
-CREATE UNIQUE INDEX IF NOT EXISTS idx_news_analytics_unique 
-ON news_analytics (date, sentiment, category);
+CREATE INDEX IF NOT EXISTS idx_news_analytics_date ON news_analytics(date DESC);
 
 -- Create function to refresh analytics
 CREATE OR REPLACE FUNCTION refresh_news_analytics()
 RETURNS VOID AS $$
 BEGIN
-    REFRESH MATERIALIZED VIEW CONCURRENTLY news_analytics;
+    REFRESH MATERIALIZED VIEW news_analytics;
 END;
 $$ LANGUAGE plpgsql;
 
 -- Grant permissions (adjust as needed for your setup)
 -- GRANT SELECT ON news_articles TO your_app_user;
--- GRANT SELECT ON active_news_articles TO your_app_user;
--- GRANT EXECUTE ON FUNCTION search_news_articles TO your_app_user;
+-- GRANT SELECT ON published_news TO your_app_user;
+-- GRANT EXECUTE ON FUNCTION search_news TO your_app_user;
+-- GRANT EXECUTE ON FUNCTION get_trending_tags TO your_app_user;
 -- GRANT EXECUTE ON FUNCTION increment_view_count TO your_app_user;
 
 COMMIT;
