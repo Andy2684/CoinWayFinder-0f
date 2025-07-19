@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { toast } from "sonner"
 
@@ -42,7 +42,7 @@ const DEMO_USERS = [
   },
 ]
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function useAuthProvider() {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -129,15 +129,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/")
   }
 
-  const providerValue = {
+  return {
     user,
     loading,
     login,
     signup,
     logout,
   }
-
-  return <AuthContext.Provider value={providerValue}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
@@ -147,3 +145,6 @@ export function useAuth() {
   }
   return context
 }
+
+export { AuthContext }
+export type { User, AuthContextType }

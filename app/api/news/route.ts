@@ -1,126 +1,114 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-// Mock news data with realistic crypto content
+// Mock news data with realistic crypto articles
 const mockNews = [
   {
     id: "1",
-    title: "Bitcoin Reaches New All-Time High as Institutional Adoption Surges",
+    title: "Bitcoin Surges Past $45,000 as Institutional Adoption Accelerates",
     summary:
-      "Bitcoin has broken through previous resistance levels, reaching a new all-time high of $73,000 as major institutions continue to add BTC to their balance sheets.",
+      "Major corporations continue to add Bitcoin to their treasury reserves, driving unprecedented institutional demand.",
     content:
-      "Bitcoin's remarkable rally continues as the world's largest cryptocurrency by market capitalization has reached a new all-time high of $73,000. This surge comes amid growing institutional adoption, with several Fortune 500 companies announcing significant Bitcoin purchases for their treasury reserves. The rally has been fueled by increased demand from institutional investors, improved regulatory clarity, and growing acceptance of Bitcoin as a store of value. Market analysts suggest that this could be the beginning of a new bull cycle, with some predicting Bitcoin could reach $100,000 by the end of the year. The surge has also positively impacted the broader cryptocurrency market, with Ethereum and other major altcoins experiencing significant gains.",
+      "Bitcoin has broken through the $45,000 resistance level as institutional adoption continues to accelerate. Major corporations including MicroStrategy, Tesla, and Square have added significant amounts of Bitcoin to their treasury reserves. This institutional demand, combined with growing retail interest, has created a perfect storm for Bitcoin's latest rally. Analysts predict that if the current trend continues, Bitcoin could reach new all-time highs within the next quarter.",
     source: "CryptoNews Daily",
-    published_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-    url: "https://example.com/bitcoin-ath",
-    image_url: "/placeholder.svg?height=200&width=400&text=Bitcoin+ATH",
+    publishedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
     sentiment: "positive" as const,
-    impact_score: 9,
-    tags: ["Bitcoin", "ATH", "Institutional", "Bull Market"],
+    impact: 9,
+    tags: ["Bitcoin", "Institutional", "Adoption", "Price"],
+    imageUrl: "/placeholder.svg?height=200&width=400&text=Bitcoin+Chart",
   },
   {
     id: "2",
-    title: "Ethereum 2.0 Staking Rewards Hit Record Low as Network Matures",
-    summary:
-      "Ethereum staking rewards have dropped to historic lows as the network becomes more decentralized and efficient, signaling maturation of the proof-of-stake consensus.",
+    title: "Ethereum 2.0 Staking Rewards Hit Record High Amid Network Upgrades",
+    summary: "Ethereum staking yields reach 8.5% APY as network improvements drive increased validator participation.",
     content:
-      "Ethereum's transition to proof-of-stake has reached a new milestone as staking rewards have hit record lows, dropping below 3% APR for the first time since the merge. This decline in rewards is actually a positive indicator of network health, as it demonstrates increased participation in staking and improved network security. With over 32 million ETH now staked, representing approximately 26% of the total supply, the network has achieved unprecedented decentralization. Lower rewards also indicate reduced inflation pressure on ETH, potentially making it more attractive as a store of value. Despite lower staking yields, institutional interest in Ethereum staking continues to grow, with several major financial institutions launching Ethereum staking services for their clients.",
-    source: "Ethereum Foundation",
-    published_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-    url: "https://example.com/ethereum-staking",
-    image_url: "/placeholder.svg?height=200&width=400&text=Ethereum+Staking",
-    sentiment: "neutral" as const,
-    impact_score: 6,
-    tags: ["Ethereum", "Staking", "PoS", "Network"],
+      "Ethereum 2.0 staking rewards have reached a record high of 8.5% APY, attracting more validators to secure the network. The recent network upgrades have improved transaction throughput and reduced gas fees, making Ethereum more attractive to both developers and users. With over 32 million ETH now staked, representing nearly 27% of the total supply, the network security has never been stronger.",
+    source: "DeFi Analytics",
+    publishedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+    sentiment: "positive" as const,
+    impact: 8,
+    tags: ["Ethereum", "Staking", "DeFi", "Yield"],
+    imageUrl: "/placeholder.svg?height=200&width=400&text=Ethereum+Staking",
   },
   {
     id: "3",
-    title: "Major DeFi Protocol Suffers $50M Exploit Due to Smart Contract Vulnerability",
+    title: "SEC Delays Decision on Spot Bitcoin ETF Applications Again",
     summary:
-      "A popular DeFi lending protocol has been exploited for $50 million due to a critical smart contract vulnerability, highlighting ongoing security challenges in decentralized finance.",
+      "Regulatory uncertainty continues as the SEC postpones approval decisions for multiple Bitcoin ETF proposals.",
     content:
-      "The DeFi space has been rocked by another major exploit as a leading lending protocol lost $50 million to hackers who exploited a critical vulnerability in the platform's smart contract code. The attack occurred during a routine protocol upgrade, where attackers identified and exploited a reentrancy vulnerability that allowed them to drain funds from the protocol's liquidity pools. This incident marks the largest DeFi hack of the year and has reignited discussions about the security challenges facing decentralized finance. The protocol's team has acknowledged the exploit and is working with security firms and law enforcement to track the stolen funds. Users are advised to withdraw their funds from the platform while the team works on implementing additional security measures. This incident serves as a stark reminder of the risks associated with DeFi protocols and the importance of thorough security audits.",
-    source: "DeFi Security Watch",
-    published_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
-    url: "https://example.com/defi-exploit",
-    image_url: "/placeholder.svg?height=200&width=400&text=DeFi+Exploit",
+      "The Securities and Exchange Commission has once again delayed its decision on several spot Bitcoin ETF applications, citing the need for additional review time. This marks the third delay for some applications, creating continued uncertainty in the market. Despite the delays, industry experts remain optimistic that approval will eventually come, potentially opening the floodgates for institutional investment.",
+    source: "Regulatory Watch",
+    publishedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
     sentiment: "negative" as const,
-    impact_score: 8,
-    tags: ["DeFi", "Security", "Exploit", "Smart Contracts"],
+    impact: 7,
+    tags: ["SEC", "ETF", "Regulation", "Bitcoin"],
+    imageUrl: "/placeholder.svg?height=200&width=400&text=SEC+Building",
   },
   {
     id: "4",
-    title: "Central Bank Digital Currency Pilots Show Promising Results Across Multiple Countries",
+    title: "DeFi Protocol Launches Revolutionary Cross-Chain Bridge",
     summary:
-      "Several central banks report positive outcomes from their CBDC pilot programs, with improved transaction efficiency and financial inclusion being key benefits.",
+      "New interoperability solution promises to connect major blockchains with unprecedented security and speed.",
     content:
-      "Central Bank Digital Currencies (CBDCs) are gaining momentum as pilot programs across multiple countries show promising results. The Bank of England, European Central Bank, and People's Bank of China have all reported positive outcomes from their respective digital currency trials. Key benefits identified include faster cross-border payments, improved financial inclusion for unbanked populations, and enhanced monetary policy transmission. The digital yuan pilot in China has processed over $13 billion in transactions, while the EU's digital euro project has successfully completed its investigation phase. However, concerns about privacy and the potential impact on commercial banks remain significant challenges that need to be addressed before full-scale implementation. Central banks are working closely with technology partners and regulatory bodies to ensure that CBDCs can coexist with existing financial infrastructure while providing the benefits of digital currencies.",
-    source: "Central Banking Today",
-    published_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
-    url: "https://example.com/cbdc-pilots",
-    image_url: "/placeholder.svg?height=200&width=400&text=CBDC+Pilots",
+      "A groundbreaking DeFi protocol has launched a revolutionary cross-chain bridge that connects Ethereum, Binance Smart Chain, Polygon, and Avalanche with unprecedented security measures. The bridge uses advanced cryptographic proofs and multi-signature validation to ensure secure asset transfers across chains. Early testing shows transaction times of under 30 seconds with fees 90% lower than existing solutions.",
+    source: "DeFi Innovation Hub",
+    publishedAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
     sentiment: "positive" as const,
-    impact_score: 7,
-    tags: ["CBDC", "Central Banks", "Digital Currency", "Regulation"],
+    impact: 6,
+    tags: ["DeFi", "Cross-chain", "Innovation", "Interoperability"],
+    imageUrl: "/placeholder.svg?height=200&width=400&text=Cross+Chain+Bridge",
   },
   {
     id: "5",
-    title: "NFT Market Shows Signs of Recovery with New Utility-Focused Projects",
-    summary:
-      "The NFT market is experiencing renewed interest as projects focus on utility and real-world applications rather than speculative trading.",
+    title: "Major Exchange Suffers Security Breach, $50M in Crypto Stolen",
+    summary: "Hackers exploit smart contract vulnerability to drain funds from popular decentralized exchange.",
     content:
-      "After a prolonged bear market, the NFT space is showing signs of recovery as new projects focus on utility and real-world applications rather than purely speculative assets. Gaming NFTs, digital identity solutions, and tokenized real estate are leading the recovery, with trading volumes up 40% over the past month. Major brands are also re-entering the space with more sophisticated approaches, focusing on customer engagement and loyalty programs rather than quick cash grabs. The shift towards utility-driven NFTs has attracted institutional investors who previously avoided the space due to its speculative nature. Educational institutions are also exploring NFTs for credential verification, while artists are using the technology to create new forms of interactive digital art. This evolution suggests that the NFT market is maturing beyond the initial hype cycle and finding sustainable use cases that provide genuine value to users.",
-    source: "NFT Insider",
-    published_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
-    url: "https://example.com/nft-recovery",
-    image_url: "/placeholder.svg?height=200&width=400&text=NFT+Recovery",
-    sentiment: "positive" as const,
-    impact_score: 5,
-    tags: ["NFT", "Utility", "Gaming", "Digital Art"],
+      "A major decentralized exchange has suffered a significant security breach, with hackers stealing approximately $50 million in various cryptocurrencies. The attack exploited a previously unknown vulnerability in the exchange's smart contract code. The exchange has immediately halted all trading and is working with security firms to investigate the breach. Users are advised to withdraw their funds as soon as trading resumes.",
+    source: "Crypto Security Alert",
+    publishedAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
+    sentiment: "negative" as const,
+    impact: 8,
+    tags: ["Security", "Hack", "DEX", "Smart Contract"],
+    imageUrl: "/placeholder.svg?height=200&width=400&text=Security+Breach",
   },
   {
     id: "6",
-    title: "Regulatory Clarity Emerges as Multiple Jurisdictions Finalize Crypto Frameworks",
+    title: "Central Bank Digital Currency Pilot Program Shows Promising Results",
     summary:
-      "Several major jurisdictions have finalized comprehensive cryptocurrency regulatory frameworks, providing much-needed clarity for businesses and investors.",
+      "Government-backed digital currency trial demonstrates improved transaction efficiency and financial inclusion.",
     content:
-      "The cryptocurrency industry is celebrating a wave of regulatory clarity as multiple major jurisdictions have finalized comprehensive frameworks for digital assets. The European Union's Markets in Crypto-Assets (MiCA) regulation has officially come into effect, providing clear guidelines for crypto businesses operating within the EU. Similarly, the UK has published its final rules for crypto asset activities, while Singapore has updated its Payment Services Act to include detailed provisions for digital payment tokens. These regulatory developments are being welcomed by industry participants who have long called for clear rules of engagement. The new frameworks address key areas including consumer protection, anti-money laundering requirements, and operational standards for crypto exchanges and service providers. Industry experts believe that this regulatory clarity will pave the way for increased institutional adoption and mainstream acceptance of cryptocurrencies.",
-    source: "Regulatory Affairs Weekly",
-    published_at: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(), // 18 hours ago
-    url: "https://example.com/crypto-regulation",
-    image_url: "/placeholder.svg?height=200&width=400&text=Crypto+Regulation",
-    sentiment: "positive" as const,
-    impact_score: 8,
-    tags: ["Regulation", "MiCA", "Compliance", "Legal"],
+      "A major central bank has released positive results from its digital currency pilot program, showing significant improvements in transaction efficiency and financial inclusion. The CBDC processed over 1 million transactions during the 6-month trial with 99.9% uptime and average settlement times of 2 seconds. The success of the pilot has led to plans for a nationwide rollout within the next 18 months.",
+    source: "Central Banking Today",
+    publishedAt: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(), // 18 hours ago
+    sentiment: "neutral" as const,
+    impact: 7,
+    tags: ["CBDC", "Government", "Digital Currency", "Pilot"],
+    imageUrl: "/placeholder.svg?height=200&width=400&text=Digital+Currency",
   },
   {
     id: "7",
-    title: "Layer 2 Solutions See Massive Growth as Ethereum Gas Fees Remain High",
-    summary:
-      "Ethereum Layer 2 scaling solutions are experiencing unprecedented growth as users seek alternatives to high mainnet transaction fees.",
+    title: "NFT Marketplace Introduces Carbon-Neutral Minting Process",
+    summary: "Leading NFT platform partners with renewable energy providers to offset environmental impact.",
     content:
-      "Ethereum Layer 2 scaling solutions are experiencing explosive growth as users and developers migrate to avoid high mainnet transaction fees. Arbitrum, Optimism, and Polygon have all reported record-breaking transaction volumes and total value locked (TVL) in recent weeks. The combined TVL across major Layer 2 networks has surpassed $15 billion, representing a 300% increase from the beginning of the year. This growth is being driven by both retail users seeking cheaper transactions and DeFi protocols expanding their presence across multiple chains. Major decentralized exchanges like Uniswap and SushiSwap have seen significant volume migration to Layer 2 networks, where users can trade with fees as low as a few cents compared to $20-50 on Ethereum mainnet. The success of Layer 2 solutions is also attracting institutional attention, with several major financial institutions exploring partnerships with Layer 2 protocols to offer their clients access to DeFi services at scale.",
-    source: "Layer 2 Analytics",
-    published_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-    url: "https://example.com/layer2-growth",
-    image_url: "/placeholder.svg?height=200&width=400&text=Layer+2+Growth",
+      "A leading NFT marketplace has announced a groundbreaking carbon-neutral minting process, partnering with renewable energy providers to offset the environmental impact of NFT creation. The platform will purchase carbon credits equivalent to the energy consumption of each NFT minted, making it the first major marketplace to achieve true carbon neutrality. This move comes as environmental concerns about blockchain technology continue to grow.",
+    source: "Green Crypto News",
+    publishedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
     sentiment: "positive" as const,
-    impact_score: 7,
-    tags: ["Layer 2", "Scaling", "Arbitrum", "Optimism"],
+    impact: 5,
+    tags: ["NFT", "Environment", "Carbon Neutral", "Sustainability"],
+    imageUrl: "/placeholder.svg?height=200&width=400&text=Green+NFT",
   },
   {
     id: "8",
-    title: "Crypto Mining Industry Faces Pressure from Environmental Concerns and Energy Costs",
-    summary:
-      "The cryptocurrency mining industry is under increasing pressure from environmental activists and rising energy costs, forcing miners to seek sustainable solutions.",
+    title: "Crypto Lending Platform Offers 12% APY on Stablecoin Deposits",
+    summary: "New DeFi protocol attracts billions in TVL with competitive yield farming opportunities.",
     content:
-      "The cryptocurrency mining industry is facing mounting pressure from multiple fronts as environmental concerns and rising energy costs force miners to reconsider their operations. Several major mining companies have announced plans to transition to renewable energy sources, with some committing to achieving carbon neutrality by 2030. The pressure comes not only from environmental activists but also from investors and regulators who are increasingly focused on ESG (Environmental, Social, and Governance) criteria. Rising electricity costs in key mining regions have also made operations less profitable, particularly for smaller miners using older, less efficient equipment. In response, the industry is seeing increased investment in renewable energy infrastructure, with some mining companies partnering with solar and wind energy providers to secure long-term, sustainable power sources. Additionally, there's growing interest in alternative consensus mechanisms and more energy-efficient mining technologies that could reduce the environmental impact of cryptocurrency networks.",
-    source: "Mining Industry Report",
-    published_at: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(), // 30 hours ago
-    url: "https://example.com/mining-environment",
-    image_url: "/placeholder.svg?height=200&width=400&text=Crypto+Mining",
-    sentiment: "negative" as const,
-    impact_score: 6,
-    tags: ["Mining", "Environment", "ESG", "Sustainability"],
+      "A new DeFi lending platform has launched with attractive 12% APY rates on stablecoin deposits, quickly attracting over $2 billion in total value locked (TVL). The platform uses innovative yield farming strategies and automated market making to generate returns for depositors. Security audits by leading firms have given the protocol high marks for safety and transparency.",
+    source: "Yield Farming Weekly",
+    publishedAt: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(), // 30 hours ago
+    sentiment: "positive" as const,
+    impact: 6,
+    tags: ["DeFi", "Lending", "Yield Farming", "Stablecoin"],
+    imageUrl: "/placeholder.svg?height=200&width=400&text=DeFi+Lending",
   },
 ]
 
@@ -154,15 +142,14 @@ export async function GET(request: NextRequest) {
     // Apply sorting
     filteredNews.sort((a, b) => {
       switch (sortBy) {
-        case "date":
-          return new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
         case "sentiment":
           const sentimentOrder = { positive: 3, neutral: 2, negative: 1 }
           return sentimentOrder[b.sentiment] - sentimentOrder[a.sentiment]
         case "impact":
-          return b.impact_score - a.impact_score
+          return b.impact - a.impact
+        case "date":
         default:
-          return new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+          return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
       }
     })
 
@@ -172,17 +159,14 @@ export async function GET(request: NextRequest) {
     const paginatedNews = filteredNews.slice(startIndex, endIndex)
 
     return NextResponse.json({
-      success: true,
-      data: paginatedNews,
-      pagination: {
-        page,
-        limit,
-        total: filteredNews.length,
-        totalPages: Math.ceil(filteredNews.length / limit),
-      },
+      articles: paginatedNews,
+      total: filteredNews.length,
+      page,
+      limit,
+      totalPages: Math.ceil(filteredNews.length / limit),
     })
   } catch (error) {
-    console.error("News API error:", error)
-    return NextResponse.json({ success: false, error: "Failed to fetch news" }, { status: 500 })
+    console.error("Error fetching news:", error)
+    return NextResponse.json({ error: "Failed to fetch news" }, { status: 500 })
   }
 }
