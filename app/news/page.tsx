@@ -7,53 +7,54 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Search, TrendingUp, TrendingDown, Minus, ExternalLink, Newspaper, Filter, X } from "lucide-react"
+import { Search, TrendingUp, TrendingDown, Minus, ExternalLink, Newspaper, RefreshCw } from "lucide-react"
 import Link from "next/link"
 
-interface NewsArticle {
-  id: number
+interface NewsItem {
+  id: string
   title: string
   summary: string
   content: string
   source: string
-  url: string
-  published_at: string
-  sentiment_score: number
-  impact_score: number
+  sentiment: number
+  impact: number
+  timestamp: string
+  url?: string
   tags: string[]
 }
 
 export default function NewsPage() {
-  const [news, setNews] = useState<NewsArticle[]>([])
+  const [news, setNews] = useState<NewsItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [searchTerm, setSearchTerm] = useState("")
+  const [search, setSearch] = useState("")
   const [sentimentFilter, setSentimentFilter] = useState("all")
-  const [sortBy, setSortBy] = useState("published_at")
+  const [sortBy, setSortBy] = useState("timestamp")
   const [sortOrder, setSortOrder] = useState("desc")
 
   const fetchNews = async () => {
     try {
       setLoading(true)
-      const params = new URLSearchParams()
+      setError(null)
 
-      if (searchTerm) params.append("search", searchTerm)
-      if (sentimentFilter !== "all") params.append("sentiment", sentimentFilter)
-      params.append("sortBy", sortBy)
-      params.append("sortOrder", sortOrder)
+      const params = new URLSearchParams({
+        search,
+        sentiment: sentimentFilter,
+        sortBy,
+        sortOrder,
+      })
 
-      const response = await fetch(`/api/news?${params.toString()}`)
+      const response = await fetch(`/api/news?${params}`)
       const result = await response.json()
 
       if (result.success) {
         setNews(result.data)
-        setError(null)
       } else {
         throw new Error(result.error || "Failed to fetch news")
       }
     } catch (err) {
-      console.error("Get news error:", err)
-      setError("Failed to load news articles")
+      console.error("Error fetching news:", err)
+      setError("Failed to load news. Please try again.")
     } finally {
       setLoading(false)
     }
@@ -61,28 +62,28 @@ export default function NewsPage() {
 
   useEffect(() => {
     fetchNews()
-  }, [searchTerm, sentimentFilter, sortBy, sortOrder])
+  }, [search, sentimentFilter, sortBy, sortOrder])
 
-  const getSentimentIcon = (score: number) => {
-    if (score > 0.2) return <TrendingUp className="w-4 h-4 text-green-500" />
-    if (score < -0.2) return <TrendingDown className="w-4 h-4 text-red-500" />
+  const getSentimentIcon = (sentiment: number) => {
+    if (sentiment > 0.2) return <TrendingUp className="w-4 h-4 text-green-500" />
+    if (sentiment < -0.2) return <TrendingDown className="w-4 h-4 text-red-500" />
     return <Minus className="w-4 h-4 text-yellow-500" />
   }
 
-  const getSentimentColor = (score: number) => {
-    if (score > 0.2) return "text-green-600 bg-green-50 border-green-200"
-    if (score < -0.2) return "text-red-600 bg-red-50 border-red-200"
+  const getSentimentColor = (sentiment: number) => {
+    if (sentiment > 0.2) return "text-green-600 bg-green-50 border-green-200"
+    if (sentiment < -0.2) return "text-red-600 bg-red-50 border-red-200"
     return "text-yellow-600 bg-yellow-50 border-yellow-200"
   }
 
-  const formatTimeAgo = (dateString: string) => {
+  const formatTimeAgo = (timestamp: string) => {
     const now = new Date()
-    const published = new Date(dateString)
-    const diffInHours = Math.floor((now.getTime() - published.getTime()) / (1000 * 60 * 60))
+    const time = new Date(timestamp)
+    const diffInHours = Math.floor((now.getTime() - time.getTime()) / (1000 * 60 * 60))
 
     if (diffInHours < 1) return "Just now"
-    if (diffInHours === 1) return "1 hour ago"
-    if (diffInHours < 24) return `${diffInHours} hours ago`
+    if (diffInHours === 1) return "1h ago"
+    if (diffInHours < 24) return `${diffInHours}h ago`
 
     const diffInDays = Math.floor(diffInHours / 24)
     if (diffInDays === 1) return "1 day ago"
@@ -90,207 +91,177 @@ export default function NewsPage() {
   }
 
   const clearFilters = () => {
-    setSearchTerm("")
+    setSearch("")
     setSentimentFilter("all")
-    setSortBy("published_at")
+    setSortBy("timestamp")
     setSortOrder("desc")
   }
 
-  const hasActiveFilters = searchTerm || sentimentFilter !== "all" || sortBy !== "published_at" || sortOrder !== "desc"
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="text-center">
+          <Newspaper className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-2">News Feed</h1>
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button onClick={fetchNews} variant="outline">
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="flex items-center justify-center mb-4">
-            <Newspaper className="w-8 h-8 text-blue-600 mr-3" />
-            <h1 className="text-4xl font-bold text-gray-900 dark:text-white">Crypto News</h1>
-          </div>
-          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-            Stay updated with the latest cryptocurrency news, market analysis, and industry developments
-          </p>
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <div className="flex items-center gap-2 mb-4">
+          <Newspaper className="w-8 h-8 text-primary" />
+          <h1 className="text-3xl font-bold">Crypto News Feed</h1>
         </div>
+        <p className="text-muted-foreground">Stay updated with the latest cryptocurrency news and market insights</p>
+      </div>
 
-        {/* Filters */}
-        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border p-6 mb-8">
-          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-end">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Search News</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <Input
-                  placeholder="Search articles, tags, or keywords..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-
-            <div className="w-full lg:w-48">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sentiment</label>
-              <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="All sentiment" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All sentiment</SelectItem>
-                  <SelectItem value="positive">Positive</SelectItem>
-                  <SelectItem value="neutral">Neutral</SelectItem>
-                  <SelectItem value="negative">Negative</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="w-full lg:w-48">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Sort by</label>
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="published_at">Date</SelectItem>
-                  <SelectItem value="sentiment_score">Sentiment</SelectItem>
-                  <SelectItem value="impact_score">Impact</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="w-full lg:w-32">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Order</label>
-              <Select value={sortOrder} onValueChange={setSortOrder}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="desc">Newest</SelectItem>
-                  <SelectItem value="asc">Oldest</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {hasActiveFilters && (
-              <Button variant="outline" onClick={clearFilters} className="w-full lg:w-auto bg-transparent">
-                <X className="w-4 h-4 mr-2" />
-                Clear Filters
-              </Button>
-            )}
+      {/* Filters */}
+      <div className="mb-6 space-y-4">
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search news..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10"
+            />
           </div>
+          <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue placeholder="Filter by sentiment" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sentiment</SelectItem>
+              <SelectItem value="positive">Positive</SelectItem>
+              <SelectItem value="neutral">Neutral</SelectItem>
+              <SelectItem value="negative">Negative</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="timestamp">Date</SelectItem>
+              <SelectItem value="sentiment">Sentiment</SelectItem>
+              <SelectItem value="impact">Impact</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={sortOrder} onValueChange={setSortOrder}>
+            <SelectTrigger className="w-full sm:w-32">
+              <SelectValue placeholder="Order" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="desc">Desc</SelectItem>
+              <SelectItem value="asc">Asc</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
-
-        {/* Loading State */}
-        {loading && (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {[...Array(6)].map((_, i) => (
-              <Card key={i} className="overflow-hidden">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <Skeleton className="h-4 w-20" />
-                    <Skeleton className="h-4 w-16" />
-                  </div>
-                  <Skeleton className="h-6 w-full mb-2" />
-                  <Skeleton className="h-4 w-3/4" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-4 w-full mb-2" />
-                  <Skeleton className="h-4 w-2/3 mb-4" />
-                  <div className="flex gap-2">
-                    <Skeleton className="h-6 w-16" />
-                    <Skeleton className="h-6 w-20" />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-
-        {/* Error State */}
-        {error && (
-          <Card className="text-center py-12">
-            <CardContent>
-              <Newspaper className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Unable to Load News</h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">{error}</p>
-              <Button onClick={fetchNews}>Try Again</Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* No Results */}
-        {!loading && !error && news.length === 0 && (
-          <Card className="text-center py-12">
-            <CardContent>
-              <Filter className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No Articles Found</h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-4">Try adjusting your search terms or filters</p>
-              {hasActiveFilters && <Button onClick={clearFilters}>Clear Filters</Button>}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* News Grid */}
-        {!loading && !error && news.length > 0 && (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {news.map((article) => (
-              <Card key={article.id} className="overflow-hidden hover:shadow-lg transition-shadow duration-200">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="outline" className="text-xs">
-                      {article.source}
-                    </Badge>
-                    <span className="text-xs text-gray-500">{formatTimeAgo(article.published_at)}</span>
-                  </div>
-                  <CardTitle className="text-lg leading-tight line-clamp-2">{article.title}</CardTitle>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 line-clamp-2">{article.summary}</p>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center space-x-2">
-                      {getSentimentIcon(article.sentiment_score)}
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full border ${getSentimentColor(article.sentiment_score)}`}
-                      >
-                        {article.sentiment_score > 0.2
-                          ? "Positive"
-                          : article.sentiment_score < -0.2
-                            ? "Negative"
-                            : "Neutral"}
-                      </span>
-                    </div>
-                    <Badge variant="secondary" className="text-xs">
-                      Impact: {article.impact_score}/10
-                    </Badge>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1 mb-4">
-                    {article.tags.slice(0, 3).map((tag) => (
-                      <Badge key={tag} variant="outline" className="text-xs">
-                        {tag}
-                      </Badge>
-                    ))}
-                    {article.tags.length > 3 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{article.tags.length - 3}
-                      </Badge>
-                    )}
-                  </div>
-
-                  <Link
-                    href={article.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                  >
-                    Read full article
-                    <ExternalLink className="w-3 h-3 ml-1" />
-                  </Link>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+        {(search || sentimentFilter !== "all" || sortBy !== "timestamp" || sortOrder !== "desc") && (
+          <Button variant="outline" onClick={clearFilters} size="sm">
+            Clear Filters
+          </Button>
         )}
       </div>
+
+      {/* Loading State */}
+      {loading && (
+        <div className="space-y-6">
+          {[...Array(3)].map((_, i) => (
+            <Card key={i}>
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-6 w-3/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                  </div>
+                  <Skeleton className="h-8 w-16" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-4 w-2/3" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* News Articles */}
+      {!loading && (
+        <>
+          {news.length === 0 ? (
+            <div className="text-center py-12">
+              <Newspaper className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-semibold mb-2">No news found</h3>
+              <p className="text-muted-foreground mb-4">Try adjusting your search terms or filters</p>
+              <Button variant="outline" onClick={clearFilters}>
+                Clear Filters
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {news.map((article) => (
+                <Card key={article.id} className="hover:shadow-lg transition-shadow">
+                  <CardHeader>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <CardTitle className="text-xl mb-2 leading-tight">{article.title}</CardTitle>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span>{article.source}</span>
+                          <span>{formatTimeAgo(article.timestamp)}</span>
+                          <div className="flex items-center gap-1">
+                            {getSentimentIcon(article.sentiment)}
+                            <span>Impact: {article.impact}/10</span>
+                          </div>
+                        </div>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={`${getSentimentColor(article.sentiment)} flex items-center gap-1`}
+                      >
+                        {getSentimentIcon(article.sentiment)}
+                        {article.sentiment > 0.2 ? "Positive" : article.sentiment < -0.2 ? "Negative" : "Neutral"}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-muted-foreground mb-4 leading-relaxed">{article.summary}</p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-wrap gap-2">
+                        {article.tags.map((tag) => (
+                          <Badge key={tag} variant="secondary" className="text-xs">
+                            {tag}
+                          </Badge>
+                        ))}
+                      </div>
+                      {article.url && (
+                        <Button variant="outline" size="sm" asChild>
+                          <Link href={article.url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="w-4 h-4 mr-2" />
+                            Read More
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }
