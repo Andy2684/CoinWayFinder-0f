@@ -4,14 +4,15 @@ import { type NextRequest, NextResponse } from "next/server"
 const mockNews = [
   {
     id: "1",
-    title: "Bitcoin Reaches New All-Time High Above $75,000",
-    summary: "Bitcoin surged to unprecedented levels as institutional adoption continues to drive demand.",
+    title: "Bitcoin Reaches New All-Time High as Institutional Adoption Surges",
+    summary:
+      "Bitcoin has broken through previous resistance levels, reaching a new all-time high of $73,000 as major institutions continue to add BTC to their balance sheets.",
     content:
-      "Bitcoin has reached a new all-time high above $75,000, marking a significant milestone in the cryptocurrency's journey. The surge comes amid increased institutional adoption and growing acceptance of Bitcoin as a store of value. Major corporations continue to add Bitcoin to their treasury reserves, while regulatory clarity in key markets has boosted investor confidence. Technical analysis suggests strong momentum with key resistance levels being broken decisively.",
+      "Bitcoin has achieved a significant milestone today, breaking through the $73,000 barrier for the first time in its history. This surge comes amid increased institutional adoption, with several Fortune 500 companies announcing Bitcoin purchases. The rally has been fueled by growing acceptance of Bitcoin as a store of value and hedge against inflation. Market analysts suggest that the current bull run could continue as more institutional investors enter the space. The cryptocurrency has gained over 150% year-to-date, outperforming traditional assets like gold and the S&P 500.",
     author: "Sarah Chen",
     publishedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-    imageUrl: "/placeholder.svg?height=200&width=400&text=Bitcoin+Chart",
-    tags: ["Bitcoin", "ATH", "Institutional", "Price"],
+    imageUrl: "/placeholder.svg?height=200&width=400&text=Bitcoin+ATH",
+    tags: ["Bitcoin", "Cryptocurrency", "Institutional", "ATH"],
     sentiment: "positive" as const,
     impactScore: 9,
     source: "CryptoDaily",
@@ -19,29 +20,31 @@ const mockNews = [
   },
   {
     id: "2",
-    title: "Ethereum 2.0 Staking Rewards Hit Record Participation",
-    summary: "Over 32 million ETH now staked as validators rush to secure the network and earn rewards.",
+    title: "Ethereum 2.0 Staking Rewards Hit Record Low as Network Matures",
+    summary:
+      "Ethereum staking rewards have dropped to their lowest levels since the merge, indicating network maturation and increased validator participation.",
     content:
-      "Ethereum's proof-of-stake network has reached a new milestone with over 32 million ETH now staked by validators. This represents approximately 26% of the total ETH supply, demonstrating strong confidence in the network's future. The high participation rate has led to more stable staking rewards and enhanced network security. Recent protocol upgrades have made staking more accessible to retail investors through liquid staking solutions.",
+      "Ethereum's proof-of-stake network is showing signs of maturation as staking rewards have declined to approximately 3.2% annually, the lowest since the successful merge in September 2022. This decrease is attributed to the growing number of validators securing the network, which now exceeds 900,000 active validators. While lower rewards might seem concerning, analysts view this as a positive sign of network decentralization and security. The reduction in rewards is also contributing to Ethereum's deflationary pressure, with more ETH being burned than issued in recent weeks.",
     author: "Michael Rodriguez",
     publishedAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
     imageUrl: "/placeholder.svg?height=200&width=400&text=Ethereum+Staking",
     tags: ["Ethereum", "Staking", "ETH2", "Validators"],
-    sentiment: "positive" as const,
-    impactScore: 7,
+    sentiment: "neutral" as const,
+    impactScore: 6,
     source: "BlockchainNews",
     category: "Technology",
   },
   {
     id: "3",
     title: "DeFi Protocol Suffers $50M Exploit Due to Smart Contract Vulnerability",
-    summary: "A major DeFi lending protocol lost $50 million in a sophisticated flash loan attack.",
+    summary:
+      "A major DeFi lending protocol has been exploited for $50 million due to a reentrancy vulnerability in its smart contract code.",
     content:
-      "A prominent DeFi lending protocol has fallen victim to a sophisticated exploit that drained approximately $50 million from its treasury. The attack utilized a complex flash loan mechanism to manipulate price oracles and extract funds. Security researchers have identified the vulnerability in the protocol's smart contract code, which has since been patched. This incident highlights the ongoing security challenges facing the DeFi ecosystem and the importance of thorough code audits.",
+      "The DeFi space has been rocked by another major exploit, with a prominent lending protocol losing approximately $50 million to hackers. The attack exploited a reentrancy vulnerability in the protocol's smart contract, allowing the attacker to drain funds from multiple pools. This incident highlights the ongoing security challenges facing the DeFi ecosystem, despite multiple audits of the affected protocol. The team has paused all protocol operations and is working with security firms to assess the damage. Users are advised to withdraw their funds from similar protocols as a precautionary measure.",
     author: "Alex Thompson",
     publishedAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
-    imageUrl: "/placeholder.svg?height=200&width=400&text=DeFi+Security",
-    tags: ["DeFi", "Security", "Exploit", "Flash Loan"],
+    imageUrl: "/placeholder.svg?height=200&width=400&text=DeFi+Exploit",
+    tags: ["DeFi", "Security", "Exploit", "Smart Contracts"],
     sentiment: "negative" as const,
     impactScore: 8,
     source: "DeFiWatch",
@@ -49,29 +52,31 @@ const mockNews = [
   },
   {
     id: "4",
-    title: "Central Bank Digital Currency Pilot Program Launches in Major Economy",
-    summary: "A G7 nation begins testing its digital currency with select financial institutions.",
+    title: "Central Bank Digital Currencies Gain Momentum with New Pilot Programs",
+    summary:
+      "Several central banks have announced new CBDC pilot programs, signaling accelerated adoption of digital currencies by governments worldwide.",
     content:
-      "A major G7 economy has officially launched its Central Bank Digital Currency (CBDC) pilot program, marking a significant step toward mainstream digital currency adoption. The program involves collaboration with major banks and fintech companies to test real-world use cases. Initial focus areas include cross-border payments, retail transactions, and interoperability with existing payment systems. The pilot is expected to run for 12 months before potential wider rollout.",
-    author: "Emma Wilson",
+      "The race for central bank digital currencies (CBDCs) is heating up as five major economies have announced new pilot programs this week. The European Central Bank, Bank of Japan, and Reserve Bank of Australia are among those launching comprehensive testing phases for their digital currencies. These initiatives aim to modernize payment systems, improve financial inclusion, and maintain monetary sovereignty in an increasingly digital economy. The pilots will test various aspects including privacy, scalability, and interoperability with existing financial infrastructure. Industry experts predict that at least 10 major CBDCs will be operational by 2025.",
+    author: "Emma Watson",
     publishedAt: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
-    imageUrl: "/placeholder.svg?height=200&width=400&text=CBDC+Launch",
-    tags: ["CBDC", "Central Bank", "Digital Currency", "Pilot"],
-    sentiment: "neutral" as const,
-    impactScore: 6,
-    source: "FinanceToday",
+    imageUrl: "/placeholder.svg?height=200&width=400&text=CBDC+Pilots",
+    tags: ["CBDC", "Central Banks", "Digital Currency", "Government"],
+    sentiment: "positive" as const,
+    impactScore: 7,
+    source: "FinTechToday",
     category: "Regulation",
   },
   {
     id: "5",
-    title: "NFT Marketplace Introduces Zero-Fee Trading to Compete with OpenSea",
-    summary: "A rising NFT platform eliminates trading fees to attract creators and collectors.",
+    title: "NFT Market Shows Signs of Recovery with Blue-Chip Collections Leading",
+    summary:
+      "The NFT market is experiencing a resurgence with blue-chip collections seeing increased trading volume and floor prices rising across major marketplaces.",
     content:
-      "A prominent NFT marketplace has announced the elimination of all trading fees in a bold move to compete with established platforms like OpenSea. The platform will instead generate revenue through premium services and partnerships. This decision comes as NFT trading volumes have declined from their 2021 peaks, forcing platforms to innovate to attract users. The move has been welcomed by creators who previously paid significant fees on transactions.",
-    author: "David Park",
+      "After months of declining activity, the NFT market is showing promising signs of recovery. Blue-chip collections like CryptoPunks, Bored Ape Yacht Club, and Art Blocks have seen significant increases in trading volume over the past week. Floor prices for these premium collections have risen by 15-30%, indicating renewed investor confidence. The recovery is attributed to improved market sentiment, new utility announcements from major projects, and the integration of NFTs into gaming and metaverse platforms. OpenSea and Blur have reported their highest weekly volumes in six months.",
+    author: "David Kim",
     publishedAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
-    imageUrl: "/placeholder.svg?height=200&width=400&text=NFT+Marketplace",
-    tags: ["NFT", "Marketplace", "Zero Fees", "Competition"],
+    imageUrl: "/placeholder.svg?height=200&width=400&text=NFT+Recovery",
+    tags: ["NFT", "Digital Art", "Collectibles", "Marketplace"],
     sentiment: "positive" as const,
     impactScore: 5,
     source: "NFTInsider",
@@ -79,58 +84,62 @@ const mockNews = [
   },
   {
     id: "6",
-    title: "Regulatory Uncertainty Causes Crypto Exchange to Exit Major Market",
-    summary: "Unclear regulations force a top-10 exchange to cease operations in a key jurisdiction.",
+    title: "Layer 2 Solutions See Explosive Growth as Ethereum Gas Fees Remain High",
+    summary:
+      "Ethereum Layer 2 networks have processed record transaction volumes as users seek alternatives to high mainnet gas fees.",
     content:
-      "A major cryptocurrency exchange has announced its withdrawal from a significant market due to regulatory uncertainty and compliance challenges. The exchange cited unclear guidelines and potential legal risks as primary factors in the decision. This move affects millions of users who must transfer their assets to other platforms or international services. The development highlights the ongoing regulatory challenges facing the cryptocurrency industry globally.",
-    author: "Lisa Chang",
+      "Ethereum's Layer 2 ecosystem is experiencing unprecedented growth, with networks like Arbitrum, Optimism, and Polygon processing record transaction volumes. The surge in L2 adoption comes as Ethereum mainnet gas fees remain elevated due to increased network activity. Arbitrum alone has processed over 2 million transactions in a single day, while Optimism has seen a 400% increase in daily active users over the past month. This growth is driving innovation in the L2 space, with new solutions focusing on improved user experience and lower costs. The success of L2s is crucial for Ethereum's scalability roadmap.",
+    author: "Lisa Park",
     publishedAt: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(), // 16 hours ago
-    imageUrl: "/placeholder.svg?height=200&width=400&text=Exchange+Exit",
-    tags: ["Regulation", "Exchange", "Compliance", "Market Exit"],
-    sentiment: "negative" as const,
-    impactScore: 7,
-    source: "CryptoRegulatory",
-    category: "Regulation",
-  },
-  {
-    id: "7",
-    title: "Layer 2 Scaling Solution Processes 1 Million Transactions in Single Day",
-    summary: "Ethereum Layer 2 network achieves new throughput milestone with minimal fees.",
-    content:
-      "An Ethereum Layer 2 scaling solution has achieved a significant milestone by processing over 1 million transactions in a single day while maintaining average fees below $0.01. This achievement demonstrates the potential of Layer 2 technologies to address Ethereum's scalability challenges. The network has seen increased adoption from DeFi protocols and NFT platforms seeking lower transaction costs. Developer activity on the platform has increased by 300% over the past quarter.",
-    author: "Ryan Kumar",
-    publishedAt: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString(), // 20 hours ago
-    imageUrl: "/placeholder.svg?height=200&width=400&text=Layer+2+Scaling",
-    tags: ["Layer 2", "Scaling", "Ethereum", "Transactions"],
+    imageUrl: "/placeholder.svg?height=200&width=400&text=Layer+2+Growth",
+    tags: ["Layer 2", "Ethereum", "Scaling", "Gas Fees"],
     sentiment: "positive" as const,
     impactScore: 6,
-    source: "TechCrypto",
+    source: "L2Beat",
     category: "Technology",
   },
   {
-    id: "8",
-    title: "Institutional Crypto Custody Platform Secures $100M Series B Funding",
-    summary: "Growing institutional demand drives major investment in crypto infrastructure.",
+    id: "7",
+    title: "Regulatory Clarity Emerges as SEC Provides New Guidance on Crypto Assets",
+    summary:
+      "The SEC has released comprehensive guidance on cryptocurrency classification, providing much-needed clarity for the industry.",
     content:
-      "A leading institutional cryptocurrency custody platform has secured $100 million in Series B funding, reflecting growing institutional interest in digital assets. The funding round was led by prominent venture capital firms and will be used to expand global operations and enhance security infrastructure. The platform currently holds over $10 billion in digital assets for institutional clients including pension funds, hedge funds, and family offices. This investment signals continued institutional adoption despite market volatility.",
-    author: "Jennifer Martinez",
-    publishedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 24 hours ago
-    imageUrl: "/placeholder.svg?height=200&width=400&text=Custody+Funding",
-    tags: ["Institutional", "Custody", "Funding", "Infrastructure"],
+      "The Securities and Exchange Commission has published new guidance clarifying how it will classify various cryptocurrency assets, marking a significant step toward regulatory clarity in the United States. The guidance establishes clear criteria for determining whether a digital asset constitutes a security, focusing on factors such as decentralization, utility, and investor expectations. This development has been welcomed by industry participants who have long sought clearer regulatory frameworks. The guidance is expected to facilitate institutional adoption and encourage innovation while maintaining investor protection. Legal experts suggest this could pave the way for more crypto ETF approvals.",
+    author: "Robert Johnson",
+    publishedAt: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString(), // 20 hours ago
+    imageUrl: "/placeholder.svg?height=200&width=400&text=SEC+Guidance",
+    tags: ["Regulation", "SEC", "Compliance", "Legal"],
     sentiment: "positive" as const,
-    impactScore: 5,
-    source: "InvestmentNews",
-    category: "Business",
+    impactScore: 8,
+    source: "RegulatoryNews",
+    category: "Regulation",
+  },
+  {
+    id: "8",
+    title: "Web3 Gaming Sector Attracts $2B in Venture Capital Funding This Quarter",
+    summary:
+      "The Web3 gaming sector has secured record venture capital funding, with investors betting on the future of blockchain-based gaming experiences.",
+    content:
+      "The Web3 gaming sector has reached a new milestone with $2 billion in venture capital funding secured in the current quarter, representing a 150% increase from the previous quarter. Major gaming studios and blockchain startups are attracting significant investment as they develop play-to-earn games, NFT-based gaming assets, and decentralized gaming platforms. Notable funding rounds include a $200 million Series B for a metaverse gaming platform and a $150 million investment in a blockchain gaming infrastructure company. Investors are particularly interested in games that combine traditional gaming mechanics with blockchain technology to create sustainable economic models.",
+    author: "Jennifer Lee",
+    publishedAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+    imageUrl: "/placeholder.svg?height=200&width=400&text=Web3+Gaming",
+    tags: ["Web3", "Gaming", "Venture Capital", "Investment"],
+    sentiment: "positive" as const,
+    impactScore: 7,
+    source: "GameFi Daily",
+    category: "Gaming",
   },
 ]
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const search = searchParams.get("search")?.toLowerCase()
-    const sentiment = searchParams.get("sentiment")
+    const search = searchParams.get("search")?.toLowerCase() || ""
+    const sentiment = searchParams.get("sentiment") || ""
     const sortBy = searchParams.get("sortBy") || "date"
-    const category = searchParams.get("category")
+    const limit = Number.parseInt(searchParams.get("limit") || "10")
+    const offset = Number.parseInt(searchParams.get("offset") || "0")
 
     let filteredNews = [...mockNews]
 
@@ -150,40 +159,32 @@ export async function GET(request: NextRequest) {
       filteredNews = filteredNews.filter((article) => article.sentiment === sentiment)
     }
 
-    // Apply category filter
-    if (category && category !== "all") {
-      filteredNews = filteredNews.filter((article) => article.category === category)
-    }
-
     // Apply sorting
-    switch (sortBy) {
-      case "date":
-        filteredNews.sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime())
-        break
-      case "sentiment":
-        filteredNews.sort((a, b) => {
+    filteredNews.sort((a, b) => {
+      switch (sortBy) {
+        case "date":
+          return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+        case "impact":
+          return b.impactScore - a.impactScore
+        case "sentiment":
           const sentimentOrder = { positive: 3, neutral: 2, negative: 1 }
           return sentimentOrder[b.sentiment] - sentimentOrder[a.sentiment]
-        })
-        break
-      case "impact":
-        filteredNews.sort((a, b) => b.impactScore - a.impactScore)
-        break
-    }
+        default:
+          return 0
+      }
+    })
+
+    // Apply pagination
+    const paginatedNews = filteredNews.slice(offset, offset + limit)
 
     return NextResponse.json({
       success: true,
-      data: filteredNews,
+      data: paginatedNews,
       total: filteredNews.length,
+      hasMore: offset + limit < filteredNews.length,
     })
   } catch (error) {
     console.error("News API error:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch news",
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ success: false, error: "Failed to fetch news" }, { status: 500 })
   }
 }

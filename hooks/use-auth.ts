@@ -128,19 +128,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/")
   }
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user: user,
-        loading: loading,
-        login: login,
-        signup: signup,
-        logout: logout,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  )
+  const authContextValue: AuthContextType = {
+    user,
+    loading,
+    login,
+    signup,
+    logout,
+  }
+
+  return <AuthContext.Provider value={authContextValue}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
