@@ -1,17 +1,15 @@
-"use client"
-
-import HeroSection from "@/components/hero-section"
-import FeaturesSection from "@/components/features-section"
-import PricingSection from "@/components/pricing-section"
-import CTASection from "@/components/cta-section"
-import Footer from "@/components/footer"
-import Navigation from "@/components/navigation"
+import { Navigation } from "@/components/navigation"
+import { HeroSection } from "@/components/hero-section"
+import { FeaturesSection } from "@/components/features-section"
+import { PricingSection } from "@/components/pricing-section"
+import { CTASection } from "@/components/cta-section"
+import { Footer } from "@/components/footer"
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-background transition-colors duration-300">
+    <div className="min-h-screen bg-background">
       <Navigation />
-      <main className="transition-all duration-300">
+      <main>
         <HeroSection />
         <FeaturesSection />
         <PricingSection />

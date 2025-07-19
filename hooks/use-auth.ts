@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, useEffect, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import {
   AuthProvider,
@@ -8,9 +8,8 @@ import {
   type AuthContextType as MainAuthContextType,
 } from "@/components/auth/auth-provider"
 
-export interface User extends MainUser {
-  // Additional user fields can be added here if needed
-}
+// Re-export everything from the main auth provider
+export { useAuth, AuthProvider, type User, type AuthContextType } from "@/components/auth/auth-provider"
 
 interface AuthContextType extends MainAuthContextType {
   // Additional auth context fields can be added here if needed
@@ -19,7 +18,7 @@ interface AuthContextType extends MainAuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 // Mock users database
-const MOCK_USERS: User[] = [
+const MOCK_USERS: MainUser[] = [
   {
     id: "1",
     email: "demo@coinwayfinder.com",
@@ -44,7 +43,7 @@ const MOCK_PASSWORDS: Record<string, string> = {
 }
 
 export function AuthProviderWrapper({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<MainUser | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
@@ -102,7 +101,7 @@ export function AuthProviderWrapper({ children }: { children: ReactNode }) {
     }
 
     // Create new user
-    const newUser: User = {
+    const newUser: MainUser = {
       id: Date.now().toString(),
       email: userData.email,
       firstName: userData.firstName,
@@ -127,12 +126,4 @@ export function AuthProviderWrapper({ children }: { children: ReactNode }) {
   }
 
   return <AuthProvider value={{ user, loading, login, signup, logout }}>{children}</AuthProvider>
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
-  }
-  return context
 }

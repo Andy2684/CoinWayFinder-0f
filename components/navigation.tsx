@@ -2,9 +2,10 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useAuth } from "@/components/auth/auth-provider"
+import { usePathname } from "next/navigation"
+import { Menu, X, LogOut, Settings, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,69 +14,60 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, Settings, LogOut, BarChart3, Bot, Zap } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useAuth } from "@/components/auth/auth-provider"
 
-export default function Navigation() {
-  const { user, logout } = useAuth()
-  const router = useRouter()
-  const [isOpen, setIsOpen] = useState(false)
+const navigation = [
+  { name: "Home", href: "/" },
+  { name: "Signals", href: "/signals" },
+  { name: "Bots", href: "/bots" },
+  { name: "Portfolio", href: "/portfolio" },
+  { name: "News", href: "/news" },
+  { name: "Integrations", href: "/integrations" },
+]
 
-  const handleLogout = () => {
-    logout()
-    router.push("/")
+export function Navigation() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const pathname = usePathname()
+  const { user, logout, isAuthenticated } = useAuth()
+
+  const handleLogout = async () => {
+    await logout()
   }
 
-  const navItems = [
-    { href: "/", label: "Home" },
-    { href: "/signals", label: "Signals" },
-    { href: "/bots", label: "Bots" },
-    { href: "/news", label: "News" },
-    { href: "/portfolio", label: "Portfolio" },
-  ]
-
-  const userNavItems = [
-    { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
-    { href: "/signals", label: "Signals", icon: Zap },
-    { href: "/bots", label: "Bots", icon: Bot },
-  ]
-
   return (
-    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
-            <div className="w-8 h-8 bg-[#30D5C8] rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">C</span>
-            </div>
-            <span className="font-bold text-xl">Coinwayfinder</span>
-          </Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-6">
-            {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="text-sm font-medium transition-colors hover:text-[#30D5C8]"
-              >
-                {item.label}
+    <nav className="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50 w-full border-b border-border/40">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 justify-between">
+          <div className="flex">
+            <div className="flex flex-shrink-0 items-center">
+              <Link href="/" className="text-xl font-bold text-primary">
+                CoinWayFinder
               </Link>
-            ))}
+            </div>
+            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+              {navigation.map((item) => (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  className={`inline-flex items-center px-1 pt-1 text-sm font-medium transition-colors hover:text-foreground/80 ${
+                    pathname === item.href ? "text-foreground border-b-2 border-primary" : "text-foreground/60"
+                  }`}
+                >
+                  {item.name}
+                </Link>
+              ))}
+            </div>
           </div>
-
-          {/* User Menu / Auth Buttons */}
-          <div className="flex items-center space-x-4">
-            {user ? (
+          <div className="hidden sm:ml-6 sm:flex sm:items-center space-x-4">
+            {isAuthenticated ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
+                      <AvatarImage src="/placeholder-user.jpg" alt={user?.firstName} />
                       <AvatarFallback>
-                        {user.firstName?.[0]}
-                        {user.lastName?.[0]}
+                        {user?.firstName?.[0]}
+                        {user?.lastName?.[0]}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -84,27 +76,25 @@ export default function Navigation() {
                   <DropdownMenuLabel className="font-normal">
                     <div className="flex flex-col space-y-1">
                       <p className="text-sm font-medium leading-none">
-                        {user.firstName} {user.lastName}
+                        {user?.firstName} {user?.lastName}
                       </p>
-                      <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
+                      <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
                     </div>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {userNavItems.map((item) => (
-                    <DropdownMenuItem key={item.href} asChild>
-                      <Link href={item.href} className="flex items-center">
-                        <item.icon className="mr-2 h-4 w-4" />
-                        <span>{item.label}</span>
-                      </Link>
-                    </DropdownMenuItem>
-                  ))}
-                  <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard/settings" className="flex items-center">
+                    <Link href="/dashboard">
+                      <BarChart3 className="mr-2 h-4 w-4" />
+                      <span>Dashboard</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/settings">
                       <Settings className="mr-2 h-4 w-4" />
                       <span>Settings</span>
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
                     <span>Log out</span>
@@ -112,106 +102,116 @@ export default function Navigation() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="hidden md:flex items-center space-x-2">
+              <>
                 <Button variant="ghost" asChild>
                   <Link href="/auth/login">Sign In</Link>
                 </Button>
                 <Button asChild>
-                  <Link href="/auth/signup">Get Started</Link>
+                  <Link href="/auth/signup">Sign Up</Link>
                 </Button>
-              </div>
+              </>
             )}
-
-            {/* Mobile Menu */}
-            <Sheet open={isOpen} onOpenChange={setIsOpen}>
-              <SheetTrigger asChild>
-                <Button variant="ghost" className="md:hidden" size="icon">
-                  <Menu className="h-5 w-5" />
-                  <span className="sr-only">Toggle menu</span>
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-[300px] sm:w-[400px]">
-                <div className="flex flex-col space-y-4 mt-4">
-                  {navItems.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className="text-sm font-medium transition-colors hover:text-[#30D5C8]"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
-
-                  {!user && (
-                    <>
-                      <div className="border-t pt-4 space-y-2">
-                        <Button variant="ghost" asChild className="w-full justify-start">
-                          <Link href="/auth/login" onClick={() => setIsOpen(false)}>
-                            Sign In
-                          </Link>
-                        </Button>
-                        <Button asChild className="w-full">
-                          <Link href="/auth/signup" onClick={() => setIsOpen(false)}>
-                            Get Started
-                          </Link>
-                        </Button>
-                      </div>
-                    </>
-                  )}
-
-                  {user && (
-                    <div className="border-t pt-4 space-y-2">
-                      <div className="flex items-center space-x-2 px-2 py-2">
-                        <Avatar className="h-8 w-8">
-                          <AvatarFallback>
-                            {user.firstName?.[0]}
-                            {user.lastName?.[0]}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="text-sm font-medium">
-                            {user.firstName} {user.lastName}
-                          </p>
-                          <p className="text-xs text-muted-foreground">{user.email}</p>
-                        </div>
-                      </div>
-
-                      {userNavItems.map((item) => (
-                        <Button key={item.href} variant="ghost" asChild className="w-full justify-start">
-                          <Link href={item.href} onClick={() => setIsOpen(false)}>
-                            <item.icon className="mr-2 h-4 w-4" />
-                            {item.label}
-                          </Link>
-                        </Button>
-                      ))}
-
-                      <Button variant="ghost" asChild className="w-full justify-start">
-                        <Link href="/dashboard/settings" onClick={() => setIsOpen(false)}>
-                          <Settings className="mr-2 h-4 w-4" />
-                          Settings
-                        </Link>
-                      </Button>
-
-                      <Button
-                        variant="ghost"
-                        onClick={() => {
-                          handleLogout()
-                          setIsOpen(false)
-                        }}
-                        className="w-full justify-start"
-                      >
-                        <LogOut className="mr-2 h-4 w-4" />
-                        Log out
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
+          </div>
+          <div className="-mr-2 flex items-center sm:hidden">
+            <Button
+              variant="ghost"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="inline-flex items-center justify-center rounded-md p-2"
+            >
+              <span className="sr-only">Open main menu</span>
+              {mobileMenuOpen ? (
+                <X className="block h-6 w-6" aria-hidden="true" />
+              ) : (
+                <Menu className="block h-6 w-6" aria-hidden="true" />
+              )}
+            </Button>
           </div>
         </div>
       </div>
+
+      {mobileMenuOpen && (
+        <div className="sm:hidden">
+          <div className="space-y-1 pb-3 pt-2">
+            {navigation.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className={`block py-2 pl-3 pr-4 text-base font-medium transition-colors ${
+                  pathname === item.href ? "text-primary bg-primary/10" : "text-foreground/60 hover:text-foreground/80"
+                }`}
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                {item.name}
+              </Link>
+            ))}
+            <div className="border-t border-border/40 pt-4 pb-3">
+              {isAuthenticated ? (
+                <div className="space-y-1">
+                  <div className="flex items-center px-4">
+                    <div className="flex-shrink-0">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src="/placeholder-user.jpg" alt={user?.firstName} />
+                        <AvatarFallback>
+                          {user?.firstName?.[0]}
+                          {user?.lastName?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                    </div>
+                    <div className="ml-3">
+                      <div className="text-base font-medium text-foreground">
+                        {user?.firstName} {user?.lastName}
+                      </div>
+                      <div className="text-sm font-medium text-muted-foreground">{user?.email}</div>
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-1">
+                    <Link
+                      href="/dashboard"
+                      className="block px-4 py-2 text-base font-medium text-foreground/60 hover:text-foreground/80"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Dashboard
+                    </Link>
+                    <Link
+                      href="/dashboard/settings"
+                      className="block px-4 py-2 text-base font-medium text-foreground/60 hover:text-foreground/80"
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      Settings
+                    </Link>
+                    <button
+                      onClick={() => {
+                        handleLogout()
+                        setMobileMenuOpen(false)
+                      }}
+                      className="block w-full text-left px-4 py-2 text-base font-medium text-foreground/60 hover:text-foreground/80"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <Link
+                    href="/auth/login"
+                    className="block px-4 py-2 text-base font-medium text-foreground/60 hover:text-foreground/80"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/auth/signup"
+                    className="block px-4 py-2 text-base font-medium text-foreground/60 hover:text-foreground/80"
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    Sign Up
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   )
 }
