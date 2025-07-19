@@ -6,31 +6,31 @@ import Link from "next/link"
 
 export default function CTASection() {
   return (
-    <section className="bg-green-600 py-20 sm:py-32">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">Ready to start trading smarter?</h2>
-          <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-green-100">
-            Join thousands of traders who are already using our AI-powered platform to maximize their profits. Start
-            your free trial today.
-          </p>
-          <div className="mt-10 flex items-center justify-center gap-x-6">
-            <Link href="/auth/signup">
-              <Button size="lg" variant="secondary" className="bg-white text-green-600 hover:bg-gray-100">
-                Start Free Trial
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/auth/login">
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-white text-white hover:bg-white hover:text-green-600 bg-transparent"
-              >
-                Sign In
-              </Button>
-            </Link>
-          </div>
+    <section className="py-20 bg-gradient-to-r from-green-600 to-emerald-600">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Ready to Start Trading Smarter?</h2>
+        <p className="text-xl text-green-100 mb-8 max-w-2xl mx-auto">
+          Join thousands of successful traders who are already using our AI-powered platform to maximize their profits.
+        </p>
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <Link href="/auth/signup">
+            <Button
+              size="lg"
+              className="bg-white text-green-600 hover:bg-gray-50 px-8 py-4 text-lg font-semibold group"
+            >
+              Get Started Free
+              <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </Link>
+          <Link href="/dashboard">
+            <Button
+              variant="outline"
+              size="lg"
+              className="border-white text-white hover:bg-white/10 px-8 py-4 text-lg bg-transparent"
+            >
+              View Live Demo
+            </Button>
+          </Link>
         </div>
       </div>
     </section>

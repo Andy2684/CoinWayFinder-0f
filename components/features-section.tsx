@@ -1,82 +1,65 @@
 "use client"
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Bot, TrendingUp, BarChart3, Shield, Zap, Globe } from "lucide-react"
-
-const features = [
-  {
-    icon: Bot,
-    title: "AI Trading Bots",
-    description: "Deploy intelligent bots that trade 24/7 using advanced machine learning algorithms.",
-    badge: "Popular",
-  },
-  {
-    icon: TrendingUp,
-    title: "Real-time Signals",
-    description: "Get instant notifications for profitable trading opportunities across all major exchanges.",
-    badge: "New",
-  },
-  {
-    icon: BarChart3,
-    title: "Portfolio Analytics",
-    description: "Track your performance with detailed analytics and comprehensive reporting tools.",
-    badge: null,
-  },
-  {
-    icon: Shield,
-    title: "Secure Trading",
-    description: "Bank-grade security with encrypted connections and secure API key management.",
-    badge: null,
-  },
-  {
-    icon: Zap,
-    title: "Lightning Fast",
-    description: "Execute trades in milliseconds with our optimized infrastructure and direct exchange connections.",
-    badge: null,
-  },
-  {
-    icon: Globe,
-    title: "Multi-Exchange",
-    description: "Connect to 20+ major cryptocurrency exchanges from a single unified platform.",
-    badge: null,
-  },
-]
+import { Bot, TrendingUp, Shield, Zap, BarChart3, Bell } from "lucide-react"
 
 export default function FeaturesSection() {
+  const features = [
+    {
+      icon: <TrendingUp className="h-8 w-8 text-green-600" />,
+      title: "AI Trading Signals",
+      description:
+        "Get real-time trading signals powered by advanced machine learning algorithms with 94% accuracy rate.",
+    },
+    {
+      icon: <Bot className="h-8 w-8 text-blue-600" />,
+      title: "Automated Bots",
+      description:
+        "Deploy intelligent trading bots that execute trades 24/7 based on your strategy and risk tolerance.",
+    },
+    {
+      icon: <Shield className="h-8 w-8 text-purple-600" />,
+      title: "Risk Management",
+      description:
+        "Advanced risk controls and stop-loss mechanisms to protect your investments from market volatility.",
+    },
+    {
+      icon: <BarChart3 className="h-8 w-8 text-orange-600" />,
+      title: "Portfolio Analytics",
+      description: "Comprehensive portfolio tracking with detailed analytics and performance metrics.",
+    },
+    {
+      icon: <Zap className="h-8 w-8 text-yellow-600" />,
+      title: "Lightning Fast",
+      description: "Execute trades in milliseconds with our high-performance trading infrastructure.",
+    },
+    {
+      icon: <Bell className="h-8 w-8 text-red-600" />,
+      title: "Smart Alerts",
+      description: "Get instant notifications for market opportunities and important portfolio changes.",
+    },
+  ]
+
   return (
-    <section id="features" className="py-20 sm:py-32 bg-white">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl text-center">
-          <h2 className="text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl">
-            Everything you need to trade smarter
-          </h2>
-          <p className="mt-4 text-lg leading-8 text-gray-600">
-            Our comprehensive platform provides all the tools and features you need to succeed in cryptocurrency
-            trading.
+    <section id="features" className="py-20 bg-gray-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Powerful Features for Smart Trading</h2>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Everything you need to succeed in cryptocurrency trading, powered by cutting-edge AI technology.
           </p>
         </div>
-        <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
-          <div className="grid max-w-xl grid-cols-1 gap-8 lg:max-w-none lg:grid-cols-3">
-            {features.map((feature) => (
-              <Card key={feature.title} className="relative overflow-hidden">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-600">
-                      <feature.icon className="h-6 w-6 text-white" />
-                    </div>
-                    {feature.badge && (
-                      <Badge variant={feature.badge === "New" ? "default" : "secondary"}>{feature.badge}</Badge>
-                    )}
-                  </div>
-                  <CardTitle className="text-xl">{feature.title}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-base">{feature.description}</CardDescription>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {features.map((feature, index) => (
+            <div
+              key={index}
+              className="bg-white rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-300"
+            >
+              <div className="mb-4">{feature.icon}</div>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
+              <p className="text-gray-600">{feature.description}</p>
+            </div>
+          ))}
         </div>
       </div>
     </section>

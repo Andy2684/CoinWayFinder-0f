@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
+import { toast } from "sonner"
 
 interface User {
   id: string
@@ -37,7 +38,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         setUser(JSON.parse(storedUser))
       } catch (error) {
-        console.error("Error parsing stored user:", error)
         localStorage.removeItem("user")
       }
     }
@@ -53,15 +53,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const demoUser = DEMO_USERS.find((u) => u.email === email && u.password === password)
 
     if (demoUser) {
-      const userData = { id: demoUser.id, email: demoUser.email, name: demoUser.name }
-      setUser(userData)
-      localStorage.setItem("user", JSON.stringify(userData))
+      const user = { id: demoUser.id, email: demoUser.email, name: demoUser.name }
+      setUser(user)
+      localStorage.setItem("user", JSON.stringify(user))
+      toast.success("Successfully logged in!")
       setLoading(false)
       return true
+    } else {
+      toast.error("Invalid email or password")
+      setLoading(false)
+      return false
     }
-
-    setLoading(false)
-    return false
   }
 
   const signup = async (email: string, password: string, name: string): Promise<boolean> => {
@@ -73,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check if user already exists
     const existingUser = DEMO_USERS.find((u) => u.email === email)
     if (existingUser) {
+      toast.error("User already exists")
       setLoading(false)
       return false
     }
@@ -81,6 +84,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const newUser = { id: Date.now().toString(), email, name }
     setUser(newUser)
     localStorage.setItem("user", JSON.stringify(newUser))
+    toast.success("Account created successfully!")
     setLoading(false)
     return true
   }
@@ -88,16 +92,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null)
     localStorage.removeItem("user")
+    toast.success("Logged out successfully")
     router.push("/")
   }
 
-  const contextValue: AuthContextType = {
-    user,
-    loading,
-    login,
-    signup,
-    logout,
-  }
+  const contextValue = { user, loading, login, signup, logout }
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
 }
