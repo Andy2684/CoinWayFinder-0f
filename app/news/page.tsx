@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Search, TrendingUp, TrendingDown, Clock, ExternalLink } from "lucide-react"
+import { Search, TrendingUp, TrendingDown, Clock, ExternalLink, Newspaper } from "lucide-react"
 
 interface NewsItem {
   id: string
@@ -36,11 +36,13 @@ export default function NewsPage() {
     try {
       const response = await fetch("/api/news")
       const result = await response.json()
-      if (result.success) {
+      if (result.success && result.data) {
         setNews(result.data)
       }
     } catch (error) {
       console.error("Failed to fetch news:", error)
+      // Set empty array on error
+      setNews([])
     } finally {
       setLoading(false)
     }
@@ -96,7 +98,10 @@ export default function NewsPage() {
     return (
       <div className="container mx-auto p-6">
         <div className="space-y-6">
-          <div className="h-8 bg-muted animate-pulse rounded" />
+          <div className="flex items-center gap-3">
+            <Newspaper className="h-8 w-8 text-primary" />
+            <div className="h-8 bg-muted animate-pulse rounded w-48" />
+          </div>
           {[...Array(5)].map((_, i) => (
             <Card key={i}>
               <CardHeader>
@@ -119,9 +124,14 @@ export default function NewsPage() {
   return (
     <div className="container mx-auto p-6">
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Crypto News</h1>
-          <p className="text-muted-foreground">Stay updated with the latest cryptocurrency news and market insights</p>
+        <div className="flex items-center gap-3">
+          <Newspaper className="h-8 w-8 text-primary" />
+          <div>
+            <h1 className="text-3xl font-bold">Crypto News</h1>
+            <p className="text-muted-foreground">
+              Stay updated with the latest cryptocurrency news and market insights
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-4">
@@ -206,10 +216,21 @@ export default function NewsPage() {
           ))}
         </div>
 
-        {filteredNews.length === 0 && (
+        {filteredNews.length === 0 && !loading && (
           <Card>
             <CardContent className="text-center py-8">
+              <Newspaper className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <p className="text-muted-foreground">No news found matching your criteria.</p>
+              <Button
+                variant="outline"
+                className="mt-4 bg-transparent"
+                onClick={() => {
+                  setSearchTerm("")
+                  setFilterTag("all")
+                }}
+              >
+                Clear Filters
+              </Button>
             </CardContent>
           </Card>
         )}
