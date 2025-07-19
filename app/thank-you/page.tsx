@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { CheckCircle } from "lucide-react"
 
 export default function ThankYouPage() {
@@ -12,22 +12,22 @@ export default function ThankYouPage() {
             <CheckCircle className="h-6 w-6 text-green-600" />
           </div>
           <CardTitle className="text-2xl">Welcome to Coinwayfinder!</CardTitle>
-          <CardDescription>Your account has been successfully created</CardDescription>
+          <CardDescription>Your account has been successfully created.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4 text-center">
+        <CardContent className="text-center space-y-4">
           <p className="text-sm text-muted-foreground">
             Thank you for joining our platform. You can now sign in to access your dashboard and start exploring our
             crypto trading tools.
           </p>
-          <div className="space-y-2">
-            <Button asChild className="w-full">
-              <Link href="/auth/login">Sign In to Dashboard</Link>
-            </Button>
-            <Button variant="outline" asChild className="w-full bg-transparent">
-              <Link href="/">Back to Home</Link>
-            </Button>
-          </div>
         </CardContent>
+        <CardFooter className="flex flex-col space-y-3">
+          <Button asChild className="w-full">
+            <Link href="/auth/login">Sign In to Your Account</Link>
+          </Button>
+          <Button variant="outline" asChild className="w-full bg-transparent">
+            <Link href="/">Return to Homepage</Link>
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   )

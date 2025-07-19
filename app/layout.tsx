@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Coinwayfinder - Advanced Crypto Trading Platform",
   description:
-    "Professional cryptocurrency trading platform with AI-powered bots, real-time analytics, and comprehensive portfolio management.",
+    "Professional cryptocurrency trading platform with AI-powered bots, real-time analytics, and advanced portfolio management.",
     generator: 'v0.dev'
 }
 

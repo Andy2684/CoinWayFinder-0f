@@ -51,7 +51,7 @@ const mockUsers = [
   },
 ]
 
-export function useAuthProvider() {
+export function useAuthProvider(): AuthContextType {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
