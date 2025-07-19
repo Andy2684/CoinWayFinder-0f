@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
@@ -12,76 +13,90 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Menu, User, Settings, LogOut, TrendingUp } from "lucide-react"
+import { Menu, User, Settings, LogOut, BarChart3, Bot, Zap, TrendingUp } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
-  const { user, logout } = useAuth()
+  const { user, isAuthenticated, logout } = useAuth()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await logout()
+    router.push("/")
+  }
 
   const navItems = [
-    { href: "/signals", label: "Signals" },
-    { href: "/bots", label: "Bots" },
-    { href: "/portfolio", label: "Portfolio" },
-    { href: "/news", label: "News" },
+    { href: "/signals", label: "Signals", icon: Zap },
+    { href: "/bots", label: "Bots", icon: Bot },
+    { href: "/portfolio", label: "Portfolio", icon: BarChart3 },
+    { href: "/news", label: "News", icon: TrendingUp },
   ]
 
   return (
-    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <nav className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
-            <TrendingUp className="h-6 w-6 text-green-600" />
+            <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-green-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">CW</span>
+            </div>
             <span className="font-bold text-xl">CoinWayFinder</span>
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
+          <div className="hidden md:flex items-center space-x-6">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="text-sm font-medium transition-colors hover:text-primary"
+                className="text-muted-foreground hover:text-foreground transition-colors flex items-center space-x-1"
               >
-                {item.label}
+                <item.icon className="w-4 h-4" />
+                <span>{item.label}</span>
               </Link>
             ))}
           </div>
 
-          {/* User Menu / Auth Buttons */}
+          {/* Auth Section */}
           <div className="flex items-center space-x-4">
-            {user ? (
+            {isAuthenticated && user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
-                      <AvatarFallback>{user.name.charAt(0).toUpperCase()}</AvatarFallback>
+                      <AvatarFallback className="bg-emerald-100 text-emerald-600">
+                        {user.firstName?.[0]}
+                        {user.lastName?.[0]}
+                      </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <div className="flex items-center justify-start gap-2 p-2">
                     <div className="flex flex-col space-y-1 leading-none">
-                      <p className="font-medium">{user.name}</p>
+                      <p className="font-medium">
+                        {user.firstName} {user.lastName}
+                      </p>
                       <p className="w-[200px] truncate text-sm text-muted-foreground">{user.email}</p>
                     </div>
                   </div>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard">
+                    <Link href="/dashboard" className="flex items-center">
                       <User className="mr-2 h-4 w-4" />
                       Dashboard
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard/settings">
+                    <Link href="/dashboard/settings" className="flex items-center">
                       <Settings className="mr-2 h-4 w-4" />
                       Settings
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={logout}>
+                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
                     <LogOut className="mr-2 h-4 w-4" />
                     Log out
                   </DropdownMenuItem>
@@ -89,19 +104,19 @@ export default function Navigation() {
               </DropdownMenu>
             ) : (
               <div className="hidden md:flex items-center space-x-2">
-                <Link href="/auth/login">
-                  <Button variant="ghost">Sign In</Button>
-                </Link>
-                <Link href="/auth/signup">
-                  <Button>Get Started</Button>
-                </Link>
+                <Button variant="ghost" asChild>
+                  <Link href="/auth/login">Sign In</Link>
+                </Button>
+                <Button asChild>
+                  <Link href="/auth/signup">Get Started</Link>
+                </Button>
               </div>
             )}
 
             {/* Mobile Menu */}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" className="md:hidden" size="icon">
+                <Button variant="ghost" size="icon" className="md:hidden">
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
@@ -111,23 +126,29 @@ export default function Navigation() {
                     <Link
                       key={item.href}
                       href={item.href}
-                      className="text-sm font-medium transition-colors hover:text-primary"
+                      className="flex items-center space-x-2 text-lg font-medium"
                       onClick={() => setIsOpen(false)}
                     >
-                      {item.label}
+                      <item.icon className="w-5 h-5" />
+                      <span>{item.label}</span>
                     </Link>
                   ))}
-                  {!user && (
+
+                  {!isAuthenticated && (
                     <>
-                      <div className="border-t pt-4">
-                        <Link href="/auth/login" onClick={() => setIsOpen(false)}>
-                          <Button variant="ghost" className="w-full justify-start">
-                            Sign In
+                      <div className="border-t pt-4 mt-4">
+                        <div className="flex flex-col space-y-2">
+                          <Button variant="ghost" asChild className="justify-start">
+                            <Link href="/auth/login" onClick={() => setIsOpen(false)}>
+                              Sign In
+                            </Link>
                           </Button>
-                        </Link>
-                        <Link href="/auth/signup" onClick={() => setIsOpen(false)}>
-                          <Button className="w-full justify-start mt-2">Get Started</Button>
-                        </Link>
+                          <Button asChild className="justify-start">
+                            <Link href="/auth/signup" onClick={() => setIsOpen(false)}>
+                              Get Started
+                            </Link>
+                          </Button>
+                        </div>
                       </div>
                     </>
                   )}
