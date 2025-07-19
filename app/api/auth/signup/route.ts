@@ -30,7 +30,8 @@ export async function POST(request: NextRequest) {
     const newUser = {
       id: Date.now().toString(),
       email,
-      name,
+      firstName: name.split(" ")[0] || name,
+      lastName: name.split(" ").slice(1).join(" ") || "",
       password: hashedPassword,
       plan: "free" as const,
       createdAt: new Date().toISOString(),

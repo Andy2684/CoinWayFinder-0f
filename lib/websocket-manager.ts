@@ -1,101 +1,115 @@
 export class WebSocketManager {
   private connections: Map<string, WebSocket> = new Map()
-  private subscribers: Map<string, Set<(data: any) => void>> = new Map()
   private reconnectAttempts: Map<string, number> = new Map()
   private maxReconnectAttempts = 5
   private reconnectDelay = 1000
 
-  connect(url: string, channel: string) {
-    if (this.connections.has(channel)) {
-      return
-    }
+  connect(url: string, onMessage: (data: any) => void, onError?: (error: Event) => void): string {
+    const connectionId = `${url}_${Date.now()}`
 
     try {
-      const ws = new WebSocket(url)
+      // For demo purposes, we'll simulate WebSocket connections
+      // In production, you would use: new WebSocket(url)
+      const mockConnection = this.createMockWebSocket(url, onMessage)
+      this.connections.set(connectionId, mockConnection as any)
 
-      ws.onopen = () => {
-        console.log(`WebSocket connected: ${channel}`)
-        this.reconnectAttempts.set(channel, 0)
-      }
-
-      ws.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data)
-          this.notifySubscribers(channel, data)
-        } catch (error) {
-          console.error("Failed to parse WebSocket message:", error)
-        }
-      }
-
-      ws.onclose = () => {
-        console.log(`WebSocket disconnected: ${channel}`)
-        this.connections.delete(channel)
-        this.attemptReconnect(url, channel)
-      }
-
-      ws.onerror = (error) => {
-        console.error(`WebSocket error on ${channel}:`, error)
-      }
-
-      this.connections.set(channel, ws)
+      return connectionId
     } catch (error) {
-      console.error(`Failed to connect WebSocket for ${channel}:`, error)
+      console.error("WebSocket connection failed:", error)
+      if (onError) onError(error as Event)
+      return ""
     }
   }
 
-  private attemptReconnect(url: string, channel: string) {
-    const attempts = this.reconnectAttempts.get(channel) || 0
-
-    if (attempts < this.maxReconnectAttempts) {
-      setTimeout(() => {
-        console.log(`Attempting to reconnect ${channel} (${attempts + 1}/${this.maxReconnectAttempts})`)
-        this.reconnectAttempts.set(channel, attempts + 1)
-        this.connect(url, channel)
-      }, this.reconnectDelay * Math.pow(2, attempts))
+  private createMockWebSocket(url: string, onMessage: (data: any) => void) {
+    const mockWs = {
+      readyState: 1, // OPEN
+      close: () => {},
+      send: () => {},
     }
+
+    // Simulate real-time data based on URL
+    if (url.includes("ticker")) {
+      this.simulateTickerData(onMessage)
+    } else if (url.includes("orderbook")) {
+      this.simulateOrderBookData(onMessage)
+    } else if (url.includes("trades")) {
+      this.simulateTradeData(onMessage)
+    }
+
+    return mockWs
   }
 
-  subscribe(channel: string, callback: (data: any) => void) {
-    if (!this.subscribers.has(channel)) {
-      this.subscribers.set(channel, new Set())
-    }
-    this.subscribers.get(channel)!.add(callback)
+  private simulateTickerData(onMessage: (data: any) => void) {
+    const symbols = ["BTCUSDT", "ETHUSDT", "ADAUSDT", "DOTUSDT", "LINKUSDT"]
+    const basePrice = { BTCUSDT: 43000, ETHUSDT: 2600, ADAUSDT: 0.45, DOTUSDT: 7.2, LINKUSDT: 15.8 }
+
+    setInterval(() => {
+      const symbol = symbols[Math.floor(Math.random() * symbols.length)]
+      const price = basePrice[symbol as keyof typeof basePrice] * (1 + (Math.random() - 0.5) * 0.02)
+      const change24h = (Math.random() - 0.5) * 10
+
+      onMessage({
+        symbol,
+        price: price.toFixed(symbol === "BTCUSDT" || symbol === "ETHUSDT" ? 2 : 4),
+        change24h: change24h.toFixed(2),
+        volume: (Math.random() * 1000000).toFixed(0),
+      })
+    }, 2000)
   }
 
-  unsubscribe(channel: string, callback: (data: any) => void) {
-    const channelSubscribers = this.subscribers.get(channel)
-    if (channelSubscribers) {
-      channelSubscribers.delete(callback)
-    }
+  private simulateOrderBookData(onMessage: (data: any) => void) {
+    setInterval(() => {
+      const bids = Array.from({ length: 10 }, (_, i) => ({
+        price: (43000 - i * 10).toFixed(2),
+        quantity: (Math.random() * 5).toFixed(4),
+      }))
+
+      const asks = Array.from({ length: 10 }, (_, i) => ({
+        price: (43010 + i * 10).toFixed(2),
+        quantity: (Math.random() * 5).toFixed(4),
+      }))
+
+      onMessage({
+        symbol: "BTCUSDT",
+        bids,
+        asks,
+        timestamp: Date.now(),
+      })
+    }, 1000)
   }
 
-  private notifySubscribers(channel: string, data: any) {
-    const channelSubscribers = this.subscribers.get(channel)
-    if (channelSubscribers) {
-      channelSubscribers.forEach((callback) => callback(data))
-    }
+  private simulateTradeData(onMessage: (data: any) => void) {
+    setInterval(() => {
+      const symbols = ["BTCUSDT", "ETHUSDT", "ADAUSDT"]
+      const symbol = symbols[Math.floor(Math.random() * symbols.length)]
+      const isBuy = Math.random() > 0.5
+
+      onMessage({
+        symbol,
+        price: (43000 + (Math.random() - 0.5) * 1000).toFixed(2),
+        quantity: (Math.random() * 2).toFixed(4),
+        side: isBuy ? "BUY" : "SELL",
+        timestamp: Date.now(),
+      })
+    }, 3000)
   }
 
-  disconnect(channel: string) {
-    const ws = this.connections.get(channel)
-    if (ws) {
-      ws.close()
-      this.connections.delete(channel)
+  disconnect(connectionId: string) {
+    const connection = this.connections.get(connectionId)
+    if (connection) {
+      connection.close()
+      this.connections.delete(connectionId)
+      this.reconnectAttempts.delete(connectionId)
     }
-    this.subscribers.delete(channel)
   }
 
   disconnectAll() {
-    this.connections.forEach((ws, channel) => {
-      ws.close()
+    this.connections.forEach((connection, id) => {
+      connection.close()
     })
     this.connections.clear()
-    this.subscribers.clear()
-  }
-
-  isConnected(channel: string): boolean {
-    const ws = this.connections.get(channel)
-    return ws ? ws.readyState === WebSocket.OPEN : false
+    this.reconnectAttempts.clear()
   }
 }
 
