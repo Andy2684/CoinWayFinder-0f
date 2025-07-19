@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
+import { AuthProvider } from "@/components/auth/auth-provider"
 
 export interface User {
   id: string
@@ -53,7 +54,7 @@ const MOCK_PASSWORDS: Record<string, string> = {
   "admin@coinwayfinder.com": "AdminPass123!",
 }
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProviderWrapper({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -136,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/")
   }
 
-  return <AuthContext.Provider value={{ user, loading, login, signup, logout }}>{children}</AuthContext.Provider>
+  return <AuthProvider value={{ user, loading, login, signup, logout }}>{children}</AuthProvider>
 }
 
 export function useAuth() {
