@@ -128,6 +128,15 @@ export default function LoginForm() {
               Sign up
             </Link>
           </div>
+
+          <div className="text-center">
+            <Link
+              href="/"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"
+            >
+              ← Back to Home
+            </Link>
+          </div>
         </CardFooter>
       </form>
     </Card>
