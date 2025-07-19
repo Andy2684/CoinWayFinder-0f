@@ -1,62 +1,41 @@
 "use client"
 
-import { createContext, useEffect, useState, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
-import {
-  AuthProvider,
-  type User as MainUser,
-  type AuthContextType as MainAuthContextType,
-} from "@/components/auth/auth-provider"
+import { toast } from "sonner"
 
-// Re-export everything from the main auth provider
-export { useAuth, AuthProvider, type User, type AuthContextType } from "@/components/auth/auth-provider"
+interface User {
+  id: string
+  email: string
+  name: string
+}
 
-interface AuthContextType extends MainAuthContextType {
-  // Additional auth context fields can be added here if needed
+interface AuthContextType {
+  user: User | null
+  loading: boolean
+  login: (email: string, password: string) => Promise<boolean>
+  signup: (email: string, password: string, name: string) => Promise<boolean>
+  logout: () => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-// Mock users database
-const MOCK_USERS: MainUser[] = [
-  {
-    id: "1",
-    email: "demo@coinwayfinder.com",
-    firstName: "Demo",
-    lastName: "User",
-    role: "user",
-    createdAt: "2024-01-01T00:00:00Z",
-  },
-  {
-    id: "2",
-    email: "admin@coinwayfinder.com",
-    firstName: "Admin",
-    lastName: "User",
-    role: "admin",
-    createdAt: "2024-01-01T00:00:00Z",
-  },
+// Demo users for testing
+const DEMO_USERS = [
+  { id: "1", email: "demo@coinwayfinder.com", password: "password", name: "Demo User" },
+  { id: "2", email: "admin@coinwayfinder.com", password: "AdminPass123!", name: "Admin User" },
 ]
 
-const MOCK_PASSWORDS: Record<string, string> = {
-  "demo@coinwayfinder.com": "password",
-  "admin@coinwayfinder.com": "AdminPass123!",
-}
-
-export function AuthProviderWrapper({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<MainUser | null>(null)
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
-    // Check for stored user session
-    const storedUser = localStorage.getItem("coinwayfinder_user")
+    // Check for stored user on mount
+    const storedUser = localStorage.getItem("user")
     if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser))
-      } catch (error) {
-        console.error("Error parsing stored user:", error)
-        localStorage.removeItem("coinwayfinder_user")
-      }
+      setUser(JSON.parse(storedUser))
     }
     setLoading(false)
   }, [])
@@ -67,14 +46,14 @@ export function AuthProviderWrapper({ children }: { children: ReactNode }) {
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
-    const mockUser = MOCK_USERS.find((u) => u.email === email)
-    const correctPassword = MOCK_PASSWORDS[email]
+    const demoUser = DEMO_USERS.find((u) => u.email === email && u.password === password)
 
-    if (mockUser && correctPassword === password) {
-      setUser(mockUser)
-      localStorage.setItem("coinwayfinder_user", JSON.stringify(mockUser))
+    if (demoUser) {
+      const userData = { id: demoUser.id, email: demoUser.email, name: demoUser.name }
+      setUser(userData)
+      localStorage.setItem("user", JSON.stringify(userData))
+      toast.success("Successfully logged in!")
       setLoading(false)
-      router.push("/dashboard")
       return true
     }
 
@@ -82,48 +61,42 @@ export function AuthProviderWrapper({ children }: { children: ReactNode }) {
     return false
   }
 
-  const signup = async (userData: {
-    email: string
-    password: string
-    firstName: string
-    lastName: string
-  }): Promise<boolean> => {
+  const signup = async (email: string, password: string, name: string): Promise<boolean> => {
     setLoading(true)
 
     // Simulate API delay
     await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // Check if user already exists
-    const existingUser = MOCK_USERS.find((u) => u.email === userData.email)
+    const existingUser = DEMO_USERS.find((u) => u.email === email)
     if (existingUser) {
       setLoading(false)
       return false
     }
 
     // Create new user
-    const newUser: MainUser = {
-      id: Date.now().toString(),
-      email: userData.email,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      role: "user",
-      createdAt: new Date().toISOString(),
-    }
-
-    // Add to mock database
-    MOCK_USERS.push(newUser)
-    MOCK_PASSWORDS[userData.email] = userData.password
-
+    const newUser = { id: Date.now().toString(), email, name }
+    setUser(newUser)
+    localStorage.setItem("user", JSON.stringify(newUser))
+    toast.success("Account created successfully!")
     setLoading(false)
-    router.push("/thank-you")
     return true
   }
 
   const logout = () => {
     setUser(null)
-    localStorage.removeItem("coinwayfinder_user")
+    localStorage.removeItem("user")
+    toast.success("Logged out successfully!")
     router.push("/")
   }
 
-  return <AuthProvider value={{ user, loading, login, signup, logout }}>{children}</AuthProvider>
+  return <AuthContext.Provider value={{ user, loading, login, signup, logout }}>{children}</AuthContext.Provider>
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider")
+  }
+  return context
 }
