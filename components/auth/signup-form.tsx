@@ -15,61 +15,62 @@ import { useAuth } from "@/hooks/use-auth"
 import Link from "next/link"
 
 export function SignupForm() {
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  })
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [acceptTerms, setAcceptTerms] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [acceptTerms, setAcceptTerms] = useState(false)
   const [error, setError] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const { signup } = useAuth()
   const router = useRouter()
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }))
-  }
-
-  const validateForm = () => {
-    if (!formData.firstName.trim()) return "First name is required"
-    if (!formData.lastName.trim()) return "Last name is required"
-    if (!formData.email.trim()) return "Email is required"
-    if (!formData.password) return "Password is required"
-    if (formData.password.length < 6) return "Password must be at least 6 characters"
-    if (formData.password !== formData.confirmPassword) return "Passwords do not match"
-    if (!acceptTerms) return "You must accept the terms and conditions"
-    return null
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
-    const validationError = validateForm()
-    if (validationError) {
-      setError(validationError)
+    // Validation
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("Please enter your first and last name")
+      return
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match")
+      return
+    }
+
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters long")
+      return
+    }
+
+    if (!acceptTerms) {
+      setError("Please accept the terms and conditions")
       return
     }
 
     setIsLoading(true)
 
     try {
-      const success = await signup(formData.email, formData.password, formData.firstName, formData.lastName)
+      const result = await signup({
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        email: email.trim(),
+        password,
+        acceptTerms,
+      })
 
-      if (success) {
-        router.push("/thank-you")
+      if (result.success) {
+        // Signup redirects to thank-you page automatically
       } else {
-        setError("An account with this email already exists")
+        setError(result.error || "Registration failed")
       }
-    } catch (err) {
-      setError("An error occurred. Please try again.")
+    } catch (error) {
+      setError("An unexpected error occurred")
     } finally {
       setIsLoading(false)
     }
@@ -78,32 +79,32 @@ export function SignupForm() {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">Create account</CardTitle>
-        <CardDescription className="text-center">Join Coinwayfinder and start trading smarter</CardDescription>
+        <CardTitle className="text-2xl font-bold text-center">Create Account</CardTitle>
+        <CardDescription className="text-center">Join Coinwayfinder to start trading smarter</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="firstName">First name</Label>
+              <Label htmlFor="firstName">First Name</Label>
               <Input
                 id="firstName"
-                name="firstName"
+                type="text"
                 placeholder="John"
-                value={formData.firstName}
-                onChange={handleInputChange}
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
                 required
                 disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lastName">Last name</Label>
+              <Label htmlFor="lastName">Last Name</Label>
               <Input
                 id="lastName"
-                name="lastName"
+                type="text"
                 placeholder="Doe"
-                value={formData.lastName}
-                onChange={handleInputChange}
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
                 required
                 disabled={isLoading}
               />
@@ -114,11 +115,10 @@ export function SignupForm() {
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
-              name="email"
               type="email"
               placeholder="john@example.com"
-              value={formData.email}
-              onChange={handleInputChange}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               required
               disabled={isLoading}
             />
@@ -129,11 +129,10 @@ export function SignupForm() {
             <div className="relative">
               <Input
                 id="password"
-                name="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="Create a password"
-                value={formData.password}
-                onChange={handleInputChange}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 required
                 disabled={isLoading}
               />
@@ -151,15 +150,14 @@ export function SignupForm() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm password</Label>
+            <Label htmlFor="confirmPassword">Confirm Password</Label>
             <div className="relative">
               <Input
                 id="confirmPassword"
-                name="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
                 placeholder="Confirm your password"
-                value={formData.confirmPassword}
-                onChange={handleInputChange}
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 required
                 disabled={isLoading}
               />
@@ -201,7 +199,7 @@ export function SignupForm() {
             </Alert>
           )}
 
-          <Button type="submit" className="w-full" disabled={isLoading || !acceptTerms}>
+          <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -214,7 +212,7 @@ export function SignupForm() {
         </form>
       </CardContent>
       <CardFooter>
-        <div className="text-sm text-muted-foreground text-center w-full">
+        <div className="text-sm text-center text-muted-foreground w-full">
           Already have an account?{" "}
           <Link href="/auth/login" className="text-primary hover:underline">
             Sign in

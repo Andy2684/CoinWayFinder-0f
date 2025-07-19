@@ -193,5 +193,3 @@ function removeStoredUser() {
     localStorage.removeItem("coinwayfinder-user")
   }
 }
-
-// Re-export from hooks/use-auth for backward compatibility from '@/hooks/use-auth'

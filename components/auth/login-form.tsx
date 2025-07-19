@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Loader2, User } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import Link from "next/link"
 
@@ -28,14 +28,14 @@ export function LoginForm() {
     setIsLoading(true)
 
     try {
-      const success = await login(email, password)
-      if (success) {
+      const result = await login(email, password)
+      if (result.success) {
         router.push("/dashboard")
       } else {
-        setError("Invalid email or password")
+        setError(result.error || "Login failed")
       }
-    } catch (err) {
-      setError("An error occurred. Please try again.")
+    } catch (error) {
+      setError("An unexpected error occurred")
     } finally {
       setIsLoading(false)
     }
@@ -49,8 +49,8 @@ export function LoginForm() {
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">Welcome back</CardTitle>
-        <CardDescription className="text-center">Sign in to your Coinwayfinder account</CardDescription>
+        <CardTitle className="text-2xl font-bold text-center">Sign In</CardTitle>
+        <CardDescription className="text-center">Enter your credentials to access your account</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -115,19 +115,18 @@ export function LoginForm() {
             onClick={fillDemoCredentials}
             disabled={isLoading}
           >
-            <User className="mr-2 h-4 w-4" />
             Use Demo Credentials
           </Button>
         </form>
       </CardContent>
       <CardFooter className="flex flex-col space-y-2">
-        <div className="text-sm text-muted-foreground text-center">
+        <div className="text-sm text-center text-muted-foreground">
           {"Don't have an account? "}
           <Link href="/auth/signup" className="text-primary hover:underline">
             Sign up
           </Link>
         </div>
-        <div className="text-xs text-muted-foreground text-center">Demo: demo@coinwayfinder.com / password</div>
+        <div className="text-xs text-center text-muted-foreground">Demo: demo@coinwayfinder.com / password</div>
       </CardFooter>
     </Card>
   )
