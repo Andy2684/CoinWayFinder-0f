@@ -1,36 +1,25 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Progress } from "@/components/ui/progress"
 import { Eye, EyeOff, CheckCircle, XCircle, Loader2 } from "lucide-react"
 import { useAuth } from "./auth-provider"
 import Link from "next/link"
-
-interface PasswordStrength {
-  score: number
-  feedback: string[]
-  color: string
-}
 
 export default function SignupForm() {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
-    username: "",
     email: "",
+    username: "",
     password: "",
     confirmPassword: "",
-    dateOfBirth: "",
-    acceptTerms: false,
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -41,94 +30,33 @@ export default function SignupForm() {
   const { signup } = useAuth()
   const router = useRouter()
 
-  const calculatePasswordStrength = (password: string): PasswordStrength => {
-    let score = 0
-    const feedback: string[] = []
-
-    if (password.length >= 8) {
-      score += 20
-    } else {
-      feedback.push("At least 8 characters")
-    }
-
-    if (/[a-z]/.test(password)) {
-      score += 20
-    } else {
-      feedback.push("Lowercase letter")
-    }
-
-    if (/[A-Z]/.test(password)) {
-      score += 20
-    } else {
-      feedback.push("Uppercase letter")
-    }
-
-    if (/\d/.test(password)) {
-      score += 20
-    } else {
-      feedback.push("Number")
-    }
-
-    if (/[^a-zA-Z0-9]/.test(password)) {
-      score += 20
-    } else {
-      feedback.push("Special character")
-    }
-
-    let color = "bg-red-500"
-    if (score >= 80) color = "bg-green-500"
-    else if (score >= 60) color = "bg-yellow-500"
-    else if (score >= 40) color = "bg-orange-500"
-
-    return { score, feedback, color }
-  }
-
-  const passwordStrength = calculatePasswordStrength(formData.password)
-  const passwordsMatch = formData.password && formData.confirmPassword && formData.password === formData.confirmPassword
-
-  const calculateAge = (birthDate: string): number => {
-    const today = new Date()
-    const birth = new Date(birthDate)
-    let age = today.getFullYear() - birth.getFullYear()
-    const monthDiff = today.getMonth() - birth.getMonth()
-
-    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-      age--
-    }
-
-    return age
-  }
-
-  const isFormValid = () => {
-    return (
-      formData.firstName &&
-      formData.lastName &&
-      formData.username &&
-      formData.email &&
-      formData.password &&
-      formData.confirmPassword &&
-      formData.dateOfBirth &&
-      formData.acceptTerms &&
-      passwordsMatch &&
-      passwordStrength.score >= 60 &&
-      calculateAge(formData.dateOfBirth) >= 18
-    )
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError("")
     setSuccess("")
 
+    // Validation
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match")
+      setLoading(false)
+      return
+    }
+
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters long")
+      setLoading(false)
+      return
+    }
+
     try {
       const result = await signup(formData)
 
       if (result.success) {
-        setSuccess("Registration successful! Redirecting to your dashboard...")
+        setSuccess("Account created successfully! Redirecting to your dashboard...")
         setTimeout(() => {
           router.push("/dashboard")
-        }, 2000)
+        }, 1500)
       } else {
         setError(result.error || "Registration failed")
       }
@@ -139,7 +67,7 @@ export default function SignupForm() {
     }
   }
 
-  const handleInputChange = (field: string, value: string | boolean) => {
+  const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
     setError("")
   }
@@ -149,7 +77,7 @@ export default function SignupForm() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">Create Account</CardTitle>
-          <CardDescription className="text-center">Join Coinwayfinder to start your trading journey</CardDescription>
+          <CardDescription className="text-center">Join Coinwayfinder and start trading smarter</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -175,6 +103,7 @@ export default function SignupForm() {
                   type="text"
                   value={formData.firstName}
                   onChange={(e) => handleInputChange("firstName", e.target.value)}
+                  placeholder="John"
                   required
                 />
               </div>
@@ -185,21 +114,10 @@ export default function SignupForm() {
                   type="text"
                   value={formData.lastName}
                   onChange={(e) => handleInputChange("lastName", e.target.value)}
+                  placeholder="Doe"
                   required
                 />
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                type="text"
-                value={formData.username}
-                onChange={(e) => handleInputChange("username", e.target.value)}
-                placeholder="3-20 characters, letters, numbers, underscore"
-                required
-              />
             </div>
 
             <div className="space-y-2">
@@ -209,22 +127,21 @@ export default function SignupForm() {
                 type="email"
                 value={formData.email}
                 onChange={(e) => handleInputChange("email", e.target.value)}
+                placeholder="john@example.com"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="dateOfBirth">Date of Birth</Label>
+              <Label htmlFor="username">Username</Label>
               <Input
-                id="dateOfBirth"
-                type="date"
-                value={formData.dateOfBirth}
-                onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
+                id="username"
+                type="text"
+                value={formData.username}
+                onChange={(e) => handleInputChange("username", e.target.value)}
+                placeholder="johndoe"
                 required
               />
-              {formData.dateOfBirth && calculateAge(formData.dateOfBirth) < 18 && (
-                <p className="text-sm text-red-600">You must be at least 18 years old</p>
-              )}
             </div>
 
             <div className="space-y-2">
@@ -235,6 +152,7 @@ export default function SignupForm() {
                   type={showPassword ? "text" : "password"}
                   value={formData.password}
                   onChange={(e) => handleInputChange("password", e.target.value)}
+                  placeholder="Enter your password"
                   required
                 />
                 <Button
@@ -247,18 +165,6 @@ export default function SignupForm() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
-
-              {formData.password && (
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2">
-                    <Progress value={passwordStrength.score} className="flex-1" />
-                    <span className="text-sm font-medium">{passwordStrength.score}%</span>
-                  </div>
-                  {passwordStrength.feedback.length > 0 && (
-                    <p className="text-sm text-gray-600">Missing: {passwordStrength.feedback.join(", ")}</p>
-                  )}
-                </div>
-              )}
             </div>
 
             <div className="space-y-2">
@@ -269,6 +175,7 @@ export default function SignupForm() {
                   type={showConfirmPassword ? "text" : "password"}
                   value={formData.confirmPassword}
                   onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                  placeholder="Confirm your password"
                   required
                 />
                 <Button
@@ -281,40 +188,9 @@ export default function SignupForm() {
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
-
-              {formData.confirmPassword && (
-                <div className="flex items-center space-x-2">
-                  {passwordsMatch ? (
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-red-500" />
-                  )}
-                  <span className={`text-sm ${passwordsMatch ? "text-green-600" : "text-red-600"}`}>
-                    {passwordsMatch ? "Passwords match" : "Passwords don't match"}
-                  </span>
-                </div>
-              )}
             </div>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="acceptTerms"
-                checked={formData.acceptTerms}
-                onCheckedChange={(checked) => handleInputChange("acceptTerms", checked as boolean)}
-              />
-              <Label htmlFor="acceptTerms" className="text-sm">
-                I accept the{" "}
-                <Link href="/terms" className="text-blue-600 hover:underline">
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="/privacy" className="text-blue-600 hover:underline">
-                  Privacy Policy
-                </Link>
-              </Label>
-            </div>
-
-            <Button type="submit" className="w-full" disabled={!isFormValid() || loading}>
+            <Button type="submit" className="w-full" disabled={loading}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

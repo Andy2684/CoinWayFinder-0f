@@ -2,11 +2,10 @@
 
 import type React from "react"
 
-import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
-import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
+import DashboardHeader from "@/components/dashboard/dashboard-header"
 
 export default function DashboardLayout({
   children,
@@ -25,10 +24,7 @@ export default function DashboardLayout({
   if (loading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-          <p className="mt-2 text-sm text-gray-600">Loading...</p>
-        </div>
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
       </div>
     )
   }
@@ -38,11 +34,10 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      <DashboardSidebar />
-      <div className="flex flex-1 flex-col overflow-hidden">
+    <div className="grid min-h-screen w-full lg:grid-cols-[280px_1fr]">
+      <div className="flex flex-col">
         <DashboardHeader />
-        <main className="flex-1 overflow-y-auto p-6">{children}</main>
+        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-6">{children}</main>
       </div>
     </div>
   )

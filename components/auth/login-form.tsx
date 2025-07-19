@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -22,9 +21,15 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
+  const [isDevelopment, setIsDevelopment] = useState(false)
 
   const { login } = useAuth()
   const router = useRouter()
+
+  useEffect(() => {
+    // Check if we're in development mode on the client side
+    setIsDevelopment(process.env.NODE_ENV === "development")
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -143,7 +148,7 @@ export default function LoginForm() {
                 <p>
                   <strong>Demo User:</strong> demo@coinwayfinder.com / password
                 </p>
-                {process.env.NODE_ENV === "development" && (
+                {isDevelopment && (
                   <p>
                     <strong>Admin:</strong> admin@coinwayfinder.com / AdminPass123!
                   </p>
