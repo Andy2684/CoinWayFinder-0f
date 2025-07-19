@@ -1,61 +1,62 @@
-"use client"
-
-import { Bot, TrendingUp, Shield, Zap, BarChart3, Bell } from "lucide-react"
+import { TrendingUp, Zap, Shield, BarChart3, Bell, Users } from "lucide-react"
 
 export default function FeaturesSection() {
   const features = [
     {
-      icon: <TrendingUp className="h-8 w-8 text-green-600" />,
-      title: "AI Trading Signals",
+      icon: TrendingUp,
+      title: "AI-Powered Signals",
       description:
-        "Get real-time trading signals powered by advanced machine learning algorithms with 94% accuracy rate.",
+        "Advanced machine learning algorithms analyze market patterns to provide high-accuracy trading signals with real-time updates.",
     },
     {
-      icon: <Bot className="h-8 w-8 text-blue-600" />,
-      title: "Automated Bots",
+      icon: Zap,
+      title: "Automated Trading Bots",
       description:
-        "Deploy intelligent trading bots that execute trades 24/7 based on your strategy and risk tolerance.",
+        "Deploy intelligent bots that execute trades 24/7 based on your strategy, risk tolerance, and market conditions.",
     },
     {
-      icon: <Shield className="h-8 w-8 text-purple-600" />,
+      icon: Shield,
       title: "Risk Management",
       description:
-        "Advanced risk controls and stop-loss mechanisms to protect your investments from market volatility.",
+        "Comprehensive risk controls including stop-loss, take-profit, and position sizing to protect your investments.",
     },
     {
-      icon: <BarChart3 className="h-8 w-8 text-orange-600" />,
+      icon: BarChart3,
       title: "Portfolio Analytics",
-      description: "Comprehensive portfolio tracking with detailed analytics and performance metrics.",
+      description:
+        "Detailed performance tracking with advanced charts, P&L analysis, and portfolio optimization insights.",
     },
     {
-      icon: <Zap className="h-8 w-8 text-yellow-600" />,
-      title: "Lightning Fast",
-      description: "Execute trades in milliseconds with our high-performance trading infrastructure.",
+      icon: Bell,
+      title: "Real-time Alerts",
+      description:
+        "Instant notifications for market opportunities, bot activities, and important portfolio changes via multiple channels.",
     },
     {
-      icon: <Bell className="h-8 w-8 text-red-600" />,
-      title: "Smart Alerts",
-      description: "Get instant notifications for market opportunities and important portfolio changes.",
+      icon: Users,
+      title: "Community Insights",
+      description:
+        "Access to expert traders' strategies, community discussions, and collaborative trading opportunities.",
     },
   ]
 
   return (
-    <section id="features" className="py-20 bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="features" className="py-24 bg-white">
+      <div className="container mx-auto px-4">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Powerful Features for Smart Trading</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Everything You Need to Trade Smarter</h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Everything you need to succeed in cryptocurrency trading, powered by cutting-edge AI technology.
+            Our comprehensive platform combines cutting-edge AI technology with professional trading tools to give you
+            the edge in cryptocurrency markets.
           </p>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
-            <div
-              key={index}
-              className="bg-white rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow duration-300"
-            >
-              <div className="mb-4">{feature.icon}</div>
+            <div key={index} className="bg-gray-50 rounded-lg p-6 hover:shadow-lg transition-shadow">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+                <feature.icon className="h-6 w-6 text-green-600" />
+              </div>
               <h3 className="text-xl font-semibold text-gray-900 mb-2">{feature.title}</h3>
               <p className="text-gray-600">{feature.description}</p>
             </div>

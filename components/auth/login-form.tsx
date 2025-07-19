@@ -9,8 +9,8 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
 import Link from "next/link"
-import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
+import { useAuth } from "@/hooks/use-auth"
 
 export default function LoginForm() {
   const [email, setEmail] = useState("")
@@ -112,16 +112,10 @@ export default function LoginForm() {
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign in"
-              )}
+              {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Sign In
             </Button>
-            <div className="text-center text-sm text-gray-600">
+            <div className="text-center text-sm">
               {"Don't have an account? "}
               <Link href="/auth/signup" className="text-blue-600 hover:underline">
                 Sign up

@@ -1,21 +1,47 @@
-"use client"
-
 import Link from "next/link"
-import { BarChart3, Twitter, Github, Linkedin } from "lucide-react"
+import { TrendingUp, Twitter, Github, Linkedin } from "lucide-react"
 
 export default function Footer() {
+  const footerLinks = {
+    Product: [
+      { name: "Features", href: "#features" },
+      { name: "Pricing", href: "#pricing" },
+      { name: "API", href: "/api" },
+      { name: "Documentation", href: "/docs" },
+    ],
+    Company: [
+      { name: "About", href: "/about" },
+      { name: "Blog", href: "/blog" },
+      { name: "Careers", href: "/careers" },
+      { name: "Contact", href: "/contact" },
+    ],
+    Resources: [
+      { name: "Help Center", href: "/help" },
+      { name: "Community", href: "/community" },
+      { name: "Tutorials", href: "/tutorials" },
+      { name: "Status", href: "/status" },
+    ],
+    Legal: [
+      { name: "Privacy Policy", href: "/privacy" },
+      { name: "Terms of Service", href: "/terms" },
+      { name: "Cookie Policy", href: "/cookies" },
+      { name: "Disclaimer", href: "/disclaimer" },
+    ],
+  }
+
   return (
     <footer className="bg-gray-900 text-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid md:grid-cols-4 gap-8">
+      <div className="container mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
           {/* Logo and Description */}
-          <div className="md:col-span-1">
+          <div className="lg:col-span-2">
             <Link href="/" className="flex items-center space-x-2 mb-4">
-              <BarChart3 className="h-8 w-8 text-green-400" />
-              <span className="text-xl font-bold">CoinWayFinder</span>
+              <TrendingUp className="h-6 w-6 text-green-500" />
+              <span className="font-bold text-xl">CoinWayFinder</span>
             </Link>
-            <p className="text-gray-400 mb-4">
-              AI-powered cryptocurrency trading platform helping traders maximize their profits with smart automation.
+            <p className="text-gray-400 mb-6 max-w-sm">
+              AI-powered cryptocurrency trading platform that helps you maximize profits with intelligent signals and
+              automated bots.
             </p>
             <div className="flex space-x-4">
               <a href="#" className="text-gray-400 hover:text-white transition-colors">
@@ -30,101 +56,26 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Product */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Product</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link href="/signals" className="text-gray-400 hover:text-white transition-colors">
-                  Trading Signals
-                </Link>
-              </li>
-              <li>
-                <Link href="/bots" className="text-gray-400 hover:text-white transition-colors">
-                  Trading Bots
-                </Link>
-              </li>
-              <li>
-                <Link href="/portfolio" className="text-gray-400 hover:text-white transition-colors">
-                  Portfolio
-                </Link>
-              </li>
-              <li>
-                <Link href="/integrations" className="text-gray-400 hover:text-white transition-colors">
-                  Integrations
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Company */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Company</h3>
-            <ul className="space-y-2">
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  About
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Blog
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Careers
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Contact
-                </a>
-              </li>
-            </ul>
-          </div>
-
-          {/* Support */}
-          <div>
-            <h3 className="text-lg font-semibold mb-4">Support</h3>
-            <ul className="space-y-2">
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Help Center
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Documentation
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  API Reference
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-400 hover:text-white transition-colors">
-                  Status
-                </a>
-              </li>
-            </ul>
-          </div>
+          {/* Footer Links */}
+          {Object.entries(footerLinks).map(([category, links]) => (
+            <div key={category}>
+              <h3 className="font-semibold text-white mb-4">{category}</h3>
+              <ul className="space-y-2">
+                {links.map((link) => (
+                  <li key={link.name}>
+                    <Link href={link.href} className="text-gray-400 hover:text-white transition-colors">
+                      {link.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
         </div>
 
-        <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
+        <div className="border-t border-gray-800 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-sm">© 2024 CoinWayFinder. All rights reserved.</p>
-          <div className="flex space-x-6 mt-4 md:mt-0">
-            <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">
-              Privacy Policy
-            </a>
-            <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">
-              Terms of Service
-            </a>
-            <a href="#" className="text-gray-400 hover:text-white text-sm transition-colors">
-              Cookie Policy
-            </a>
-          </div>
+          <p className="text-gray-400 text-sm mt-4 md:mt-0">Made with ❤️ for crypto traders worldwide</p>
         </div>
       </div>
     </footer>

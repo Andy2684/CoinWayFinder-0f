@@ -1,5 +1,3 @@
-"use client"
-
 import { Button } from "@/components/ui/button"
 import { Check } from "lucide-react"
 import Link from "next/link"
@@ -29,10 +27,10 @@ export default function PricingSection() {
         "Unlimited AI Trading Signals",
         "5 Trading Bots",
         "Advanced Portfolio Analytics",
+        "Real-time Alerts",
         "Priority Support",
         "API Access",
-        "Custom Risk Management",
-        "Telegram Alerts",
+        "Custom Strategies",
       ],
       popular: true,
     },
@@ -47,30 +45,30 @@ export default function PricingSection() {
         "White-label Solution",
         "Dedicated Account Manager",
         "Custom Integrations",
-        "Advanced Analytics",
-        "24/7 Phone Support",
+        "Advanced Risk Management",
+        "Institutional Features",
       ],
       popular: false,
     },
   ]
 
   return (
-    <section id="pricing" className="py-20 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <section id="pricing" className="py-24 bg-gray-50">
+      <div className="container mx-auto px-4">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Simple, Transparent Pricing</h2>
+          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Choose Your Trading Plan</h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Choose the plan that fits your trading needs. All plans include a 14-day free trial.
+            Start with our free trial and upgrade as your trading grows. All plans include our core AI features.
           </p>
         </div>
 
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {plans.map((plan, index) => (
             <div
               key={index}
-              className={`relative rounded-lg border-2 p-8 ${
-                plan.popular ? "border-green-500 shadow-lg scale-105" : "border-gray-200 hover:border-gray-300"
-              } transition-all duration-300`}
+              className={`bg-white rounded-lg shadow-lg p-8 relative ${
+                plan.popular ? "ring-2 ring-green-500 scale-105" : ""
+              }`}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
@@ -80,7 +78,7 @@ export default function PricingSection() {
                 </div>
               )}
 
-              <div className="text-center mb-6">
+              <div className="text-center mb-8">
                 <h3 className="text-2xl font-bold text-gray-900 mb-2">{plan.name}</h3>
                 <p className="text-gray-600 mb-4">{plan.description}</p>
                 <div className="flex items-baseline justify-center">
@@ -89,7 +87,7 @@ export default function PricingSection() {
                 </div>
               </div>
 
-              <ul className="space-y-3 mb-8">
+              <ul className="space-y-4 mb-8">
                 {plan.features.map((feature, featureIndex) => (
                   <li key={featureIndex} className="flex items-center">
                     <Check className="h-5 w-5 text-green-500 mr-3 flex-shrink-0" />
@@ -104,7 +102,7 @@ export default function PricingSection() {
                     plan.popular ? "bg-green-600 hover:bg-green-700" : "bg-gray-900 hover:bg-gray-800"
                   }`}
                 >
-                  Start Free Trial
+                  Get Started
                 </Button>
               </Link>
             </div>

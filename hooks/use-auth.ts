@@ -53,10 +53,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const demoUser = DEMO_USERS.find((u) => u.email === email && u.password === password)
 
     if (demoUser) {
-      const user = { id: demoUser.id, email: demoUser.email, name: demoUser.name }
-      setUser(user)
-      localStorage.setItem("user", JSON.stringify(user))
-      toast.success("Successfully logged in!")
+      const userData = { id: demoUser.id, email: demoUser.email, name: demoUser.name }
+      setUser(userData)
+      localStorage.setItem("user", JSON.stringify(userData))
+      toast.success("Successfully signed in!")
       setLoading(false)
       return true
     } else {
@@ -92,7 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null)
     localStorage.removeItem("user")
-    toast.success("Logged out successfully")
+    toast.success("Signed out successfully")
     router.push("/")
   }
 
