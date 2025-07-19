@@ -1,158 +1,169 @@
 import { type NextRequest, NextResponse } from "next/server"
 
 // Mock news data for when database is not available
-const MOCK_NEWS = [
+const mockNewsData = [
   {
-    id: "1",
+    id: 1,
     title: "Bitcoin Reaches New All-Time High Above $75,000",
     summary: "Bitcoin surged to unprecedented levels as institutional adoption continues to drive demand.",
     content:
-      "Bitcoin has reached a new all-time high above $75,000, marking a significant milestone in the cryptocurrency's journey. The surge comes amid increased institutional adoption and growing acceptance of Bitcoin as a store of value. Major corporations continue to add Bitcoin to their treasury reserves, while regulatory clarity in key markets has boosted investor confidence. Technical analysis suggests strong momentum with key resistance levels being broken decisively.",
-    source: "CryptoNews Daily",
-    sentiment: 0.8,
-    impact: 9,
-    timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+      "Bitcoin has reached a new all-time high above $75,000, marking a significant milestone in the cryptocurrency's journey. The surge comes amid increased institutional adoption and growing acceptance of Bitcoin as a store of value. Major corporations continue to add Bitcoin to their treasury reserves, while regulatory clarity in key markets has boosted investor confidence.",
+    source: "CryptoNews",
     url: "https://example.com/bitcoin-ath",
-    tags: ["Bitcoin", "ATH", "Institutional", "Bullish"],
+    published_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
+    sentiment_score: 0.8,
+    impact_score: 9,
+    tags: ["Bitcoin", "ATH", "Institutional"],
   },
   {
-    id: "2",
+    id: 2,
     title: "Ethereum 2.0 Staking Rewards Hit Record Levels",
-    summary: "Ethereum validators are seeing unprecedented returns as network activity surges.",
+    summary: "Ethereum staking yields reach new highs as network activity surges post-merge.",
     content:
-      "Ethereum 2.0 validators are experiencing record-high staking rewards as network activity reaches new peaks. The combination of increased transaction fees and MEV (Maximum Extractable Value) opportunities has pushed annual percentage yields above 8% for many validators. This surge in rewards comes as Ethereum continues to dominate the DeFi and NFT spaces, driving consistent demand for block space and higher fee revenues.",
-    source: "DeFi Analytics",
-    sentiment: 0.7,
-    impact: 7,
-    timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+      "Ethereum staking rewards have reached record levels following increased network activity and successful implementation of various protocol upgrades. The proof-of-stake consensus mechanism continues to attract validators, with over 32 million ETH now staked on the network. This represents a significant portion of the total ETH supply and demonstrates strong confidence in Ethereum's long-term prospects.",
+    source: "EthereumDaily",
     url: "https://example.com/eth-staking",
-    tags: ["Ethereum", "Staking", "DeFi", "Rewards"],
+    published_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+    sentiment_score: 0.7,
+    impact_score: 7,
+    tags: ["Ethereum", "Staking", "DeFi"],
   },
   {
-    id: "3",
-    title: "Major Exchange Hack Results in $200M Loss",
-    summary: "A sophisticated attack on a major cryptocurrency exchange has resulted in significant losses.",
+    id: 3,
+    title: "Major Exchange Faces Regulatory Scrutiny",
+    summary: "Regulatory authorities launch investigation into trading practices at major cryptocurrency exchange.",
     content:
-      "A major cryptocurrency exchange has fallen victim to a sophisticated hack, resulting in the loss of approximately $200 million in various cryptocurrencies. The attack appears to have exploited a vulnerability in the exchange's hot wallet infrastructure. The exchange has immediately suspended all withdrawals and is working with cybersecurity firms and law enforcement to investigate the breach. Users are advised to change their passwords and enable additional security measures.",
-    source: "Security Alert Network",
-    sentiment: -0.9,
-    impact: 8,
-    timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
-    url: "https://example.com/exchange-hack",
-    tags: ["Security", "Hack", "Exchange", "Risk"],
+      "A major cryptocurrency exchange is facing increased regulatory scrutiny as authorities investigate potential violations of trading regulations. The investigation focuses on market manipulation concerns and compliance with anti-money laundering requirements. This development has raised questions about the regulatory landscape for cryptocurrency exchanges and the need for clearer guidelines in the industry.",
+    source: "RegulatorWatch",
+    url: "https://example.com/exchange-scrutiny",
+    published_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
+    sentiment_score: -0.6,
+    impact_score: 8,
+    tags: ["Regulation", "Exchange", "Compliance"],
   },
   {
-    id: "4",
-    title: "Central Bank Digital Currency Pilot Program Launches",
-    summary: "A major central bank has announced the launch of its CBDC pilot program.",
+    id: 4,
+    title: "DeFi Protocol Launches Revolutionary Yield Farming Feature",
+    summary: "New DeFi protocol introduces innovative yield farming mechanism with enhanced security features.",
     content:
-      "The Federal Reserve has officially launched its Central Bank Digital Currency (CBDC) pilot program, marking a significant step toward digital currency adoption at the institutional level. The pilot will test various use cases including cross-border payments, retail transactions, and interbank settlements. This development could have far-reaching implications for the broader cryptocurrency ecosystem and traditional banking infrastructure.",
-    source: "Financial Times Crypto",
-    sentiment: 0.3,
-    impact: 6,
-    timestamp: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
-    url: "https://example.com/cbdc-pilot",
-    tags: ["CBDC", "Federal Reserve", "Digital Currency", "Regulation"],
-  },
-  {
-    id: "5",
-    title: "DeFi Protocol Introduces Revolutionary Yield Farming",
-    summary: "A new DeFi protocol promises sustainable high yields through innovative mechanisms.",
-    content:
-      "A groundbreaking DeFi protocol has launched with a revolutionary approach to yield farming that promises sustainable high returns without the typical risks associated with liquidity mining. The protocol uses a novel algorithmic approach to balance supply and demand, automatically adjusting rewards based on market conditions. Early adopters are reporting yields of 15-25% APY with significantly reduced impermanent loss risk.",
-    source: "DeFi Pulse",
-    sentiment: 0.6,
-    impact: 5,
-    timestamp: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
+      "A groundbreaking DeFi protocol has launched a revolutionary yield farming feature that promises higher returns with enhanced security measures. The protocol utilizes advanced smart contract architecture and multi-signature security to protect user funds while maximizing yield opportunities. Early adopters have reported impressive returns, though experts caution about the inherent risks in DeFi investments.",
+    source: "DeFiInsider",
     url: "https://example.com/defi-yield",
-    tags: ["DeFi", "Yield Farming", "Innovation", "APY"],
+    published_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
+    sentiment_score: 0.5,
+    impact_score: 6,
+    tags: ["DeFi", "Yield Farming", "Innovation"],
   },
   {
-    id: "6",
+    id: 5,
     title: "NFT Market Shows Signs of Recovery",
-    summary: "Trading volumes and floor prices are rising across major NFT collections.",
+    summary: "NFT trading volumes increase significantly as market sentiment improves.",
     content:
-      "The NFT market is showing strong signs of recovery after months of declining activity. Major collections like CryptoPunks and Bored Ape Yacht Club have seen significant increases in floor prices and trading volumes. New utility-focused projects are gaining traction, suggesting a shift toward more sustainable NFT ecosystems. Gaming and metaverse applications continue to drive adoption and create real-world value for digital assets.",
-    source: "NFT Tracker",
-    sentiment: 0.5,
-    impact: 4,
-    timestamp: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(), // 18 hours ago
+      "The NFT market is showing strong signs of recovery with trading volumes increasing by over 200% in the past month. Blue-chip collections are leading the recovery, with floor prices stabilizing and new projects gaining traction. Industry experts attribute the recovery to improved market conditions and renewed interest from both collectors and investors.",
+    source: "NFTTracker",
     url: "https://example.com/nft-recovery",
-    tags: ["NFT", "Recovery", "Gaming", "Metaverse"],
+    published_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
+    sentiment_score: 0.4,
+    impact_score: 5,
+    tags: ["NFT", "Recovery", "Trading"],
   },
   {
-    id: "7",
-    title: "Regulatory Clarity Boosts Institutional Adoption",
-    summary: "New regulatory guidelines provide clearer framework for institutional crypto investments.",
+    id: 6,
+    title: "Central Bank Digital Currency Pilot Program Expands",
+    summary: "Major central bank expands CBDC pilot program to include more participants and use cases.",
     content:
-      "Recent regulatory developments have provided much-needed clarity for institutional investors looking to enter the cryptocurrency space. The new guidelines establish clear frameworks for custody, reporting, and compliance requirements. This regulatory clarity is expected to accelerate institutional adoption, with several major pension funds and endowments already announcing plans to allocate portions of their portfolios to digital assets.",
-    source: "Institutional Crypto Report",
-    sentiment: 0.7,
-    impact: 7,
-    timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
-    url: "https://example.com/regulatory-clarity",
-    tags: ["Regulation", "Institutional", "Compliance", "Adoption"],
+      "A major central bank has announced the expansion of its Central Bank Digital Currency (CBDC) pilot program, adding more participants and exploring additional use cases. The expanded pilot will test cross-border payments, programmable money features, and integration with existing financial infrastructure. This development represents a significant step toward mainstream CBDC adoption.",
+    source: "CentralBankNews",
+    url: "https://example.com/cbdc-expansion",
+    published_at: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(), // 16 hours ago
+    sentiment_score: 0.3,
+    impact_score: 7,
+    tags: ["CBDC", "Central Bank", "Digital Currency"],
   },
   {
-    id: "8",
-    title: "Layer 2 Solutions See Massive Growth in Usage",
-    summary: "Ethereum Layer 2 networks are processing record transaction volumes.",
+    id: 7,
+    title: "Crypto Mining Difficulty Reaches New Peak",
+    summary: "Bitcoin mining difficulty adjusts upward as network hashrate continues to grow.",
     content:
-      "Ethereum Layer 2 solutions are experiencing unprecedented growth, with combined transaction volumes exceeding those of the main Ethereum network for the first time. Arbitrum, Optimism, and Polygon are leading the charge, offering users significantly lower fees and faster transaction times. This growth is driving innovation in DeFi applications and making Ethereum-based services more accessible to retail users worldwide.",
-    source: "Layer 2 Analytics",
-    sentiment: 0.8,
-    impact: 6,
-    timestamp: new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(), // 30 hours ago
-    url: "https://example.com/layer2-growth",
-    tags: ["Layer 2", "Scaling", "Ethereum", "Growth"],
+      "Bitcoin mining difficulty has reached a new all-time high following the latest difficulty adjustment. The increase reflects the growing network hashrate as more miners join the network, demonstrating the robust security and decentralization of the Bitcoin network. Despite higher difficulty, mining remains profitable for efficient operations due to strong Bitcoin prices.",
+    source: "MiningReport",
+    url: "https://example.com/mining-difficulty",
+    published_at: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString(), // 20 hours ago
+    sentiment_score: 0.2,
+    impact_score: 4,
+    tags: ["Mining", "Bitcoin", "Network Security"],
+  },
+  {
+    id: 8,
+    title: "Altcoin Season Indicators Flash Mixed Signals",
+    summary: "Market analysts debate whether current conditions indicate the start of altcoin season.",
+    content:
+      "Market analysts are divided on whether current market conditions indicate the beginning of altcoin season. While some altcoins have shown strong performance relative to Bitcoin, others remain subdued. Key indicators such as the altcoin market cap ratio and Bitcoin dominance are sending mixed signals, making it difficult to predict the next major market trend.",
+    source: "AltcoinAnalysis",
+    url: "https://example.com/altcoin-season",
+    published_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 24 hours ago
+    sentiment_score: 0.1,
+    impact_score: 6,
+    tags: ["Altcoins", "Market Analysis", "Trading"],
   },
 ]
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const search = searchParams.get("search")?.toLowerCase() || ""
-    const sentiment = searchParams.get("sentiment")
-    const sortBy = searchParams.get("sortBy") || "timestamp"
+    const search = searchParams.get("search") || ""
+    const sentiment = searchParams.get("sentiment") || ""
+    const sortBy = searchParams.get("sortBy") || "date"
     const sortOrder = searchParams.get("sortOrder") || "desc"
 
-    let filteredNews = [...MOCK_NEWS]
+    let filteredNews = [...mockNewsData]
 
     // Apply search filter
     if (search) {
+      const searchLower = search.toLowerCase()
       filteredNews = filteredNews.filter(
         (article) =>
-          article.title.toLowerCase().includes(search) ||
-          article.summary.toLowerCase().includes(search) ||
-          article.content.toLowerCase().includes(search) ||
-          article.tags.some((tag) => tag.toLowerCase().includes(search)),
+          article.title.toLowerCase().includes(searchLower) ||
+          article.summary.toLowerCase().includes(searchLower) ||
+          article.content.toLowerCase().includes(searchLower) ||
+          article.tags.some((tag) => tag.toLowerCase().includes(searchLower)),
       )
     }
 
     // Apply sentiment filter
-    if (sentiment && sentiment !== "all") {
+    if (sentiment) {
       filteredNews = filteredNews.filter((article) => {
-        if (sentiment === "positive") return article.sentiment > 0.2
-        if (sentiment === "negative") return article.sentiment < -0.2
-        if (sentiment === "neutral") return article.sentiment >= -0.2 && article.sentiment <= 0.2
+        if (sentiment === "positive") return article.sentiment_score > 0.1
+        if (sentiment === "negative") return article.sentiment_score < -0.1
+        if (sentiment === "neutral") return article.sentiment_score >= -0.1 && article.sentiment_score <= 0.1
         return true
       })
     }
 
     // Apply sorting
     filteredNews.sort((a, b) => {
-      let aValue: any = a[sortBy as keyof typeof a]
-      let bValue: any = b[sortBy as keyof typeof b]
+      let aValue, bValue
 
-      if (sortBy === "timestamp") {
-        aValue = new Date(aValue).getTime()
-        bValue = new Date(bValue).getTime()
+      switch (sortBy) {
+        case "sentiment":
+          aValue = a.sentiment_score
+          bValue = b.sentiment_score
+          break
+        case "impact":
+          aValue = a.impact_score
+          bValue = b.impact_score
+          break
+        case "date":
+        default:
+          aValue = new Date(a.published_at).getTime()
+          bValue = new Date(b.published_at).getTime()
+          break
       }
 
-      if (sortOrder === "desc") {
-        return bValue > aValue ? 1 : -1
+      if (sortOrder === "asc") {
+        return aValue - bValue
       } else {
-        return aValue > bValue ? 1 : -1
+        return bValue - aValue
       }
     })
 
@@ -163,12 +174,14 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("Get news error:", error)
-
-    // Return mock data as fallback
-    return NextResponse.json({
-      success: true,
-      data: MOCK_NEWS,
-      total: MOCK_NEWS.length,
-    })
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to fetch news",
+        data: mockNewsData, // Fallback to mock data
+        total: mockNewsData.length,
+      },
+      { status: 200 }, // Return 200 with fallback data
+    )
   }
 }
