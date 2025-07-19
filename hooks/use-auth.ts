@@ -8,6 +8,7 @@ interface User {
   id: string
   email: string
   name: string
+  firstName?: string
 }
 
 interface AuthContextType {
@@ -22,8 +23,8 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 // Demo users for testing
 const DEMO_USERS = [
-  { id: "1", email: "demo@coinwayfinder.com", password: "password", name: "Demo User" },
-  { id: "2", email: "admin@coinwayfinder.com", password: "AdminPass123!", name: "Admin User" },
+  { id: "1", email: "demo@coinwayfinder.com", password: "password", name: "Demo User", firstName: "Demo" },
+  { id: "2", email: "admin@coinwayfinder.com", password: "AdminPass123!", name: "Admin User", firstName: "Admin" },
 ]
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -53,7 +54,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const demoUser = DEMO_USERS.find((u) => u.email === email && u.password === password)
 
     if (demoUser) {
-      const userData = { id: demoUser.id, email: demoUser.email, name: demoUser.name }
+      const userData = {
+        id: demoUser.id,
+        email: demoUser.email,
+        name: demoUser.name,
+        firstName: demoUser.firstName,
+      }
       setUser(userData)
       localStorage.setItem("user", JSON.stringify(userData))
       toast.success("Successfully signed in!")
@@ -81,7 +87,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Create new user
-    const newUser = { id: Date.now().toString(), email, name }
+    const firstName = name.split(" ")[0]
+    const newUser = {
+      id: Date.now().toString(),
+      email,
+      name,
+      firstName,
+    }
     setUser(newUser)
     localStorage.setItem("user", JSON.stringify(newUser))
     toast.success("Account created successfully!")
@@ -96,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/")
   }
 
-  const contextValue = { user, loading, login, signup, logout }
+  const contextValue: AuthContextType = { user, loading, login, signup, logout }
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
 }
