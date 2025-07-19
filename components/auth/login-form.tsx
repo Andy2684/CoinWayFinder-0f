@@ -136,6 +136,20 @@ export default function LoginForm() {
                 Sign up
               </Link>
             </div>
+
+            <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <p className="text-sm font-medium mb-2">Demo Credentials:</p>
+              <div className="space-y-1 text-sm text-gray-600">
+                <p>
+                  <strong>Demo User:</strong> demo@coinwayfinder.com / password
+                </p>
+                {process.env.NODE_ENV === "development" && (
+                  <p>
+                    <strong>Admin:</strong> admin@coinwayfinder.com / AdminPass123!
+                  </p>
+                )}
+              </div>
+            </div>
           </form>
         </CardContent>
       </Card>
