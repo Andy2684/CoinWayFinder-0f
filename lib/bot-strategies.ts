@@ -18,7 +18,7 @@ export interface BotParameter {
   key: string
   name: string
   type: "number" | "percentage" | "boolean" | "select"
-  defaultValue: any
+  defaultValue: string
   min?: number
   max?: number
   step?: number
@@ -30,7 +30,7 @@ export const botStrategies: BotStrategy[] = [
   {
     id: "dca",
     name: "DCA (Dollar Cost Averaging)",
-    description: "Automatically buy crypto at regular intervals regardless of price",
+    description: "Automatically buy crypto at regular intervals regardless of ",
     category: "dca",
     difficulty: "Beginner",
     riskLevel: "Low",
@@ -68,14 +68,14 @@ export const botStrategies: BotStrategy[] = [
         defaultValue: 5,
         min: 1,
         max: 20,
-        description: "Skip purchase if price moved more than this %",
+        description: "Skip purchase if moved more than this %",
       },
     ],
   },
   {
     id: "grid",
     name: "Grid Trading",
-    description: "Place buy and sell orders at predetermined intervals above and below current price",
+    description: "Place buy and sell orders at predetermined intervals above and below current ",
     category: "grid",
     difficulty: "Intermediate",
     riskLevel: "Medium",
@@ -109,7 +109,7 @@ export const botStrategies: BotStrategy[] = [
         type: "number",
         defaultValue: 0,
         min: 0,
-        description: "Maximum price for grid (0 = no limit)",
+        description: "Maximum for grid (0 = no limit)",
       },
       {
         key: "lowerLimit",
@@ -117,14 +117,14 @@ export const botStrategies: BotStrategy[] = [
         type: "number",
         defaultValue: 0,
         min: 0,
-        description: "Minimum price for grid (0 = no limit)",
+        description: "Minimum for grid (0 = no limit)",
       },
     ],
   },
   {
     id: "scalping",
     name: "Scalping Bot",
-    description: "High-frequency trading capturing small price movements throughout the day",
+    description: "High-frequency trading capturing small movements throughout the day",
     category: "scalping",
     difficulty: "Advanced",
     riskLevel: "High",

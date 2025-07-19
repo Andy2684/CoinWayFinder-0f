@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { ApiKeyManager } from "@/components/integrations/api-key-manager"
 import { ExchangeIntegrations } from "@/components/integrations/exchange-integrations"
@@ -23,3 +24,7 @@ export default function IntegrationsPage() {
     </ProtectedRoute>
   )
 }
+=======
+// TODO: исправленный код для app/integrations/page.tsx вставить сюда
+// Пример: export function handler(req: Request): Response { return new Response("OK") }
+>>>>>>> b2cd8b3 (fix: restore working state after local fixes)

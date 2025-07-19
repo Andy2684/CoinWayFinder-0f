@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
@@ -13,14 +14,18 @@ export const metadata: Metadata = {
   description:
     "Advanced cryptocurrency trading platform with AI-powered signals, automated bots, and real-time market analysis.",
     generator: 'v0.dev'
+=======
+import './globals.css'
+
+export const metadata = {
+  title: 'CoinWayfinder',
+  description: 'AI платформа для криптотрейдинга',
+>>>>>>> b2cd8b3 (fix: restore working state after local fixes)
 }
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
+<<<<<<< HEAD
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
@@ -30,6 +35,10 @@ export default function RootLayout({
           </AuthProvider>
         </ThemeProvider>
       </body>
+=======
+    <html lang="ru">
+      <body>{children}</body>
+>>>>>>> b2cd8b3 (fix: restore working state after local fixes)
     </html>
   )
 }

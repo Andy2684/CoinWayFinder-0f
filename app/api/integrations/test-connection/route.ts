@@ -3,20 +3,20 @@ import { ExchangeAdapterFactory } from "@/lib/exchange-adapters"
 
 export async function POST(request: NextRequest) {
   try {
-    const { exchangeId, credentials, testnet = false } = await request.json()
+    const { exchangeId, testnet = false } = await request.json()
 
-    if (!exchangeId || !credentials) {
+    if (!exchangeId) {
       return NextResponse.json(
         {
           success: false,
-          error: "Missing exchange ID or credentials",
+          error: "Missing exchange ID or ",
         },
         { status: 400 },
       )
     }
 
-    // Validate required credentials
-    if (!credentials.apiKey || !credentials.secretKey) {
+    // Validate required 
+    if (!apiKey || !secretKey) {
       return NextResponse.json(
         {
           success: false,
@@ -39,13 +39,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Test authentication
-    const isAuthenticated = await adapter.authenticate(credentials)
+    const isAuthenticated = await adapter.authenticate()
 
     if (!isAuthenticated) {
       return NextResponse.json(
         {
           success: false,
-          error: "Authentication failed. Please check your API credentials.",
+          error: "Authentication failed. Please check your API .",
         },
         { status: 401 },
       )
@@ -114,7 +114,7 @@ export async function POST(request: NextRequest) {
 
     if (error instanceof Error) {
       if (error.message.includes("Authentication failed") || error.message.includes("Invalid API")) {
-        errorMessage = "Invalid API credentials"
+        errorMessage = "Invalid API "
         statusCode = 401
       } else if (error.message.includes("Rate limit")) {
         errorMessage = "Rate limit exceeded. Please try again later."

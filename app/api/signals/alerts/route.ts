@@ -53,7 +53,7 @@ const mockAlertHistory: AlertHistory[] = [
   {
     id: "2",
     title: "Target Reached",
-    message: "ETH/USDT signal reached target price",
+    message: "ETH/USDT signal reached target ",
     time: "1 hour ago",
     type: "success",
     read: true,

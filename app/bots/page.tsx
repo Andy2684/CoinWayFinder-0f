@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { BotsOverview } from "@/components/bots/bots-overview"
 import { ActiveBots } from "@/components/bots/active-bots"
@@ -33,3 +34,7 @@ export default function BotsPage() {
     </ProtectedRoute>
   )
 }
+=======
+// TODO: исправленный код для app/bots/page.tsx вставить сюда
+// Пример: export function handler(req: Request): Response { return new Response("OK") }
+>>>>>>> b2cd8b3 (fix: restore working state after local fixes)

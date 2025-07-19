@@ -1,10 +1,10 @@
 import type { Config } from "tailwindcss"
 
 const config: Config = {
-  darkMode: ["class"],
   content: [
     "./pages/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
+<<<<<<< HEAD
     "./app/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
     "*.{js,ts,jsx,tsx,mdx}",
@@ -154,5 +154,15 @@ const config: Config = {
   },
   plugins: [require("tailwindcss-animate")],
 } satisfies Config
+=======
+    "./app/**/*.{ts,tsx}"
+  ],
+  theme: {
+    extend: {}
+  },
+  plugins: []
+}
+>>>>>>> b2cd8b3 (fix: restore working state after local fixes)
 
 export default config
+

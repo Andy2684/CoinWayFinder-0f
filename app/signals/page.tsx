@@ -1,37 +1,39 @@
-import { ProtectedRoute } from "@/components/auth/protected-route"
-import { SignalFeed } from "@/components/signals/signal-feed"
-import { SignalPerformance } from "@/components/signals/signal-performance"
-import { SignalAlerts } from "@/components/signals/signal-alerts"
-import { SignalFilters } from "@/components/signals/signal-filters"
-import { CreateSignalDialog } from "@/components/signals/create-signal-dialog"
+'use client'
 
-export default function SignalsPage() {
+import React from 'react'
+
+type Signal = {
+  id: string
+  asset: string
+  type: 'Buy' | 'Sell'
+  confidence: number
+}
+
+interface SignalsPageProps {
+  signals?: Signal[]
+}
+
+export default function Page({ signals = [] }: SignalsPageProps) {
   return (
-    <ProtectedRoute>
-      <div className="container mx-auto px-4 py-8 space-y-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-white">Trading Signals</h1>
-            <p className="text-gray-400 mt-2">AI-powered trading recommendations and market insights</p>
-          </div>
-          <CreateSignalDialog />
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <div className="lg:col-span-1">
-            <SignalFilters />
-          </div>
-
-          <div className="lg:col-span-2 space-y-8">
-            <SignalFeed />
-          </div>
-
-          <div className="lg:col-span-1 space-y-8">
-            <SignalPerformance />
-            <SignalAlerts />
-          </div>
-        </div>
-      </div>
-    </ProtectedRoute>
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-4">Trading Signals</h1>
+      <ul className="space-y-4">
+        {signals.map((signal) => (
+          <li
+            key={signal.id}
+            className="border border-gray-300 rounded-lg p-4 shadow-md bg-white"
+          >
+            <p className="text-lg font-semibold">{signal.asset}</p>
+            <p>
+              Type: <span className="font-medium">{signal.type}</span>
+            </p>
+            <p>
+              Confidence:{' '}
+              <span className="font-medium">{signal.confidence}%</span>
+            </p>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }

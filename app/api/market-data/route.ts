@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    if (type === "best-price" && symbols.length === 1) {
+    if (type === "best-" && symbols.length === 1) {
       const exchanges = searchParams.get("exchanges")?.split(",") || ["binance", "bybit"]
       const bestPrice = await marketDataManager.getBestPrice(symbols[0], exchanges)
 
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
           data: tickerData[0] || null,
         })
 
-      case "get-best-price":
+      case "get-best-":
         const bestPrice = await marketDataManager.getBestPrice(symbol, exchanges || ["binance", "bybit"])
         return NextResponse.json({
           success: true,
