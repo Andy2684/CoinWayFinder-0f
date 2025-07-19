@@ -1,241 +1,193 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TrendingUp, DollarSign, Activity, Bot, CheckCircle, ArrowUpRight, ArrowDownRight } from "lucide-react"
-import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
-import { DashboardHeader } from "@/components/dashboard/dashboard-header"
-import { DashboardOverview } from "@/components/dashboard/dashboard-overview"
-import { ActiveStrategies } from "@/components/dashboard/active-strategies"
-import { PnLTracking } from "@/components/dashboard/pnl-tracking"
-import { TradeLogs } from "@/components/dashboard/trade-logs"
-import { QuickActions } from "@/components/dashboard/quick-actions"
-import { PortfolioAnalytics } from "@/components/dashboard/portfolio-analytics"
-import { RiskManagement } from "@/components/dashboard/risk-management"
-import { LiveMarketData } from "@/components/dashboard/live-market-data"
-import { ProtectedRoute } from "@/components/auth/protected-route"
+import { TrendingUp, TrendingDown, DollarSign, Bot, Activity, Plus } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 
-function DashboardContent() {
+export default function DashboardPage() {
   const { user } = useAuth()
-  const [isLoading, setIsLoading] = useState(true)
-  const [stats, setStats] = useState({
-    totalBalance: 0,
-    todayPnL: 0,
-    activeBots: 0,
-    successRate: 0,
-    totalTrades: 0,
-    winRate: 0,
-  })
 
-  useEffect(() => {
-    // Simulate loading and fetch real data
-    const timer = setTimeout(() => {
-      setStats({
-        totalBalance: 45678.9,
-        todayPnL: 1234.56,
-        activeBots: 8,
-        successRate: 87.5,
-        totalTrades: 156,
-        winRate: 73.2,
-      })
-      setIsLoading(false)
-    }, 1000)
-
-    return () => clearTimeout(timer)
-  }, [])
-
-  const quickStats = [
+  const stats = [
     {
-      title: "Total Balance",
-      value: `$${stats.totalBalance.toLocaleString()}`,
-      change: "+12.5%",
-      changeType: "positive" as const,
+      title: "Total Portfolio Value",
+      value: "$12,345.67",
+      change: "+5.2%",
+      trend: "up",
       icon: DollarSign,
-      description: "Portfolio value",
-    },
-    {
-      title: "Today's P&L",
-      value: `$${stats.todayPnL.toLocaleString()}`,
-      change: "+5.8%",
-      changeType: "positive" as const,
-      icon: TrendingUp,
-      description: "24h performance",
     },
     {
       title: "Active Bots",
-      value: stats.activeBots.toString(),
-      change: "2 new",
-      changeType: "neutral" as const,
+      value: "3",
+      change: "+1",
+      trend: "up",
       icon: Bot,
-      description: "Running strategies",
     },
     {
-      title: "Success Rate",
-      value: `${stats.successRate}%`,
-      change: "+2.1%",
-      changeType: "positive" as const,
+      title: "24h P&L",
+      value: "+$234.56",
+      change: "+12.3%",
+      trend: "up",
+      icon: TrendingUp,
+    },
+    {
+      title: "Win Rate",
+      value: "68.5%",
+      change: "-2.1%",
+      trend: "down",
       icon: Activity,
-      description: "Win percentage",
     },
   ]
 
-  if (isLoading) {
-    return (
-      <div className="flex h-screen bg-background">
-        <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
-          <div className="flex-1 flex flex-col min-h-0 border-r bg-muted/10">
-            <DashboardSidebar />
-          </div>
-        </div>
-        <div className="flex-1 md:pl-64">
-          <DashboardHeader />
-          <main className="flex-1 p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              {[...Array(4)].map((_, i) => (
-                <Card key={i} className="animate-pulse">
-                  <CardContent className="p-6">
-                    <div className="h-4 bg-muted rounded w-1/2 mb-2"></div>
-                    <div className="h-8 bg-muted rounded w-3/4 mb-2"></div>
-                    <div className="h-3 bg-muted rounded w-1/3"></div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </main>
-        </div>
-      </div>
-    )
-  }
+  const recentTrades = [
+    { pair: "BTC/USDT", type: "BUY", amount: "0.025", price: "$42,150", pnl: "+$125.50", status: "completed" },
+    { pair: "ETH/USDT", type: "SELL", amount: "1.5", price: "$2,850", pnl: "-$45.20", status: "completed" },
+    { pair: "ADA/USDT", type: "BUY", amount: "1000", price: "$0.45", pnl: "+$23.10", status: "pending" },
+  ]
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar */}
-      <div className="hidden md:flex md:w-64 md:flex-col md:fixed md:inset-y-0">
-        <div className="flex-1 flex flex-col min-h-0 border-r bg-muted/10">
-          <DashboardSidebar />
+    <div className="space-y-6">
+      {/* Welcome Section */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user?.firstName}!</h1>
+          <p className="text-gray-600">Here's what's happening with your trading portfolio today.</p>
         </div>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          Create New Bot
+        </Button>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 md:pl-64">
-        <DashboardHeader />
-
-        <main className="flex-1 p-6 space-y-8">
-          {/* Welcome Message */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold text-foreground">Welcome back, {user?.firstName}!</h1>
-              <p className="text-muted-foreground">Here's what's happening with your trading portfolio today.</p>
-            </div>
-            <div className="flex items-center space-x-2">
-              <Badge variant="outline" className="text-emerald-600 border-emerald-200">
-                <CheckCircle className="w-3 h-3 mr-1" />
-                All Systems Operational
-              </Badge>
-              <Button className="bg-emerald-600 hover:bg-emerald-700">
-                <TrendingUp className="w-4 h-4 mr-2" />
-                New Strategy
-              </Button>
-            </div>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {quickStats.map((stat, index) => (
-              <Card
-                key={stat.title}
-                className="hover:shadow-lg transition-shadow duration-300 border-emerald-100 dark:border-emerald-900/20"
-              >
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="p-2 bg-emerald-100 dark:bg-emerald-900/20 rounded-lg">
-                      <stat.icon className="w-5 h-5 text-emerald-600" />
-                    </div>
-                    <div
-                      className={`flex items-center text-sm font-medium ${
-                        stat.changeType === "positive"
-                          ? "text-emerald-600"
-                          : stat.changeType === "negative"
-                            ? "text-red-500"
-                            : "text-muted-foreground"
-                      }`}
-                    >
-                      {stat.changeType === "positive" && <ArrowUpRight className="w-3 h-3 mr-1" />}
-                      {stat.changeType === "negative" && <ArrowDownRight className="w-3 h-3 mr-1" />}
-                      {stat.change}
-                    </div>
-                  </div>
-                  <div className="space-y-1">
-                    <h3 className="text-2xl font-bold text-foreground">{stat.value}</h3>
-                    <p className="text-sm text-muted-foreground">{stat.title}</p>
-                    <p className="text-xs text-muted-foreground">{stat.description}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-
-          {/* Main Content Tabs */}
-          <Tabs defaultValue="overview" className="space-y-6">
-            <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="strategies">Strategies</TabsTrigger>
-              <TabsTrigger value="pnl">P&L</TabsTrigger>
-              <TabsTrigger value="trades">Trades</TabsTrigger>
-              <TabsTrigger value="portfolio">Portfolio</TabsTrigger>
-              <TabsTrigger value="risk">Risk</TabsTrigger>
-              <TabsTrigger value="market">Market</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-2">
-                  <DashboardOverview />
-                </div>
-                <div>
-                  <QuickActions />
-                </div>
+      {/* Stats Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {stats.map((stat) => (
+          <Card key={stat.title}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
+              <stat.icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <div className="flex items-center text-xs text-muted-foreground">
+                {stat.trend === "up" ? (
+                  <TrendingUp className="mr-1 h-3 w-3 text-green-500" />
+                ) : (
+                  <TrendingDown className="mr-1 h-3 w-3 text-red-500" />
+                )}
+                <span className={stat.trend === "up" ? "text-green-500" : "text-red-500"}>{stat.change}</span>
+                <span className="ml-1">from last month</span>
               </div>
-            </TabsContent>
-
-            <TabsContent value="strategies">
-              <ActiveStrategies />
-            </TabsContent>
-
-            <TabsContent value="pnl">
-              <PnLTracking />
-            </TabsContent>
-
-            <TabsContent value="trades">
-              <TradeLogs />
-            </TabsContent>
-
-            <TabsContent value="portfolio">
-              <PortfolioAnalytics />
-            </TabsContent>
-
-            <TabsContent value="risk">
-              <RiskManagement />
-            </TabsContent>
-
-            <TabsContent value="market">
-              <LiveMarketData />
-            </TabsContent>
-          </Tabs>
-        </main>
+            </CardContent>
+          </Card>
+        ))}
       </div>
-    </div>
-  )
-}
 
-export default function DashboardPage() {
-  return (
-    <ProtectedRoute>
-      <DashboardContent />
-    </ProtectedRoute>
+      {/* Main Content Tabs */}
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="trades">Recent Trades</TabsTrigger>
+          <TabsTrigger value="bots">Active Bots</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Portfolio Performance</CardTitle>
+                <CardDescription>Your portfolio performance over the last 30 days</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="h-[200px] flex items-center justify-center text-gray-500">
+                  Chart placeholder - Portfolio performance graph
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Top Performing Assets</CardTitle>
+                <CardDescription>Your best performing assets this month</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">BTC</span>
+                    <Badge variant="secondary" className="text-green-600">
+                      +15.2%
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">ETH</span>
+                    <Badge variant="secondary" className="text-green-600">
+                      +8.7%
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">ADA</span>
+                    <Badge variant="secondary" className="text-red-600">
+                      -3.1%
+                    </Badge>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="trades" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Trades</CardTitle>
+              <CardDescription>Your latest trading activity</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {recentTrades.map((trade, index) => (
+                  <div key={index} className="flex items-center justify-between border-b pb-4 last:border-b-0">
+                    <div className="flex items-center space-x-4">
+                      <Badge variant={trade.type === "BUY" ? "default" : "secondary"}>{trade.type}</Badge>
+                      <div>
+                        <p className="font-medium">{trade.pair}</p>
+                        <p className="text-sm text-gray-500">
+                          {trade.amount} @ {trade.price}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className={`font-medium ${trade.pnl.startsWith("+") ? "text-green-600" : "text-red-600"}`}>
+                        {trade.pnl}
+                      </p>
+                      <Badge variant="outline" className="text-xs">
+                        {trade.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="bots" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Active Trading Bots</CardTitle>
+              <CardDescription>Manage your automated trading strategies</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8 text-gray-500">
+                <Bot className="mx-auto h-12 w-12 mb-4" />
+                <p>No active bots yet</p>
+                <Button className="mt-4">Create Your First Bot</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
   )
 }

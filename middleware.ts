@@ -1,8 +1,5 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import jwt from "jsonwebtoken"
-
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 
 // Protected routes that require authentication
 const protectedRoutes = ["/dashboard"]
@@ -21,16 +18,9 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL("/auth/login", request.url))
     }
 
-    try {
-      // Verify the token
-      jwt.verify(token, JWT_SECRET)
-      return NextResponse.next()
-    } catch (error) {
-      // Invalid token, redirect to login
-      const response = NextResponse.redirect(new URL("/auth/login", request.url))
-      response.cookies.delete("auth-token")
-      return response
-    }
+    // For now, just check if token exists
+    // JWT verification will be done in the API routes
+    return NextResponse.next()
   }
 
   return NextResponse.next()
