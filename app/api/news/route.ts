@@ -1,14 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server"
 
 // Mock news data
-const mockNews = [
+const MOCK_NEWS = [
   {
-    id: "1",
+    id: 1,
     title: "Bitcoin Reaches New All-Time High as Institutional Adoption Surges",
     summary:
       "Bitcoin has broken through previous resistance levels, reaching a new all-time high of $75,000 as major institutions continue to add BTC to their balance sheets.",
     content:
-      "Bitcoin has achieved a significant milestone today, breaking through the $75,000 barrier for the first time in its history. This surge comes amid increased institutional adoption, with several Fortune 500 companies announcing Bitcoin purchases. The cryptocurrency has gained over 15% in the past week alone, driven by positive regulatory developments and growing mainstream acceptance. Market analysts suggest this could be the beginning of a new bull cycle, with some predicting Bitcoin could reach $100,000 by the end of the year. The surge has also lifted other cryptocurrencies, with Ethereum gaining 8% and many altcoins seeing double-digit increases.",
+      "Bitcoin has achieved a historic milestone today, surpassing its previous all-time high to reach $75,000. This surge comes amid increased institutional adoption, with several Fortune 500 companies announcing significant Bitcoin purchases. The cryptocurrency market has responded positively, with total market capitalization exceeding $2.8 trillion. Analysts attribute this growth to improved regulatory clarity and growing acceptance of Bitcoin as a store of value. Major financial institutions have also begun offering Bitcoin custody services, further legitimizing the asset class.",
     source: "CryptoNews Daily",
     url: "https://example.com/bitcoin-ath",
     published_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
@@ -17,102 +17,102 @@ const mockNews = [
     tags: ["Bitcoin", "ATH", "Institutional", "Bullish"],
   },
   {
-    id: "2",
+    id: 2,
     title: "Ethereum 2.0 Staking Rewards Hit Record Low as Network Matures",
     summary:
-      "Ethereum staking rewards have dropped to their lowest levels since the merge, indicating network maturity but concerning some validators.",
+      "Ethereum staking rewards have decreased to 3.2% APY as the network becomes more decentralized with over 1 million validators participating.",
     content:
-      "Ethereum's proof-of-stake network is showing signs of maturation as staking rewards have declined to approximately 3.2% annually, the lowest since the successful merge in September 2022. This decrease is attributed to the growing number of validators joining the network, which now exceeds 900,000 active validators. While lower rewards might concern some stakers, network experts view this as a positive sign of Ethereum's stability and security. The network's total value locked in staking has surpassed 30 million ETH, worth over $75 billion at current prices. Despite lower yields, institutional interest in Ethereum staking continues to grow, with several major exchanges launching new staking services.",
+      "The Ethereum network has reached a new level of maturity with staking rewards dropping to a record low of 3.2% APY. This decrease is attributed to the growing number of validators, which now exceeds 1 million participants. While lower rewards might seem concerning, analysts view this as a positive sign of network decentralization and security. The total value locked in Ethereum 2.0 staking has surpassed $120 billion, representing approximately 25% of all ETH in circulation. This milestone demonstrates the community's long-term commitment to the network's proof-of-stake consensus mechanism.",
     source: "Ethereum Insights",
     url: "https://example.com/eth-staking",
     published_at: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
-    sentiment_score: 0.2,
+    sentiment_score: 0.3,
     impact_score: 6,
-    tags: ["Ethereum", "Staking", "PoS", "Validators"],
+    tags: ["Ethereum", "Staking", "ETH2", "Decentralization"],
   },
   {
-    id: "3",
-    title: "Major DeFi Protocol Suffers $50M Exploit Due to Smart Contract Vulnerability",
+    id: 3,
+    title: "DeFi Protocol Suffers $50M Exploit Due to Smart Contract Vulnerability",
     summary:
-      "A popular DeFi lending protocol has been exploited for $50 million due to a reentrancy vulnerability in its smart contract code.",
+      "A major DeFi lending protocol has been exploited for $50 million due to a reentrancy vulnerability in its smart contract code.",
     content:
-      "The DeFi space has been rocked by another major exploit, with YieldFarm Protocol losing approximately $50 million to hackers who exploited a reentrancy vulnerability in the platform's lending smart contract. The attack occurred during a routine upgrade, where the hackers manipulated the protocol's price oracle to drain funds from multiple liquidity pools. The protocol team has paused all operations and is working with blockchain security firms to assess the damage. This incident highlights the ongoing security challenges in DeFi, where complex smart contracts can contain subtle vulnerabilities. The exploit has caused the protocol's native token to crash by 80%, and several other DeFi tokens have also declined on contagion fears. Users are advised to withdraw funds from similar protocols until security audits are completed.",
+      "A significant security breach has occurred in the DeFi space, with a popular lending protocol losing $50 million to an exploit. The attack utilized a reentrancy vulnerability that allowed the attacker to drain funds from the protocol's liquidity pools. The protocol team has immediately paused all operations and is working with security firms to assess the damage. This incident highlights the ongoing risks in DeFi protocols and the importance of thorough security audits. The exploit has caused the protocol's native token to drop by 40% in the past hour. Users are advised to withdraw their funds from similar protocols until further security measures are implemented.",
     source: "DeFi Security Watch",
     url: "https://example.com/defi-exploit",
     published_at: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
     sentiment_score: -0.9,
     impact_score: 8,
-    tags: ["DeFi", "Exploit", "Security", "Smart Contract"],
+    tags: ["DeFi", "Security", "Exploit", "Smart Contract"],
   },
   {
-    id: "4",
+    id: 4,
     title: "Central Bank Digital Currency Pilot Program Shows Promising Results",
     summary:
-      "The Federal Reserve's CBDC pilot program has completed its first phase with positive feedback from participating financial institutions.",
+      "The Federal Reserve's CBDC pilot program has completed its first phase, showing improved transaction efficiency and reduced settlement times.",
     content:
-      "The Federal Reserve has announced promising results from the first phase of its Central Bank Digital Currency (CBDC) pilot program. The six-month trial involved 12 major banks and credit unions, processing over 1 million test transactions with an average settlement time of 2.3 seconds. Participants reported significant improvements in cross-border payments and reduced operational costs. The digital dollar prototype demonstrated 99.9% uptime and successfully handled peak loads of 100,000 transactions per second. However, privacy advocates have raised concerns about the potential for increased government surveillance. The Fed plans to expand the pilot to include retail transactions in the second phase, scheduled to begin next quarter. This development could significantly impact the cryptocurrency landscape, as CBDCs offer some benefits of digital currencies while maintaining government backing.",
+      "The Federal Reserve has announced positive results from the first phase of its Central Bank Digital Currency (CBDC) pilot program. The digital dollar prototype demonstrated significant improvements in transaction processing speed and settlement efficiency compared to traditional banking systems. Transactions that typically take 2-3 business days were completed in seconds during the trial. The pilot involved partnerships with major commercial banks and fintech companies to test various use cases including cross-border payments and retail transactions. While still in early stages, the results suggest that a digital dollar could revolutionize the financial system. The next phase will focus on privacy features and interoperability with existing payment systems.",
     source: "Federal Reserve News",
     url: "https://example.com/cbdc-pilot",
     published_at: new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
-    sentiment_score: 0.4,
+    sentiment_score: 0.6,
     impact_score: 7,
     tags: ["CBDC", "Federal Reserve", "Digital Dollar", "Banking"],
   },
   {
-    id: "5",
-    title: "NFT Market Shows Signs of Recovery with Blue-Chip Collections Leading",
+    id: 5,
+    title: "NFT Market Shows Signs of Recovery with 40% Volume Increase",
     summary:
-      "The NFT market is experiencing a resurgence, with trading volumes up 40% this month and blue-chip collections seeing renewed interest.",
+      "The NFT marketplace has experienced a 40% increase in trading volume over the past week, suggesting a potential recovery from the recent downturn.",
     content:
-      "After months of declining activity, the NFT market is showing clear signs of recovery. Trading volumes across major marketplaces have increased by 40% this month, with blue-chip collections like CryptoPunks and Bored Ape Yacht Club leading the charge. The floor price of CryptoPunks has risen 25% in the past two weeks, while BAYC has seen a 30% increase. This recovery is attributed to several factors, including the integration of NFTs into gaming platforms, new utility features for existing collections, and renewed interest from institutional collectors. Several major brands have also announced new NFT initiatives, including a collaboration between Nike and a popular gaming platform. Market analysts suggest this could be the beginning of a more sustainable NFT ecosystem focused on utility rather than speculation.",
+      "The Non-Fungible Token (NFT) market is showing signs of recovery after months of declining activity. Trading volume has increased by 40% over the past week, with several high-profile collections seeing renewed interest. The recovery is attributed to new utility-focused projects and improved market sentiment. Major marketplaces report increased user engagement and new wallet connections. Gaming NFTs and utility tokens are leading the recovery, while profile picture collections remain subdued. Industry experts believe this uptick could signal the beginning of a more sustainable NFT market focused on real-world applications rather than speculation. The total NFT market capitalization has risen to $8.2 billion, up from $6.1 billion last month.",
     source: "NFT Market Report",
     url: "https://example.com/nft-recovery",
-    published_at: new Date(Date.now() - 10 * 60 * 60 * 1000).toISOString(), // 10 hours ago
-    sentiment_score: 0.6,
+    published_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
+    sentiment_score: 0.5,
     impact_score: 5,
-    tags: ["NFT", "CryptoPunks", "BAYC", "Recovery"],
+    tags: ["NFT", "Recovery", "Trading Volume", "Gaming"],
   },
   {
-    id: "6",
-    title: "Regulatory Clarity Emerges as SEC Approves New Cryptocurrency Framework",
+    id: 6,
+    title: "Regulatory Clarity Emerges as SEC Approves New Crypto Framework",
     summary:
-      "The SEC has approved a comprehensive framework for cryptocurrency regulation, providing much-needed clarity for the industry.",
+      "The Securities and Exchange Commission has approved a comprehensive framework for cryptocurrency regulation, providing much-needed clarity for the industry.",
     content:
-      "In a landmark decision, the Securities and Exchange Commission has approved a comprehensive regulatory framework for cryptocurrencies, ending years of uncertainty for the industry. The new framework establishes clear guidelines for token classification, exchange operations, and institutional custody services. Under the new rules, cryptocurrencies will be classified into three categories: currency tokens (like Bitcoin), utility tokens, and security tokens, each with specific compliance requirements. The framework also introduces a safe harbor provision for decentralized protocols, allowing them to operate without immediate regulatory action if they meet certain criteria. Industry leaders have praised the decision, with many exchanges already announcing plans to expand their US operations. The framework is expected to attract significant institutional investment and could pave the way for more cryptocurrency ETFs. Implementation will begin in six months, giving companies time to ensure compliance.",
+      "The Securities and Exchange Commission (SEC) has taken a significant step forward in cryptocurrency regulation by approving a comprehensive framework that provides clear guidelines for digital asset classification and compliance. The new framework establishes criteria for determining whether a cryptocurrency should be classified as a security, commodity, or utility token. This regulatory clarity is expected to encourage institutional investment and innovation in the crypto space. The framework also outlines requirements for crypto exchanges, custody services, and investment products. Industry leaders have praised the move as a positive step toward mainstream adoption. The announcement has led to a broad rally in cryptocurrency prices, with the total market cap increasing by 8% in the past 24 hours.",
     source: "Regulatory Update",
     url: "https://example.com/sec-framework",
-    published_at: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
-    sentiment_score: 0.9,
-    impact_score: 10,
-    tags: ["SEC", "Regulation", "Framework", "Compliance"],
+    published_at: new Date(Date.now() - 18 * 60 * 60 * 1000).toISOString(), // 18 hours ago
+    sentiment_score: 0.7,
+    impact_score: 9,
+    tags: ["Regulation", "SEC", "Framework", "Compliance"],
   },
   {
-    id: "7",
-    title: "Layer 2 Solutions See Massive Growth as Ethereum Gas Fees Remain High",
+    id: 7,
+    title: "Layer 2 Solutions See Massive Growth as Ethereum Gas Fees Spike",
     summary:
-      "Polygon, Arbitrum, and Optimism have seen combined TVL grow by 150% as users seek alternatives to high Ethereum mainnet fees.",
+      "Ethereum Layer 2 solutions have experienced unprecedented growth as users seek alternatives to high mainnet gas fees.",
     content:
-      "Layer 2 scaling solutions are experiencing unprecedented growth as Ethereum gas fees continue to remain elevated. Polygon, Arbitrum, and Optimism have collectively seen their Total Value Locked (TVL) increase by 150% over the past quarter, now holding over $15 billion in assets. This surge is driven by users and developers seeking cheaper alternatives to Ethereum's mainnet, where simple transactions can cost $20-50 during peak congestion. Arbitrum leads the pack with $6.2 billion in TVL, followed by Polygon at $5.1 billion and Optimism at $3.7 billion. The growth has been particularly strong in DeFi applications, with several major protocols launching Layer 2 versions of their platforms. New innovations like zero-knowledge rollups are also gaining traction, with zkSync and StarkNet preparing for their mainnet launches. This trend suggests a multi-chain future where Layer 2 solutions play a crucial role in Ethereum's scalability.",
+      "Ethereum Layer 2 scaling solutions are experiencing explosive growth as mainnet gas fees reach new highs. Arbitrum, Optimism, and Polygon have all reported record-breaking transaction volumes and user adoption. The combined total value locked (TVL) across all Layer 2 networks has surpassed $15 billion, representing a 300% increase from six months ago. Users are migrating to these solutions to avoid gas fees that can exceed $100 for simple transactions during peak network congestion. DeFi protocols are also expanding to Layer 2 networks, with many offering additional incentives for users who bridge their assets. This trend is accelerating the multi-chain future of Ethereum and demonstrating the effectiveness of scaling solutions in addressing network limitations.",
     source: "Layer 2 Analytics",
     url: "https://example.com/layer2-growth",
-    published_at: new Date(Date.now() - 14 * 60 * 60 * 1000).toISOString(), // 14 hours ago
-    sentiment_score: 0.7,
+    published_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(), // 1 day ago
+    sentiment_score: 0.4,
     impact_score: 7,
-    tags: ["Layer 2", "Polygon", "Arbitrum", "Optimism", "Scaling"],
+    tags: ["Layer 2", "Ethereum", "Scaling", "Gas Fees"],
   },
   {
-    id: "8",
-    title: "Crypto Mining Industry Faces Pressure from Environmental Concerns",
+    id: 8,
+    title: "Cryptocurrency Mining Industry Faces Environmental Scrutiny",
     summary:
-      "Bitcoin mining companies are under increasing pressure to adopt renewable energy sources as environmental scrutiny intensifies.",
+      "Environmental groups are increasing pressure on cryptocurrency mining operations to adopt renewable energy sources and reduce carbon emissions.",
     content:
-      "The cryptocurrency mining industry is facing mounting pressure from environmental groups and regulators to reduce its carbon footprint. Several major mining companies have announced commitments to achieve carbon neutrality by 2030, with some already transitioning to 100% renewable energy sources. Marathon Digital Holdings, one of the largest Bitcoin miners, reported that 70% of its operations now run on renewable energy, up from 30% last year. The pressure has intensified following reports that Bitcoin mining consumes as much electricity as some small countries. In response, the industry is exploring innovative solutions, including partnerships with renewable energy providers and the development of more efficient mining hardware. Some companies are also participating in carbon offset programs and investing in green technology research. Despite these efforts, critics argue that the industry needs to do more, with some jurisdictions considering restrictions on energy-intensive mining operations.",
+      "The cryptocurrency mining industry is facing increased scrutiny from environmental groups and regulators over its carbon footprint and energy consumption. Several major mining operations have announced commitments to achieve carbon neutrality by 2030, with some already transitioning to renewable energy sources. The Bitcoin Mining Council reports that sustainable energy usage in Bitcoin mining has increased to 58.4%, up from 36.8% in 2021. However, critics argue that this progress is insufficient given the urgency of climate change. Some jurisdictions are considering restrictions on energy-intensive mining operations, while others are promoting green mining initiatives. The industry is also exploring more energy-efficient consensus mechanisms and mining technologies to address these concerns.",
     source: "Environmental Crypto News",
     url: "https://example.com/mining-environment",
-    published_at: new Date(Date.now() - 16 * 60 * 60 * 1000).toISOString(), // 16 hours ago
+    published_at: new Date(Date.now() - 36 * 60 * 60 * 1000).toISOString(), // 1.5 days ago
     sentiment_score: -0.3,
     impact_score: 6,
-    tags: ["Mining", "Environment", "Renewable Energy", "Sustainability"],
+    tags: ["Mining", "Environment", "Sustainability", "Energy"],
   },
 ]
 
@@ -122,9 +122,9 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get("search")?.toLowerCase() || ""
     const sentiment = searchParams.get("sentiment")
     const sortBy = searchParams.get("sortBy") || "date"
-    const limit = Number.parseInt(searchParams.get("limit") || "10")
+    const sortOrder = searchParams.get("sortOrder") || "desc"
 
-    let filteredNews = [...mockNews]
+    let filteredNews = [...MOCK_NEWS]
 
     // Apply search filter
     if (search) {
@@ -138,33 +138,41 @@ export async function GET(request: NextRequest) {
     }
 
     // Apply sentiment filter
-    if (sentiment) {
-      if (sentiment === "positive") {
-        filteredNews = filteredNews.filter((article) => article.sentiment_score > 0.3)
-      } else if (sentiment === "negative") {
-        filteredNews = filteredNews.filter((article) => article.sentiment_score < -0.3)
-      } else if (sentiment === "neutral") {
-        filteredNews = filteredNews.filter(
-          (article) => article.sentiment_score >= -0.3 && article.sentiment_score <= 0.3,
-        )
-      }
+    if (sentiment && sentiment !== "all") {
+      filteredNews = filteredNews.filter((article) => {
+        if (sentiment === "positive") return article.sentiment_score > 0.1
+        if (sentiment === "negative") return article.sentiment_score < -0.1
+        if (sentiment === "neutral") return article.sentiment_score >= -0.1 && article.sentiment_score <= 0.1
+        return true
+      })
     }
 
     // Apply sorting
     filteredNews.sort((a, b) => {
+      let aValue: any, bValue: any
+
       switch (sortBy) {
         case "sentiment":
-          return b.sentiment_score - a.sentiment_score
+          aValue = a.sentiment_score
+          bValue = b.sentiment_score
+          break
         case "impact":
-          return b.impact_score - a.impact_score
+          aValue = a.impact_score
+          bValue = b.impact_score
+          break
         case "date":
         default:
-          return new Date(b.published_at).getTime() - new Date(a.published_at).getTime()
+          aValue = new Date(a.published_at).getTime()
+          bValue = new Date(b.published_at).getTime()
+          break
+      }
+
+      if (sortOrder === "asc") {
+        return aValue - bValue
+      } else {
+        return bValue - aValue
       }
     })
-
-    // Apply limit
-    filteredNews = filteredNews.slice(0, limit)
 
     return NextResponse.json({
       success: true,
@@ -173,13 +181,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("News API error:", error)
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Failed to fetch news",
-        data: mockNews.slice(0, 8), // Fallback to first 8 articles
-      },
-      { status: 500 },
-    )
+    return NextResponse.json({ success: false, error: "Failed to fetch news" }, { status: 500 })
   }
 }
