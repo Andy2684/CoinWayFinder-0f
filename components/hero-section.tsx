@@ -6,22 +6,20 @@ import Link from "next/link"
 
 export default function HeroSection() {
   return (
-    <section className="landing-bg min-h-screen flex items-center justify-center relative overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0 bg-black/20" />
-      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
-
-      {/* Floating Elements */}
-      <div className="absolute top-20 left-10 w-20 h-20 bg-white/10 rounded-full blur-xl float" />
-      <div
-        className="absolute bottom-20 right-10 w-32 h-32 bg-green-400/20 rounded-full blur-xl float"
-        style={{ animationDelay: "2s" }}
-      />
-      <div
-        className="absolute top-1/2 left-1/4 w-16 h-16 bg-emerald-300/30 rounded-full blur-lg float"
-        style={{ animationDelay: "4s" }}
-      />
-
+    <section className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-slate-900 via-green-900 to-emerald-900">
+      {/* Animated Background Effects */}
+      <div className="absolute inset-0 bg-gradient-to-r from-green-400/10 via-emerald-500/5 to-teal-600/10 animate-gradient" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(16,185,129,0.1),transparent_50%)]" />
+      
+      {/* Dynamic Floating Orbs */}
+      <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-green-400/20 rounded-full blur-3xl animate-floating" />
+      <div className="absolute bottom-1/3 right-1/4 w-40 h-40 bg-emerald-300/15 rounded-full blur-2xl animate-floating" style={{ animationDelay: "2s" }} />
+      <div className="absolute top-1/2 left-1/6 w-24 h-24 bg-teal-400/25 rounded-full blur-xl animate-floating" style={{ animationDelay: "4s" }} />
+      <div className="absolute bottom-1/4 left-1/2 w-36 h-36 bg-green-500/10 rounded-full blur-3xl animate-floating" style={{ animationDelay: "6s" }} />
+      
+      {/* Subtle Grid Overlay */}
+      <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fillRule=\"evenodd\"%3E%3Cg fill=\"%23ffffff\" fillOpacity=\"0.03\"%3E%3Ccircle cx=\"30\" cy=\"30\" r=\"1\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-40" />
+      
       <div className="container mx-auto px-4 relative z-10">
         <div className="max-w-4xl mx-auto text-center text-white">
           {/* Badge */}

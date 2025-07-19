@@ -240,6 +240,30 @@
   .status-error {
     @apply bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300;
   }
+
+  .animate-floating {
+    animation: floating 8s ease-in-out infinite;
+  }
+
+  @keyframes floating {
+    0%,
+    100% {
+      transform: translateY(0px) translateX(0px);
+    }
+    25% {
+      transform: translateY(-20px) translateX(10px);
+    }
+    50% {
+      transform: translateY(-10px) translateX(-10px);
+    }
+    75% {
+      transform: translateY(-30px) translateX(5px);
+    }
+  }
+
+  .landing-bg {
+    background: linear-gradient(135deg, #0f172a 0%, #064e3b 50%, #065f46 100%);
+  }
 }
 
 /* Responsive design helpers */
