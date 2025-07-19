@@ -194,4 +194,5 @@ function removeStoredUser() {
   }
 }
 
-// Re-export from hooks/use-auth for consistency from '@/hooks/use-auth'
+// Re-export from hooks/use-auth for consistency from '@/hooks/use-auth' from "@/hooks/use-auth"
+export default AuthProvider
