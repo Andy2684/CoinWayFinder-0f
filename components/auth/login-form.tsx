@@ -1,18 +1,16 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/components/auth/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, Loader2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
 
 export default function LoginForm() {
   const [email, setEmail] = useState("")
@@ -23,7 +21,6 @@ export default function LoginForm() {
 
   const { login } = useAuth()
   const router = useRouter()
-  const { toast } = useToast()
 
   const handleDemoCredentials = () => {
     setEmail("demo@coinwayfinder.com")
@@ -40,10 +37,6 @@ export default function LoginForm() {
       const result = await login(email, password)
 
       if (result.success) {
-        toast({
-          title: "Welcome back!",
-          description: "You have been successfully logged in.",
-        })
         router.push("/dashboard")
       } else {
         setError(result.error || "Login failed")

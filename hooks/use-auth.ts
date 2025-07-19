@@ -2,29 +2,18 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
-import { AuthProvider } from "@/components/auth/auth-provider"
+import {
+  AuthProvider,
+  type User as MainUser,
+  type AuthContextType as MainAuthContextType,
+} from "@/components/auth/auth-provider"
 
-export interface User {
-  id: string
-  email: string
-  firstName: string
-  lastName: string
-  avatar?: string
-  role: "user" | "admin"
-  createdAt: string
+export interface User extends MainUser {
+  // Additional user fields can be added here if needed
 }
 
-interface AuthContextType {
-  user: User | null
-  loading: boolean
-  login: (email: string, password: string) => Promise<boolean>
-  signup: (userData: {
-    email: string
-    password: string
-    firstName: string
-    lastName: string
-  }) => Promise<boolean>
-  logout: () => void
+interface AuthContextType extends MainAuthContextType {
+  // Additional auth context fields can be added here if needed
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
