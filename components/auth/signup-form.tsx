@@ -13,7 +13,7 @@ import { Loader2, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 
-export function SignupForm() {
+export default function SignupForm() {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",

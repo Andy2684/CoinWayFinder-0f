@@ -1,18 +1,21 @@
 "use client"
 
-import { useState } from "react"
+import { useRealtimeOrderBook } from "@/hooks/use-realtime-data"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Wifi, WifiOff } from "lucide-react"
-import { useRealtimeOrderBook } from "@/hooks/use-realtime-data"
+import { useState } from "react"
 
 export function RealtimeOrderBook() {
   const [selectedSymbol, setSelectedSymbol] = useState("BTCUSDT")
-  const { orderBook, connectionStatus } = useRealtimeOrderBook(selectedSymbol)
+  const { orderBook, isConnected } = useRealtimeOrderBook(selectedSymbol)
 
   const formatPrice = (price: number) => {
-    return price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+    return price.toLocaleString("en-US", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })
   }
 
   const formatQuantity = (quantity: number) => {
@@ -20,97 +23,81 @@ export function RealtimeOrderBook() {
   }
 
   return (
-    <Card className="bg-gray-900/50 border-gray-800">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-white flex items-center space-x-2">
-            <span>Order Book</span>
-            <Badge
-              variant="outline"
-              className={`${
-                connectionStatus === "connected" ? "border-green-500 text-green-400" : "border-red-500 text-red-400"
-              }`}
-            >
-              {connectionStatus === "connected" ? (
-                <>
-                  <Wifi className="w-3 h-3 mr-1" /> Live
-                </>
-              ) : (
-                <>
-                  <WifiOff className="w-3 h-3 mr-1" /> Offline
-                </>
-              )}
-            </Badge>
-          </CardTitle>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">Order Book</CardTitle>
+        <div className="flex items-center space-x-2">
           <Select value={selectedSymbol} onValueChange={setSelectedSymbol}>
-            <SelectTrigger className="w-32 bg-gray-800 border-gray-700 text-white">
+            <SelectTrigger className="w-32">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="bg-gray-800 border-gray-700">
+            <SelectContent>
               <SelectItem value="BTCUSDT">BTC/USDT</SelectItem>
               <SelectItem value="ETHUSDT">ETH/USDT</SelectItem>
+              <SelectItem value="BNBUSDT">BNB/USDT</SelectItem>
             </SelectContent>
           </Select>
+          <Badge variant={isConnected ? "default" : "destructive"} className="text-xs">
+            {isConnected ? (
+              <>
+                <Wifi className="w-3 h-3 mr-1" />
+                Live
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-3 h-3 mr-1" />
+                Disconnected
+              </>
+            )}
+          </Badge>
         </div>
       </CardHeader>
       <CardContent>
-        {!orderBook ? (
-          <div className="space-y-2">
-            {[...Array(10)].map((_, i) => (
-              <div key={i} className="animate-pulse flex space-x-4">
-                <div className="h-4 bg-gray-700 rounded flex-1"></div>
-                <div className="h-4 bg-gray-700 rounded flex-1"></div>
-              </div>
-            ))}
-          </div>
-        ) : (
+        {orderBook ? (
           <div className="space-y-4">
-            {/* Header */}
-            <div className="grid grid-cols-2 gap-4 text-xs font-medium text-gray-400 border-b border-gray-700 pb-2">
-              <div className="text-center">Price (USDT)</div>
-              <div className="text-center">Quantity</div>
-            </div>
-
             {/* Asks (Sell Orders) */}
-            <div className="space-y-1">
-              <h4 className="text-xs font-medium text-red-400 mb-2">Asks (Sell)</h4>
-              {orderBook.asks
-                .slice(0, 5)
-                .reverse()
-                .map((ask, index) => (
-                  <div key={index} className="grid grid-cols-2 gap-4 text-sm py-1 hover:bg-red-500/10 rounded">
-                    <div className="text-red-400 text-center font-mono">{formatPrice(ask.price)}</div>
-                    <div className="text-white text-center font-mono">{formatQuantity(ask.quantity)}</div>
-                  </div>
-                ))}
+            <div>
+              <h4 className="text-xs font-medium text-red-600 mb-2">ASKS (SELL)</h4>
+              <div className="space-y-1">
+                {orderBook.asks
+                  .slice(0, 5)
+                  .reverse()
+                  .map((ask, index) => (
+                    <div key={index} className="flex justify-between text-xs">
+                      <span className="text-red-600 font-mono">{formatPrice(ask.price)}</span>
+                      <span className="text-gray-600 font-mono">{formatQuantity(ask.quantity)}</span>
+                      <span className="text-gray-500 font-mono">{formatPrice(ask.total)}</span>
+                    </div>
+                  ))}
+              </div>
             </div>
 
             {/* Spread */}
-            {orderBook.asks.length > 0 && orderBook.bids.length > 0 && (
-              <div className="text-center py-2 border-y border-gray-700">
-                <span className="text-xs text-gray-400">Spread: </span>
-                <span className="text-white font-mono">
-                  {formatPrice(orderBook.asks[0].price - orderBook.bids[0].price)}
-                </span>
+            <div className="border-t border-b py-2">
+              <div className="text-center text-xs text-gray-500">
+                Spread:{" "}
+                {orderBook.asks[0] && orderBook.bids[0]
+                  ? formatPrice(orderBook.asks[0].price - orderBook.bids[0].price)
+                  : "N/A"}
               </div>
-            )}
+            </div>
 
             {/* Bids (Buy Orders) */}
-            <div className="space-y-1">
-              <h4 className="text-xs font-medium text-green-400 mb-2">Bids (Buy)</h4>
-              {orderBook.bids.slice(0, 5).map((bid, index) => (
-                <div key={index} className="grid grid-cols-2 gap-4 text-sm py-1 hover:bg-green-500/10 rounded">
-                  <div className="text-green-400 text-center font-mono">{formatPrice(bid.price)}</div>
-                  <div className="text-white text-center font-mono">{formatQuantity(bid.quantity)}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Last Update */}
-            <div className="text-xs text-gray-400 text-center pt-2 border-t border-gray-700">
-              Last updated: {new Date(orderBook.lastUpdate).toLocaleTimeString()}
+            <div>
+              <h4 className="text-xs font-medium text-green-600 mb-2">BIDS (BUY)</h4>
+              <div className="space-y-1">
+                {orderBook.bids.slice(0, 5).map((bid, index) => (
+                  <div key={index} className="flex justify-between text-xs">
+                    <span className="text-green-600 font-mono">{formatPrice(bid.price)}</span>
+                    <span className="text-gray-600 font-mono">{formatQuantity(bid.quantity)}</span>
+                    <span className="text-gray-500 font-mono">{formatPrice(bid.total)}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
+        ) : (
+          <div className="text-center text-gray-500 py-8">Loading order book...</div>
         )}
       </CardContent>
     </Card>

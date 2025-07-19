@@ -1,158 +1,116 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useRealtimeMarketData } from "@/hooks/use-realtime-data"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, TrendingDown, RefreshCw, Activity } from "lucide-react"
+import { TrendingUp, TrendingDown, RefreshCw, Wifi, WifiOff } from "lucide-react"
+import { useState } from "react"
 
-interface MarketDataPoint {
-  symbol: string
-  price: number
-  change24h: number
-  changePercent24h: number
-  volume24h: number
-  lastUpdate: number
-}
+const POPULAR_SYMBOLS = ["BTCUSDT", "ETHUSDT", "BNBUSDT", "ADAUSDT", "SOLUSDT", "DOTUSDT"]
 
 export function LiveMarketData() {
-  const [marketData, setMarketData] = useState<MarketDataPoint[]>([])
-  const [loading, setLoading] = useState(true)
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+  const [selectedSymbols, setSelectedSymbols] = useState(POPULAR_SYMBOLS.slice(0, 4))
+  const { data, isConnected } = useRealtimeMarketData(selectedSymbols)
 
-  useEffect(() => {
-    const fetchMarketData = async () => {
-      try {
-        // Simulate API call to fetch market data
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-
-        const symbols = ["BTCUSDT", "ETHUSDT", "ADAUSDT", "SOLUSDT", "DOTUSDT"]
-        const data = symbols.map((symbol) => {
-          const basePrice = getBasePrice(symbol)
-          const change = (Math.random() - 0.5) * basePrice * 0.1
-
-          return {
-            symbol,
-            price: basePrice + (Math.random() - 0.5) * basePrice * 0.02,
-            change24h: change,
-            changePercent24h: (change / basePrice) * 100,
-            volume24h: Math.random() * 1000000,
-            lastUpdate: Date.now(),
-          }
-        })
-
-        setMarketData(data)
-        setLastUpdate(new Date())
-        setLoading(false)
-      } catch (error) {
-        console.error("Error fetching market data:", error)
-        setLoading(false)
-      }
-    }
-
-    fetchMarketData()
-
-    // Update market data every 5 seconds
-    const interval = setInterval(fetchMarketData, 5000)
-
-    return () => clearInterval(interval)
-  }, [])
-
-  const getBasePrice = (symbol: string): number => {
-    const prices: Record<string, number> = {
-      BTCUSDT: 43000,
-      ETHUSDT: 2600,
-      ADAUSDT: 0.45,
-      SOLUSDT: 95,
-      DOTUSDT: 7.5,
-    }
-    return prices[symbol] || 100
-  }
-
-  const formatPrice = (price: number, symbol: string) => {
-    const decimals = symbol.includes("USDT") ? 2 : 6
-    return price.toFixed(decimals)
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(price)
   }
 
   const formatPercent = (percent: number) => {
     return `${percent >= 0 ? "+" : ""}${percent.toFixed(2)}%`
   }
 
-  const getChangeColor = (change: number) => {
-    return change >= 0 ? "text-green-400" : "text-red-400"
-  }
-
-  if (loading) {
-    return (
-      <Card className="bg-gray-900/50 border-gray-800">
-        <CardHeader>
-          <CardTitle className="text-white">Market Data</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="animate-pulse flex items-center justify-between p-4 bg-gray-800/50 rounded-lg">
-                <div className="space-y-2">
-                  <div className="h-4 bg-gray-700 rounded w-20"></div>
-                  <div className="h-6 bg-gray-700 rounded w-24"></div>
-                </div>
-                <div className="h-4 bg-gray-700 rounded w-16"></div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    )
+  const formatVolume = (volume: number) => {
+    if (volume >= 1000000) {
+      return `${(volume / 1000000).toFixed(1)}M`
+    } else if (volume >= 1000) {
+      return `${(volume / 1000).toFixed(1)}K`
+    }
+    return volume.toFixed(0)
   }
 
   return (
-    <Card className="bg-gray-900/50 border-gray-800">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-white flex items-center space-x-2">
-            <Activity className="w-5 h-5" />
-            <span>Live Market Data</span>
-            <Badge variant="outline" className="border-green-500 text-green-400">
-              Live
-            </Badge>
-          </CardTitle>
-          <div className="flex items-center space-x-2">
-            {lastUpdate && <span className="text-xs text-gray-400">Updated: {lastUpdate.toLocaleTimeString()}</span>}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.location.reload()}
-              className="border-gray-600 text-white hover:bg-gray-800 bg-transparent"
-            >
-              <RefreshCw className="w-4 h-4" />
-            </Button>
-          </div>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-lg font-semibold">Live Market Data</CardTitle>
+        <div className="flex items-center space-x-2">
+          <Badge variant={isConnected ? "default" : "destructive"}>
+            {isConnected ? (
+              <>
+                <Wifi className="w-4 h-4 mr-1" />
+                Connected
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-4 h-4 mr-1" />
+                Disconnected
+              </>
+            )}
+          </Badge>
+          <Button variant="outline" size="sm">
+            <RefreshCw className="w-4 h-4 mr-1" />
+            Refresh
+          </Button>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
-          {marketData.map((item) => (
-            <div
-              key={item.symbol}
-              className="flex items-center justify-between p-4 bg-gray-800/30 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
-            >
-              <div className="space-y-1">
-                <h3 className="font-medium text-white">{item.symbol.replace("USDT", "/USDT")}</h3>
-                <p className="text-lg font-bold text-white">${formatPrice(item.price, item.symbol)}</p>
-              </div>
-              <div className="text-right space-y-1">
-                <div className={`flex items-center space-x-1 ${getChangeColor(item.changePercent24h)}`}>
-                  {item.changePercent24h >= 0 ? (
-                    <TrendingUp className="w-4 h-4" />
-                  ) : (
-                    <TrendingDown className="w-4 h-4" />
-                  )}
-                  <span className="font-medium">{formatPercent(item.changePercent24h)}</span>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {selectedSymbols.map((symbol) => {
+            const marketData = data[symbol]
+            if (!marketData) {
+              return (
+                <div key={symbol} className="p-4 border rounded-lg">
+                  <div className="animate-pulse">
+                    <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                    <div className="h-6 bg-gray-200 rounded w-1/2 mb-2"></div>
+                    <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                  </div>
                 </div>
-                <p className="text-xs text-gray-400">Vol: {item.volume24h.toLocaleString()}</p>
+              )
+            }
+
+            const isPositive = marketData.changePercent >= 0
+
+            return (
+              <div key={symbol} className="p-4 border rounded-lg hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-sm">{symbol.replace("USDT", "/USDT")}</h3>
+                  <div className={`flex items-center space-x-1 ${isPositive ? "text-green-600" : "text-red-600"}`}>
+                    {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="text-xl font-bold">{formatPrice(marketData.price)}</div>
+
+                  <div className={`text-sm font-medium ${isPositive ? "text-green-600" : "text-red-600"}`}>
+                    {formatPercent(marketData.changePercent)}
+                  </div>
+
+                  <div className="text-xs text-gray-500 space-y-1">
+                    <div className="flex justify-between">
+                      <span>24h High:</span>
+                      <span>{formatPrice(marketData.high24h)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>24h Low:</span>
+                      <span>{formatPrice(marketData.low24h)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Volume:</span>
+                      <span>{formatVolume(marketData.volume)}</span>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </CardContent>
     </Card>
