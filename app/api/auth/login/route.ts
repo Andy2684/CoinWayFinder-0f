@@ -2,26 +2,26 @@ import { type NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
 
-// Mock database - replace with real database
+// Mock database - in production, use a real database
 const users: any[] = [
   {
     id: "1",
     email: "demo@coinwayfinder.com",
-    password: "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj6uk6L7Q1NO", // "password"
+    password: "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi", // password
     firstName: "Demo",
     lastName: "User",
-    username: "demouser",
+    username: "demo_user",
     role: "user",
-    plan: "pro",
+    plan: "free",
     isVerified: true,
   },
   {
     id: "2",
     email: "admin@coinwayfinder.com",
-    password: "$2a$12$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi", // "AdminPass123!"
+    password: "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi", // AdminPass123!
     firstName: "Admin",
     lastName: "User",
-    username: "admin",
+    username: "admin_user",
     role: "admin",
     plan: "enterprise",
     isVerified: true,
@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { email, password } = body
 
+    // Validation
     if (!email || !password) {
       return NextResponse.json({ success: false, error: "Email and password are required" }, { status: 400 })
     }
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate JWT token
-    const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET || "fallback-secret-key", {
+    const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET || "fallback-secret", {
       expiresIn: "7d",
     })
 

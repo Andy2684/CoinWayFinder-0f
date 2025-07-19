@@ -4,7 +4,7 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 
-interface User {
+export interface User {
   id: string
   email: string
   firstName: string
@@ -15,7 +15,7 @@ interface User {
   isVerified: boolean
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null
   loading: boolean
   isAuthenticated: boolean

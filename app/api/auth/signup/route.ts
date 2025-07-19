@@ -1,8 +1,32 @@
 import { type NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
+import jwt from "jsonwebtoken"
 
-// Mock database - replace with real database
-const users: any[] = []
+// Mock database - in production, use a real database
+const users: any[] = [
+  {
+    id: "1",
+    email: "demo@coinwayfinder.com",
+    password: "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi", // password
+    firstName: "Demo",
+    lastName: "User",
+    username: "demo_user",
+    role: "user",
+    plan: "free",
+    isVerified: true,
+  },
+  {
+    id: "2",
+    email: "admin@coinwayfinder.com",
+    password: "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi", // AdminPass123!
+    firstName: "Admin",
+    lastName: "User",
+    username: "admin_user",
+    role: "admin",
+    plan: "enterprise",
+    isVerified: true,
+  },
+]
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,12 +38,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "All fields are required" }, { status: 400 })
     }
 
-    if (password.length < 6) {
-      return NextResponse.json({ success: false, error: "Password must be at least 6 characters" }, { status: 400 })
-    }
-
     // Check if user already exists
-    const existingUser = users.find((u) => u.email === email || u.username === username)
+    const existingUser = users.find((user) => user.email === email || user.username === username)
     if (existingUser) {
       return NextResponse.json(
         { success: false, error: "User with this email or username already exists" },
@@ -28,29 +48,35 @@ export async function POST(request: NextRequest) {
     }
 
     // Hash password
-    const hashedPassword = await bcrypt.hash(password, 12)
+    const hashedPassword = await bcrypt.hash(password, 10)
 
-    // Create user
+    // Create new user
     const newUser = {
-      id: Date.now().toString(),
+      id: (users.length + 1).toString(),
       email,
       password: hashedPassword,
       firstName,
       lastName,
       username,
-      role: "user",
+      role: "user" as const,
       plan: "free",
       isVerified: false,
-      createdAt: new Date().toISOString(),
     }
 
     users.push(newUser)
 
-    // Don't create token or login automatically
-    // Just return success for redirect to thank-you page
+    // Generate JWT token
+    const token = jwt.sign({ userId: newUser.id, email: newUser.email }, process.env.JWT_SECRET || "fallback-secret", {
+      expiresIn: "7d",
+    })
+
+    // Return user data without password
+    const { password: _, ...userWithoutPassword } = newUser
+
     return NextResponse.json({
       success: true,
-      message: "Account created successfully",
+      token,
+      user: userWithoutPassword,
     })
   } catch (error) {
     console.error("Signup error:", error)
