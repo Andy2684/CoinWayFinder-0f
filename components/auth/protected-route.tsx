@@ -2,51 +2,39 @@
 
 import type React from "react"
 
-import { useAuth } from "./auth-provider"
+import { useAuth } from "@/hooks/use-auth"
 import { useRouter } from "next/navigation"
 import { useEffect } from "react"
 import { Loader2 } from "lucide-react"
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  requireAuth?: boolean
-  redirectTo?: string
 }
 
-export function ProtectedRoute({ children, requireAuth = true, redirectTo = "/auth/login" }: ProtectedRouteProps) {
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading) {
-      if (requireAuth && !user) {
-        router.push(redirectTo)
-      } else if (!requireAuth && user) {
-        router.push("/dashboard")
-      }
+    if (!loading && !user) {
+      router.push("/auth/login")
     }
-  }, [user, loading, requireAuth, redirectTo, router])
+  }, [user, loading, router])
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#0F1015]">
         <div className="flex items-center space-x-2">
-          <Loader2 className="h-6 w-6 animate-spin" />
-          <span>Loading...</span>
+          <Loader2 className="w-6 h-6 animate-spin text-[#30D5C8]" />
+          <span className="text-white">Loading...</span>
         </div>
       </div>
     )
   }
 
-  if (requireAuth && !user) {
-    return null
-  }
-
-  if (!requireAuth && user) {
+  if (!user) {
     return null
   }
 
   return <>{children}</>
 }
-
-export default ProtectedRoute

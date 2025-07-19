@@ -1,14 +1,12 @@
 import { LoginForm } from "@/components/auth/login-form"
-import { Navigation } from "@/components/navigation"
+import Navigation from "@/components/navigation"
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950 dark:to-emerald-950">
+    <div className="min-h-screen bg-[#0F1015]">
       <Navigation />
-      <div className="flex items-center justify-center min-h-screen pt-16">
-        <div className="w-full max-w-md px-4">
-          <LoginForm />
-        </div>
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <LoginForm />
       </div>
     </div>
   )
