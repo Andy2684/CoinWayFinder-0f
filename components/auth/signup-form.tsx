@@ -1,77 +1,58 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Loader2, Eye, EyeOff } from "lucide-react"
-import Link from "next/link"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Eye, EyeOff, Loader2, CheckCircle } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 
-export default function SignupForm() {
+export function SignupForm() {
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
+    acceptTerms: false,
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const router = useRouter()
+  const [success, setSuccess] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+
   const { signup } = useAuth()
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }))
-  }
-
-  const validateForm = () => {
-    if (!formData.firstName.trim()) {
-      setError("First name is required")
-      return false
-    }
-    if (!formData.lastName.trim()) {
-      setError("Last name is required")
-      return false
-    }
-    if (!formData.email.trim()) {
-      setError("Email is required")
-      return false
-    }
-    if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      setError("Please enter a valid email address")
-      return false
-    }
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters long")
-      return false
-    }
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match")
-      return false
-    }
-    return true
-  }
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setSuccess("")
 
-    if (!validateForm()) {
+    // Validation
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match")
       return
     }
 
-    setLoading(true)
+    if (!formData.acceptTerms) {
+      setError("Please accept the terms and conditions")
+      return
+    }
+
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters long")
+      return
+    }
+
+    setIsLoading(true)
 
     try {
       const result = await signup({
@@ -79,111 +60,98 @@ export default function SignupForm() {
         lastName: formData.lastName,
         email: formData.email,
         password: formData.password,
+        acceptTerms: formData.acceptTerms,
       })
 
       if (result.success) {
-        // Check if dashboard exists, otherwise redirect to thank you page
-        try {
-          const dashboardResponse = await fetch("/dashboard", { method: "HEAD" })
-          if (dashboardResponse.ok) {
-            router.push("/dashboard")
-          } else {
-            router.push("/thank-you")
-          }
-        } catch {
-          // If dashboard doesn't exist, redirect to thank you page
-          router.push("/thank-you")
-        }
+        setSuccess("Account created successfully! Redirecting...")
+        // The signup function already handles the redirect to /thank-you
       } else {
-        setError(result.error || "Registration failed. Please try again.")
+        setError(result.error || "Registration failed")
       }
     } catch (error) {
-      setError("An unexpected error occurred. Please try again.")
+      setError("An unexpected error occurred")
     } finally {
-      setLoading(false)
+      setIsLoading(false)
     }
   }
 
+  const handleInputChange = (field: string, value: string | boolean) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+    setError("")
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-4">
-      <Card className="w-full max-w-md bg-gray-900/50 border-gray-800 backdrop-blur-sm">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
+      <Card className="w-full max-w-md">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center text-white">Create Account</CardTitle>
-          <CardDescription className="text-center text-gray-400">
-            Join Coinwayfinder and start your trading journey
-          </CardDescription>
+          <CardTitle className="text-2xl font-bold text-center">Create Account</CardTitle>
+          <CardDescription className="text-center">Join Coinwayfinder and start trading smarter</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
             {error && (
-              <Alert className="border-red-500 bg-red-500/10">
-                <AlertDescription className="text-red-400">{error}</AlertDescription>
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {success && (
+              <Alert className="border-green-200 bg-green-50 text-green-800">
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="firstName" className="text-white">
-                  First Name
-                </Label>
+                <Label htmlFor="firstName">First Name</Label>
                 <Input
                   id="firstName"
-                  name="firstName"
-                  type="text"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-[#30D5C8]"
                   placeholder="John"
+                  value={formData.firstName}
+                  onChange={(e) => handleInputChange("firstName", e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName" className="text-white">
-                  Last Name
-                </Label>
+                <Label htmlFor="lastName">Last Name</Label>
                 <Input
                   id="lastName"
-                  name="lastName"
-                  type="text"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-[#30D5C8]"
                   placeholder="Doe"
+                  value={formData.lastName}
+                  onChange={(e) => handleInputChange("lastName", e.target.value)}
                   required
+                  disabled={isLoading}
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-white">
-                Email
-              </Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
-                name="email"
                 type="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-[#30D5C8]"
                 placeholder="john@example.com"
+                value={formData.email}
+                onChange={(e) => handleInputChange("email", e.target.value)}
                 required
+                disabled={isLoading}
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-white">
-                Password
-              </Label>
+              <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Input
                   id="password"
-                  name="password"
                   type={showPassword ? "text" : "password"}
+                  placeholder="Create a strong password"
                   value={formData.password}
-                  onChange={handleChange}
-                  className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-[#30D5C8] pr-10"
-                  placeholder="••••••••"
+                  onChange={(e) => handleInputChange("password", e.target.value)}
                   required
+                  disabled={isLoading}
                 />
                 <Button
                   type="button"
@@ -191,30 +159,24 @@ export default function SignupForm() {
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
+                  disabled={isLoading}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword" className="text-white">
-                Confirm Password
-              </Label>
+              <Label htmlFor="confirmPassword">Confirm Password</Label>
               <div className="relative">
                 <Input
                   id="confirmPassword"
-                  name="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirm your password"
                   value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:border-[#30D5C8] pr-10"
-                  placeholder="••••••••"
+                  onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
                   required
+                  disabled={isLoading}
                 />
                 <Button
                   type="button"
@@ -222,39 +184,57 @@ export default function SignupForm() {
                   size="sm"
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  disabled={isLoading}
                 >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
-                  )}
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
             </div>
 
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="terms"
+                checked={formData.acceptTerms}
+                onCheckedChange={(checked) => handleInputChange("acceptTerms", checked as boolean)}
+                disabled={isLoading}
+              />
+              <Label htmlFor="terms" className="text-sm">
+                I agree to the{" "}
+                <Link href="/terms" className="text-primary hover:underline">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="text-primary hover:underline">
+                  Privacy Policy
+                </Link>
+              </Label>
+            </div>
+          </CardContent>
+
+          <CardFooter className="flex flex-col space-y-4">
             <Button
               type="submit"
-              className="w-full bg-[#30D5C8] hover:bg-[#30D5C8]/80 text-black font-medium"
-              disabled={loading}
+              className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+              disabled={isLoading}
             >
-              {loading ? (
+              {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating Account...
+                  Creating account...
                 </>
               ) : (
                 "Create Account"
               )}
             </Button>
 
-            <div className="text-center text-sm">
-              <span className="text-gray-400">Already have an account? </span>
-              <Link href="/auth/login" className="text-[#30D5C8] hover:text-[#30D5C8]/80 font-medium">
+            <div className="text-center text-sm text-muted-foreground">
+              Already have an account?{" "}
+              <Link href="/auth/login" className="text-primary hover:underline">
                 Sign in
               </Link>
             </div>
-          </form>
-        </CardContent>
+          </CardFooter>
+        </form>
       </Card>
     </div>
   )

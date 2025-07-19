@@ -26,6 +26,32 @@ export interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
+// Local mock users - no external API calls
+const mockUsers = [
+  {
+    id: "1",
+    email: "demo@coinwayfinder.com",
+    password: "password",
+    firstName: "Demo",
+    lastName: "User",
+    username: "demo_user",
+    role: "user" as const,
+    plan: "free",
+    isVerified: true,
+  },
+  {
+    id: "2",
+    email: "admin@coinwayfinder.com",
+    password: "AdminPass123!",
+    firstName: "Admin",
+    lastName: "User",
+    username: "admin_user",
+    role: "admin" as const,
+    plan: "enterprise",
+    isVerified: true,
+  },
+]
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -37,27 +63,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      const token = getToken()
-      if (!token) {
-        setLoading(false)
-        return
-      }
-
-      const response = await fetch("/api/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (response.ok) {
-        const userData = await response.json()
-        setUser(userData.user)
-      } else {
-        removeToken()
+      const userData = getStoredUser()
+      if (userData) {
+        setUser(userData)
       }
     } catch (error) {
       console.error("Auth check failed:", error)
-      removeToken()
+      removeStoredUser()
     } finally {
       setLoading(false)
     }
@@ -65,70 +77,73 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      })
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 500))
 
-      const data = await response.json()
+      // Find user in mock data
+      const foundUser = mockUsers.find((u) => u.email === email && u.password === password)
 
-      if (response.ok && data.success) {
-        setToken(data.token)
-        setUser(data.user)
-        return { success: true }
-      } else {
-        return { success: false, error: data.error || "Login failed" }
+      if (!foundUser) {
+        return { success: false, error: "Invalid email or password" }
       }
+
+      // Remove password from user object
+      const { password: _, ...userWithoutPassword } = foundUser
+
+      // Store user data locally
+      storeUser(userWithoutPassword)
+      setUser(userWithoutPassword)
+
+      return { success: true }
     } catch (error) {
-      return { success: false, error: "Network error" }
+      console.error("Login error:", error)
+      return { success: false, error: "Login failed" }
     }
   }
 
   const signup = async (userData: any) => {
     try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(userData),
-      })
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 500))
 
-      const data = await response.json()
-
-      if (response.ok && data.success) {
-        // Don't automatically log in after signup
-        // Just redirect to thank you page
-        router.push("/thank-you")
-        return { success: true }
-      } else {
-        return { success: false, error: data.error || "Registration failed" }
+      // Check if user already exists
+      const existingUser = mockUsers.find((u) => u.email === userData.email)
+      if (existingUser) {
+        return { success: false, error: "User already exists" }
       }
+
+      // Create new user
+      const newUser = {
+        id: Date.now().toString(),
+        email: userData.email,
+        firstName: userData.firstName || userData.name?.split(" ")[0] || "User",
+        lastName: userData.lastName || userData.name?.split(" ")[1] || "",
+        username: userData.email.split("@")[0],
+        role: "user" as const,
+        plan: "free",
+        isVerified: false,
+      }
+
+      // Add to mock users (in real app, this would be saved to database)
+      mockUsers.push({ ...newUser, password: userData.password })
+
+      // Don't automatically log in after signup
+      // Just redirect to thank you page
+      router.push("/thank-you")
+      return { success: true }
     } catch (error) {
-      return { success: false, error: "Network error" }
+      console.error("Signup error:", error)
+      return { success: false, error: "Registration failed" }
     }
   }
 
   const logout = async () => {
     try {
-      const token = getToken()
-      if (token) {
-        await fetch("/api/auth/logout", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-      }
-    } catch (error) {
-      console.error("Logout error:", error)
-    } finally {
-      removeToken()
+      removeStoredUser()
       setUser(null)
       router.push("/")
+    } catch (error) {
+      console.error("Logout error:", error)
     }
   }
 
@@ -152,22 +167,29 @@ export function useAuth() {
   return context
 }
 
-// Token utility functions
-function setToken(token: string) {
+// Local storage utility functions
+function storeUser(user: User) {
   if (typeof window !== "undefined") {
-    localStorage.setItem("auth-token", token)
+    localStorage.setItem("coinwayfinder-user", JSON.stringify(user))
   }
 }
 
-function getToken(): string | null {
+function getStoredUser(): User | null {
   if (typeof window !== "undefined") {
-    return localStorage.getItem("auth-token")
+    const stored = localStorage.getItem("coinwayfinder-user")
+    if (stored) {
+      try {
+        return JSON.parse(stored)
+      } catch {
+        return null
+      }
+    }
   }
   return null
 }
 
-function removeToken() {
+function removeStoredUser() {
   if (typeof window !== "undefined") {
-    localStorage.removeItem("auth-token")
+    localStorage.removeItem("coinwayfinder-user")
   }
 }
