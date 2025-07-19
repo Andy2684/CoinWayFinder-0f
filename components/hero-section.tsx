@@ -6,110 +6,66 @@ import Link from "next/link"
 
 export default function HeroSection() {
   return (
-    <section className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-slate-900 via-green-900 to-emerald-900">
-      {/* Animated Background Effects */}
-      <div className="absolute inset-0 bg-gradient-to-r from-green-400/10 via-emerald-500/5 to-teal-600/10 animate-gradient" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(16,185,129,0.1),transparent_50%)]" />
+    <section className="relative overflow-hidden bg-gradient-to-br from-green-50 via-emerald-50 to-teal-50 py-20 sm:py-32">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(34,197,94,0.15)_1px,transparent_0)] [background-size:20px_20px]" />
 
-      {/* Dynamic Floating Orbs */}
-      <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-green-400/20 rounded-full blur-3xl animate-floating" />
-      <div
-        className="absolute bottom-1/3 right-1/4 w-40 h-40 bg-emerald-300/15 rounded-full blur-2xl animate-floating"
-        style={{ animationDelay: "2s" }}
-      />
-      <div
-        className="absolute top-1/2 left-1/6 w-24 h-24 bg-teal-400/25 rounded-full blur-xl animate-floating"
-        style={{ animationDelay: "4s" }}
-      />
-      <div
-        className="absolute bottom-1/4 left-1/2 w-36 h-36 bg-green-500/10 rounded-full blur-3xl animate-floating"
-        style={{ animationDelay: "6s" }}
-      />
-
-      {/* Subtle Grid Overlay */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.15)_1px,transparent_0)] bg-[length:20px_20px] opacity-30" />
-
-      <div className="container mx-auto px-4 relative z-10">
-        <div className="max-w-4xl mx-auto text-center text-white">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full px-4 py-2 mb-8 card-hover">
-            <Zap className="h-4 w-4 text-yellow-400" />
-            <span className="text-sm font-medium">AI-Powered Trading Platform</span>
-          </div>
-
-          {/* Main Heading */}
-          <h1 className="text-5xl md:text-7xl font-bold mb-6 leading-tight">
-            Trade Crypto with
-            <span className="bg-gradient-to-r from-green-400 to-emerald-300 bg-clip-text text-transparent block">
-              AI Precision
-            </span>
+      <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold tracking-tight text-gray-900 sm:text-6xl">
+            AI-Powered Crypto Trading
+            <span className="block text-green-600">Made Simple</span>
           </h1>
-
-          {/* Subheading */}
-          <p className="text-xl md:text-2xl text-green-100 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Maximize your crypto profits with advanced AI signals, automated trading bots, and real-time market
-            analysis. Join thousands of successful traders.
+          <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-gray-600">
+            Harness the power of artificial intelligence to automate your cryptocurrency trading. Get real-time signals,
+            deploy smart bots, and maximize your profits with our advanced platform.
           </p>
-
-          {/* Stats */}
-          <div className="grid grid-cols-3 gap-8 mb-12 max-w-2xl mx-auto">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white mb-2">94%</div>
-              <div className="text-green-200 text-sm">Success Rate</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white mb-2">$50M+</div>
-              <div className="text-green-200 text-sm">Volume Traded</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white mb-2">24/7</div>
-              <div className="text-green-200 text-sm">Automated</div>
-            </div>
-          </div>
-
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+          <div className="mt-10 flex items-center justify-center gap-x-6">
             <Link href="/auth/signup">
-              <Button
-                size="lg"
-                className="bg-white text-green-900 hover:bg-green-50 px-8 py-4 text-lg font-semibold group btn-transition"
-              >
-                Start Trading Free
-                <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+              <Button size="lg" className="bg-green-600 hover:bg-green-700">
+                Get Started Free
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
-
-            <Link href="/dashboard">
-              <Button
-                variant="outline"
-                size="lg"
-                className="border-white/30 text-white hover:bg-white/10 px-8 py-4 text-lg bg-transparent btn-transition"
-              >
-                View Live Demo
+            <Link href="#features">
+              <Button variant="outline" size="lg">
+                Learn More
               </Button>
             </Link>
           </div>
+        </div>
 
-          {/* Features */}
-          <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
-            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-6 card-hover">
-              <TrendingUp className="h-8 w-8 text-green-400 mx-auto mb-3" />
-              <h3 className="font-semibold mb-2">Smart Signals</h3>
-              <p className="text-green-100 text-sm">AI-powered trading signals with 94% accuracy rate</p>
+        {/* Feature Cards */}
+        <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
+          <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-lg bg-green-600">
+                <TrendingUp className="h-8 w-8 text-white" />
+              </div>
+              <dt className="text-base font-semibold leading-7 text-gray-900">Smart Trading Signals</dt>
+              <dd className="mt-1 text-base leading-7 text-gray-600">
+                AI-powered signals that analyze market trends and provide actionable trading recommendations.
+              </dd>
             </div>
-
-            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-6 card-hover">
-              <Zap className="h-8 w-8 text-yellow-400 mx-auto mb-3" />
-              <h3 className="font-semibold mb-2">Auto Trading</h3>
-              <p className="text-green-100 text-sm">Automated bots execute trades 24/7 while you sleep</p>
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-lg bg-green-600">
+                <Zap className="h-8 w-8 text-white" />
+              </div>
+              <dt className="text-base font-semibold leading-7 text-gray-900">Automated Bots</dt>
+              <dd className="mt-1 text-base leading-7 text-gray-600">
+                Deploy intelligent trading bots that execute trades 24/7 based on your strategy and risk tolerance.
+              </dd>
             </div>
-
-            <div className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg p-6 card-hover">
-              <Shield className="h-8 w-8 text-blue-400 mx-auto mb-3" />
-              <h3 className="font-semibold mb-2">Risk Management</h3>
-              <p className="text-green-100 text-sm">Advanced risk controls protect your investments</p>
+            <div className="flex flex-col items-center text-center">
+              <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-lg bg-green-600">
+                <Shield className="h-8 w-8 text-white" />
+              </div>
+              <dt className="text-base font-semibold leading-7 text-gray-900">Secure & Reliable</dt>
+              <dd className="mt-1 text-base leading-7 text-gray-600">
+                Bank-grade security with encrypted API connections and secure wallet integrations.
+              </dd>
             </div>
-          </div>
+          </dl>
         </div>
       </div>
     </section>

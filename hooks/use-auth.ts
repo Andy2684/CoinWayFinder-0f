@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
 
 interface User {
   id: string
@@ -35,7 +34,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check for stored user on mount
     const storedUser = localStorage.getItem("user")
     if (storedUser) {
-      setUser(JSON.parse(storedUser))
+      try {
+        setUser(JSON.parse(storedUser))
+      } catch (error) {
+        console.error("Error parsing stored user:", error)
+        localStorage.removeItem("user")
+      }
     }
     setLoading(false)
   }, [])
@@ -52,7 +56,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const userData = { id: demoUser.id, email: demoUser.email, name: demoUser.name }
       setUser(userData)
       localStorage.setItem("user", JSON.stringify(userData))
-      toast.success("Successfully logged in!")
       setLoading(false)
       return true
     }
@@ -78,7 +81,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const newUser = { id: Date.now().toString(), email, name }
     setUser(newUser)
     localStorage.setItem("user", JSON.stringify(newUser))
-    toast.success("Account created successfully!")
     setLoading(false)
     return true
   }
@@ -86,11 +88,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = () => {
     setUser(null)
     localStorage.removeItem("user")
-    toast.success("Logged out successfully!")
     router.push("/")
   }
 
-  return <AuthContext.Provider value={{ user, loading, login, signup, logout }}>{children}</AuthContext.Provider>
+  const contextValue: AuthContextType = {
+    user,
+    loading,
+    login,
+    signup,
+    logout,
+  }
+
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
