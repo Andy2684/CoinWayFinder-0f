@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
-import { getUserPortfolio, updatePortfolioPosition } from "@/lib/database"
+import { getUserAlerts, createAlert } from "@/lib/database"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 
@@ -14,15 +14,15 @@ export async function GET(request: NextRequest) {
     const token = authHeader.substring(7)
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string }
 
-    const portfolio = await getUserPortfolio(decoded.userId)
+    const alerts = await getUserAlerts(decoded.userId)
 
     return NextResponse.json({
       success: true,
-      portfolio,
+      alerts,
     })
   } catch (error) {
-    console.error("Portfolio fetch error:", error)
-    return NextResponse.json({ error: "Failed to fetch portfolio" }, { status: 500 })
+    console.error("Alerts fetch error:", error)
+    return NextResponse.json({ error: "Failed to fetch alerts" }, { status: 500 })
   }
 }
 
@@ -36,24 +36,26 @@ export async function POST(request: NextRequest) {
     const token = authHeader.substring(7)
     const decoded = jwt.verify(token, JWT_SECRET) as { userId: string }
 
-    const { symbol, quantity, averagePrice, currentPrice } = await request.json()
+    const { name, symbol, condition, targetPrice } = await request.json()
 
-    if (!symbol || !quantity || !averagePrice) {
+    if (!name || !symbol || !condition || !targetPrice) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
     }
 
-    const position = await updatePortfolioPosition(decoded.userId, symbol, {
-      quantity: Number.parseFloat(quantity),
-      averagePrice: Number.parseFloat(averagePrice),
-      currentPrice: currentPrice ? Number.parseFloat(currentPrice) : undefined,
+    const alert = await createAlert({
+      userId: decoded.userId,
+      name,
+      symbol,
+      condition,
+      targetPrice: Number.parseFloat(targetPrice),
     })
 
     return NextResponse.json({
       success: true,
-      position,
+      alert,
     })
   } catch (error) {
-    console.error("Portfolio update error:", error)
-    return NextResponse.json({ error: "Failed to update portfolio" }, { status: 500 })
+    console.error("Alert creation error:", error)
+    return NextResponse.json({ error: "Failed to create alert" }, { status: 500 })
   }
 }

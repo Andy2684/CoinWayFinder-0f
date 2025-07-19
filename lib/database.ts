@@ -1,23 +1,45 @@
-import { neon, neonConfig } from '@neondatabase/serverless'
-import { Pool } from '@neondatabase/serverless'
-import { drizzle } from 'drizzle-orm/neon-http'
-import { eq } from 'drizzle-orm'
-import { users } from '@/lib/schema'
+import { neon } from "@neondatabase/serverless"
 
-const sql = neon(process.env.POSTGRES_URL_NON_POOLING!)
-export const db = drizzle(sql)
-export const pool = new Pool({ connectionString: process.env.POSTGRES_URL_NON_POOLING })
+if (!process.env.DATABASE_URL) {
+  throw new Error("DATABASE_URL environment variable is required")
+}
 
-// ✅ Пользователи
+export const sql = neon(process.env.DATABASE_URL)
+
+// User management functions
+export async function createUser(userData: {
+  email: string
+  username: string
+  passwordHash: string
+  firstName?: string
+  lastName?: string
+  dateOfBirth?: string
+}) {
+  const [user] = await sql`
+    INSERT INTO users (email, username, password_hash, first_name, last_name, date_of_birth)
+    VALUES (${userData.email}, ${userData.username}, ${userData.passwordHash}, 
+            ${userData.firstName || null}, ${userData.lastName || null}, ${userData.dateOfBirth || null})
+    RETURNING id, email, username, first_name, last_name, role, is_email_verified, created_at
+  `
+  return user
+}
+
 export async function getUserByEmail(email: string) {
-  return await db.select().from(users).where(eq(users.email, email)).then(res => res[0] || null)
+  const [user] = await sql`
+    SELECT id, email, username, password_hash, first_name, last_name, role, is_email_verified, created_at
+    FROM users WHERE email = ${email}
+  `
+  return user
 }
 
-export async function getUserByUsername(username: string) {
-  return await db.select().from(users).where(eq(users.username, username)).then(res => res[0] || null)
+export async function getUserById(id: string) {
+  const [user] = await sql`
+    SELECT id, email, username, first_name, last_name, role, is_email_verified, created_at
+    FROM users WHERE id = ${id}
+  `
+  return user
 }
 
-<<<<<<< HEAD
 export async function getUserByUsername(username: string) {
   const [user] = await sql`
     SELECT id, email, username, first_name, last_name, role, is_email_verified, created_at
@@ -33,29 +55,46 @@ export async function getTradingSignals(limit = 50, offset = 0) {
     ORDER BY created_at DESC 
     LIMIT ${limit} OFFSET ${offset}
   `
-=======
-export async function createUser(data: { email: string, username: string, password: string }) {
-  return await db.insert(users).values(data).returning()
->>>>>>> b2cd8b3 (fix: restore working state after local fixes)
 }
 
-// ✅ Фиктивные сигналы
-export async function getTradingSignals() {
-  return [
-    { id: '1', asset: 'BTC/USDT', type: 'Buy', confidence: 85 },
-    { id: '2', asset: 'ETH/USDT', type: 'Sell', confidence: 78 },
-  ]
+export async function createTradingSignal(signalData: {
+  symbol: string
+  type: string
+  price: number
+  targetPrice?: number
+  stopLoss?: number
+  confidence: number
+  timeframe?: string
+  exchange?: string
+  analysis?: string
+  createdBy: string
+}) {
+  const [signal] = await sql`
+    INSERT INTO trading_signals (
+      symbol, type, price, target_price, stop_loss, confidence, 
+      timeframe, exchange, analysis, created_by
+    )
+    VALUES (
+      ${signalData.symbol}, ${signalData.type}, ${signalData.price}, 
+      ${signalData.targetPrice || null}, ${signalData.stopLoss || null}, 
+      ${signalData.confidence}, ${signalData.timeframe || null}, 
+      ${signalData.exchange || null}, ${signalData.analysis || null}, 
+      ${signalData.createdBy}
+    )
+    RETURNING *
+  `
+  return signal
 }
 
-// ✅ Боты (мок данные)
-export async function getTradingBotsByUser(userId: string) {
-  return [
-    { id: 'bot-1', userId, name: 'DCA Bot', strategy: 'DCA', status: 'running' },
-    { id: 'bot-2', userId, name: 'Scalping Bot', strategy: 'Scalping', status: 'paused' },
-  ]
+// Trading bots functions
+export async function getTradingBots(userId: string) {
+  return await sql`
+    SELECT * FROM trading_bots 
+    WHERE created_by = ${userId}
+    ORDER BY created_at DESC
+  `
 }
 
-<<<<<<< HEAD
 export async function getTradingBotsByUser(userId: string) {
   return await sql`
     SELECT * FROM trading_bots 
@@ -337,14 +376,3 @@ export async function createExchangeConnection(connectionData: {
   `
   return connection
 }
-=======
-// ✅ Новости (мок данные)
-export async function getNewsItems() {
-  return [
-    { id: '1', title: 'Bitcoin hits new high', source: 'CryptoPanic', date: new Date().toISOString() },
-    { id: '2', title: 'Ethereum upgrade announced', source: 'CoinDesk', date: new Date().toISOString() },
-  ]
-}
-
-export { sql }
->>>>>>> b2cd8b3 (fix: restore working state after local fixes)

@@ -1,6 +1,5 @@
-'use client'
+"use client"
 
-<<<<<<< HEAD
 import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
@@ -26,26 +25,12 @@ interface AuthContextType {
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
-=======
-import React, { createContext, useContext, useState } from 'react'
-
-type AuthContextType = {
-  user: null | { email: string }
-  isAuthenticated: boolean
-  loading: boolean
-}
-
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  isAuthenticated: false,
-  loading: false,
-})
->>>>>>> b2cd8b3 (fix: restore working state after local fixes)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user] = useState<{ email: string } | null>(null)
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
 
-<<<<<<< HEAD
   useEffect(() => {
     checkAuth()
   }, [])
@@ -164,21 +149,4 @@ export function useAuth() {
     throw new Error("useAuth must be used within an AuthProvider")
   }
   return context
-=======
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        loading: false,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  )
-}
-
-export function useAuth() {
-  return useContext(AuthContext)
->>>>>>> b2cd8b3 (fix: restore working state after local fixes)
 }

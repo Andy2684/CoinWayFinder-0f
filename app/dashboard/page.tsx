@@ -1,6 +1,5 @@
-'use client'
+"use client"
 
-<<<<<<< HEAD
 import { useEffect, useState } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -233,18 +232,5 @@ export default function DashboardPage() {
     <ProtectedRoute>
       <DashboardContent />
     </ProtectedRoute>
-=======
-import { RiskManagement } from '@/components/dashboard/risk-management'
-import { QuickActions } from '@/components/dashboard/quick-actions'
-import { TradeLogs } from '@/components/dashboard/trade-logs'
-
-export default function DashboardPage() {
-  return (
-    <div className="space-y-4 p-4">
-      <QuickActions />
-      <RiskManagement />
-      <TradeLogs />
-    </div>
->>>>>>> b2cd8b3 (fix: restore working state after local fixes)
   )
 }

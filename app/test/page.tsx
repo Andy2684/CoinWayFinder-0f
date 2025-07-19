@@ -11,7 +11,7 @@ import { CheckCircle, XCircle, Clock, Play, RefreshCw, Globe, Database, Shield, 
 interface TestResult {
   status: string
   timestamp: string
-  [key: string]: unknown
+  [key: string]: any
 }
 
 export default function TestPage() {
@@ -340,17 +340,10 @@ export default function TestPage() {
 
                   {databaseResult.tables && (
                     <div className="space-y-2">
-<<<<<<< HEAD
                       <h4 className="font-medium">Database Tables:</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                         {databaseResult.tables.map((table: any) => (
                           <div key={table.table} className="flex items-center gap-2 p-2 border rounded">
-=======
-                      <h4 className="font-medium">Tables:</h4>
-                      <div className="grid grid-cols-2 gap-2">
-                        {databaseResult.tables.map((table: unknown) => (
-                          <div key={table.table} className="flex items-center gap-2">
->>>>>>> b2cd8b3 (fix: restore working state after local fixes)
                             {getStatusIcon(table.exists ? "success" : "error")}
                             <span className="text-sm font-mono">{table.table}</span>
                             {table.error && <span className="text-xs text-red-500">({table.error})</span>}
@@ -489,7 +482,6 @@ export default function TestPage() {
 
                   {featuresResult.results && (
                     <div className="space-y-2">
-<<<<<<< HEAD
                       <h4 className="font-medium">Feature Test Results:</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         {featuresResult.results.map((result: any) => (
@@ -515,15 +507,6 @@ export default function TestPage() {
                               </div>
                             )}
                             {result.error && <div className="text-xs text-red-500 mt-1">Error: {result.error}</div>}
-=======
-                      <h4 className="font-medium">Feature Results:</h4>
-                      <div className="space-y-2">
-                        {featuresResult.results.map((result: unknown) => (
-                          <div key={result.feature} className="flex items-center gap-2">
-                            {getStatusIcon(result.status)}
-                            <span className="text-sm">{result.feature.replace(/_/g, " ")}</span>
-                            {result.error && <span className="text-xs text-red-500">({result.error})</span>}
->>>>>>> b2cd8b3 (fix: restore working state after local fixes)
                           </div>
                         ))}
                       </div>

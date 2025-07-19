@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 "use client"
 
 import { useState, useEffect } from "react"
@@ -226,19 +225,6 @@ export function Navigation() {
             </SheetContent>
           </Sheet>
         </div>
-=======
-'use client'
-
-import Link from 'next/link'
-
-export default function Navigation() {
-  return (
-    <nav className="flex justify-between items-center p-4 bg-gray-900 text-white">
-      <Link href="/" className="font-bold text-xl">CoinWayfinder</Link>
-      <div className="space-x-4">
-        <Link href="/signals">Сигналы</Link>
-        <Link href="/auth/login">Войти</Link>
->>>>>>> b2cd8b3 (fix: restore working state after local fixes)
       </div>
     </nav>
   )

@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 "use client"
 
 import Link from "next/link"
@@ -126,12 +125,6 @@ export default function Footer() {
           </div>
         </div>
       </div>
-=======
-export default function Footer() {
-  return (
-    <footer className="p-4 text-center text-sm text-gray-500">
-      © 2025 CoinWayfinder. Все права защищены.
->>>>>>> b2cd8b3 (fix: restore working state after local fixes)
     </footer>
   )
 }

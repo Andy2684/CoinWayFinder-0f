@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 "use client"
 
 import type React from "react"
@@ -51,7 +50,3 @@ export function ProtectedRoute({ children, requireAuth = true, redirectTo = "/au
 }
 
 export default ProtectedRoute
-=======
-// TODO: исправленный код для components/auth/protected-route.tsx вставить сюда
-// Пример: export function handler(req: Request): Response { return new Response("OK") }
->>>>>>> b2cd8b3 (fix: restore working state after local fixes)

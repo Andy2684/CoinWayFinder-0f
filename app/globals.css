@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-<<<<<<< HEAD
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -295,8 +294,3 @@
     transform: translateX(100%);
   }
 }
-=======
-body {
-  @apply bg-white text-black;
-}
->>>>>>> b2cd8b3 (fix: restore working state after local fixes)
