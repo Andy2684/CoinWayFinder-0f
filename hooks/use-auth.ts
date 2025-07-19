@@ -9,6 +9,7 @@ interface User {
   email: string
   name: string
   firstName?: string
+  lastName?: string
 }
 
 interface AuthContextType {
@@ -23,8 +24,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 // Demo users for testing
 const DEMO_USERS = [
-  { id: "1", email: "demo@coinwayfinder.com", password: "password", name: "Demo User", firstName: "Demo" },
-  { id: "2", email: "admin@coinwayfinder.com", password: "AdminPass123!", name: "Admin User", firstName: "Admin" },
+  {
+    id: "1",
+    email: "demo@coinwayfinder.com",
+    password: "password",
+    name: "Demo User",
+    firstName: "Demo",
+    lastName: "User",
+  },
+  {
+    id: "2",
+    email: "admin@coinwayfinder.com",
+    password: "AdminPass123!",
+    name: "Admin User",
+    firstName: "Admin",
+    lastName: "User",
+  },
 ]
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -54,11 +69,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const demoUser = DEMO_USERS.find((u) => u.email === email && u.password === password)
 
     if (demoUser) {
-      const userData = {
+      const userData: User = {
         id: demoUser.id,
         email: demoUser.email,
         name: demoUser.name,
         firstName: demoUser.firstName,
+        lastName: demoUser.lastName,
       }
       setUser(userData)
       localStorage.setItem("user", JSON.stringify(userData))
@@ -87,12 +103,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     // Create new user
-    const firstName = name.split(" ")[0]
-    const newUser = {
+    const nameParts = name.split(" ")
+    const firstName = nameParts[0] || ""
+    const lastName = nameParts.slice(1).join(" ") || ""
+
+    const newUser: User = {
       id: Date.now().toString(),
       email,
       name,
       firstName,
+      lastName,
     }
     setUser(newUser)
     localStorage.setItem("user", JSON.stringify(newUser))
@@ -108,15 +128,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/")
   }
 
-  const contextValue = {
-    user,
-    loading,
-    login,
-    signup,
-    logout,
-  }
-
-  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        signup,
+        logout,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {
