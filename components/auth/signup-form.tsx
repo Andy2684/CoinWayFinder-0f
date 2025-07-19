@@ -4,12 +4,13 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAuth } from "@/hooks/use-auth"
-import Link from "next/link"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useAuth } from "@/components/auth/auth-provider"
 
 export function SignupForm() {
   const [formData, setFormData] = useState({
@@ -19,78 +20,63 @@ export function SignupForm() {
     password: "",
     confirmPassword: "",
   })
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const { signup, loading } = useAuth()
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+  const { signup } = useAuth()
   const router = useRouter()
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-    // Clear error when user starts typing
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }))
-    }
-  }
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
-
-    if (!formData.firstName.trim()) {
-      newErrors.firstName = "First name is required"
-    }
-
-    if (!formData.lastName.trim()) {
-      newErrors.lastName = "Last name is required"
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = "Email is required"
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Email is invalid"
-    }
-
-    if (!formData.password) {
-      newErrors.password = "Password is required"
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters"
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = "Passwords do not match"
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
+    setLoading(true)
 
-    if (!validateForm()) {
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match")
+      setLoading(false)
       return
     }
 
-    const success = await signup({
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      password: formData.password,
-    })
-
-    if (success) {
-      // Redirect to thank you page instead of dashboard
-      router.push("/thank-you")
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters")
+      setLoading(false)
+      return
     }
+
+    try {
+      const result = await signup(formData)
+      if (result.success) {
+        // Signup successful, user will be redirected to thank-you page by the signup function
+      } else {
+        setError(result.error || "Registration failed")
+      }
+    } catch (err) {
+      setError("An unexpected error occurred")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }))
   }
 
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
         <CardTitle>Create Account</CardTitle>
-        <CardDescription>Join CoinWayFinder to start your crypto trading journey</CardDescription>
+        <CardDescription>Join Coinwayfinder to start your crypto trading journey</CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit}>
+        <CardContent className="space-y-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="firstName">First Name</Label>
@@ -98,11 +84,11 @@ export function SignupForm() {
                 id="firstName"
                 name="firstName"
                 type="text"
+                required
                 value={formData.firstName}
                 onChange={handleChange}
-                className={errors.firstName ? "border-red-500" : ""}
+                disabled={loading}
               />
-              {errors.firstName && <p className="text-sm text-red-500">{errors.firstName}</p>}
             </div>
             <div className="space-y-2">
               <Label htmlFor="lastName">Last Name</Label>
@@ -110,11 +96,11 @@ export function SignupForm() {
                 id="lastName"
                 name="lastName"
                 type="text"
+                required
                 value={formData.lastName}
                 onChange={handleChange}
-                className={errors.lastName ? "border-red-500" : ""}
+                disabled={loading}
               />
-              {errors.lastName && <p className="text-sm text-red-500">{errors.lastName}</p>}
             </div>
           </div>
 
@@ -124,11 +110,11 @@ export function SignupForm() {
               id="email"
               name="email"
               type="email"
+              required
               value={formData.email}
               onChange={handleChange}
-              className={errors.email ? "border-red-500" : ""}
+              disabled={loading}
             />
-            {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
           </div>
 
           <div className="space-y-2">
@@ -137,11 +123,11 @@ export function SignupForm() {
               id="password"
               name="password"
               type="password"
+              required
               value={formData.password}
               onChange={handleChange}
-              className={errors.password ? "border-red-500" : ""}
+              disabled={loading}
             />
-            {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
           </div>
 
           <div className="space-y-2">
@@ -150,25 +136,25 @@ export function SignupForm() {
               id="confirmPassword"
               name="confirmPassword"
               type="password"
+              required
               value={formData.confirmPassword}
               onChange={handleChange}
-              className={errors.confirmPassword ? "border-red-500" : ""}
+              disabled={loading}
             />
-            {errors.confirmPassword && <p className="text-sm text-red-500">{errors.confirmPassword}</p>}
           </div>
-
+        </CardContent>
+        <CardFooter className="flex flex-col space-y-4">
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Creating Account..." : "Create Account"}
           </Button>
-        </form>
-
-        <div className="mt-4 text-center text-sm">
-          Already have an account?{" "}
-          <Link href="/auth/login" className="text-blue-600 hover:underline">
-            Sign in
-          </Link>
-        </div>
-      </CardContent>
+          <p className="text-sm text-center text-muted-foreground">
+            Already have an account?{" "}
+            <Link href="/auth/login" className="text-blue-600 hover:underline">
+              Sign in
+            </Link>
+          </p>
+        </CardFooter>
+      </form>
     </Card>
   )
 }

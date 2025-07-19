@@ -43,7 +43,7 @@ const sidebarItems = [
   },
 ]
 
-export default function DashboardSidebar() {
+export function DashboardSidebar() {
   const pathname = usePathname()
   const { logout } = useAuth()
   const [open, setOpen] = useState(false)
@@ -114,3 +114,6 @@ export default function DashboardSidebar() {
     </>
   )
 }
+
+// Default export for convenience
+export default DashboardSidebar

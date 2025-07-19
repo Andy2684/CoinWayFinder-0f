@@ -13,9 +13,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useAuth } from "@/components/auth/auth-provider"
-import DashboardSidebar from "./dashboard-sidebar"
+import { DashboardSidebar } from "./dashboard-sidebar"
 
-export default function DashboardHeader() {
+export function DashboardHeader() {
   const { user, logout } = useAuth()
 
   return (
@@ -67,3 +67,6 @@ export default function DashboardHeader() {
     </header>
   )
 }
+
+// Default export for convenience
+export default DashboardHeader

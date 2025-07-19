@@ -4,110 +4,119 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { useAuth } from "@/hooks/use-auth"
-import Link from "next/link"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useAuth } from "@/components/auth/auth-provider"
 
 export function LoginForm() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const { login, loading } = useAuth()
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  })
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+  const { login } = useAuth()
   const router = useRouter()
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
-
-    if (!email.trim()) {
-      newErrors.email = "Email is required"
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = "Email is invalid"
-    }
-
-    if (!password) {
-      newErrors.password = "Password is required"
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
+    setLoading(true)
 
-    if (!validateForm()) {
-      return
+    try {
+      const result = await login(formData.email, formData.password)
+      if (result.success) {
+        router.push("/dashboard")
+      } else {
+        setError(result.error || "Login failed")
+      }
+    } catch (err) {
+      setError("An unexpected error occurred")
+    } finally {
+      setLoading(false)
     }
+  }
 
-    const success = await login(email, password)
-    if (success) {
-      router.push("/dashboard")
-    }
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }))
+  }
+
+  const handleDemoLogin = () => {
+    setFormData({
+      email: "demo@coinwayfinder.com",
+      password: "password",
+    })
   }
 
   return (
     <Card className="w-full max-w-md mx-auto">
       <CardHeader>
         <CardTitle>Welcome Back</CardTitle>
-        <CardDescription>Sign in to your CoinWayFinder account</CardDescription>
+        <CardDescription>Sign in to your Coinwayfinder account</CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit}>
+        <CardContent className="space-y-4">
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
             <Input
               id="email"
+              name="email"
               type="email"
-              value={email}
-              onChange={(e) => {
-                setEmail(e.target.value)
-                if (errors.email) setErrors((prev) => ({ ...prev, email: "" }))
-              }}
-              className={errors.email ? "border-red-500" : ""}
-              placeholder="demo@coinwayfinder.com"
+              required
+              value={formData.email}
+              onChange={handleChange}
+              disabled={loading}
             />
-            {errors.email && <p className="text-sm text-red-500">{errors.email}</p>}
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <Input
               id="password"
+              name="password"
               type="password"
-              value={password}
-              onChange={(e) => {
-                setPassword(e.target.value)
-                if (errors.password) setErrors((prev) => ({ ...prev, password: "" }))
-              }}
-              className={errors.password ? "border-red-500" : ""}
-              placeholder="password"
+              required
+              value={formData.password}
+              onChange={handleChange}
+              disabled={loading}
             />
-            {errors.password && <p className="text-sm text-red-500">{errors.password}</p>}
           </div>
 
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full bg-transparent"
+            onClick={handleDemoLogin}
+            disabled={loading}
+          >
+            Use Demo Account
+          </Button>
+        </CardContent>
+        <CardFooter className="flex flex-col space-y-4">
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Signing In..." : "Sign In"}
           </Button>
-        </form>
-
-        <div className="mt-4 space-y-2">
-          <div className="text-center text-sm">
+          <p className="text-sm text-center text-muted-foreground">
             Don't have an account?{" "}
             <Link href="/auth/signup" className="text-blue-600 hover:underline">
               Sign up
             </Link>
-          </div>
-
-          <div className="text-center text-xs text-gray-500">
-            <p>Demo credentials:</p>
-            <p>Email: demo@coinwayfinder.com</p>
-            <p>Password: password</p>
-          </div>
-        </div>
-      </CardContent>
+          </p>
+        </CardFooter>
+      </form>
     </Card>
   )
 }

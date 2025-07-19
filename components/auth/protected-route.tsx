@@ -2,23 +2,23 @@
 
 import type React from "react"
 
-import { useAuth } from "@/hooks/use-auth"
-import { useRouter } from "next/navigation"
 import { useEffect } from "react"
+import { useRouter } from "next/navigation"
+import { useAuth } from "@/components/auth/auth-provider"
 
 interface ProtectedRouteProps {
   children: React.ReactNode
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading } = useAuth()
+  const { isAuthenticated, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!loading && !isAuthenticated) {
       router.push("/auth/login")
     }
-  }, [user, loading, router])
+  }, [isAuthenticated, loading, router])
 
   if (loading) {
     return (
@@ -28,7 +28,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     )
   }
 
-  if (!user) {
+  if (!isAuthenticated) {
     return null
   }
 
