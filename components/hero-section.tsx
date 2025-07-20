@@ -38,10 +38,10 @@ export function HeroSection() {
   ]
 
   const features = [
-    { icon: Bot, label: "AI Trading Bots", desc: "Automated 24/7 trading" },
-    { icon: Shield, label: "Secure Platform", desc: "Bank-grade security" },
-    { icon: BarChart3, label: "Advanced Analytics", desc: "Real-time insights" },
-    { icon: Zap, label: "Lightning Fast", desc: "Instant execution" },
+    { icon: Bot, label: "AI Trading Bots", desc: "Automated 24/7 trading", color: "blue" },
+    { icon: Shield, label: "Secure Platform", desc: "Bank-grade security", color: "green" },
+    { icon: BarChart3, label: "Advanced Analytics", desc: "Real-time insights", color: "purple" },
+    { icon: Zap, label: "Lightning Fast", desc: "Instant execution", color: "yellow" },
   ]
 
   useEffect(() => {
@@ -51,6 +51,16 @@ export function HeroSection() {
     }, 3000)
     return () => clearInterval(interval)
   }, [])
+
+  const getColorClasses = (color: string) => {
+    const colorMap = {
+      blue: "bg-blue-500/20 text-blue-400 hover:text-purple-400",
+      green: "bg-green-500/20 text-green-400 hover:text-blue-400",
+      purple: "bg-purple-500/20 text-purple-400 hover:text-blue-400",
+      yellow: "bg-yellow-500/20 text-yellow-400 hover:text-blue-400",
+    }
+    return colorMap[color as keyof typeof colorMap] || colorMap.blue
+  }
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-purple-900">
@@ -223,13 +233,20 @@ export function HeroSection() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, index) => {
               const Icon = feature.icon
+              const colorClasses = getColorClasses(feature.color)
               return (
                 <Card
                   key={index}
                   className="bg-white/10 backdrop-blur-lg border-white/20 hover:bg-white/20 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-blue-500/20 cursor-pointer group"
                 >
                   <CardContent className="p-6 text-center">
-                    <Icon className="w-12 h-12 mx-auto mb-4 text-blue-400 group-hover:text-purple-400 transition-colors" />
+                    <div
+                      className={`w-12 h-12 mx-auto mb-4 rounded-lg flex items-center justify-center ${colorClasses.split(" ")[0]} group-hover:scale-110 transition-transform`}
+                    >
+                      <Icon
+                        className={`w-6 h-6 ${colorClasses.split(" ")[1]} group-hover:${colorClasses.split(" ")[2]} transition-colors`}
+                      />
+                    </div>
                     <h3 className="text-lg font-semibold text-white mb-2">{feature.label}</h3>
                     <p className="text-gray-400 text-sm">{feature.desc}</p>
                     <Button

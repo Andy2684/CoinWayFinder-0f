@@ -29,6 +29,84 @@ import {
 export function FeaturesSection() {
   const [activeTab, setActiveTab] = useState("trading")
 
+  const getColorClasses = (color: string) => {
+    const colorMap = {
+      blue: {
+        bg: "bg-blue-500/20",
+        text: "text-blue-400",
+        button: "bg-blue-600 hover:bg-blue-700",
+        border: "border-blue-500/30",
+      },
+      purple: {
+        bg: "bg-purple-500/20",
+        text: "text-purple-400",
+        button: "bg-purple-600 hover:bg-purple-700",
+        border: "border-purple-500/30",
+      },
+      green: {
+        bg: "bg-green-500/20",
+        text: "text-green-400",
+        button: "bg-green-600 hover:bg-green-700",
+        border: "border-green-500/30",
+      },
+      yellow: {
+        bg: "bg-yellow-500/20",
+        text: "text-yellow-400",
+        button: "bg-yellow-600 hover:bg-yellow-700",
+        border: "border-yellow-500/30",
+      },
+      indigo: {
+        bg: "bg-indigo-500/20",
+        text: "text-indigo-400",
+        button: "bg-indigo-600 hover:bg-indigo-700",
+        border: "border-indigo-500/30",
+      },
+      pink: {
+        bg: "bg-pink-500/20",
+        text: "text-pink-400",
+        button: "bg-pink-600 hover:bg-pink-700",
+        border: "border-pink-500/30",
+      },
+      cyan: {
+        bg: "bg-cyan-500/20",
+        text: "text-cyan-400",
+        button: "bg-cyan-600 hover:bg-cyan-700",
+        border: "border-cyan-500/30",
+      },
+      orange: {
+        bg: "bg-orange-500/20",
+        text: "text-orange-400",
+        button: "bg-orange-600 hover:bg-orange-700",
+        border: "border-orange-500/30",
+      },
+      teal: {
+        bg: "bg-teal-500/20",
+        text: "text-teal-400",
+        button: "bg-teal-600 hover:bg-teal-700",
+        border: "border-teal-500/30",
+      },
+      red: {
+        bg: "bg-red-500/20",
+        text: "text-red-400",
+        button: "bg-red-600 hover:bg-red-700",
+        border: "border-red-500/30",
+      },
+      amber: {
+        bg: "bg-amber-500/20",
+        text: "text-amber-400",
+        button: "bg-amber-600 hover:bg-amber-700",
+        border: "border-amber-500/30",
+      },
+      emerald: {
+        bg: "bg-emerald-500/20",
+        text: "text-emerald-400",
+        button: "bg-emerald-600 hover:bg-emerald-700",
+        border: "border-emerald-500/30",
+      },
+    }
+    return colorMap[color as keyof typeof colorMap] || colorMap.blue
+  }
+
   const mainFeatures = [
     {
       icon: Bot,
@@ -184,6 +262,7 @@ export function FeaturesSection() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {filteredFeatures.map((feature, index) => {
                     const Icon = feature.icon
+                    const colors = getColorClasses(feature.color)
                     return (
                       <Card
                         key={index}
@@ -191,9 +270,9 @@ export function FeaturesSection() {
                       >
                         <CardHeader>
                           <div
-                            className={`w-12 h-12 rounded-lg bg-${feature.color}-500/20 flex items-center justify-center mb-4 group-hover:bg-${feature.color}-500/30 transition-colors`}
+                            className={`w-12 h-12 rounded-lg ${colors.bg} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}
                           >
-                            <Icon className={`w-6 h-6 text-${feature.color}-400`} />
+                            <Icon className={`w-6 h-6 ${colors.text}`} />
                           </div>
                           <CardTitle className="text-white text-xl">{feature.title}</CardTitle>
                           <CardDescription className="text-gray-400">{feature.description}</CardDescription>
@@ -202,7 +281,7 @@ export function FeaturesSection() {
                           <ul className="space-y-2 mb-6">
                             {feature.benefits.map((benefit, benefitIndex) => (
                               <li key={benefitIndex} className="flex items-center text-gray-300 text-sm">
-                                <CheckCircle className={`w-4 h-4 text-${feature.color}-400 mr-2 flex-shrink-0`} />
+                                <CheckCircle className={`w-4 h-4 ${colors.text} mr-2 flex-shrink-0`} />
                                 {benefit}
                               </li>
                             ))}
@@ -211,14 +290,11 @@ export function FeaturesSection() {
                             <Button
                               variant="outline"
                               size="sm"
-                              className={`border-${feature.color}-500/30 text-${feature.color}-400 hover:bg-${feature.color}-500/20 flex-1`}
+                              className={`${colors.border} ${colors.text} hover:${colors.bg} flex-1`}
                             >
                               Learn More
                             </Button>
-                            <Button
-                              size="sm"
-                              className={`bg-${feature.color}-600 hover:bg-${feature.color}-700 text-white`}
-                            >
+                            <Button size="sm" className={`${colors.button} text-white`}>
                               <Play className="w-4 h-4" />
                             </Button>
                           </div>
@@ -241,12 +317,11 @@ export function FeaturesSection() {
             { icon: Users, label: "Active Users", value: "50K+", color: "purple" },
           ].map((stat, index) => {
             const Icon = stat.icon
+            const colors = getColorClasses(stat.color)
             return (
               <div key={index} className="text-center">
-                <div
-                  className={`w-16 h-16 rounded-full bg-${stat.color}-500/20 flex items-center justify-center mx-auto mb-4`}
-                >
-                  <Icon className={`w-8 h-8 text-${stat.color}-400`} />
+                <div className={`w-16 h-16 rounded-full ${colors.bg} flex items-center justify-center mx-auto mb-4`}>
+                  <Icon className={`w-8 h-8 ${colors.text}`} />
                 </div>
                 <div className="text-2xl font-bold text-white">{stat.value}</div>
                 <div className="text-gray-400 text-sm">{stat.label}</div>
