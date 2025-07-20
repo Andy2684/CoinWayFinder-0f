@@ -31,7 +31,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check if user is logged in on mount
     const token = localStorage.getItem("auth_token")
     if (token) {
-      // Simulate checking token validity
       try {
         const userData = localStorage.getItem("user_data")
         if (userData) {
@@ -106,7 +105,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
-  return <AuthContext.Provider value={{ user, login, logout, signup, loading }}>{children}</AuthContext.Provider>
+  const contextValue: AuthContextType = {
+    user,
+    login,
+    logout,
+    signup,
+    loading,
+  }
+
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
@@ -117,5 +124,5 @@ export function useAuth() {
   return context
 }
 
-// Backward compatibility export
+// For backward compatibility
 export const useAuthContext = useAuth

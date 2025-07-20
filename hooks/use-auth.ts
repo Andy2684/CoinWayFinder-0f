@@ -105,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }
 
-  const value = {
+  const contextValue: AuthContextType = {
     user,
     login,
     logout,
@@ -113,7 +113,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
   }
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {
