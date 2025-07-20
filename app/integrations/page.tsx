@@ -1,130 +1,125 @@
 "use client"
-
-import { useState } from "react"
-import { toast } from "sonner"
-import { BackToDashboard } from "@/components/back-to-dashboard"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ExchangeIntegrations } from "@/components/integrations/exchange-integrations"
 import { IntegrationStatus } from "@/components/integrations/integration-status"
 import { SecuritySettings } from "@/components/integrations/security-settings"
 import { TradingFeatures } from "@/components/integrations/trading-features"
 import { ApiKeyManager } from "@/components/integrations/api-key-manager"
-
-interface Exchange {
-  id: string
-  name: string
-  logo: string
-  connected: boolean
-  status: "active" | "error" | "pending"
-  lastSync: string
-  features: string[]
-}
-
-interface ApiKey {
-  id: string
-  exchange: string
-  name: string
-  permissions: string[]
-  created: string
-  lastUsed: string
-  status: "active" | "inactive"
-}
+import { BackToDashboard, FloatingDashboardButton } from "@/components/back-to-dashboard"
+import { Plus, Settings, Shield, Zap, CheckCircle, RefreshCw } from "lucide-react"
 
 export default function IntegrationsPage() {
-  const [exchanges] = useState<Exchange[]>([
-    {
-      id: "binance",
-      name: "Binance",
-      logo: "/placeholder.svg?height=40&width=40",
-      connected: true,
-      status: "active",
-      lastSync: "2 minutes ago",
-      features: ["Spot Trading", "Futures", "Options"],
-    },
-    {
-      id: "coinbase",
-      name: "Coinbase Pro",
-      logo: "/placeholder.svg?height=40&width=40",
-      connected: true,
-      status: "active",
-      lastSync: "5 minutes ago",
-      features: ["Spot Trading", "Advanced Orders"],
-    },
-    {
-      id: "kraken",
-      name: "Kraken",
-      logo: "/placeholder.svg?height=40&width=40",
-      connected: false,
-      status: "pending",
-      lastSync: "Never",
-      features: ["Spot Trading", "Futures", "Staking"],
-    },
-  ])
-
-  const [apiKeys] = useState<ApiKey[]>([
-    {
-      id: "1",
-      exchange: "Binance",
-      name: "Main Trading Key",
-      permissions: ["Read", "Trade"],
-      created: "2023-12-01",
-      lastUsed: "2 minutes ago",
-      status: "active",
-    },
-    {
-      id: "2",
-      exchange: "Coinbase Pro",
-      name: "Portfolio Key",
-      permissions: ["Read"],
-      created: "2023-11-15",
-      lastUsed: "1 hour ago",
-      status: "active",
-    },
-  ])
-
-  const [showApiKeys, setShowApiKeys] = useState<{ [key: string]: boolean }>({})
-
-  const handleConnect = (exchangeId: string) => {
-    toast.success(`Connecting to ${exchangeId}...`)
-  }
-
-  const handleDisconnect = (exchangeId: string) => {
-    toast.success(`Disconnected from ${exchangeId}`)
-  }
-
-  const handleTestConnection = (exchangeId: string) => {
-    toast.info(`Testing connection to ${exchangeId}...`)
-  }
-
-  const toggleApiKeyVisibility = (keyId: string) => {
-    setShowApiKeys((prev) => ({
-      ...prev,
-      [keyId]: !prev[keyId],
-    }))
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
-      <div className="container mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-white">Exchange Integrations</h1>
-            <p className="text-gray-400">Connect your exchange accounts and manage API keys</p>
-          </div>
+    <div className="container mx-auto px-4 py-8 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
           <BackToDashboard />
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Integrations</h1>
+            <p className="text-muted-foreground">Connect your exchanges and manage API integrations</p>
+          </div>
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <IntegrationStatus />
-          <SecuritySettings />
-        </div>
-
-        <ExchangeIntegrations />
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <ApiKeyManager />
-          <TradingFeatures />
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh Status
+          </Button>
+          <Button>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Integration
+          </Button>
         </div>
       </div>
+
+      {/* Integration Stats */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Connected Exchanges</CardTitle>
+            <Zap className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">5</div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-green-600">All active</span>
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">API Keys</CardTitle>
+            <Settings className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">8</div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-green-600">6 active</span>, 2 inactive
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Security Score</CardTitle>
+            <Shield className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">95%</div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-green-600">Excellent</span> security
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Last Sync</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">2m ago</div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-green-600">All synced</span>
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Integration Management Tabs */}
+      <Tabs defaultValue="exchanges" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="exchanges">Exchanges</TabsTrigger>
+          <TabsTrigger value="status">Status</TabsTrigger>
+          <TabsTrigger value="security">Security</TabsTrigger>
+          <TabsTrigger value="features">Features</TabsTrigger>
+          <TabsTrigger value="api-keys">API Keys</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="exchanges">
+          <ExchangeIntegrations />
+        </TabsContent>
+
+        <TabsContent value="status">
+          <IntegrationStatus />
+        </TabsContent>
+
+        <TabsContent value="security">
+          <SecuritySettings />
+        </TabsContent>
+
+        <TabsContent value="features">
+          <TradingFeatures />
+        </TabsContent>
+
+        <TabsContent value="api-keys">
+          <ApiKeyManager />
+        </TabsContent>
+      </Tabs>
+
+      <FloatingDashboardButton />
     </div>
   )
 }

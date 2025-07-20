@@ -1,226 +1,205 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { PortfolioOverview } from "@/components/portfolio/portfolio-overview"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog"
-import { Plus, RefreshCw } from "lucide-react"
-import { toast } from "sonner"
-import { BackToDashboard } from "@/components/back-to-dashboard"
-
-interface PortfolioPosition {
-  id: string
-  symbol: string
-  quantity: number
-  average_price: number
-  current_price: number
-  total_value: number
-  pnl: number
-  pnl_percentage: number
-}
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { PortfolioOverview } from "@/components/portfolio/portfolio-overview"
+import { BackToDashboard, FloatingDashboardButton } from "@/components/back-to-dashboard"
+import { TrendingUp, TrendingDown, DollarSign, PieChart, RefreshCw, Download } from "lucide-react"
 
 export default function PortfolioPage() {
-  const [positions, setPositions] = useState<PortfolioPosition[]>([])
-  const [loading, setLoading] = useState(true)
-  const [isAddingPosition, setIsAddingPosition] = useState(false)
-  const [newPosition, setNewPosition] = useState({
-    symbol: "",
-    quantity: "",
-    averagePrice: "",
-    currentPrice: "",
-  })
-
-  useEffect(() => {
-    fetchPortfolio()
-  }, [])
-
-  const fetchPortfolio = async () => {
-    try {
-      const token = localStorage.getItem("token")
-      if (!token) {
-        toast.error("Please log in to view your portfolio")
-        return
-      }
-
-      const response = await fetch("/api/portfolio", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        setPositions(data.portfolio || [])
-      } else {
-        toast.error("Failed to fetch portfolio")
-      }
-    } catch (error) {
-      console.error("Portfolio fetch error:", error)
-      toast.error("Failed to fetch portfolio")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleAddPosition = async () => {
-    try {
-      const token = localStorage.getItem("token")
-      if (!token) {
-        toast.error("Please log in to add positions")
-        return
-      }
-
-      if (!newPosition.symbol || !newPosition.quantity || !newPosition.averagePrice) {
-        toast.error("Please fill in all required fields")
-        return
-      }
-
-      setIsAddingPosition(true)
-
-      const response = await fetch("/api/portfolio", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(newPosition),
-      })
-
-      if (response.ok) {
-        toast.success("Position added successfully")
-        setNewPosition({ symbol: "", quantity: "", averagePrice: "", currentPrice: "" })
-        fetchPortfolio()
-      } else {
-        toast.error("Failed to add position")
-      }
-    } catch (error) {
-      console.error("Add position error:", error)
-      toast.error("Failed to add position")
-    } finally {
-      setIsAddingPosition(false)
-    }
-  }
-
-  const calculateTotals = () => {
-    const totalValue = positions.reduce((sum, pos) => sum + pos.total_value, 0)
-    const totalPnL = positions.reduce((sum, pos) => sum + pos.pnl, 0)
-    const totalPnLPercentage = totalValue > 0 ? (totalPnL / (totalValue - totalPnL)) * 100 : 0
-
-    return { totalValue, totalPnL, totalPnLPercentage }
-  }
-
-  const { totalValue, totalPnL, totalPnLPercentage } = calculateTotals()
-
-  if (loading) {
-    return (
-      <div className="container mx-auto p-6">
-        <BackToDashboard className="mb-6" />
-        <div className="flex items-center justify-center h-64">
-          <RefreshCw className="h-8 w-8 animate-spin" />
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
-      <div className="container mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <BackToDashboard />
-            <div>
-              <h1 className="text-3xl font-bold text-white">Portfolio</h1>
-              <p className="text-gray-400">Track your cryptocurrency investments and performance</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={fetchPortfolio} variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Position
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Add New Position</DialogTitle>
-                  <DialogDescription>Add a new trading position to your portfolio</DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="symbol">Symbol *</Label>
-                    <Input
-                      id="symbol"
-                      placeholder="e.g., BTC/USD"
-                      value={newPosition.symbol}
-                      onChange={(e) => setNewPosition({ ...newPosition, symbol: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="quantity">Quantity *</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      step="0.00000001"
-                      placeholder="0.00000000"
-                      value={newPosition.quantity}
-                      onChange={(e) => setNewPosition({ ...newPosition, quantity: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="averagePrice">Average Price *</Label>
-                    <Input
-                      id="averagePrice"
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={newPosition.averagePrice}
-                      onChange={(e) => setNewPosition({ ...newPosition, averagePrice: e.target.value })}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="currentPrice">Current Price (optional)</Label>
-                    <Input
-                      id="currentPrice"
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      value={newPosition.currentPrice}
-                      onChange={(e) => setNewPosition({ ...newPosition, currentPrice: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button onClick={handleAddPosition} disabled={isAddingPosition}>
-                    {isAddingPosition ? "Adding..." : "Add Position"}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+    <div className="container mx-auto px-4 py-8 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <BackToDashboard />
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Portfolio</h1>
+            <p className="text-muted-foreground">Track your investments and portfolio performance</p>
           </div>
         </div>
-
-        <PortfolioOverview
-          positions={positions}
-          totalValue={totalValue}
-          totalPnL={totalPnL}
-          totalPnLPercentage={totalPnLPercentage}
-        />
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+        </div>
       </div>
+
+      {/* Portfolio Stats */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">$45,231.89</div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-green-600">+20.1%</span> from last month
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">24h Change</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">+$1,234.56</div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-green-600">+2.8%</span> vs yesterday
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Best Performer</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">BTC</div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-green-600">+15.2%</span> today
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Worst Performer</CardTitle>
+            <TrendingDown className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">ETH</div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-red-600">-3.1%</span> today
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Portfolio Content */}
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="holdings">Holdings</TabsTrigger>
+          <TabsTrigger value="performance">Performance</TabsTrigger>
+          <TabsTrigger value="allocation">Allocation</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="overview">
+          <PortfolioOverview />
+        </TabsContent>
+
+        <TabsContent value="holdings" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Current Holdings</CardTitle>
+              <CardDescription>Your cryptocurrency positions</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[
+                  { symbol: "BTC", name: "Bitcoin", amount: "2.5", value: "$125,000", change: "+5.2%" },
+                  { symbol: "ETH", name: "Ethereum", amount: "15.8", value: "$47,400", change: "-2.1%" },
+                  { symbol: "ADA", name: "Cardano", amount: "10,000", value: "$4,500", change: "+1.8%" },
+                  { symbol: "DOT", name: "Polkadot", amount: "500", value: "$3,250", change: "+3.4%" },
+                ].map((holding, index) => (
+                  <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                        {holding.symbol.slice(0, 2)}
+                      </div>
+                      <div>
+                        <p className="font-medium">{holding.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {holding.amount} {holding.symbol}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-medium">{holding.value}</p>
+                      <p className={`text-sm ${holding.change.startsWith("+") ? "text-green-600" : "text-red-600"}`}>
+                        {holding.change}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="performance" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance Metrics</CardTitle>
+              <CardDescription>Your portfolio performance over time</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="text-center p-4 border rounded-lg">
+                  <p className="text-2xl font-bold text-green-600">+24.5%</p>
+                  <p className="text-sm text-muted-foreground">7 Days</p>
+                </div>
+                <div className="text-center p-4 border rounded-lg">
+                  <p className="text-2xl font-bold text-green-600">+67.8%</p>
+                  <p className="text-sm text-muted-foreground">30 Days</p>
+                </div>
+                <div className="text-center p-4 border rounded-lg">
+                  <p className="text-2xl font-bold text-green-600">+156.2%</p>
+                  <p className="text-sm text-muted-foreground">1 Year</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="allocation" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <PieChart className="h-5 w-5" />
+                Asset Allocation
+              </CardTitle>
+              <CardDescription>Distribution of your portfolio</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[
+                  { name: "Bitcoin (BTC)", percentage: 55, color: "bg-orange-500" },
+                  { name: "Ethereum (ETH)", percentage: 25, color: "bg-blue-500" },
+                  { name: "Cardano (ADA)", percentage: 10, color: "bg-green-500" },
+                  { name: "Polkadot (DOT)", percentage: 7, color: "bg-purple-500" },
+                  { name: "Others", percentage: 3, color: "bg-gray-500" },
+                ].map((asset, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span>{asset.name}</span>
+                      <span>{asset.percentage}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div
+                        className={`${asset.color} h-2 rounded-full transition-all duration-300`}
+                        style={{ width: `${asset.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      <FloatingDashboardButton />
     </div>
   )
 }

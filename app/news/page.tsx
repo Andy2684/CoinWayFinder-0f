@@ -1,231 +1,253 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+import { useState } from "react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Search, TrendingUp, TrendingDown, Minus, AlertCircle } from "lucide-react"
-import { Navigation } from "@/components/navigation"
-import { BackToDashboard } from "@/components/back-to-dashboard"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { LiveNewsFeed } from "@/components/live-news-feed"
 import { NewsWidget } from "@/components/news-widget"
-
-interface NewsArticle {
-  id: string
-  title: string
-  summary: string
-  content: string
-  source: string
-  publishedAt: string
-  sentiment: "positive" | "negative" | "neutral"
-  impact: number
-  tags: string[]
-  imageUrl: string
-}
-
-interface NewsResponse {
-  articles: NewsArticle[]
-  total: number
-  page: number
-  limit: number
-  totalPages: number
-}
+import { BackToDashboard, FloatingDashboardButton } from "@/components/back-to-dashboard"
+import { Search, Filter, RefreshCw, TrendingUp, Clock, Globe, Bookmark } from "lucide-react"
 
 export default function NewsPage() {
-  const [news, setNews] = useState<NewsArticle[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [search, setSearch] = useState("")
-  const [sentiment, setSentiment] = useState("all")
-  const [sortBy, setSortBy] = useState("date")
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-
-  const fetchNews = async () => {
-    try {
-      setLoading(true)
-      setError(null)
-
-      const params = new URLSearchParams({
-        search,
-        sentiment,
-        sortBy,
-        page: page.toString(),
-        limit: "10",
-      })
-
-      const response = await fetch(`/api/news?${params}`)
-      if (!response.ok) {
-        throw new Error("Failed to fetch news")
-      }
-
-      const data: NewsResponse = await response.json()
-      setNews(data.articles)
-      setTotalPages(data.totalPages)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
-      // Fallback to empty array on error
-      setNews([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    fetchNews()
-  }, [search, sentiment, sortBy, page])
-
-  const getSentimentIcon = (sentiment: string) => {
-    switch (sentiment) {
-      case "positive":
-        return <TrendingUp className="w-4 h-4 text-green-600" />
-      case "negative":
-        return <TrendingDown className="w-4 h-4 text-red-600" />
-      default:
-        return <Minus className="w-4 h-4 text-gray-600" />
-    }
-  }
-
-  const getSentimentColor = (sentiment: string) => {
-    switch (sentiment) {
-      case "positive":
-        return "bg-green-100 text-green-800 border-green-200"
-      case "negative":
-        return "bg-red-100 text-red-800 border-red-200"
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-200"
-    }
-  }
-
-  const getImpactColor = (impact: number) => {
-    if (impact >= 8) return "bg-red-100 text-red-800 border-red-200"
-    if (impact >= 6) return "bg-yellow-100 text-yellow-800 border-yellow-200"
-    return "bg-green-100 text-green-800 border-green-200"
-  }
-
-  const formatTimeAgo = (dateString: string) => {
-    const now = new Date()
-    const publishedDate = new Date(dateString)
-    const diffInHours = Math.floor((now.getTime() - publishedDate.getTime()) / (1000 * 60 * 60))
-
-    if (diffInHours < 1) return "Just now"
-    if (diffInHours < 24) return `${diffInHours}h ago`
-    const diffInDays = Math.floor(diffInHours / 24)
-    return `${diffInDays}d ago`
-  }
-
-  const clearFilters = () => {
-    setSearch("")
-    setSentiment("all")
-    setSortBy("date")
-    setPage(1)
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <Navigation />
-        <div className="container mx-auto px-4 py-8">
-          <BackToDashboard className="mb-6" />
-          <div className="flex items-center justify-center min-h-[400px]">
-            <Card className="w-full max-w-md">
-              <CardContent className="flex flex-col items-center justify-center p-6">
-                <AlertCircle className="w-12 h-12 text-red-500 mb-4" />
-                <h3 className="text-lg font-semibold mb-2">Error Loading News</h3>
-                <p className="text-gray-600 text-center mb-4">{error}</p>
-                <Button onClick={fetchNews}>Try Again</Button>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const [searchTerm, setSearchTerm] = useState("")
+  const [selectedCategory, setSelectedCategory] = useState("all")
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <Navigation />
-
-      <div className="container mx-auto px-4 py-6 space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-white">Crypto News</h1>
-            <p className="text-gray-400">Stay updated with the latest cryptocurrency news and market insights</p>
-          </div>
+    <div className="container mx-auto px-4 py-8 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
           <BackToDashboard />
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Crypto News</h1>
+            <p className="text-muted-foreground">
+              Stay updated with the latest cryptocurrency news and market insights
+            </p>
+          </div>
         </div>
+        <Button variant="outline" size="sm">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Refresh
+        </Button>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            {loading ? (
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {Array.from({ length: 6 }).map((_, i) => (
-                  <Card key={i} className="overflow-hidden">
-                    <Skeleton className="h-48 w-full" />
-                    <CardContent className="p-6">
-                      <Skeleton className="h-4 w-3/4 mb-2" />
-                      <Skeleton className="h-4 w-1/2 mb-4" />
-                      <Skeleton className="h-20 w-full mb-4" />
-                      <div className="flex gap-2">
-                        <Skeleton className="h-6 w-16" />
-                        <Skeleton className="h-6 w-12" />
+      {/* News Stats */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Today's Articles</CardTitle>
+            <Globe className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">127</div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-green-600">+23</span> from yesterday
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Trending Topic</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">Bitcoin ETF</div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-blue-600">45 mentions</span> today
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Market Sentiment</CardTitle>
+            <TrendingUp className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">Bullish</div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-green-600">72%</span> positive sentiment
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Saved Articles</CardTitle>
+            <Bookmark className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">12</div>
+            <p className="text-xs text-muted-foreground">
+              <span className="text-blue-600">3 new</span> this week
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Search and Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search news articles..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm">
+            <Filter className="h-4 w-4 mr-2" />
+            Filters
+          </Button>
+          <Button variant="outline" size="sm">
+            <Clock className="h-4 w-4 mr-2" />
+            Latest
+          </Button>
+        </div>
+      </div>
+
+      {/* Category Filters */}
+      <div className="flex flex-wrap gap-2">
+        {["all", "bitcoin", "ethereum", "defi", "nft", "regulation", "technology"].map((category) => (
+          <Badge
+            key={category}
+            variant={selectedCategory === category ? "default" : "outline"}
+            className="cursor-pointer capitalize"
+            onClick={() => setSelectedCategory(category)}
+          >
+            {category}
+          </Badge>
+        ))}
+      </div>
+
+      {/* News Content */}
+      <Tabs defaultValue="feed" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="feed">News Feed</TabsTrigger>
+          <TabsTrigger value="trending">Trending</TabsTrigger>
+          <TabsTrigger value="saved">Saved</TabsTrigger>
+          <TabsTrigger value="analysis">Analysis</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="feed">
+          <div className="grid gap-6 md:grid-cols-3">
+            <div className="md:col-span-2">
+              <LiveNewsFeed />
+            </div>
+            <div>
+              <NewsWidget />
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="trending" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Trending Stories</CardTitle>
+              <CardDescription>Most popular crypto news today</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {[
+                  {
+                    title: "Bitcoin Reaches New All-Time High Above $75,000",
+                    source: "CoinDesk",
+                    time: "2 hours ago",
+                    sentiment: "bullish",
+                  },
+                  {
+                    title: "Ethereum 2.0 Staking Rewards Hit Record Levels",
+                    source: "CryptoNews",
+                    time: "4 hours ago",
+                    sentiment: "bullish",
+                  },
+                  {
+                    title: "Major Exchange Announces New DeFi Integration",
+                    source: "BlockNews",
+                    time: "6 hours ago",
+                    sentiment: "neutral",
+                  },
+                ].map((article, index) => (
+                  <div key={index} className="p-4 border rounded-lg hover:bg-muted/50 cursor-pointer">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-medium mb-1">{article.title}</h3>
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <span>{article.source}</span>
+                          <span>•</span>
+                          <span>{article.time}</span>
+                          <Badge variant={article.sentiment === "bullish" ? "default" : "outline"} className="ml-2">
+                            {article.sentiment}
+                          </Badge>
+                        </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </div>
                 ))}
               </div>
-            ) : news.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center p-12">
-                  <Search className="w-12 h-12 text-gray-400 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No news found</h3>
-                  <p className="text-gray-600 text-center">
-                    Try adjusting your search terms or filters to find more articles.
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="saved" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Saved Articles</CardTitle>
+              <CardDescription>Your bookmarked crypto news</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-8">
+                <Bookmark className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground">No saved articles yet</p>
+                <p className="text-sm text-muted-foreground">Click the bookmark icon on any article to save it here</p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="analysis" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Market Analysis</CardTitle>
+              <CardDescription>In-depth crypto market analysis and insights</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div className="p-4 border rounded-lg">
+                  <h3 className="font-medium mb-2">Weekly Market Outlook</h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Technical analysis suggests continued bullish momentum for major cryptocurrencies...
                   </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <LiveNewsFeed articles={news} />
-            )}
-          </div>
-          <div className="lg:col-span-1">
-            <NewsWidget />
-          </div>
-        </div>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>CryptoAnalyst</span>
+                    <span>•</span>
+                    <span>1 day ago</span>
+                  </div>
+                </div>
 
-        {/* Pagination */}
-        {totalPages > 1 && (
-          <div className="flex justify-center items-center gap-2 mt-8">
-            <Button variant="outline" onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1}>
-              Previous
-            </Button>
+                <div className="p-4 border rounded-lg">
+                  <h3 className="font-medium mb-2">DeFi Sector Deep Dive</h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Analyzing the latest trends in decentralized finance protocols and yield farming...
+                  </p>
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>DeFi Research</span>
+                    <span>•</span>
+                    <span>2 days ago</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
-            <div className="flex items-center gap-2">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                const pageNum = i + 1
-                return (
-                  <Button
-                    key={pageNum}
-                    variant={page === pageNum ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setPage(pageNum)}
-                  >
-                    {pageNum}
-                  </Button>
-                )
-              })}
-            </div>
-
-            <Button
-              variant="outline"
-              onClick={() => setPage(Math.min(totalPages, page + 1))}
-              disabled={page === totalPages}
-            >
-              Next
-            </Button>
-          </div>
-        )}
-      </div>
+      <FloatingDashboardButton />
     </div>
   )
 }
