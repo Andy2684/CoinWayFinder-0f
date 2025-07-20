@@ -4,14 +4,15 @@ import { Inter } from "next/font/google"
 import "./globals.css"
 import { AuthProvider } from "@/components/auth/auth-provider"
 import { ThemeProvider } from "@/components/theme-provider"
-import { Toaster } from "@/components/ui/sonner"
+import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
   title: "CoinWayFinder - AI-Powered Crypto Trading Platform",
   description:
-    "Automate your cryptocurrency trading with advanced AI algorithms. Join thousands of traders earning passive income 24/7.",
+    "Advanced cryptocurrency trading platform with AI-powered bots, real-time market analysis, and automated trading strategies.",
+  keywords: "cryptocurrency, trading, AI, bots, bitcoin, ethereum, crypto analysis",
     generator: 'v0.dev'
 }
 

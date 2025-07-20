@@ -1,154 +1,243 @@
 "use client"
 
+import type React from "react"
+
+import { useState } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { ArrowRight, Play, TrendingUp, Shield, Zap, UserPlus, LogIn } from "lucide-react"
-import Link from "next/link"
-import { useState } from "react"
-import { useAuth } from "@/hooks/use-auth"
+import { Card, CardContent } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import {
+  ArrowRight,
+  TrendingUp,
+  Shield,
+  Zap,
+  Users,
+  DollarSign,
+  Bot,
+  BarChart3,
+  UserPlus,
+  LogIn,
+  Mail,
+  CheckCircle,
+} from "lucide-react"
+import { useAuth } from "@/components/auth/auth-provider"
 
 export function HeroSection() {
   const [email, setEmail] = useState("")
+  const [isSubscribed, setIsSubscribed] = useState(false)
   const { user } = useAuth()
 
+  const handleEmailSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (email) {
+      setIsSubscribed(true)
+      setEmail("")
+    }
+  }
+
+  const stats = [
+    { icon: Users, value: "50K+", label: "Active Traders" },
+    { icon: DollarSign, value: "$2.5B+", label: "Trading Volume" },
+    { icon: Bot, value: "10K+", label: "AI Bots Running" },
+    { icon: BarChart3, value: "94%", label: "Success Rate" },
+  ]
+
+  const features = [
+    {
+      icon: Bot,
+      title: "AI-Powered Trading Bots",
+      description: "Advanced algorithms that trade 24/7 with machine learning optimization",
+    },
+    {
+      icon: Shield,
+      title: "Bank-Grade Security",
+      description: "Military-grade encryption and secure API connections to protect your assets",
+    },
+    {
+      icon: Zap,
+      title: "Lightning Fast Execution",
+      description: "Execute trades in milliseconds with our high-performance infrastructure",
+    },
+    {
+      icon: TrendingUp,
+      title: "Real-Time Analytics",
+      description: "Advanced market analysis and insights powered by AI and big data",
+    },
+  ]
+
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500/10 rounded-full blur-3xl animate-pulse delay-500"></div>
-      </div>
+    <section className="relative py-20 px-4 overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 via-purple-900/20 to-gray-900/20" />
+      <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-3xl" />
+      <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl" />
 
-      {/* Grid pattern overlay */}
-      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]"></div>
+      <div className="container mx-auto relative z-10">
+        {/* Main Hero Content */}
+        <div className="text-center max-w-4xl mx-auto mb-16">
+          <Badge className="mb-6 bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0">
+            🚀 New: Advanced AI Trading Algorithms Available
+          </Badge>
 
-      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <div className="max-w-4xl mx-auto">
-          {/* Badge */}
-          <div className="inline-flex items-center px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-300 text-sm font-medium mb-8">
-            <Zap className="w-4 h-4 mr-2" />
-            AI-Powered Crypto Trading Platform
-          </div>
-
-          {/* Main heading */}
           <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
             Trade Crypto with
-            <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+            <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
               {" "}
               AI Precision
             </span>
           </h1>
 
-          {/* Subheading */}
-          <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Maximize your crypto profits with intelligent trading bots, real-time market analysis, and automated
-            strategies. Join thousands of traders already earning with AI.
+          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto leading-relaxed">
+            Harness the power of artificial intelligence to maximize your cryptocurrency trading profits. Our advanced
+            bots work 24/7 to identify opportunities and execute trades with precision.
           </p>
 
-          {/* Stats */}
-          <div className="flex flex-wrap justify-center gap-8 mb-12 text-gray-300">
-            <div className="flex items-center">
-              <TrendingUp className="w-5 h-5 mr-2 text-green-400" />
-              <span className="text-sm">95% Success Rate</span>
-            </div>
-            <div className="flex items-center">
-              <Shield className="w-5 h-5 mr-2 text-blue-400" />
-              <span className="text-sm">Bank-Level Security</span>
-            </div>
-            <div className="flex items-center">
-              <Zap className="w-5 h-5 mr-2 text-yellow-400" />
-              <span className="text-sm">24/7 Automated Trading</span>
-            </div>
-          </div>
-
           {/* CTA Buttons */}
-          {!user ? (
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <Link href="/auth/signup">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+            {user ? (
+              <Button
+                asChild
+                size="lg"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg px-8 py-6"
+              >
+                <Link href="/dashboard">
+                  <BarChart3 className="mr-2 h-5 w-5" />
+                  Go to Dashboard
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Link>
+              </Button>
+            ) : (
+              <>
                 <Button
+                  asChild
                   size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-lg px-8 py-6"
                 >
-                  <UserPlus className="w-5 h-5 mr-2" />
-                  Start Trading Free
-                  <ArrowRight className="w-5 h-5 ml-2" />
+                  <Link href="/auth/signup">
+                    <UserPlus className="mr-2 h-5 w-5" />
+                    Start Trading Free
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
                 </Button>
-              </Link>
 
-              <Link href="/auth/login">
                 <Button
+                  asChild
                   variant="outline"
                   size="lg"
-                  className="border-2 border-white/20 text-white hover:bg-white/10 px-8 py-4 text-lg font-semibold rounded-xl backdrop-blur-sm bg-transparent"
+                  className="text-white border-white/20 hover:bg-white/10 text-lg px-8 py-6 bg-transparent"
                 >
-                  <LogIn className="w-5 h-5 mr-2" />
-                  Sign In
+                  <Link href="/auth/login">
+                    <LogIn className="mr-2 h-5 w-5" />
+                    Sign In
+                  </Link>
                 </Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-              <Link href="/dashboard">
+              </>
+            )}
+          </div>
+
+          {/* Email Signup */}
+          {!user && (
+            <div className="max-w-md mx-auto mb-12">
+              <form onSubmit={handleEmailSubmit} className="flex gap-2">
+                <div className="relative flex-1">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    type="email"
+                    placeholder="Enter your email to get started"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                    required
+                  />
+                </div>
                 <Button
-                  size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                  type="submit"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >
-                  Go to Dashboard
-                  <ArrowRight className="w-5 h-5 ml-2" />
+                  {isSubscribed ? <CheckCircle className="h-4 w-4" /> : "Get Started"}
                 </Button>
-              </Link>
+              </form>
+              {isSubscribed && (
+                <p className="text-green-400 text-sm mt-2 flex items-center justify-center">
+                  <CheckCircle className="h-4 w-4 mr-1" />
+                  Thanks! We'll be in touch soon.
+                </p>
+              )}
             </div>
           )}
 
-          {/* Email signup form */}
-          <div className="max-w-md mx-auto mb-12">
-            <div className="flex flex-col sm:flex-row gap-3 p-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
-              <Input
-                type="email"
-                placeholder="Enter your email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="flex-1 bg-transparent border-0 text-white placeholder-gray-400 focus:ring-0"
-              />
-              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-2 rounded-lg font-semibold">
-                Get Started
-              </Button>
-            </div>
-            <p className="text-sm text-gray-400 mt-2">No credit card required • Free 14-day trial</p>
-          </div>
-
-          {/* Demo video button */}
-          <div className="mb-16">
-            <Button variant="ghost" className="text-white hover:bg-white/10 rounded-full p-4">
-              <Play className="w-6 h-6 mr-3" />
-              Watch 2-minute demo
-            </Button>
-          </div>
-
-          {/* Bottom CTA section */}
-          <div className="bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 p-8 max-w-2xl mx-auto">
-            <h3 className="text-2xl font-bold text-white mb-4">Ready to Start Trading?</h3>
-            <p className="text-gray-300 mb-6">Join over 50,000 traders using AI to maximize their crypto profits</p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link href="/auth/signup">
-                <Button className="bg-gradient-to-r from-green-500 to-blue-600 hover:from-green-600 hover:to-blue-700 text-white px-6 py-3 font-semibold rounded-lg">
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Create Free Account
-                </Button>
-              </Link>
-              <Link href="/auth/login">
-                <Button
-                  variant="outline"
-                  className="border-white/30 text-white hover:bg-white/10 px-6 py-3 font-semibold rounded-lg bg-transparent"
-                >
-                  <LogIn className="w-4 h-4 mr-2" />
-                  Member Login
-                </Button>
-              </Link>
-            </div>
+          {/* Trust Indicators */}
+          <div className="flex flex-wrap justify-center gap-8 text-gray-400 text-sm">
+            <span>✓ No Credit Card Required</span>
+            <span>✓ 7-Day Free Trial</span>
+            <span>✓ Cancel Anytime</span>
+            <span>✓ 24/7 Support</span>
           </div>
         </div>
+
+        {/* Stats Section */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
+          {stats.map((stat, index) => (
+            <Card key={index} className="bg-white/5 backdrop-blur-lg border-white/10">
+              <CardContent className="p-6 text-center">
+                <stat.icon className="h-8 w-8 text-blue-400 mx-auto mb-3" />
+                <div className="text-2xl font-bold text-white mb-1">{stat.value}</div>
+                <div className="text-gray-400 text-sm">{stat.label}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Features Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
+          {features.map((feature, index) => (
+            <Card
+              key={index}
+              className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-colors"
+            >
+              <CardContent className="p-6">
+                <feature.icon className="h-10 w-10 text-blue-400 mb-4" />
+                <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
+                <p className="text-gray-400 text-sm">{feature.description}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Bottom CTA */}
+        {!user && (
+          <div className="text-center bg-gradient-to-r from-blue-900/20 to-purple-900/20 rounded-2xl p-8 backdrop-blur-lg border border-white/10">
+            <h2 className="text-2xl font-bold text-white mb-4">Ready to Start Your Trading Journey?</h2>
+            <p className="text-gray-300 mb-6">
+              Join thousands of traders who are already using AI to maximize their profits
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button
+                asChild
+                size="lg"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
+                <Link href="/auth/signup">
+                  <UserPlus className="mr-2 h-5 w-5" />
+                  Create Free Account
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="text-white border-white/20 hover:bg-white/10 bg-transparent"
+              >
+                <Link href="/auth/login">
+                  <LogIn className="mr-2 h-5 w-5" />
+                  Member Login
+                </Link>
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   )

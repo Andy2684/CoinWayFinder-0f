@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { X, LogIn, UserPlus } from "lucide-react"
+import { X, LogIn, UserPlus, Sparkles } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 
 export function TopButtonsBar() {
@@ -18,38 +18,35 @@ export function TopButtonsBar() {
   return (
     <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 px-4 relative">
       <div className="container mx-auto flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <span className="text-sm font-medium">
-            🚀 Start trading crypto with AI-powered bots • Free trial • No credit card required
-          </span>
+        <div className="flex items-center gap-2 text-sm">
+          <Sparkles className="h-4 w-4" />
+          <span className="font-medium">Start Trading Free Today!</span>
+          <span className="hidden sm:inline">• No Credit Card Required • 7-Day Free Trial</span>
         </div>
 
-        <div className="flex items-center space-x-3">
-          <Link href="/auth/login">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/20 text-xs">
-              <LogIn className="w-3 h-3 mr-1" />
+        <div className="flex items-center gap-2">
+          <Button asChild variant="ghost" size="sm" className="text-white hover:bg-white/20 h-8">
+            <Link href="/auth/login">
+              <LogIn className="h-4 w-4 mr-1" />
               Log In
-            </Button>
-          </Link>
+            </Link>
+          </Button>
 
-          <Link href="/auth/signup">
-            <Button
-              variant="secondary"
-              size="sm"
-              className="bg-white text-blue-600 hover:bg-gray-100 text-xs font-semibold"
-            >
-              <UserPlus className="w-3 h-3 mr-1" />
+          <Button asChild size="sm" className="bg-white text-blue-600 hover:bg-gray-100 h-8">
+            <Link href="/auth/signup">
+              <UserPlus className="h-4 w-4 mr-1" />
               Sign Up Free
-            </Button>
-          </Link>
+            </Link>
+          </Button>
 
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setIsVisible(false)}
-            className="text-white hover:bg-white/20 p-1 rounded"
-            aria-label="Close banner"
+            className="text-white hover:bg-white/20 h-8 w-8 p-0 ml-2"
           >
-            <X className="w-4 h-4" />
-          </button>
+            <X className="h-4 w-4" />
+          </Button>
         </div>
       </div>
     </div>
