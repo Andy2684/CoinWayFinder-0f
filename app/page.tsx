@@ -4,20 +4,18 @@ import { FeaturesSection } from "@/components/features-section"
 import { PricingSection } from "@/components/pricing-section"
 import { CTASection } from "@/components/cta-section"
 import { Footer } from "@/components/footer"
-import { FloatingDashboardButton } from "@/components/back-to-dashboard"
+import { BackToDashboard } from "@/components/back-to-dashboard"
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <Navigation />
-      <main>
-        <HeroSection />
-        <FeaturesSection />
-        <PricingSection />
-        <CTASection />
-      </main>
+      <HeroSection />
+      <FeaturesSection />
+      <PricingSection />
+      <CTASection />
       <Footer />
-      <FloatingDashboardButton />
+      <BackToDashboard variant="floating" />
     </div>
   )
 }
