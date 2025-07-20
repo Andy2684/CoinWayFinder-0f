@@ -5,7 +5,7 @@ import Link from "next/link"
 import { useAuth } from "@/components/auth/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Bot, Menu, User, LogOut } from "lucide-react"
+import { Bot, Menu, User, LogOut, UserPlus, LogIn } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 
 export function Navigation() {
@@ -38,8 +38,8 @@ export function Navigation() {
             ))}
           </div>
 
-          {/* Auth Buttons */}
-          <div className="hidden md:flex items-center space-x-4">
+          {/* Auth Buttons - Top Line */}
+          <div className="hidden md:flex items-center space-x-3">
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -66,22 +66,50 @@ export function Navigation() {
                 <Button
                   asChild
                   variant="outline"
-                  className="text-white border-white/20 hover:bg-white/10 bg-transparent"
+                  size="sm"
+                  className="text-white border-white/30 hover:bg-white/10 bg-transparent hover:border-white/50 transition-all duration-200"
                 >
-                  <Link href="/auth/login">Sign In</Link>
+                  <Link href="/auth/login" className="flex items-center">
+                    <LogIn className="w-4 h-4 mr-2" />
+                    Log In
+                  </Link>
                 </Button>
                 <Button
                   asChild
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6"
+                  size="sm"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-4 shadow-lg hover:shadow-xl transition-all duration-200"
                 >
-                  <Link href="/auth/signup">Get Started</Link>
+                  <Link href="/auth/signup" className="flex items-center">
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Create Account
+                  </Link>
                 </Button>
               </>
             )}
           </div>
 
           {/* Mobile Menu */}
-          <div className="md:hidden">
+          <div className="md:hidden flex items-center space-x-2">
+            {/* Mobile Auth Buttons */}
+            {!user && (
+              <>
+                <Button asChild variant="ghost" size="sm" className="text-white hover:bg-white/10 px-2">
+                  <Link href="/auth/login">
+                    <LogIn className="w-4 h-4" />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  size="sm"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-2"
+                >
+                  <Link href="/auth/signup">
+                    <UserPlus className="w-4 h-4" />
+                  </Link>
+                </Button>
+              </>
+            )}
+
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="sm" className="text-white">
@@ -125,14 +153,19 @@ export function Navigation() {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        <Button asChild variant="ghost" className="w-full text-white hover:bg-white/10">
-                          <Link href="/auth/login" onClick={() => setIsOpen(false)}>
-                            Login
+                        <Button asChild variant="ghost" className="w-full text-white hover:bg-white/10 justify-start">
+                          <Link href="/auth/login" onClick={() => setIsOpen(false)} className="flex items-center">
+                            <LogIn className="w-4 h-4 mr-2" />
+                            Log In
                           </Link>
                         </Button>
-                        <Button asChild className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                          <Link href="/auth/signup" onClick={() => setIsOpen(false)}>
-                            Sign Up
+                        <Button
+                          asChild
+                          className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white justify-start"
+                        >
+                          <Link href="/auth/signup" onClick={() => setIsOpen(false)} className="flex items-center">
+                            <UserPlus className="w-4 h-4 mr-2" />
+                            Create Account
                           </Link>
                         </Button>
                       </div>
