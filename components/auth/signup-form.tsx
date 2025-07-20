@@ -2,7 +2,8 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { useAuth } from "./auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,60 +14,70 @@ import { Eye, EyeOff, Mail, Lock, User, UserPlus } from "lucide-react"
 import Link from "next/link"
 
 export function SignupForm() {
-  const { signup, isLoading } = useAuth()
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-  })
+  const { user } = useAuth()
+  const router = useRouter()
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }))
+  // Redirect if user is already authenticated
+  useEffect(() => {
+    if (user) {
+      router.push("/dashboard")
+    }
+  }, [user, router])
+
+  // Don't render the form if user is authenticated
+  if (user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
+        <Card className="w-full max-w-md bg-black/40 backdrop-blur-xl border-white/10">
+          <CardContent className="p-6 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+            <p className="text-white">Redirecting to dashboard...</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
 
-    // Validation
-    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
+    if (!firstName || !lastName || !email || !password || !confirmPassword) {
       setError("Please fill in all fields")
       return
     }
 
-    if (formData.password !== formData.confirmPassword) {
+    if (password !== confirmPassword) {
       setError("Passwords do not match")
       return
     }
 
-    if (formData.password.length < 6) {
+    if (password.length < 6) {
       setError("Password must be at least 6 characters long")
       return
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email)) {
-      setError("Please enter a valid email address")
-      return
-    }
+    setIsLoading(true)
 
-    const success = await signup({
-      email: formData.email,
-      password: formData.password,
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-    })
+    try {
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 2000))
 
-    if (!success) {
-      setError("Registration failed. Email may already be in use.")
+      // Redirect to thank you page instead of dashboard
+      router.push("/thank-you")
+    } catch (error) {
+      setError("Registration failed. Please try again.")
+    } finally {
+      setIsLoading(false)
     }
   }
 
@@ -96,11 +107,10 @@ export function SignupForm() {
                   <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
                     id="firstName"
-                    name="firstName"
                     type="text"
-                    placeholder="First name"
-                    value={formData.firstName}
-                    onChange={handleChange}
+                    placeholder="John"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
                     className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
                     required
                   />
@@ -115,11 +125,10 @@ export function SignupForm() {
                   <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
                     id="lastName"
-                    name="lastName"
                     type="text"
-                    placeholder="Last name"
-                    value={formData.lastName}
-                    onChange={handleChange}
+                    placeholder="Doe"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
                     className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
                     required
                   />
@@ -135,11 +144,10 @@ export function SignupForm() {
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
                   id="email"
-                  name="email"
                   type="email"
-                  placeholder="Enter your email"
-                  value={formData.email}
-                  onChange={handleChange}
+                  placeholder="john@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
                   required
                 />
@@ -154,11 +162,10 @@ export function SignupForm() {
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
                   id="password"
-                  name="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Create a password"
-                  value={formData.password}
-                  onChange={handleChange}
+                  placeholder="Create a strong password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
                   required
                 />
@@ -186,11 +193,10 @@ export function SignupForm() {
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
                   id="confirmPassword"
-                  name="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirm your password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
                   required
                 />
@@ -214,7 +220,7 @@ export function SignupForm() {
               {isLoading ? (
                 <div className="flex items-center">
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Creating account...
+                  Creating Account...
                 </div>
               ) : (
                 <>
@@ -230,6 +236,19 @@ export function SignupForm() {
             <Link href="/auth/login" className="text-blue-400 hover:text-blue-300 font-medium">
               Sign in
             </Link>
+          </div>
+
+          <div className="text-center text-xs text-gray-500">
+            <p>By creating an account, you agree to our</p>
+            <div className="space-x-1">
+              <Link href="/terms" className="text-blue-400 hover:text-blue-300">
+                Terms of Service
+              </Link>
+              <span>and</span>
+              <Link href="/privacy" className="text-blue-400 hover:text-blue-300">
+                Privacy Policy
+              </Link>
+            </div>
           </div>
         </CardContent>
       </Card>
