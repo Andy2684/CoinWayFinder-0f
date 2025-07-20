@@ -4,9 +4,77 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import { Wallet, ExternalLink, Copy, CheckCircle } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Wallet, ExternalLink, Copy, CheckCircle, Smartphone, Monitor, Shield, QrCode } from "lucide-react"
 import { walletManager, type WalletConnection } from "@/lib/wallet-connection"
 import { useToast } from "@/hooks/use-toast"
+
+const WALLET_OPTIONS = [
+  {
+    id: "metamask",
+    name: "MetaMask",
+    description: "Connect using MetaMask browser extension",
+    icon: "🦊",
+    type: "browser",
+    popular: true,
+  },
+  {
+    id: "walletconnect",
+    name: "WalletConnect",
+    description: "Connect with WalletConnect protocol",
+    icon: "🔗",
+    type: "mobile",
+    popular: true,
+  },
+  {
+    id: "coinbase",
+    name: "Coinbase Wallet",
+    description: "Connect using Coinbase Wallet",
+    icon: "🔵",
+    type: "browser",
+    popular: true,
+  },
+  {
+    id: "trust",
+    name: "Trust Wallet",
+    description: "Connect using Trust Wallet mobile app",
+    icon: "🛡️",
+    type: "mobile",
+    popular: false,
+  },
+  {
+    id: "phantom",
+    name: "Phantom",
+    description: "Connect using Phantom wallet (Solana)",
+    icon: "👻",
+    type: "browser",
+    popular: false,
+  },
+  {
+    id: "ledger",
+    name: "Ledger",
+    description: "Connect using Ledger hardware wallet",
+    icon: "🔐",
+    type: "hardware",
+    popular: false,
+  },
+  {
+    id: "trezor",
+    name: "Trezor",
+    description: "Connect using Trezor hardware wallet",
+    icon: "🔒",
+    type: "hardware",
+    popular: false,
+  },
+  {
+    id: "rainbow",
+    name: "Rainbow",
+    description: "Connect using Rainbow wallet",
+    icon: "🌈",
+    type: "mobile",
+    popular: false,
+  },
+]
 
 export function WalletConnectButton() {
   const [connection, setConnection] = useState<WalletConnection>({
@@ -17,6 +85,8 @@ export function WalletConnectButton() {
   })
   const [isConnecting, setIsConnecting] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [showDialog, setShowDialog] = useState(false)
+  const [selectedWallet, setSelectedWallet] = useState<string | null>(null)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -27,24 +97,33 @@ export function WalletConnectButton() {
     }
   }, [])
 
-  const handleConnect = async () => {
+  const handleConnect = async (walletId: string) => {
     setIsConnecting(true)
+    setSelectedWallet(walletId)
+
     try {
+      const wallet = WALLET_OPTIONS.find((w) => w.id === walletId)
+
+      // Simulate different connection flows
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+
       const newConnection = await walletManager.connectWallet()
       setConnection(newConnection)
+      setShowDialog(false)
 
       toast({
-        title: "Wallet Connected",
-        description: `Connected to ${newConnection.address?.slice(0, 6)}...${newConnection.address?.slice(-4)}`,
+        title: `${wallet?.name} Connected`,
+        description: `Successfully connected to ${newConnection.address?.slice(0, 6)}...${newConnection.address?.slice(-4)}`,
       })
     } catch (error) {
       toast({
         title: "Connection Failed",
-        description: "Could not connect to wallet. Using demo mode.",
+        description: `Could not connect to ${WALLET_OPTIONS.find((w) => w.id === walletId)?.name}. Using demo mode.`,
         variant: "destructive",
       })
     } finally {
       setIsConnecting(false)
+      setSelectedWallet(null)
     }
   }
 
@@ -59,7 +138,7 @@ export function WalletConnectButton() {
 
     toast({
       title: "Wallet Disconnected",
-      description: "Your wallet has been disconnected.",
+      description: "Your wallet has been disconnected successfully.",
     })
   }
 
@@ -84,6 +163,14 @@ export function WalletConnectButton() {
         return "BSC"
       case 137:
         return "Polygon"
+      case 43114:
+        return "Avalanche"
+      case 250:
+        return "Fantom"
+      case 42161:
+        return "Arbitrum"
+      case 10:
+        return "Optimism"
       default:
         return "Unknown"
     }
@@ -91,14 +178,102 @@ export function WalletConnectButton() {
 
   if (!connection.isConnected) {
     return (
-      <Button
-        onClick={handleConnect}
-        disabled={isConnecting}
-        className="bg-emerald-600 hover:bg-emerald-700 transition-all duration-300 hover:scale-105"
-      >
-        <Wallet className="w-4 h-4 mr-2" />
-        {isConnecting ? "Connecting..." : "Connect Wallet"}
-      </Button>
+      <Dialog open={showDialog} onOpenChange={setShowDialog}>
+        <DialogTrigger asChild>
+          <Button className="bg-emerald-600 hover:bg-emerald-700 transition-all duration-300 hover:scale-105">
+            <Wallet className="w-4 h-4 mr-2" />
+            Connect Wallet
+          </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-md bg-black/90 backdrop-blur-xl border-white/10">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center">
+              <Wallet className="w-5 h-5 mr-2" />
+              Connect Your Wallet
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="text-sm text-gray-400 mb-4">Choose your preferred wallet to connect to CoinWayFinder</div>
+
+            {/* Popular Wallets */}
+            <div>
+              <h3 className="text-sm font-medium text-white mb-3">Popular Wallets</h3>
+              <div className="space-y-2">
+                {WALLET_OPTIONS.filter((wallet) => wallet.popular).map((wallet) => (
+                  <Button
+                    key={wallet.id}
+                    variant="outline"
+                    className="w-full justify-start bg-white/5 border-white/10 text-white hover:bg-white/10 h-12"
+                    onClick={() => handleConnect(wallet.id)}
+                    disabled={isConnecting}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <span className="text-lg">{wallet.icon}</span>
+                      <div className="text-left">
+                        <p className="font-medium">{wallet.name}</p>
+                        <p className="text-xs text-gray-400">{wallet.description}</p>
+                      </div>
+                    </div>
+                    {wallet.type === "browser" && <Monitor className="w-4 h-4 ml-auto" />}
+                    {wallet.type === "mobile" && <Smartphone className="w-4 h-4 ml-auto" />}
+                    {wallet.type === "hardware" && <Shield className="w-4 h-4 ml-auto" />}
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Other Wallets */}
+            <div>
+              <h3 className="text-sm font-medium text-white mb-3">Other Wallets</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {WALLET_OPTIONS.filter((wallet) => !wallet.popular).map((wallet) => (
+                  <Button
+                    key={wallet.id}
+                    variant="outline"
+                    className="justify-start bg-white/5 border-white/10 text-white hover:bg-white/10 h-16"
+                    onClick={() => handleConnect(wallet.id)}
+                    disabled={isConnecting}
+                  >
+                    <div className="flex flex-col items-center space-y-1">
+                      <span className="text-lg">{wallet.icon}</span>
+                      <span className="text-xs font-medium">{wallet.name}</span>
+                      {wallet.type === "browser" && <Monitor className="w-3 h-3" />}
+                      {wallet.type === "mobile" && <Smartphone className="w-3 h-3" />}
+                      {wallet.type === "hardware" && <Shield className="w-3 h-3" />}
+                    </div>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            {/* Connection Status */}
+            {isConnecting && selectedWallet && (
+              <div className="flex items-center justify-center space-x-2 p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                <span className="text-blue-400 text-sm">
+                  Connecting to {WALLET_OPTIONS.find((w) => w.id === selectedWallet)?.name}...
+                </span>
+              </div>
+            )}
+
+            {/* QR Code Option */}
+            <div className="border-t border-white/10 pt-4">
+              <Button
+                variant="outline"
+                className="w-full bg-white/5 border-white/10 text-white hover:bg-white/10"
+                disabled={isConnecting}
+              >
+                <QrCode className="w-4 h-4 mr-2" />
+                Connect with QR Code
+              </Button>
+            </div>
+
+            <div className="text-xs text-gray-500 text-center">
+              By connecting a wallet, you agree to our Terms of Service and Privacy Policy
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     )
   }
 
