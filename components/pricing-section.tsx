@@ -1,330 +1,257 @@
 "use client"
 
-import { useState } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import {
-  Check,
-  X,
-  Star,
-  Crown,
-  ArrowRight,
-  Users,
-  Bot,
-  BarChart3,
-  Shield,
-  Headphones,
-  Smartphone,
-  Globe,
-  TrendingUp,
-} from "lucide-react"
+import { Check, Star, Zap, Crown, UserPlus, LogIn, ArrowRight, Shield, Bot, BarChart3 } from "lucide-react"
+import { useAuth } from "@/components/auth/auth-provider"
 
 export function PricingSection() {
-  const [isYearly, setIsYearly] = useState(false)
+  const { user } = useAuth()
 
   const plans = [
     {
       name: "Starter",
+      price: "Free",
+      period: "forever",
       description: "Perfect for beginners getting started with crypto trading",
-      monthlyPrice: 29,
-      yearlyPrice: 290,
-      icon: Users,
+      icon: Star,
       color: "blue",
       popular: false,
       features: [
-        { name: "Up to 3 Trading Bots", included: true },
-        { name: "Basic Market Analysis", included: true },
-        { name: "Email Support", included: true },
-        { name: "Mobile App Access", included: true },
-        { name: "Portfolio Tracking", included: true },
-        { name: "Basic Alerts", included: true },
-        { name: "Advanced Analytics", included: false },
-        { name: "Copy Trading", included: false },
-        { name: "Priority Support", included: false },
-        { name: "Custom Strategies", included: false },
-        { name: "API Access", included: false },
-        { name: "White-label Solution", included: false },
+        "1 AI Trading Bot",
+        "Basic market analysis",
+        "Email support",
+        "Mobile app access",
+        "Community access",
+        "Basic tutorials",
       ],
-      buttonText: "Start Free Trial",
-      buttonVariant: "outline" as const,
+      limitations: ["Limited to $1,000 portfolio", "Basic strategies only", "Standard execution speed"],
     },
     {
-      name: "Professional",
-      description: "Advanced features for serious traders and small teams",
-      monthlyPrice: 99,
-      yearlyPrice: 990,
-      icon: Bot,
+      name: "Pro",
+      price: "$29",
+      period: "per month",
+      description: "Advanced features for serious traders",
+      icon: Zap,
       color: "purple",
       popular: true,
       features: [
-        { name: "Up to 15 Trading Bots", included: true },
-        { name: "Advanced Market Analysis", included: true },
-        { name: "Priority Email & Chat Support", included: true },
-        { name: "Mobile App Access", included: true },
-        { name: "Advanced Portfolio Tracking", included: true },
-        { name: "Smart Alerts & Notifications", included: true },
-        { name: "Advanced Analytics", included: true },
-        { name: "Copy Trading", included: true },
-        { name: "Priority Support", included: true },
-        { name: "Custom Strategies", included: true },
-        { name: "API Access", included: false },
-        { name: "White-label Solution", included: false },
+        "5 AI Trading Bots",
+        "Advanced analytics",
+        "Priority support",
+        "All mobile features",
+        "Premium strategies",
+        "Risk management tools",
+        "Real-time alerts",
+        "Portfolio optimization",
       ],
-      buttonText: "Start Professional",
-      buttonVariant: "default" as const,
+      limitations: [],
     },
     {
       name: "Enterprise",
-      description: "Complete solution for institutions and large trading operations",
-      monthlyPrice: 299,
-      yearlyPrice: 2990,
+      price: "$99",
+      period: "per month",
+      description: "Maximum power for professional traders",
       icon: Crown,
       color: "gold",
       popular: false,
       features: [
-        { name: "Unlimited Trading Bots", included: true },
-        { name: "Enterprise Market Analysis", included: true },
-        { name: "24/7 Phone & Chat Support", included: true },
-        { name: "Mobile App Access", included: true },
-        { name: "Enterprise Portfolio Management", included: true },
-        { name: "Advanced Alerts & Automation", included: true },
-        { name: "Advanced Analytics", included: true },
-        { name: "Copy Trading", included: true },
-        { name: "Priority Support", included: true },
-        { name: "Custom Strategies", included: true },
-        { name: "Full API Access", included: true },
-        { name: "White-label Solution", included: true },
+        "Unlimited AI Bots",
+        "Custom strategies",
+        "24/7 phone support",
+        "API access",
+        "White-label options",
+        "Dedicated account manager",
+        "Advanced risk controls",
+        "Institutional features",
+        "Custom integrations",
       ],
-      buttonText: "Contact Sales",
-      buttonVariant: "outline" as const,
+      limitations: [],
     },
   ]
 
-  const addOns = [
-    { name: "Additional Bot Slots", price: "$10/month per bot", icon: Bot },
-    { name: "Premium Analytics", price: "$25/month", icon: BarChart3 },
-    { name: "Advanced Security", price: "$15/month", icon: Shield },
-    { name: "Priority Support", price: "$50/month", icon: Headphones },
-    { name: "Mobile Pro Features", price: "$20/month", icon: Smartphone },
-    { name: "Multi-Exchange Pro", price: "$30/month", icon: Globe },
-  ]
+  const getColorClasses = (color: string) => {
+    const colorMap = {
+      blue: "from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700",
+      purple: "from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700",
+      gold: "from-yellow-500 to-yellow-600 hover:from-yellow-600 hover:to-yellow-700",
+    }
+    return colorMap[color as keyof typeof colorMap] || colorMap.blue
+  }
 
-  const faqs = [
-    {
-      question: "Can I change plans anytime?",
-      answer: "Yes, you can upgrade or downgrade your plan at any time. Changes take effect immediately.",
-    },
-    {
-      question: "Is there a free trial?",
-      answer: "Yes, we offer a 14-day free trial for all plans with full access to features.",
-    },
-    {
-      question: "What payment methods do you accept?",
-      answer: "We accept all major credit cards, PayPal, and cryptocurrency payments.",
-    },
-    {
-      question: "Do you offer refunds?",
-      answer: "Yes, we offer a 30-day money-back guarantee for all paid plans.",
-    },
-  ]
+  const getBorderColor = (color: string) => {
+    const colorMap = {
+      blue: "border-blue-500/50",
+      purple: "border-purple-500/50",
+      gold: "border-yellow-500/50",
+    }
+    return colorMap[color as keyof typeof colorMap] || colorMap.blue
+  }
 
   return (
-    <section id="pricing" className="py-24 bg-gradient-to-b from-slate-800 to-slate-900">
+    <section id="pricing" className="py-24 bg-gradient-to-b from-gray-900 to-slate-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-16">
           <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 mb-4">
-            <TrendingUp className="w-4 h-4 mr-2" />
-            Flexible Pricing
+            <Crown className="w-4 h-4 mr-2" />
+            Pricing Plans
           </Badge>
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Choose Your
-            <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent block">
+            <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent block">
               Trading Plan
             </span>
           </h2>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-            Start free and scale as you grow. All plans include our core features with no hidden fees.
+          <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+            Start free and upgrade as you grow. All plans include our core AI trading features.
           </p>
-
-          {/* Billing Toggle */}
-          <div className="flex items-center justify-center space-x-4 mb-8">
-            <span className={`text-sm ${!isYearly ? "text-white" : "text-gray-400"}`}>Monthly</span>
-            <Switch checked={isYearly} onCheckedChange={setIsYearly} className="data-[state=checked]:bg-purple-600" />
-            <span className={`text-sm ${isYearly ? "text-white" : "text-gray-400"}`}>
-              Yearly
-              <Badge className="ml-2 bg-green-500/20 text-green-400 border-green-500/30">Save 20%</Badge>
-            </span>
-          </div>
         </div>
 
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-16">
           {plans.map((plan, index) => {
             const Icon = plan.icon
-            const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice
-            const originalPrice = isYearly ? plan.monthlyPrice * 12 : plan.monthlyPrice
-
+            const colorClasses = getColorClasses(plan.color)
+            const borderColor = getBorderColor(plan.color)
             return (
               <Card
                 key={index}
-                className={`relative bg-slate-800/50 border-slate-700 hover:bg-slate-800/70 transition-all duration-300 hover:scale-105 ${
-                  plan.popular ? "ring-2 ring-purple-500 shadow-xl shadow-purple-500/20" : ""
+                className={`relative bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105 ${
+                  plan.popular ? `${borderColor} border-2` : ""
                 }`}
               >
                 {plan.popular && (
                   <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                    <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-1">
-                      <Star className="w-4 h-4 mr-1" />
+                    <Badge className="bg-gradient-to-r from-purple-500 to-blue-500 text-white px-4 py-1">
                       Most Popular
                     </Badge>
                   </div>
                 )}
-
-                <CardHeader className="text-center pb-8">
+                <CardHeader className="text-center pb-4">
                   <div
-                    className={`w-16 h-16 rounded-full bg-${plan.color}-500/20 flex items-center justify-center mx-auto mb-4`}
+                    className={`w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-r ${colorClasses} flex items-center justify-center`}
                   >
-                    <Icon className={`w-8 h-8 text-${plan.color}-400`} />
+                    <Icon className="w-8 h-8 text-white" />
                   </div>
                   <CardTitle className="text-2xl text-white">{plan.name}</CardTitle>
-                  <CardDescription className="text-gray-400 mt-2">{plan.description}</CardDescription>
-                  <div className="mt-6">
-                    <div className="flex items-center justify-center">
-                      <span className="text-4xl font-bold text-white">${price}</span>
-                      <span className="text-gray-400 ml-2">/{isYearly ? "year" : "month"}</span>
-                    </div>
-                    {isYearly && (
-                      <div className="text-sm text-gray-400 mt-1">
-                        <span className="line-through">${originalPrice}/year</span>
-                        <span className="text-green-400 ml-2">Save ${originalPrice - price}</span>
-                      </div>
-                    )}
+                  <div className="text-center">
+                    <span className="text-4xl font-bold text-white">{plan.price}</span>
+                    {plan.price !== "Free" && <span className="text-gray-400 ml-2">{plan.period}</span>}
                   </div>
+                  <p className="text-gray-300 text-sm">{plan.description}</p>
                 </CardHeader>
-
                 <CardContent>
-                  <ul className="space-y-3">
+                  <div className="space-y-4 mb-8">
                     {plan.features.map((feature, featureIndex) => (
-                      <li key={featureIndex} className="flex items-center">
-                        {feature.included ? (
-                          <Check className="w-5 h-5 text-green-400 mr-3 flex-shrink-0" />
-                        ) : (
-                          <X className="w-5 h-5 text-gray-500 mr-3 flex-shrink-0" />
-                        )}
-                        <span className={`text-sm ${feature.included ? "text-gray-300" : "text-gray-500"}`}>
-                          {feature.name}
-                        </span>
-                      </li>
+                      <div key={featureIndex} className="flex items-center space-x-3">
+                        <Check className="w-5 h-5 text-green-400 flex-shrink-0" />
+                        <span className="text-gray-300">{feature}</span>
+                      </div>
                     ))}
-                  </ul>
-                </CardContent>
-
-                <CardFooter className="pt-8">
-                  <div className="w-full space-y-3">
-                    <Button
-                      className={`w-full ${
-                        plan.popular
-                          ? "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-                          : plan.buttonVariant === "outline"
-                            ? "border-slate-600 text-white hover:bg-slate-700"
-                            : "bg-slate-700 hover:bg-slate-600 text-white"
-                      }`}
-                      variant={plan.buttonVariant}
-                    >
-                      {plan.buttonText}
-                      <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full text-gray-400 hover:text-white hover:bg-slate-700"
-                    >
-                      View Full Features
-                    </Button>
+                    {plan.limitations.map((limitation, limitIndex) => (
+                      <div key={limitIndex} className="flex items-center space-x-3 opacity-60">
+                        <div className="w-5 h-5 flex-shrink-0 flex items-center justify-center">
+                          <div className="w-1 h-1 bg-gray-500 rounded-full" />
+                        </div>
+                        <span className="text-gray-400 text-sm">{limitation}</span>
+                      </div>
+                    ))}
                   </div>
-                </CardFooter>
+
+                  {!user ? (
+                    <div className="space-y-3">
+                      <Button asChild className={`w-full bg-gradient-to-r ${colorClasses} text-white font-semibold`}>
+                        <Link href="/auth/signup">
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          Get Started
+                          <ArrowRight className="w-4 h-4 ml-2" />
+                        </Link>
+                      </Button>
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent"
+                      >
+                        <Link href="/auth/login">
+                          <LogIn className="w-4 h-4 mr-2" />
+                          Sign In
+                        </Link>
+                      </Button>
+                    </div>
+                  ) : (
+                    <Button className={`w-full bg-gradient-to-r ${colorClasses} text-white font-semibold`}>
+                      {plan.name === "Starter" ? "Current Plan" : "Upgrade Now"}
+                    </Button>
+                  )}
+                </CardContent>
               </Card>
             )
           })}
         </div>
 
-        {/* Add-ons */}
-        <div className="mb-16">
-          <h3 className="text-2xl font-bold text-white text-center mb-8">Popular Add-ons</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {addOns.map((addon, index) => {
-              const Icon = addon.icon
-              return (
-                <Card key={index} className="bg-slate-800/30 border-slate-700 hover:bg-slate-800/50 transition-colors">
-                  <CardContent className="p-6">
-                    <div className="flex items-center space-x-4">
-                      <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                        <Icon className="w-5 h-5 text-blue-400" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="text-white font-medium">{addon.name}</h4>
-                        <p className="text-gray-400 text-sm">{addon.price}</p>
-                      </div>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="border-slate-600 text-white hover:bg-slate-700 bg-transparent"
-                      >
-                        Add
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )
-            })}
+        {/* Features Comparison */}
+        <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10 mb-16">
+          <h3 className="text-2xl font-bold text-white mb-8 text-center">All Plans Include</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <Shield className="w-12 h-12 mx-auto mb-4 text-green-400" />
+              <h4 className="text-lg font-semibold text-white mb-2">Bank-Grade Security</h4>
+              <p className="text-gray-300 text-sm">Your funds are protected with military-grade encryption</p>
+            </div>
+            <div className="text-center">
+              <Bot className="w-12 h-12 mx-auto mb-4 text-blue-400" />
+              <h4 className="text-lg font-semibold text-white mb-2">AI Trading Bots</h4>
+              <p className="text-gray-300 text-sm">Automated trading powered by advanced algorithms</p>
+            </div>
+            <div className="text-center">
+              <BarChart3 className="w-12 h-12 mx-auto mb-4 text-purple-400" />
+              <h4 className="text-lg font-semibold text-white mb-2">Real-time Analytics</h4>
+              <p className="text-gray-300 text-sm">Comprehensive market analysis and insights</p>
+            </div>
           </div>
         </div>
 
-        {/* FAQ */}
-        <div className="mb-16">
-          <h3 className="text-2xl font-bold text-white text-center mb-8">Frequently Asked Questions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {faqs.map((faq, index) => (
-              <Card key={index} className="bg-slate-800/30 border-slate-700">
-                <CardContent className="p-6">
-                  <h4 className="text-white font-medium mb-2">{faq.question}</h4>
-                  <p className="text-gray-400 text-sm">{faq.answer}</p>
-                </CardContent>
-              </Card>
-            ))}
+        {/* Bottom CTA */}
+        {!user && (
+          <div className="text-center">
+            <div className="bg-gradient-to-r from-purple-500/10 to-blue-500/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
+              <h3 className="text-3xl font-bold text-white mb-4">Start Your Trading Journey Today</h3>
+              <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
+                Join thousands of successful traders. Start with our free plan and upgrade when you're ready.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button
+                  asChild
+                  size="lg"
+                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold px-8 py-4"
+                >
+                  <Link href="/auth/signup">
+                    <UserPlus className="mr-2 h-5 w-5" />
+                    Create Free Account
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="border-white/30 text-white hover:bg-white/10 px-8 py-4 bg-transparent"
+                >
+                  <Link href="/auth/login">
+                    <LogIn className="mr-2 h-5 w-5" />
+                    Already Have Account?
+                  </Link>
+                </Button>
+              </div>
+              <p className="text-sm text-gray-400 mt-4">
+                No credit card required • Cancel anytime • 30-day money-back guarantee
+              </p>
+            </div>
           </div>
-        </div>
-
-        {/* Enterprise CTA */}
-        <div className="text-center bg-gradient-to-r from-slate-800/50 to-slate-700/50 rounded-2xl p-8 border border-slate-600">
-          <Crown className="w-12 h-12 text-yellow-400 mx-auto mb-4" />
-          <h3 className="text-2xl font-bold text-white mb-4">Need a Custom Solution?</h3>
-          <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
-            We offer custom enterprise solutions with dedicated support, custom integrations, and volume discounts.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              size="lg"
-              className="bg-gradient-to-r from-yellow-600 to-orange-600 hover:from-yellow-700 hover:to-orange-700 text-white font-semibold px-8"
-            >
-              Contact Sales
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="border-white/30 text-white hover:bg-white/10 px-8 bg-transparent"
-            >
-              Schedule Demo
-            </Button>
-            <Button variant="ghost" size="lg" className="text-white hover:bg-white/10 px-8">
-              View Case Studies
-            </Button>
-          </div>
-        </div>
+        )}
       </div>
     </section>
   )

@@ -7,7 +7,6 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import {
   ArrowRight,
-  Play,
   TrendingUp,
   Shield,
   Zap,
@@ -22,6 +21,9 @@ import {
   Rocket,
   Award,
   Globe,
+  UserPlus,
+  LogIn,
+  Eye,
 } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 
@@ -118,9 +120,9 @@ export function HeroSection() {
           </p>
         </div>
 
-        {/* CTA Buttons */}
+        {/* Primary CTA Buttons */}
         <div
-          className={`mb-12 transition-all duration-1000 delay-400 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+          className={`mb-8 transition-all duration-1000 delay-400 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
         >
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             {!user ? (
@@ -131,7 +133,8 @@ export function HeroSection() {
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-8 py-4 text-lg shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 hover:scale-105"
                 >
                   <Link href="/auth/signup">
-                    Start Trading Now
+                    <UserPlus className="mr-2 h-5 w-5" />
+                    Create Account
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
@@ -142,8 +145,8 @@ export function HeroSection() {
                   className="border-white/30 text-white hover:bg-white/10 px-8 py-4 text-lg backdrop-blur-sm bg-transparent"
                 >
                   <Link href="/auth/login">
+                    <LogIn className="mr-2 h-5 w-5" />
                     Sign In
-                    <ChevronDown className="ml-2 h-5 w-5" />
                   </Link>
                 </Button>
               </>
@@ -172,16 +175,48 @@ export function HeroSection() {
                 </Button>
               </>
             )}
-            <Button variant="ghost" size="lg" className="text-white hover:bg-white/10 px-8 py-4 text-lg">
-              <Play className="mr-2 h-5 w-5" />
-              Watch Demo
-            </Button>
           </div>
         </div>
 
+        {/* Secondary Auth Buttons */}
+        {!user && (
+          <div
+            className={`mb-8 transition-all duration-1000 delay-500 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+          >
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/10 px-6 py-2 text-sm border border-white/20"
+              >
+                <Link href="/auth/signup">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Free Account
+                </Link>
+              </Button>
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="text-white hover:bg-white/10 px-6 py-2 text-sm border border-white/20"
+              >
+                <Link href="/auth/login">
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Member Login
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 px-6 py-2 text-sm">
+                <Eye className="mr-2 h-4 w-4" />
+                Watch Demo
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Additional Action Buttons */}
         <div
-          className={`mb-12 transition-all duration-1000 delay-500 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+          className={`mb-12 transition-all duration-1000 delay-600 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
         >
           <div className="flex flex-wrap gap-3 justify-center">
             <Button variant="secondary" size="sm" className="bg-white/10 text-white border-white/20 hover:bg-white/20">
@@ -205,7 +240,7 @@ export function HeroSection() {
 
         {/* Stats */}
         <div
-          className={`mb-16 transition-all duration-1000 delay-600 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+          className={`mb-16 transition-all duration-1000 delay-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
         >
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => {
@@ -228,7 +263,7 @@ export function HeroSection() {
 
         {/* Feature Cards */}
         <div
-          className={`transition-all duration-1000 delay-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+          className={`transition-all duration-1000 delay-800 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
         >
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {features.map((feature, index) => {
@@ -248,15 +283,30 @@ export function HeroSection() {
                       />
                     </div>
                     <h3 className="text-lg font-semibold text-white mb-2">{feature.label}</h3>
-                    <p className="text-gray-400 text-sm">{feature.desc}</p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="mt-4 text-blue-400 hover:text-white hover:bg-blue-500/20 opacity-0 group-hover:opacity-100 transition-all duration-300"
-                    >
-                      Learn More
-                      <ArrowRight className="w-4 h-4 ml-1" />
-                    </Button>
+                    <p className="text-gray-400 text-sm mb-4">{feature.desc}</p>
+                    {!user && (
+                      <div className="space-y-2">
+                        <Button
+                          asChild
+                          variant="ghost"
+                          size="sm"
+                          className="w-full text-blue-400 hover:text-white hover:bg-blue-500/20 opacity-0 group-hover:opacity-100 transition-all duration-300"
+                        >
+                          <Link href="/auth/signup">
+                            <UserPlus className="w-4 h-4 mr-1" />
+                            Get Started
+                          </Link>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full text-gray-400 hover:text-white hover:bg-white/10 opacity-0 group-hover:opacity-100 transition-all duration-300"
+                        >
+                          Learn More
+                          <ArrowRight className="w-4 h-4 ml-1" />
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )
@@ -266,7 +316,7 @@ export function HeroSection() {
 
         {/* Trust Indicators */}
         <div
-          className={`mt-16 transition-all duration-1000 delay-800 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+          className={`mt-16 transition-all duration-1000 delay-900 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
         >
           <div className="flex flex-wrap justify-center items-center gap-8 opacity-60">
             <div className="flex items-center space-x-2">
@@ -287,6 +337,41 @@ export function HeroSection() {
             </div>
           </div>
         </div>
+
+        {/* Bottom CTA Section */}
+        {!user && (
+          <div
+            className={`mt-16 transition-all duration-1000 delay-1000 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+          >
+            <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 backdrop-blur-lg rounded-2xl p-8 border border-white/20">
+              <h3 className="text-2xl font-bold text-white mb-4">Ready to Start Trading?</h3>
+              <p className="text-gray-300 mb-6">Join thousands of successful traders today</p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button
+                  asChild
+                  size="lg"
+                  className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-semibold px-8 py-3"
+                >
+                  <Link href="/auth/signup">
+                    <UserPlus className="mr-2 h-5 w-5" />
+                    Create Free Account
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="border-white/30 text-white hover:bg-white/10 px-8 py-3 bg-transparent"
+                >
+                  <Link href="/auth/login">
+                    <LogIn className="mr-2 h-5 w-5" />
+                    Already a Member?
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Scroll Indicator */}

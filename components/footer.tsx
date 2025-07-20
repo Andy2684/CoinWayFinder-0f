@@ -4,292 +4,342 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
 import {
-  Facebook,
+  Bot,
+  Mail,
+  Phone,
+  MapPin,
   Twitter,
+  Facebook,
   Instagram,
   Linkedin,
   Youtube,
   Github,
-  Mail,
-  Phone,
-  MapPin,
   ArrowRight,
-  Bot,
+  UserPlus,
+  LogIn,
   Shield,
   Award,
   Globe,
-  Smartphone,
-  BarChart3,
-  Users,
-  TrendingUp,
-  Zap,
-  Bell,
-  HelpCircle,
-  FileText,
-  Lock,
-  Star,
+  Clock,
 } from "lucide-react"
+import { useAuth } from "@/components/auth/auth-provider"
 
 export function Footer() {
-  const currentYear = new Date().getFullYear()
+  const { user } = useAuth()
 
-  const footerSections = [
-    {
-      title: "Platform",
-      links: [
-        { name: "Trading Bots", href: "/bots", icon: Bot },
-        { name: "Market Analysis", href: "/market-analysis", icon: BarChart3 },
-        { name: "Portfolio Tracker", href: "/portfolio", icon: TrendingUp },
-        { name: "Trading Signals", href: "/signals", icon: Bell },
-        { name: "Mobile App", href: "/mobile", icon: Smartphone },
-        { name: "API Access", href: "/api", icon: Globe },
-      ],
-    },
-    {
-      title: "Features",
-      links: [
-        { name: "AI Trading", href: "/features/ai-trading", icon: Bot },
-        { name: "Security", href: "/features/security", icon: Shield },
-        { name: "Analytics", href: "/features/analytics", icon: BarChart3 },
-        { name: "Copy Trading", href: "/features/copy-trading", icon: Users },
-        { name: "Fast Execution", href: "/features/execution", icon: Zap },
-        { name: "Multi-Exchange", href: "/features/exchanges", icon: Globe },
-      ],
-    },
-    {
-      title: "Resources",
-      links: [
-        { name: "Help Center", href: "/help", icon: HelpCircle },
-        { name: "Documentation", href: "/docs", icon: FileText },
-        { name: "API Docs", href: "/api-docs", icon: Globe },
-        { name: "Trading Guide", href: "/guide", icon: BarChart3 },
-        { name: "Video Tutorials", href: "/tutorials", icon: Youtube },
-        { name: "Community", href: "/community", icon: Users },
-      ],
-    },
-    {
-      title: "Company",
-      links: [
-        { name: "About Us", href: "/about", icon: Users },
-        { name: "Careers", href: "/careers", icon: TrendingUp },
-        { name: "Press Kit", href: "/press", icon: FileText },
-        { name: "Partners", href: "/partners", icon: Globe },
-        { name: "Affiliates", href: "/affiliates", icon: Award },
-        { name: "Contact", href: "/contact", icon: Mail },
-      ],
-    },
-    {
-      title: "Legal",
-      links: [
-        { name: "Privacy Policy", href: "/privacy", icon: Lock },
-        { name: "Terms of Service", href: "/terms", icon: FileText },
-        { name: "Cookie Policy", href: "/cookies", icon: Shield },
-        { name: "Compliance", href: "/compliance", icon: Award },
-        { name: "Security", href: "/security", icon: Shield },
-        { name: "Licenses", href: "/licenses", icon: FileText },
-      ],
-    },
-  ]
+  const footerLinks = {
+    platform: [
+      { name: "Dashboard", href: "/dashboard" },
+      { name: "Trading Bots", href: "/bots" },
+      { name: "Market Analysis", href: "/market-analysis" },
+      { name: "Portfolio", href: "/portfolio" },
+      { name: "Trading Signals", href: "/signals" },
+      { name: "News & Insights", href: "/news" },
+    ],
+    features: [
+      { name: "AI Trading", href: "/features/ai-trading" },
+      { name: "Risk Management", href: "/features/risk-management" },
+      { name: "Real-time Data", href: "/features/real-time-data" },
+      { name: "Advanced Analytics", href: "/features/analytics" },
+      { name: "Mobile App", href: "/features/mobile" },
+      { name: "API Access", href: "/features/api" },
+    ],
+    resources: [
+      { name: "Help Center", href: "/help" },
+      { name: "Trading Guide", href: "/guide" },
+      { name: "API Documentation", href: "/docs" },
+      { name: "Video Tutorials", href: "/tutorials" },
+      { name: "Webinars", href: "/webinars" },
+      { name: "Community", href: "/community" },
+    ],
+    company: [
+      { name: "About Us", href: "/about" },
+      { name: "Careers", href: "/careers" },
+      { name: "Press", href: "/press" },
+      { name: "Partners", href: "/partners" },
+      { name: "Investors", href: "/investors" },
+      { name: "Contact", href: "/contact" },
+    ],
+    legal: [
+      { name: "Privacy Policy", href: "/privacy" },
+      { name: "Terms of Service", href: "/terms" },
+      { name: "Cookie Policy", href: "/cookies" },
+      { name: "Risk Disclosure", href: "/risk" },
+      { name: "Compliance", href: "/compliance" },
+      { name: "Security", href: "/security" },
+    ],
+  }
 
   const socialLinks = [
-    { name: "Twitter", href: "https://twitter.com", icon: Twitter },
-    { name: "Facebook", href: "https://facebook.com", icon: Facebook },
-    { name: "Instagram", href: "https://instagram.com", icon: Instagram },
-    { name: "LinkedIn", href: "https://linkedin.com", icon: Linkedin },
-    { name: "YouTube", href: "https://youtube.com", icon: Youtube },
-    { name: "GitHub", href: "https://github.com", icon: Github },
+    { name: "Twitter", icon: Twitter, href: "https://twitter.com/coinwayfinder" },
+    { name: "Facebook", icon: Facebook, href: "https://facebook.com/coinwayfinder" },
+    { name: "Instagram", icon: Instagram, href: "https://instagram.com/coinwayfinder" },
+    { name: "LinkedIn", icon: Linkedin, href: "https://linkedin.com/company/coinwayfinder" },
+    { name: "YouTube", icon: Youtube, href: "https://youtube.com/coinwayfinder" },
+    { name: "GitHub", icon: Github, href: "https://github.com/coinwayfinder" },
   ]
 
-  const quickActions = [
-    { name: "Start Trading", href: "/auth/signup", variant: "default" as const },
-    { name: "View Pricing", href: "/pricing", variant: "outline" as const },
-    { name: "Contact Sales", href: "/contact", variant: "ghost" as const },
-    { name: "Download App", href: "/mobile", variant: "secondary" as const },
+  const trustBadges = [
+    { icon: Shield, text: "SSL Secured" },
+    { icon: Award, text: "Award Winning" },
+    { icon: Globe, text: "Global Platform" },
+    { icon: Clock, text: "24/7 Support" },
   ]
 
   return (
-    <footer className="bg-gradient-to-b from-slate-900 to-black border-t border-slate-800">
+    <footer className="bg-gradient-to-b from-slate-900 to-black border-t border-white/10">
+      {/* Newsletter Section */}
+      {!user && (
+        <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 border-b border-white/10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div className="text-center">
+              <h3 className="text-2xl md:text-3xl font-bold text-white mb-4">Ready to Start Your Trading Journey?</h3>
+              <p className="text-gray-300 mb-8 max-w-2xl mx-auto">
+                Join thousands of successful traders using our AI-powered platform
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
+                <Button
+                  asChild
+                  size="lg"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-8 py-3"
+                >
+                  <Link href="/auth/signup">
+                    <UserPlus className="mr-2 h-5 w-5" />
+                    Create Account
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="border-white/30 text-white hover:bg-white/10 px-8 py-3 bg-transparent"
+                >
+                  <Link href="/auth/login">
+                    <LogIn className="mr-2 h-5 w-5" />
+                    Sign In
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Footer Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        {/* Top Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 mb-16">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
           {/* Company Info */}
-          <div className="lg:col-span-1">
-            <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <Bot className="w-6 h-6 text-white" />
-              </div>
+          <div className="lg:col-span-2">
+            <Link href="/" className="flex items-center space-x-2 mb-6">
+              <Bot className="w-8 h-8 text-blue-400" />
               <span className="text-2xl font-bold text-white">CoinWayFinder</span>
-            </div>
-            <p className="text-gray-400 mb-6 leading-relaxed">
-              The world's most advanced AI-powered crypto trading platform. Join thousands of traders who trust us to
-              maximize their profits with cutting-edge technology and unparalleled security.
+            </Link>
+            <p className="text-gray-300 mb-6 leading-relaxed">
+              The world's most advanced AI-powered crypto trading platform. Trade smarter, not harder with our
+              cutting-edge algorithms and real-time market analysis.
             </p>
 
-            {/* Trust Badges */}
-            <div className="flex flex-wrap gap-3 mb-6">
-              <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                <Shield className="w-3 h-3 mr-1" />
-                SSL Secured
-              </Badge>
-              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-                <Award className="w-3 h-3 mr-1" />
-                Award Winning
-              </Badge>
-              <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
-                <Star className="w-3 h-3 mr-1" />
-                4.9/5 Rating
-              </Badge>
-            </div>
-
             {/* Contact Info */}
-            <div className="space-y-3 text-gray-400">
-              <div className="flex items-center space-x-3">
-                <Mail className="w-4 h-4" />
+            <div className="space-y-3 mb-6">
+              <div className="flex items-center space-x-3 text-gray-300">
+                <Mail className="w-5 h-5 text-blue-400" />
                 <span>support@coinwayfinder.com</span>
               </div>
-              <div className="flex items-center space-x-3">
-                <Phone className="w-4 h-4" />
+              <div className="flex items-center space-x-3 text-gray-300">
+                <Phone className="w-5 h-5 text-blue-400" />
                 <span>+1 (555) 123-4567</span>
               </div>
-              <div className="flex items-center space-x-3">
-                <MapPin className="w-4 h-4" />
+              <div className="flex items-center space-x-3 text-gray-300">
+                <MapPin className="w-5 h-5 text-blue-400" />
                 <span>San Francisco, CA</span>
               </div>
             </div>
-          </div>
 
-          {/* Newsletter Signup */}
-          <div className="lg:col-span-2">
-            <div className="bg-gradient-to-r from-blue-600/10 to-purple-600/10 rounded-2xl p-8 border border-blue-500/20">
-              <h3 className="text-2xl font-bold text-white mb-4">Stay Ahead of the Market</h3>
-              <p className="text-gray-300 mb-6">
-                Get exclusive trading insights, market analysis, and platform updates delivered to your inbox.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <Input
-                  type="email"
-                  placeholder="Enter your email address"
-                  className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-                />
-                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-8">
-                  Subscribe
-                  <ArrowRight className="ml-2 h-4 w-4" />
+            {/* Quick Auth Buttons */}
+            {!user && (
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Button
+                  asChild
+                  size="sm"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                >
+                  <Link href="/auth/signup">
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    Sign Up
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="sm"
+                  className="border-white/30 text-white hover:bg-white/10 bg-transparent"
+                >
+                  <Link href="/auth/login">
+                    <LogIn className="mr-2 h-4 w-4" />
+                    Login
+                  </Link>
                 </Button>
               </div>
-              <p className="text-xs text-gray-400">
-                By subscribing, you agree to our Privacy Policy. Unsubscribe at any time.
-              </p>
-            </div>
+            )}
+          </div>
+
+          {/* Platform Links */}
+          <div>
+            <h4 className="text-white font-semibold mb-4">Platform</h4>
+            <ul className="space-y-3">
+              {footerLinks.platform.map((link) => (
+                <li key={link.name}>
+                  <Link href={link.href} className="text-gray-300 hover:text-white transition-colors">
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Features Links */}
+          <div>
+            <h4 className="text-white font-semibold mb-4">Features</h4>
+            <ul className="space-y-3">
+              {footerLinks.features.map((link) => (
+                <li key={link.name}>
+                  <Link href={link.href} className="text-gray-300 hover:text-white transition-colors">
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Resources Links */}
+          <div>
+            <h4 className="text-white font-semibold mb-4">Resources</h4>
+            <ul className="space-y-3">
+              {footerLinks.resources.map((link) => (
+                <li key={link.name}>
+                  <Link href={link.href} className="text-gray-300 hover:text-white transition-colors">
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Company Links */}
+          <div>
+            <h4 className="text-white font-semibold mb-4">Company</h4>
+            <ul className="space-y-3">
+              {footerLinks.company.map((link) => (
+                <li key={link.name}>
+                  <Link href={link.href} className="text-gray-300 hover:text-white transition-colors">
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 
-        {/* Links Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-8 mb-16">
-          {footerSections.map((section, index) => (
-            <div key={index}>
-              <h4 className="text-white font-semibold mb-4">{section.title}</h4>
-              <ul className="space-y-3">
-                {section.links.map((link, linkIndex) => {
-                  const Icon = link.icon
-                  return (
-                    <li key={linkIndex}>
-                      <Link
-                        href={link.href}
-                        className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors group"
-                      >
-                        <Icon className="w-4 h-4 group-hover:text-blue-400 transition-colors" />
-                        <span>{link.name}</span>
-                      </Link>
-                    </li>
-                  )
-                })}
-              </ul>
-            </div>
-          ))}
-        </div>
+        <Separator className="my-12 bg-white/10" />
 
-        {/* Quick Actions */}
-        <div className="mb-16">
-          <h4 className="text-white font-semibold mb-6 text-center">Quick Actions</h4>
-          <div className="flex flex-wrap gap-4 justify-center">
-            {quickActions.map((action, index) => (
-              <Button
-                key={index}
-                asChild
-                variant={action.variant}
-                className={
-                  action.variant === "default"
-                    ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                    : action.variant === "outline"
-                      ? "border-white/30 text-white hover:bg-white/10 bg-transparent"
-                      : action.variant === "secondary"
-                        ? "bg-white/10 text-white hover:bg-white/20"
-                        : "text-white hover:bg-white/10"
-                }
-              >
-                <Link href={action.href}>{action.name}</Link>
+        {/* Newsletter Signup */}
+        <div className="mb-12">
+          <div className="bg-white/5 backdrop-blur-lg rounded-2xl p-8 border border-white/10">
+            <div className="text-center mb-6">
+              <h4 className="text-2xl font-bold text-white mb-2">Stay Updated</h4>
+              <p className="text-gray-300">Get the latest trading insights and platform updates</p>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-4 max-w-md mx-auto">
+              <Input
+                type="email"
+                placeholder="Enter your email"
+                className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 focus:border-blue-400"
+              />
+              <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white">
+                <Mail className="mr-2 h-4 w-4" />
+                Subscribe
               </Button>
-            ))}
+            </div>
           </div>
         </div>
 
-        <Separator className="bg-slate-800 mb-8" />
-
-        {/* Bottom Section */}
-        <div className="flex flex-col md:flex-row justify-between items-center space-y-6 md:space-y-0">
-          {/* Copyright */}
-          <div className="text-gray-400 text-sm">
-            <p>&copy; {currentYear} CoinWayFinder. All rights reserved.</p>
-            <p className="mt-1">
-              Built with ❤️ for the crypto community. Licensed and regulated financial services provider.
-            </p>
-          </div>
-
+        {/* Social Links & Trust Badges */}
+        <div className="flex flex-col md:flex-row justify-between items-center mb-8">
           {/* Social Links */}
-          <div className="flex items-center space-x-4">
-            <span className="text-gray-400 text-sm mr-2">Follow us:</span>
-            {socialLinks.map((social, index) => {
+          <div className="flex items-center space-x-6 mb-6 md:mb-0">
+            <span className="text-white font-medium">Follow Us:</span>
+            {socialLinks.map((social) => {
               const Icon = social.icon
               return (
                 <Link
-                  key={index}
+                  key={social.name}
                   href={social.href}
-                  className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-blue-600 transition-all duration-300 hover:scale-110"
+                  className="text-gray-400 hover:text-white transition-colors"
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <Icon className="w-4 h-4" />
+                  <Icon className="w-5 h-5" />
                 </Link>
+              )
+            })}
+          </div>
+
+          {/* Trust Badges */}
+          <div className="flex items-center space-x-6">
+            {trustBadges.map((badge, index) => {
+              const Icon = badge.icon
+              return (
+                <div key={index} className="flex items-center space-x-2 text-gray-400">
+                  <Icon className="w-4 h-4" />
+                  <span className="text-sm">{badge.text}</span>
+                </div>
               )
             })}
           </div>
         </div>
 
-        {/* Additional Info */}
-        <div className="mt-8 pt-8 border-t border-slate-800">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
-            <div>
-              <h5 className="text-white font-medium mb-2">Security & Compliance</h5>
-              <p className="text-gray-400 text-sm">
-                Bank-grade security with 256-bit encryption. Fully compliant with global financial regulations.
-              </p>
-            </div>
-            <div>
-              <h5 className="text-white font-medium mb-2">24/7 Support</h5>
-              <p className="text-gray-400 text-sm">
-                Our dedicated support team is available around the clock to help you succeed.
-              </p>
-            </div>
-            <div>
-              <h5 className="text-white font-medium mb-2">Global Reach</h5>
-              <p className="text-gray-400 text-sm">
-                Serving traders in 150+ countries with localized support and multi-language platform.
-              </p>
-            </div>
+        {/* Legal Links */}
+        <div className="mb-8">
+          <h4 className="text-white font-semibold mb-4">Legal</h4>
+          <div className="flex flex-wrap gap-6">
+            {footerLinks.legal.map((link) => (
+              <Link
+                key={link.name}
+                href={link.href}
+                className="text-gray-400 hover:text-white transition-colors text-sm"
+              >
+                {link.name}
+              </Link>
+            ))}
           </div>
+        </div>
+
+        <Separator className="mb-8 bg-white/10" />
+
+        {/* Bottom Section */}
+        <div className="flex flex-col md:flex-row justify-between items-center">
+          <div className="text-gray-400 text-sm mb-4 md:mb-0">
+            © 2024 CoinWayFinder. All rights reserved. Trading involves risk and may not be suitable for all investors.
+          </div>
+
+          {!user && (
+            <div className="flex items-center space-x-4">
+              <Button asChild variant="ghost" size="sm" className="text-gray-400 hover:text-white hover:bg-white/10">
+                <Link href="/auth/signup">
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Join Now
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm" className="text-gray-400 hover:text-white hover:bg-white/10">
+                <Link href="/auth/login">
+                  <LogIn className="mr-2 h-4 w-4" />
+                  Sign In
+                </Link>
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </footer>
