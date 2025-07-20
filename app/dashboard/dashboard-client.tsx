@@ -1,4 +1,5 @@
 "use client"
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DashboardOverview } from "@/components/dashboard/dashboard-overview"
@@ -13,7 +14,6 @@ import { RealtimeMarketTicker } from "@/components/dashboard/realtime-market-tic
 import { PortfolioOverview } from "@/components/dashboard/portfolio-overview"
 import { RealtimeOrderBook } from "@/components/dashboard/realtime-order-book"
 import { RealtimeTradeFeed } from "@/components/dashboard/realtime-trade-feed"
-import { FloatingDashboardButton } from "@/components/back-to-dashboard"
 import { TrendingUp, DollarSign, Activity, Users, ArrowUpRight } from "lucide-react"
 
 export default function DashboardPageClient() {
@@ -142,8 +142,6 @@ export default function DashboardPageClient() {
               <RiskManagement />
             </TabsContent>
           </Tabs>
-
-          <FloatingDashboardButton />
         </div>
       </div>
     </div>

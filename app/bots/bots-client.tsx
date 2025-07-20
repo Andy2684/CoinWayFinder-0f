@@ -1,15 +1,14 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ActiveBots } from "@/components/bots/active-bots"
 import { BotPerformance } from "@/components/bots/bot-performance"
 import { BotStrategies } from "@/components/bots/bot-strategies"
 import { BotsOverview } from "@/components/bots/bots-overview"
 import { CreateBotDialog } from "@/components/bots/create-bot-dialog"
-import { FloatingDashboardButton } from "@/components/back-to-dashboard"
 import { Plus, Bot, TrendingUp, Activity, AlertCircle } from "lucide-react"
 
 export default function BotsPageClient() {
@@ -22,7 +21,7 @@ export default function BotsPageClient() {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-white">Trading Bots</h1>
-              <p className="text-gray-400">Automate your trading strategies with AI-powered bots</p>
+              <p className="text-gray-400">Manage your automated trading strategies and monitor performance</p>
             </div>
             <Button onClick={() => setCreateBotOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
@@ -112,7 +111,6 @@ export default function BotsPageClient() {
           </Tabs>
 
           <CreateBotDialog open={createBotOpen} onOpenChange={setCreateBotOpen} />
-          <FloatingDashboardButton />
         </div>
       </div>
     </div>

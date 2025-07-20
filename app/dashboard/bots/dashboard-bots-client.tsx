@@ -9,8 +9,8 @@ import { BotPerformance } from "@/components/bots/bot-performance"
 import { BotStrategies } from "@/components/bots/bot-strategies"
 import { BotsOverview } from "@/components/bots/bots-overview"
 import { CreateBotDialog } from "@/components/bots/create-bot-dialog"
-import { BackToDashboard, FloatingDashboardButton } from "@/components/back-to-dashboard"
-import { Plus, Bot, TrendingUp, Activity, AlertCircle } from "lucide-react"
+import { Plus, Bot, TrendingUp, Activity, AlertCircle, ArrowLeft } from "lucide-react"
+import Link from "next/link"
 
 export default function DashboardBotsPageClient() {
   const [createBotOpen, setCreateBotOpen] = useState(false)
@@ -21,7 +21,12 @@ export default function DashboardBotsPageClient() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <BackToDashboard />
+              <Link href="/dashboard">
+                <Button variant="ghost" size="sm">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Dashboard
+                </Button>
+              </Link>
               <div>
                 <h1 className="text-3xl font-bold tracking-tight text-white">Trading Bots</h1>
                 <p className="text-gray-400">Manage your automated trading strategies and monitor performance</p>
@@ -115,7 +120,6 @@ export default function DashboardBotsPageClient() {
           </Tabs>
 
           <CreateBotDialog open={createBotOpen} onOpenChange={setCreateBotOpen} />
-          <FloatingDashboardButton />
         </div>
       </div>
     </div>

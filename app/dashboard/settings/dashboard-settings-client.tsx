@@ -8,8 +8,8 @@ import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
-import { BackToDashboard, FloatingDashboardButton } from "@/components/back-to-dashboard"
-import { User, Bell, Shield, CreditCard, Save } from "lucide-react"
+import { User, Bell, Shield, CreditCard, Save, ArrowLeft } from "lucide-react"
+import Link from "next/link"
 
 export default function DashboardSettingsPageClient() {
   const [notifications, setNotifications] = useState({
@@ -40,7 +40,12 @@ export default function DashboardSettingsPageClient() {
       <div className="container mx-auto px-4 py-8">
         <div className="space-y-6">
           <div className="flex items-center gap-4">
-            <BackToDashboard />
+            <Link href="/dashboard">
+              <Button variant="ghost" size="sm">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Dashboard
+              </Button>
+            </Link>
             <div>
               <h1 className="text-3xl font-bold tracking-tight text-white">Settings</h1>
               <p className="text-gray-400">Manage your account settings and preferences</p>
@@ -213,8 +218,6 @@ export default function DashboardSettingsPageClient() {
               </Card>
             </TabsContent>
           </Tabs>
-
-          <FloatingDashboardButton />
         </div>
       </div>
     </div>
