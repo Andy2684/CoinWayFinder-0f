@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,79 +12,62 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Bot, Menu, Settings, LogOut, BarChart3, TrendingUp, Wallet } from "lucide-react"
+import { Menu, Settings, LogOut, BarChart3, Bot, Zap } from "lucide-react"
+import { useAuth } from "@/components/auth/auth-provider"
 
 export function Navigation() {
-  const [isScrolled, setIsScrolled] = useState(false)
-  const [user, setUser] = useState<any>(null)
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setIsScrolled(window.scrollY > 50)
-    }
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
-
-  useEffect(() => {
-    const userData = localStorage.getItem("user")
-    if (userData) {
-      setUser(JSON.parse(userData))
-    }
-  }, [])
-
-  const handleLogout = () => {
-    localStorage.removeItem("user")
-    setUser(null)
-    window.location.href = "/"
-  }
+  const [isOpen, setIsOpen] = useState(false)
+  const { user, logout } = useAuth()
 
   const navItems = [
     { name: "Features", href: "#features" },
     { name: "Pricing", href: "#pricing" },
     { name: "About", href: "#about" },
+    { name: "Contact", href: "#contact" },
+  ]
+
+  const userNavItems = [
+    { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
+    { name: "Bots", href: "/bots", icon: Bot },
+    { name: "Signals", href: "/signals", icon: Zap },
+    { name: "Portfolio", href: "/portfolio", icon: BarChart3 },
   ]
 
   return (
-    <nav
-      className={`fixed top-0 w-full z-50 transition-all duration-300 ${
-        isScrolled ? "bg-white/10 backdrop-blur-md border-b border-white/20" : "bg-transparent"
-      }`}
-    >
-      <div className="container mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+    <nav className="fixed top-0 w-full z-50 bg-white/10 backdrop-blur-xl border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-green-500 rounded-lg flex items-center justify-center">
-              <Bot className="w-5 h-5 text-white" />
+          <Link href="/" className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-gradient-to-r from-emerald-500 to-green-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">CW</span>
             </div>
-            <span className="text-xl font-bold text-white">CoinWayFinder</span>
-            <Badge variant="secondary" className="ml-2 bg-emerald-100 text-emerald-700 text-xs">
-              AI
-            </Badge>
+            <span className="text-white font-bold text-xl">CoinWayFinder</span>
           </Link>
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-8">
             {navItems.map((item) => (
-              <Link key={item.name} href={item.href} className="text-white/80 hover:text-white transition-colors">
+              <Link
+                key={item.name}
+                href={item.href}
+                className="text-white/80 hover:text-white transition-colors duration-200"
+              >
                 {item.name}
               </Link>
             ))}
           </div>
 
-          {/* User Menu / Auth Buttons */}
-          <div className="flex items-center gap-4">
+          {/* User Menu or Auth Buttons */}
+          <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src="/placeholder-user.jpg" alt={user.name} />
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
                       <AvatarFallback className="bg-emerald-600 text-white">
-                        {user.name?.charAt(0) || user.email?.charAt(0) || "U"}
+                        {user.name?.charAt(0) || user.email.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -91,88 +75,131 @@ export function Navigation() {
                 <DropdownMenuContent className="w-56" align="end" forceMount>
                   <div className="flex items-center justify-start gap-2 p-2">
                     <div className="flex flex-col space-y-1 leading-none">
-                      <p className="font-medium">{user.name || "User"}</p>
+                      <p className="font-medium">{user.name}</p>
                       <p className="w-[200px] truncate text-sm text-muted-foreground">{user.email}</p>
                     </div>
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard" className="flex items-center">
-                      <BarChart3 className="mr-2 h-4 w-4" />
-                      Dashboard
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/bots" className="flex items-center">
-                      <Bot className="mr-2 h-4 w-4" />
-                      Trading Bots
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/signals" className="flex items-center">
-                      <TrendingUp className="mr-2 h-4 w-4" />
-                      Signals
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/portfolio" className="flex items-center">
-                      <Wallet className="mr-2 h-4 w-4" />
-                      Portfolio
-                    </Link>
-                  </DropdownMenuItem>
+                  {userNavItems.map((item) => (
+                    <DropdownMenuItem key={item.name} asChild>
+                      <Link href={item.href} className="flex items-center">
+                        <item.icon className="mr-2 h-4 w-4" />
+                        <span>{item.name}</span>
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href="/dashboard/settings" className="flex items-center">
                       <Settings className="mr-2 h-4 w-4" />
-                      Settings
+                      <span>Settings</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
+                  <DropdownMenuItem onClick={logout} className="flex items-center text-red-600">
                     <LogOut className="mr-2 h-4 w-4" />
-                    Log out
+                    <span>Log out</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="hidden md:flex items-center gap-2">
-                <Button variant="ghost" className="text-white hover:bg-white/10" asChild>
+              <>
+                <Button variant="ghost" asChild className="text-white hover:text-white hover:bg-white/10">
                   <Link href="/auth/login">Login</Link>
                 </Button>
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white" asChild>
+                <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
                   <Link href="/auth/signup">Sign Up</Link>
                 </Button>
-              </div>
+              </>
             )}
+          </div>
 
-            {/* Mobile Menu */}
-            <Sheet>
+          {/* Mobile menu button */}
+          <div className="md:hidden">
+            <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="md:hidden text-white">
+                <Button variant="ghost" size="icon" className="text-white">
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="bg-gray-900 text-white border-gray-800">
+              <SheetContent side="right" className="w-[300px] bg-slate-900/95 backdrop-blur-xl border-white/10">
                 <div className="flex flex-col space-y-4 mt-8">
+                  {user && (
+                    <div className="flex items-center space-x-3 p-4 bg-white/5 rounded-lg">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                        <AvatarFallback className="bg-emerald-600 text-white">
+                          {user.name?.charAt(0) || user.email.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-white">{user.name}</p>
+                        <p className="text-sm text-white/60">{user.email}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {user && (
+                    <>
+                      {userNavItems.map((item) => (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          className="flex items-center space-x-3 text-white/80 hover:text-white p-2 rounded-lg hover:bg-white/5"
+                          onClick={() => setIsOpen(false)}
+                        >
+                          <item.icon className="h-5 w-5" />
+                          <span>{item.name}</span>
+                        </Link>
+                      ))}
+                      <div className="border-t border-white/10 my-4"></div>
+                    </>
+                  )}
+
                   {navItems.map((item) => (
                     <Link
                       key={item.name}
                       href={item.href}
-                      className="text-white/80 hover:text-white transition-colors py-2"
+                      className="text-white/80 hover:text-white p-2 rounded-lg hover:bg-white/5"
+                      onClick={() => setIsOpen(false)}
                     >
                       {item.name}
                     </Link>
                   ))}
-                  {!user && (
-                    <>
-                      <div className="border-t border-gray-800 pt-4">
-                        <Button variant="ghost" className="w-full justify-start text-white hover:bg-white/10" asChild>
-                          <Link href="/auth/login">Login</Link>
-                        </Button>
-                        <Button className="w-full mt-2 bg-blue-600 hover:bg-blue-700" asChild>
-                          <Link href="/auth/signup">Sign Up</Link>
-                        </Button>
-                      </div>
-                    </>
+
+                  {user ? (
+                    <div className="space-y-2 pt-4 border-t border-white/10">
+                      <Link
+                        href="/dashboard/settings"
+                        className="flex items-center space-x-3 text-white/80 hover:text-white p-2 rounded-lg hover:bg-white/5"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        <Settings className="h-5 w-5" />
+                        <span>Settings</span>
+                      </Link>
+                      <button
+                        onClick={() => {
+                          logout()
+                          setIsOpen(false)
+                        }}
+                        className="flex items-center space-x-3 text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-red-500/10 w-full text-left"
+                      >
+                        <LogOut className="h-5 w-5" />
+                        <span>Log out</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 pt-4 border-t border-white/10">
+                      <Button variant="ghost" asChild className="w-full text-white hover:bg-white/10">
+                        <Link href="/auth/login" onClick={() => setIsOpen(false)}>
+                          Login
+                        </Link>
+                      </Button>
+                      <Button asChild className="w-full bg-blue-600 hover:bg-blue-700">
+                        <Link href="/auth/signup" onClick={() => setIsOpen(false)}>
+                          Sign Up
+                        </Link>
+                      </Button>
+                    </div>
                   )}
                 </div>
               </SheetContent>

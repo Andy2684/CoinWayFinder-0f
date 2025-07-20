@@ -3,15 +3,14 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
+import { useAuth } from "@/components/auth/auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, Mail, Lock, Loader2, User } from "lucide-react"
-import { useAuth } from "@/components/auth/auth-provider"
+import Link from "next/link"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
@@ -19,7 +18,6 @@ export function LoginForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
   const { login, isLoading } = useAuth()
-  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -31,22 +29,24 @@ export function LoginForm() {
     }
 
     try {
-      await login(email, password)
-      // Navigation is handled in the login function
+      const success = await login(email, password)
+      if (!success) {
+        setError("Invalid email or password")
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed")
+      setError("Login failed. Please try again.")
     }
   }
 
   const handleDemoLogin = async () => {
-    setEmail("demo@coinwayfinder.com")
-    setPassword("password")
     setError("")
-
     try {
-      await login("demo@coinwayfinder.com", "password")
+      const success = await login("demo@coinwayfinder.com", "password")
+      if (!success) {
+        setError("Demo login failed")
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Demo login failed")
+      setError("Demo login failed. Please try again.")
     }
   }
 
@@ -122,6 +122,7 @@ export function LoginForm() {
               )}
             </Button>
           </form>
+
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <span className="w-full border-t border-white/10" />
@@ -130,6 +131,7 @@ export function LoginForm() {
               <span className="bg-black/40 px-2 text-gray-400">Or</span>
             </div>
           </div>
+
           <Button
             type="button"
             variant="outline"
