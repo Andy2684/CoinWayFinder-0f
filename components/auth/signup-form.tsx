@@ -1,18 +1,19 @@
 "use client"
 
 import type React from "react"
+
 import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
+import { useAuth } from "./auth-provider"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Mail, Lock, User, Loader2 } from 'lucide-react'
-import { useAuth } from "@/components/auth/auth-provider"
+import { Eye, EyeOff, Mail, Lock, User, UserPlus } from "lucide-react"
+import Link from "next/link"
 
 export function SignupForm() {
+  const { signup, isLoading } = useAuth()
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -23,14 +24,12 @@ export function SignupForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState("")
-  const { signup, isLoading } = useAuth()
-  const router = useRouter()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
+    setFormData((prev) => ({
+      ...prev,
       [e.target.name]: e.target.value,
-    })
+    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,45 +42,39 @@ export function SignupForm() {
       return
     }
 
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters long")
-      return
-    }
-
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match")
       return
     }
 
-    // Email validation
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters long")
+      return
+    }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(formData.email)) {
       setError("Please enter a valid email address")
       return
     }
 
-    try {
-      const success = await signup({
-        email: formData.email,
-        password: formData.password,
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-      })
+    const success = await signup({
+      email: formData.email,
+      password: formData.password,
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+    })
 
-      if (!success) {
-        setError("Registration failed. User may already exist.")
-      }
-    } catch (err) {
-      console.error("Signup error:", err)
-      setError("Registration failed. Please try again.")
+    if (!success) {
+      setError("Registration failed. Email may already be in use.")
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
       <Card className="w-full max-w-md bg-black/40 backdrop-blur-xl border-white/10">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center text-white">Create account</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center text-white">Create Account</CardTitle>
           <CardDescription className="text-center text-gray-400">
             Join CoinWayFinder and start trading smarter
           </CardDescription>
@@ -92,6 +85,7 @@ export function SignupForm() {
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
@@ -104,7 +98,7 @@ export function SignupForm() {
                     id="firstName"
                     name="firstName"
                     type="text"
-                    placeholder="John"
+                    placeholder="First name"
                     value={formData.firstName}
                     onChange={handleChange}
                     className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
@@ -112,6 +106,7 @@ export function SignupForm() {
                   />
                 </div>
               </div>
+
               <div className="space-y-2">
                 <Label htmlFor="lastName" className="text-white">
                   Last Name
@@ -122,7 +117,7 @@ export function SignupForm() {
                     id="lastName"
                     name="lastName"
                     type="text"
-                    placeholder="Doe"
+                    placeholder="Last name"
                     value={formData.lastName}
                     onChange={handleChange}
                     className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
@@ -131,6 +126,7 @@ export function SignupForm() {
                 </div>
               </div>
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="email" className="text-white">
                 Email
@@ -141,7 +137,7 @@ export function SignupForm() {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="john@example.com"
+                  placeholder="Enter your email"
                   value={formData.email}
                   onChange={handleChange}
                   className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
@@ -149,6 +145,7 @@ export function SignupForm() {
                 />
               </div>
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="password" className="text-white">
                 Password
@@ -180,6 +177,7 @@ export function SignupForm() {
                 </Button>
               </div>
             </div>
+
             <div className="space-y-2">
               <Label htmlFor="confirmPassword" className="text-white">
                 Confirm Password
@@ -211,36 +209,29 @@ export function SignupForm() {
                 </Button>
               </div>
             </div>
+
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={isLoading}>
               {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
                   Creating account...
-                </>
+                </div>
               ) : (
-                "Create Account"
+                <>
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Create Account
+                </>
               )}
             </Button>
           </form>
-        </CardContent>
-        <CardFooter className="flex flex-col space-y-2">
-          <div className="text-sm text-center text-gray-400">
-            Already have an account?{" "}
-            <Link href="/auth/login" className="text-blue-400 hover:text-blue-300 underline">
+
+          <div className="text-center text-sm">
+            <span className="text-gray-400">Already have an account? </span>
+            <Link href="/auth/login" className="text-blue-400 hover:text-blue-300 font-medium">
               Sign in
             </Link>
           </div>
-          <div className="text-xs text-center text-gray-500">
-            By creating an account, you agree to our{" "}
-            <Link href="/terms" className="underline hover:text-gray-400">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link href="/privacy" className="underline hover:text-gray-400">
-              Privacy Policy
-            </Link>
-          </div>
-        </CardFooter>
+        </CardContent>
       </Card>
     </div>
   )
