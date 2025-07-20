@@ -2,40 +2,15 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Menu, User, LogOut, Settings, Brain, TrendingUp, Newspaper, BarChart3 } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Menu, X, User, LogOut, Settings, TrendingUp } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
-
-const navigation = [
-  { name: "Home", href: "/" },
-  { name: "Features", href: "/#features" },
-  { name: "Pricing", href: "/#pricing" },
-  { name: "About", href: "/about" },
-]
-
-const dashboardNavigation = [
-  { name: "Dashboard", href: "/dashboard", icon: BarChart3 },
-  { name: "AI Bots", href: "/ai-bots", icon: Brain },
-  { name: "Signals", href: "/signals", icon: TrendingUp },
-  { name: "News", href: "/news", icon: Newspaper },
-  { name: "Portfolio", href: "/portfolio", icon: BarChart3 },
-]
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
-  const pathname = usePathname()
-  const { user, logout, isAuthenticated } = useAuth()
+  const { user, logout } = useAuth()
 
   const handleLogout = () => {
     logout()
@@ -43,171 +18,183 @@ export function Navigation() {
   }
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 items-center">
-        <div className="mr-4 hidden md:flex">
-          <Link href="/" className="mr-6 flex items-center space-x-2">
-            <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600" />
-            <span className="hidden font-bold sm:inline-block">CoinWayFinder</span>
+    <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link href="/" className="flex items-center gap-2">
+            <TrendingUp className="w-8 h-8 text-blue-600" />
+            <span className="text-xl font-bold text-gray-900">CoinWayFinder</span>
           </Link>
-          <nav className="flex items-center space-x-6 text-sm font-medium">
-            {isAuthenticated
-              ? dashboardNavigation.map((item) => {
-                  const Icon = item.icon
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`flex items-center space-x-1 transition-colors hover:text-foreground/80 ${
-                        pathname === item.href ? "text-foreground" : "text-foreground/60"
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                      <span>{item.name}</span>
-                    </Link>
-                  )
-                })
-              : navigation.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={`transition-colors hover:text-foreground/80 ${
-                      pathname === item.href ? "text-foreground" : "text-foreground/60"
-                    }`}
-                  >
-                    {item.name}
-                  </Link>
-                ))}
-          </nav>
-        </div>
 
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-          <SheetTrigger asChild>
-            <Button
-              variant="ghost"
-              className="mr-2 px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden"
-            >
-              <Menu className="h-6 w-6" />
-              <span className="sr-only">Toggle Menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="pr-0">
-            <Link href="/" className="flex items-center space-x-2" onClick={() => setIsOpen(false)}>
-              <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600" />
-              <span className="font-bold">CoinWayFinder</span>
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-8">
+            <Link href="/features" className="text-gray-700 hover:text-blue-600 transition-colors">
+              Features
             </Link>
-            <div className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
-              <div className="flex flex-col space-y-3">
-                {isAuthenticated
-                  ? dashboardNavigation.map((item) => {
-                      const Icon = item.icon
-                      return (
-                        <Link
-                          key={item.href}
-                          href={item.href}
-                          className={`flex items-center space-x-2 text-sm font-medium transition-colors hover:text-foreground/80 ${
-                            pathname === item.href ? "text-foreground" : "text-foreground/60"
-                          }`}
-                          onClick={() => setIsOpen(false)}
-                        >
-                          <Icon className="h-4 w-4" />
-                          <span>{item.name}</span>
-                        </Link>
-                      )
-                    })
-                  : navigation.map((item) => (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={`text-sm font-medium transition-colors hover:text-foreground/80 ${
-                          pathname === item.href ? "text-foreground" : "text-foreground/60"
-                        }`}
-                        onClick={() => setIsOpen(false)}
-                      >
-                        {item.name}
-                      </Link>
-                    ))}
-              </div>
-              {!isAuthenticated && (
-                <div className="mt-6 flex flex-col space-y-3">
-                  <Link href="/auth/login" onClick={() => setIsOpen(false)}>
-                    <Button variant="ghost" className="w-full justify-start">
-                      <User className="mr-2 h-4 w-4" />
-                      Sign In
-                    </Button>
-                  </Link>
-                  <Link href="/auth/signup" onClick={() => setIsOpen(false)}>
-                    <Button className="w-full justify-start">Sign Up</Button>
-                  </Link>
-                </div>
-              )}
-            </div>
-          </SheetContent>
-        </Sheet>
-
-        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-          <div className="w-full flex-1 md:w-auto md:flex-none">
-            <Link href="/" className="flex items-center space-x-2 md:hidden">
-              <div className="h-8 w-8 rounded-full bg-gradient-to-r from-blue-600 to-purple-600" />
-              <span className="font-bold">CoinWayFinder</span>
+            <Link href="/pricing" className="text-gray-700 hover:text-blue-600 transition-colors">
+              Pricing
+            </Link>
+            <Link href="/about" className="text-gray-700 hover:text-blue-600 transition-colors">
+              About
+            </Link>
+            <Link href="/contact" className="text-gray-700 hover:text-blue-600 transition-colors">
+              Contact
             </Link>
           </div>
-          <nav className="flex items-center space-x-2">
-            {isAuthenticated ? (
+
+          {/* Auth Buttons / User Menu */}
+          <div className="hidden md:flex items-center gap-4">
+            {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src="/placeholder-user.jpg" alt={user?.firstName || "User"} />
-                      <AvatarFallback>
-                        {user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}
+                  <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                    <Avatar className="h-10 w-10">
+                      <AvatarFallback className="bg-blue-600 text-white">
+                        {user.name?.charAt(0).toUpperCase() || "U"}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-56" align="end" forceMount>
-                  <DropdownMenuLabel className="font-normal">
-                    <div className="flex flex-col space-y-1">
-                      <p className="text-sm font-medium leading-none">
-                        {user?.firstName && user?.lastName
-                          ? `${user.firstName} ${user.lastName}`
-                          : user?.firstName || "User"}
-                      </p>
-                      <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-1 leading-none">
+                      <p className="font-medium">{user.name}</p>
+                      <p className="w-[200px] truncate text-sm text-muted-foreground">{user.email}</p>
                     </div>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
+                  </div>
                   <DropdownMenuItem asChild>
-                    <Link href="/dashboard/settings" className="flex items-center">
-                      <Settings className="mr-2 h-4 w-4" />
+                    <Link href="/dashboard" className="flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/settings" className="flex items-center gap-2">
+                      <Settings className="w-4 h-4" />
                       Settings
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-                    <LogOut className="mr-2 h-4 w-4" />
+                  <DropdownMenuItem onClick={handleLogout} className="flex items-center gap-2">
+                    <LogOut className="w-4 h-4" />
                     Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <div className="hidden md:flex md:items-center md:space-x-2">
-                <Link href="/auth/login">
-                  <Button variant="ghost" size="sm">
-                    <User className="mr-2 h-4 w-4" />
-                    Sign In
-                  </Button>
-                </Link>
-                <Link href="/auth/signup">
-                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                    Sign Up
-                  </Button>
-                </Link>
-              </div>
+              <>
+                <Button variant="ghost" asChild>
+                  <Link href="/auth/login" className="flex items-center gap-2">
+                    <User className="w-4 h-4" />
+                    Log In
+                  </Link>
+                </Button>
+                <Button asChild className="bg-blue-600 hover:bg-blue-700">
+                  <Link href="/auth/signup">Sign Up</Link>
+                </Button>
+              </>
             )}
-          </nav>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <Button variant="ghost" size="sm" className="md:hidden" onClick={() => setIsOpen(!isOpen)}>
+            {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+          </Button>
         </div>
+
+        {/* Mobile Menu */}
+        {isOpen && (
+          <div className="md:hidden border-t border-gray-200 py-4">
+            <div className="flex flex-col gap-4">
+              <Link
+                href="/features"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                Features
+              </Link>
+              <Link
+                href="/pricing"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                Pricing
+              </Link>
+              <Link
+                href="/about"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                About
+              </Link>
+              <Link
+                href="/contact"
+                className="text-gray-700 hover:text-blue-600 transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                Contact
+              </Link>
+
+              {user ? (
+                <>
+                  <div className="border-t border-gray-200 pt-4">
+                    <div className="flex items-center gap-3 mb-4">
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="bg-blue-600 text-white text-sm">
+                          {user.name?.charAt(0).toUpperCase() || "U"}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <p className="font-medium text-sm">{user.name}</p>
+                        <p className="text-xs text-gray-500">{user.email}</p>
+                      </div>
+                    </div>
+                    <Link
+                      href="/dashboard"
+                      className="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition-colors mb-2"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <User className="w-4 h-4" />
+                      Dashboard
+                    </Link>
+                    <Link
+                      href="/dashboard/settings"
+                      className="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition-colors mb-2"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      <Settings className="w-4 h-4" />
+                      Settings
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="flex items-center gap-2 text-gray-700 hover:text-blue-600 transition-colors"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Log out
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="border-t border-gray-200 pt-4 flex flex-col gap-2">
+                  <Button variant="ghost" asChild className="justify-start">
+                    <Link href="/auth/login" onClick={() => setIsOpen(false)}>
+                      <User className="w-4 h-4 mr-2" />
+                      Log In
+                    </Link>
+                  </Button>
+                  <Button asChild className="bg-blue-600 hover:bg-blue-700">
+                    <Link href="/auth/signup" onClick={() => setIsOpen(false)}>
+                      Sign Up
+                    </Link>
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   )
 }
+
+export default Navigation

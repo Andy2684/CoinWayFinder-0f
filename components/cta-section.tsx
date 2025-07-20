@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowRight, Zap } from "lucide-react"
 import Link from "next/link"
 
-export default function CTASection() {
+export function CTASection() {
   return (
     <section className="py-20 bg-gradient-to-r from-emerald-600 to-green-600">
       <div className="container mx-auto px-4">
@@ -72,3 +72,5 @@ export default function CTASection() {
     </section>
   )
 }
+
+export default CTASection

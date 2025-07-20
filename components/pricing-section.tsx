@@ -1,83 +1,91 @@
 "use client"
 
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Check, Star } from "lucide-react"
 import Link from "next/link"
 
-export default function PricingSection() {
+export function PricingSection() {
   const plans = [
     {
       name: "Starter",
       price: "$29",
       period: "/month",
       description: "Perfect for beginners getting started with crypto trading",
+      badge: null,
       features: [
-        "5 AI Trading Signals per day",
-        "Basic market analysis",
-        "Email notifications",
-        "Community access",
-        "Mobile app access",
-        "Basic support",
+        "1 AI Trading Bot",
+        "Basic Market Analysis",
+        "Email Support",
+        "Mobile App Access",
+        "Basic Risk Management",
+        "Community Access",
       ],
-      popular: false,
       buttonText: "Start Free Trial",
       buttonVariant: "outline" as const,
+      popular: false,
     },
     {
       name: "Professional",
-      price: "$79",
+      price: "$99",
       period: "/month",
       description: "Advanced features for serious traders and professionals",
+      badge: "Most Popular",
       features: [
-        "Unlimited AI Trading Signals",
-        "Advanced market analysis",
-        "Real-time notifications",
-        "Priority community access",
-        "Mobile & desktop apps",
-        "AI trading bots (3 active)",
-        "Advanced risk management",
-        "Priority support",
+        "5 AI Trading Bots",
+        "Advanced Market Analysis",
+        "Priority Support",
+        "Web & Mobile Access",
+        "Advanced Risk Management",
+        "Copy Trading",
+        "Custom Indicators",
+        "Portfolio Analytics",
       ],
-      popular: true,
       buttonText: "Start Free Trial",
       buttonVariant: "default" as const,
+      popular: true,
     },
     {
       name: "Enterprise",
-      price: "$199",
+      price: "$299",
       period: "/month",
-      description: "Complete solution for professional trading teams",
+      description: "Complete solution for institutions and high-volume traders",
+      badge: "Best Value",
       features: [
-        "Everything in Professional",
-        "Unlimited AI trading bots",
-        "Custom trading strategies",
-        "API access",
-        "White-label solutions",
-        "Dedicated account manager",
-        "Custom integrations",
-        "24/7 phone support",
+        "Unlimited AI Trading Bots",
+        "Premium Market Analysis",
+        "24/7 Phone Support",
+        "All Platform Access",
+        "Enterprise Risk Management",
+        "White-label Solutions",
+        "API Access",
+        "Dedicated Account Manager",
+        "Custom Integrations",
+        "Advanced Reporting",
       ],
-      popular: false,
       buttonText: "Contact Sales",
       buttonVariant: "outline" as const,
+      popular: false,
     },
   ]
 
   return (
-    <section id="pricing" className="py-20 bg-white">
+    <section className="py-20 bg-gradient-to-b from-white to-slate-50">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
-          <Badge variant="secondary" className="mb-4">
-            <Star className="w-4 h-4 mr-2" />
-            Pricing
+          <Badge variant="outline" className="mb-4">
+            Pricing Plans
           </Badge>
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Choose Your <span className="text-emerald-600">Trading Plan</span>
+          <h2 className="text-3xl md:text-5xl font-bold text-gray-900 mb-6">
+            Choose Your
+            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent block">
+              Trading Plan
+            </span>
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Start with a free trial and upgrade as you grow. All plans include our core features and 24/7 support.
+            Start with a free trial and upgrade as you grow. All plans include our core AI trading features with no
+            hidden fees.
           </p>
         </div>
 
@@ -85,67 +93,62 @@ export default function PricingSection() {
           {plans.map((plan, index) => (
             <Card
               key={index}
-              className={`relative hover:shadow-xl transition-all duration-300 ${
-                plan.popular ? "border-emerald-500 shadow-lg scale-105" : "border-gray-200 hover:border-emerald-300"
-              }`}
+              className={`relative ${plan.popular ? "ring-2 ring-blue-500 shadow-xl scale-105" : "hover:shadow-lg"} transition-all duration-300`}
             >
-              {plan.popular && (
+              {plan.badge && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <Badge className="bg-emerald-600 text-white px-4 py-1">Most Popular</Badge>
+                  <Badge className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1">
+                    <Star className="w-3 h-3 mr-1" />
+                    {plan.badge}
+                  </Badge>
                 </div>
               )}
 
-              <CardHeader className="text-center pb-8">
-                <CardTitle className="text-2xl font-bold">{plan.name}</CardTitle>
-                <CardDescription className="text-gray-600 mt-2">{plan.description}</CardDescription>
+              <CardHeader className="text-center pb-4">
+                <CardTitle className="text-2xl font-bold text-gray-900">{plan.name}</CardTitle>
                 <div className="mt-4">
                   <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
                   <span className="text-gray-600">{plan.period}</span>
                 </div>
+                <p className="text-gray-600 mt-2">{plan.description}</p>
               </CardHeader>
 
-              <CardContent className="space-y-4">
-                {plan.features.map((feature, featureIndex) => (
-                  <div key={featureIndex} className="flex items-center space-x-3">
-                    <Check className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                    <span className="text-gray-700">{feature}</span>
-                  </div>
-                ))}
-              </CardContent>
-
-              <CardFooter className="pt-8">
+              <CardContent className="pt-0">
                 <Button
-                  className={`w-full ${plan.popular ? "bg-emerald-600 hover:bg-emerald-700 text-white" : ""}`}
+                  className={`w-full mb-6 ${plan.popular ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700" : ""}`}
                   variant={plan.buttonVariant}
                   size="lg"
                   asChild
                 >
                   <Link href="/auth/signup">{plan.buttonText}</Link>
                 </Button>
-              </CardFooter>
+
+                <ul className="space-y-3">
+                  {plan.features.map((feature, featureIndex) => (
+                    <li key={featureIndex} className="flex items-center gap-3">
+                      <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                        <Check className="w-3 h-3 text-green-600" />
+                      </div>
+                      <span className="text-gray-700 text-sm">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
             </Card>
           ))}
         </div>
 
-        {/* Money Back Guarantee */}
-        <div className="text-center mt-16">
-          <div className="bg-gray-50 rounded-2xl p-8 max-w-4xl mx-auto">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">30-Day Money-Back Guarantee</h3>
-            <p className="text-gray-600 mb-6">
-              Try CoinWayFinder risk-free for 30 days. If you're not completely satisfied, we'll refund your money, no
-              questions asked.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-              <Button size="lg" asChild>
-                <Link href="/auth/signup">Start Your Free Trial</Link>
-              </Button>
-              <Button variant="ghost" size="lg" asChild>
-                <Link href="#features">Learn More About Features</Link>
-              </Button>
-            </div>
+        <div className="text-center mt-12">
+          <p className="text-gray-600 mb-4">All plans include a 14-day free trial. No credit card required.</p>
+          <div className="flex flex-wrap justify-center gap-8 text-sm text-gray-500">
+            <span>✓ Cancel anytime</span>
+            <span>✓ 30-day money-back guarantee</span>
+            <span>✓ 24/7 customer support</span>
           </div>
         </div>
       </div>
     </section>
   )
 }
+
+export default PricingSection

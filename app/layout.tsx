@@ -9,9 +9,9 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "CoinWayFinder - Advanced Crypto Trading Platform",
+  title: "CoinWayFinder - AI-Powered Crypto Trading Platform",
   description:
-    "Professional crypto trading platform with AI-powered bots, real-time signals, and comprehensive market analysis.",
+    "Trade cryptocurrency with advanced AI algorithms, real-time market analysis, and professional trading tools.",
     generator: 'v0.dev'
 }
 
@@ -23,7 +23,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
           <AuthProvider>
             {children}
             <Toaster />
