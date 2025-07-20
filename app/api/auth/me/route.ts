@@ -1,12 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
-import jwt from "jsonwebtoken"
 
 // Mock database - in production, use a real database
 const users: any[] = [
   {
     id: "1",
     email: "demo@coinwayfinder.com",
-    password: "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi", // password
+    password: "password",
     firstName: "Demo",
     lastName: "User",
     username: "demo_user",
@@ -17,7 +16,7 @@ const users: any[] = [
   {
     id: "2",
     email: "admin@coinwayfinder.com",
-    password: "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi", // AdminPass123!
+    password: "AdminPass123!",
     firstName: "Admin",
     lastName: "User",
     username: "admin_user",
@@ -30,19 +29,45 @@ const users: any[] = [
 export async function GET(request: NextRequest) {
   try {
     const authHeader = request.headers.get("authorization")
+
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json({ success: false, error: "No token provided" }, { status: 401 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: "No token provided",
+          message: "Authentication required",
+        },
+        { status: 401 },
+      )
     }
 
-    const token = authHeader.substring(7)
+    const token = authHeader.substring(7) // Remove "Bearer " prefix
 
-    // Verify JWT token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret") as any
+    // Simple token validation (in production, use proper JWT verification)
+    if (!token.startsWith("token_")) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid token",
+          message: "Invalid authentication token",
+        },
+        { status: 401 },
+      )
+    }
 
-    // Find user
-    const user = users.find((u) => u.id === decoded.userId)
+    // Extract user ID from token
+    const userId = token.split("_")[1]
+    const user = users.find((u) => u.id === userId)
+
     if (!user) {
-      return NextResponse.json({ success: false, error: "User not found" }, { status: 404 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: "User not found",
+          message: "User not found",
+        },
+        { status: 404 },
+      )
     }
 
     // Return user data without password
@@ -53,7 +78,14 @@ export async function GET(request: NextRequest) {
       user: userWithoutPassword,
     })
   } catch (error) {
-    console.error("Auth verification error:", error)
-    return NextResponse.json({ success: false, error: "Invalid token" }, { status: 401 })
+    console.error("Auth check error:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Internal server error",
+        message: "An error occurred during authentication check",
+      },
+      { status: 500 },
+    )
   }
 }

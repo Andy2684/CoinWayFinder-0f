@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Mail, Lock, User } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, User, Loader2, CheckCircle } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 
 export function SignupForm() {
@@ -31,10 +31,10 @@ export function SignupForm() {
   const router = useRouter()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({
-      ...prev,
+    setFormData({
+      ...formData,
       [e.target.name]: e.target.value,
-    }))
+    })
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,36 +43,42 @@ export function SignupForm() {
     setError("")
     setSuccess("")
 
+    // Validation
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match")
       setLoading(false)
       return
     }
 
-    if (formData.password.length < 8) {
-      setError("Password must be at least 8 characters long")
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters long")
       setLoading(false)
       return
     }
 
-    const result = await signup({
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      password: formData.password,
-    })
+    try {
+      const result = await signup({
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+      })
 
-    if (result.success) {
-      setSuccess("Account created successfully! Please check your email to verify your account.")
-      // Don't redirect to dashboard - stay on signup page or redirect to thank you page
-      setTimeout(() => {
-        router.push("/thank-you")
-      }, 2000)
-    } else {
-      setError(result.message || "Signup failed")
+      if (result.success) {
+        setSuccess(result.message || "Account created successfully!")
+        // Don't redirect to dashboard - stay on signup page or redirect to thank you page
+        setTimeout(() => {
+          router.push("/auth/login")
+        }, 2000)
+      } else {
+        setError(result.message || "Signup failed")
+      }
+    } catch (error) {
+      console.error("Signup form error:", error)
+      setError("An unexpected error occurred. Please try again.")
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (
@@ -80,9 +86,7 @@ export function SignupForm() {
       <Card className="w-full max-w-md bg-white/10 backdrop-blur-lg border-white/20">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center text-white">Create Account</CardTitle>
-          <CardDescription className="text-center text-gray-300">
-            Join CoinWayFinder and start trading with AI
-          </CardDescription>
+          <CardDescription className="text-center text-gray-300">Join CoinWayFinder and start trading</CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
@@ -94,6 +98,7 @@ export function SignupForm() {
 
             {success && (
               <Alert className="bg-green-500/10 border-green-500/20 text-green-400">
+                <CheckCircle className="h-4 w-4" />
                 <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
@@ -109,11 +114,12 @@ export function SignupForm() {
                     id="firstName"
                     name="firstName"
                     type="text"
-                    placeholder="John"
+                    placeholder="First name"
                     value={formData.firstName}
                     onChange={handleChange}
                     className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -128,11 +134,12 @@ export function SignupForm() {
                     id="lastName"
                     name="lastName"
                     type="text"
-                    placeholder="Doe"
+                    placeholder="Last name"
                     value={formData.lastName}
                     onChange={handleChange}
                     className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                     required
+                    disabled={loading}
                   />
                 </div>
               </div>
@@ -148,11 +155,12 @@ export function SignupForm() {
                   id="email"
                   name="email"
                   type="email"
-                  placeholder="john@example.com"
+                  placeholder="Enter your email"
                   value={formData.email}
                   onChange={handleChange}
                   className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                   required
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -167,16 +175,18 @@ export function SignupForm() {
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Create a strong password"
+                  placeholder="Create password"
                   value={formData.password}
                   onChange={handleChange}
                   className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                   required
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-white"
+                  className="absolute right-3 top-3 text-gray-400 hover:text-white disabled:opacity-50"
+                  disabled={loading}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -193,20 +203,26 @@ export function SignupForm() {
                   id="confirmPassword"
                   name="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
-                  placeholder="Confirm your password"
+                  placeholder="Confirm password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                   required
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-white"
+                  className="absolute right-3 top-3 text-gray-400 hover:text-white disabled:opacity-50"
+                  disabled={loading}
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+            </div>
+
+            <div className="text-xs text-gray-400">
+              By creating an account, you agree to our Terms of Service and Privacy Policy.
             </div>
           </CardContent>
 
@@ -216,7 +232,14 @@ export function SignupForm() {
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold"
               disabled={loading}
             >
-              {loading ? "Creating Account..." : "Create Account"}
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Creating Account...
+                </>
+              ) : (
+                "Create Account"
+              )}
             </Button>
 
             <p className="text-center text-sm text-gray-300">

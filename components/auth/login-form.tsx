@@ -111,10 +111,13 @@ export function LoginForm() {
               </Link>
             </div>
 
-            <div className="text-sm text-gray-400">
-              <p>Demo accounts:</p>
+            <div className="text-sm text-gray-400 bg-gray-800/50 p-3 rounded-lg">
+              <p className="font-semibold text-gray-300 mb-2">Demo accounts:</p>
               <p>Email: demo@coinwayfinder.com</p>
               <p>Password: password</p>
+              <hr className="my-2 border-gray-600" />
+              <p>Email: admin@coinwayfinder.com</p>
+              <p>Password: AdminPass123!</p>
             </div>
           </CardContent>
 

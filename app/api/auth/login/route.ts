@@ -1,13 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
-import bcrypt from "bcryptjs"
-import jwt from "jsonwebtoken"
 
 // Mock database - in production, use a real database
 const users: any[] = [
   {
     id: "1",
     email: "demo@coinwayfinder.com",
-    password: "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi", // password
+    password: "password", // Plain text for demo - in production use hashed passwords
     firstName: "Demo",
     lastName: "User",
     username: "demo_user",
@@ -18,7 +16,7 @@ const users: any[] = [
   {
     id: "2",
     email: "admin@coinwayfinder.com",
-    password: "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi", // AdminPass123!
+    password: "AdminPass123!", // Plain text for demo
     firstName: "Admin",
     lastName: "User",
     username: "admin_user",
@@ -32,6 +30,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { email, password } = body
+
+    console.log("Login attempt:", { email, password })
 
     // Validation
     if (!email || !password) {
@@ -58,9 +58,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Check password
-    const isValidPassword = await bcrypt.compare(password, user.password)
-    if (!isValidPassword) {
+    // Check password (plain text comparison for demo)
+    if (user.password !== password) {
       return NextResponse.json(
         {
           success: false,
@@ -71,10 +70,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate JWT token
-    const token = jwt.sign({ userId: user.id, email: user.email }, process.env.JWT_SECRET || "fallback-secret", {
-      expiresIn: "7d",
-    })
+    // Generate simple token (in production, use proper JWT)
+    const token = `token_${user.id}_${Date.now()}`
 
     // Return user data without password
     const { password: _, ...userWithoutPassword } = user

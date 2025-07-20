@@ -1,13 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
-import bcrypt from "bcryptjs"
-import jwt from "jsonwebtoken"
 
 // Mock database - in production, use a real database
 const users: any[] = [
   {
     id: "1",
     email: "demo@coinwayfinder.com",
-    password: "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi", // password
+    password: "password",
     firstName: "Demo",
     lastName: "User",
     username: "demo_user",
@@ -18,7 +16,7 @@ const users: any[] = [
   {
     id: "2",
     email: "admin@coinwayfinder.com",
-    password: "$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi", // AdminPass123!
+    password: "AdminPass123!",
     firstName: "Admin",
     lastName: "User",
     username: "admin_user",
@@ -31,55 +29,66 @@ const users: any[] = [
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, firstName, lastName, username } = body
+    const { email, password, firstName, lastName } = body
+
+    console.log("Signup attempt:", { email, firstName, lastName })
 
     // Validation
-    if (!email || !password || !firstName || !lastName || !username) {
-      return NextResponse.json({ success: false, error: "All fields are required" }, { status: 400 })
-    }
-
-    // Check if user already exists
-    const existingUser = users.find((user) => user.email === email || user.username === username)
-    if (existingUser) {
+    if (!email || !password || !firstName || !lastName) {
       return NextResponse.json(
-        { success: false, error: "User with this email or username already exists" },
+        {
+          success: false,
+          error: "All fields are required",
+          message: "Please fill in all required fields",
+        },
         { status: 400 },
       )
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10)
+    // Check if user already exists
+    const existingUser = users.find((u) => u.email === email)
+    if (existingUser) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "User already exists",
+          message: "An account with this email already exists",
+        },
+        { status: 409 },
+      )
+    }
 
     // Create new user
     const newUser = {
       id: (users.length + 1).toString(),
       email,
-      password: hashedPassword,
+      password, // In production, hash this password
       firstName,
       lastName,
-      username,
-      role: "user" as const,
+      username: `${firstName.toLowerCase()}_${lastName.toLowerCase()}`,
+      role: "user",
       plan: "free",
       isVerified: false,
+      createdAt: new Date().toISOString(),
     }
 
+    // Add to mock database
     users.push(newUser)
 
-    // Generate JWT token
-    const token = jwt.sign({ userId: newUser.id, email: newUser.email }, process.env.JWT_SECRET || "fallback-secret", {
-      expiresIn: "7d",
-    })
-
-    // Return user data without password
-    const { password: _, ...userWithoutPassword } = newUser
-
+    // Return success without auto-login
     return NextResponse.json({
       success: true,
-      token,
-      user: userWithoutPassword,
+      message: "Account created successfully! You can now sign in.",
     })
   } catch (error) {
     console.error("Signup error:", error)
-    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Internal server error",
+        message: "An error occurred during signup. Please try again.",
+      },
+      { status: 500 },
+    )
   }
 }
