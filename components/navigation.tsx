@@ -63,11 +63,18 @@ export function Navigation() {
               </DropdownMenu>
             ) : (
               <>
-                <Button asChild variant="ghost" className="text-white hover:bg-white/10">
-                  <Link href="/auth/login">Login</Link>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="text-white border-white/20 hover:bg-white/10 bg-transparent"
+                >
+                  <Link href="/auth/login">Sign In</Link>
                 </Button>
-                <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
-                  <Link href="/auth/signup">Sign Up</Link>
+                <Button
+                  asChild
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-6"
+                >
+                  <Link href="/auth/signup">Get Started</Link>
                 </Button>
               </>
             )}

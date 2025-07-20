@@ -2,102 +2,102 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "./auth-provider"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Mail, Lock, User, UserPlus } from "lucide-react"
-import Link from "next/link"
+import { Eye, EyeOff, Mail, Lock, User } from "lucide-react"
+import { useAuth } from "@/components/auth/auth-provider"
 
 export function SignupForm() {
-  const { user } = useAuth()
-  const router = useRouter()
-  const [firstName, setFirstName] = useState("")
-  const [lastName, setLastName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
+  const [success, setSuccess] = useState("")
 
-  // Redirect if user is already authenticated
-  useEffect(() => {
-    if (user) {
-      router.push("/dashboard")
-    }
-  }, [user, router])
+  const { signup } = useAuth()
+  const router = useRouter()
 
-  // Don't render the form if user is authenticated
-  if (user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-        <Card className="w-full max-w-md bg-black/40 backdrop-blur-xl border-white/10">
-          <CardContent className="p-6 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-            <p className="text-white">Redirecting to dashboard...</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setLoading(true)
     setError("")
+    setSuccess("")
 
-    if (!firstName || !lastName || !email || !password || !confirmPassword) {
-      setError("Please fill in all fields")
-      return
-    }
-
-    if (password !== confirmPassword) {
+    if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match")
+      setLoading(false)
       return
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long")
+    if (formData.password.length < 8) {
+      setError("Password must be at least 8 characters long")
+      setLoading(false)
       return
     }
 
-    setIsLoading(true)
+    const result = await signup({
+      firstName: formData.firstName,
+      lastName: formData.lastName,
+      email: formData.email,
+      password: formData.password,
+    })
 
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
-      // Redirect to thank you page instead of dashboard
-      router.push("/thank-you")
-    } catch (error) {
-      setError("Registration failed. Please try again.")
-    } finally {
-      setIsLoading(false)
+    if (result.success) {
+      setSuccess("Account created successfully! Please check your email to verify your account.")
+      // Don't redirect to dashboard - stay on signup page or redirect to thank you page
+      setTimeout(() => {
+        router.push("/thank-you")
+      }, 2000)
+    } else {
+      setError(result.message || "Signup failed")
     }
+
+    setLoading(false)
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
-      <Card className="w-full max-w-md bg-black/40 backdrop-blur-xl border-white/10">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 p-4">
+      <Card className="w-full max-w-md bg-white/10 backdrop-blur-lg border-white/20">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center text-white">Create Account</CardTitle>
-          <CardDescription className="text-center text-gray-400">
-            Join CoinWayFinder and start trading smarter
+          <CardDescription className="text-center text-gray-300">
+            Join CoinWayFinder and start trading with AI
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {error && (
-            <Alert className="bg-red-500/10 border-red-500/20 text-red-400">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
+            {error && (
+              <Alert className="bg-red-500/10 border-red-500/20 text-red-400">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+            {success && (
+              <Alert className="bg-green-500/10 border-green-500/20 text-green-400">
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName" className="text-white">
@@ -107,11 +107,12 @@ export function SignupForm() {
                   <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
                     id="firstName"
+                    name="firstName"
                     type="text"
                     placeholder="John"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                     required
                   />
                 </div>
@@ -125,11 +126,12 @@ export function SignupForm() {
                   <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                   <Input
                     id="lastName"
+                    name="lastName"
                     type="text"
                     placeholder="Doe"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                     required
                   />
                 </div>
@@ -144,11 +146,12 @@ export function SignupForm() {
                 <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
                   id="email"
+                  name="email"
                   type="email"
                   placeholder="john@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                   required
                 />
               </div>
@@ -162,26 +165,21 @@ export function SignupForm() {
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
                   id="password"
+                  name="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="Create a strong password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                   required
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-white"
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
-                  )}
-                </Button>
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
 
@@ -193,64 +191,42 @@ export function SignupForm() {
                 <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                 <Input
                   id="confirmPassword"
+                  name="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
                   placeholder="Confirm your password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                   required
                 />
-                <Button
+                <button
                   type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-3 text-gray-400 hover:text-white"
                 >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
-                  )}
-                </Button>
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
               </div>
             </div>
+          </CardContent>
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={isLoading}>
-              {isLoading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Creating Account...
-                </div>
-              ) : (
-                <>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Create Account
-                </>
-              )}
+          <CardFooter className="flex flex-col space-y-4">
+            <Button
+              type="submit"
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold"
+              disabled={loading}
+            >
+              {loading ? "Creating Account..." : "Create Account"}
             </Button>
-          </form>
 
-          <div className="text-center text-sm">
-            <span className="text-gray-400">Already have an account? </span>
-            <Link href="/auth/login" className="text-blue-400 hover:text-blue-300 font-medium">
-              Sign in
-            </Link>
-          </div>
-
-          <div className="text-center text-xs text-gray-500">
-            <p>By creating an account, you agree to our</p>
-            <div className="space-x-1">
-              <Link href="/terms" className="text-blue-400 hover:text-blue-300">
-                Terms of Service
+            <p className="text-center text-sm text-gray-300">
+              Already have an account?{" "}
+              <Link href="/auth/login" className="text-blue-400 hover:text-blue-300 font-semibold">
+                Sign in
               </Link>
-              <span>and</span>
-              <Link href="/privacy" className="text-blue-400 hover:text-blue-300">
-                Privacy Policy
-              </Link>
-            </div>
-          </div>
-        </CardContent>
+            </p>
+          </CardFooter>
+        </form>
       </Card>
     </div>
   )
