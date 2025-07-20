@@ -1,41 +1,39 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle } from "lucide-react"
+import { CheckCircle, ArrowRight } from "lucide-react"
 
 export default function ThankYouPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 p-4">
-      <Card className="w-full max-w-md text-center">
-        <CardHeader>
-          <div className="mx-auto mb-4 w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-            <CheckCircle className="w-8 h-8 text-green-600" />
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <Card className="w-full max-w-md bg-black/40 backdrop-blur-xl border-white/10 text-center">
+        <CardHeader className="space-y-4">
+          <div className="mx-auto w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
+            <CheckCircle className="w-8 h-8 text-green-400" />
           </div>
-          <CardTitle className="text-2xl font-bold text-green-800">Welcome to Coinwayfinder!</CardTitle>
-          <CardDescription className="text-gray-600">
-            Your account has been created successfully. You can now sign in and start exploring our AI-powered trading
-            platform.
+          <CardTitle className="text-2xl font-bold text-white">Welcome to CoinWayFinder!</CardTitle>
+          <CardDescription className="text-gray-400">
+            Your account has been created successfully. You can now sign in and start trading.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <h3 className="font-semibold text-blue-800 mb-2">What's Next?</h3>
-            <ul className="text-sm text-blue-700 space-y-1 text-left">
-              <li>• Sign in to your account</li>
-              <li>• Explore AI trading bots</li>
-              <li>• Set up your first trading strategy</li>
-              <li>• Connect your exchange accounts</li>
-            </ul>
+          <div className="space-y-2 text-sm text-gray-300">
+            <p>✅ Account created</p>
+            <p>✅ Email verification sent</p>
+            <p>✅ Ready to start trading</p>
           </div>
-
           <div className="space-y-3">
-            <Button asChild className="w-full">
-              <Link href="/auth/login">Sign In Now</Link>
-            </Button>
-
-            <Button variant="outline" asChild className="w-full bg-transparent">
-              <Link href="/">Back to Home</Link>
-            </Button>
+            <Link href="/auth/login">
+              <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+                Sign In Now
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="/">
+              <Button variant="ghost" className="w-full text-gray-300 hover:text-white hover:bg-white/10">
+                Back to Home
+              </Button>
+            </Link>
           </div>
         </CardContent>
       </Card>

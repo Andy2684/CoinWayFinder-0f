@@ -1,7 +1,5 @@
 "use client"
 
-import type React from "react"
-
 import { createContext, useContext, type ReactNode } from "react"
 import { useAuth, type User, type AuthState } from "@/hooks/use-auth"
 
@@ -32,8 +30,4 @@ export function useAuthContext() {
     throw new Error("useAuthContext must be used within an AuthProvider")
   }
   return context
-}
-
-export function AuthProviderWrapper({ children }: { children: React.ReactNode }) {
-  return <AuthProvider>{children}</AuthProvider>
 }

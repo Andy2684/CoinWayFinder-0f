@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
 import { Navigation } from "@/components/navigation"
-import { AuthProviderWrapper } from "@/components/auth/auth-provider"
+import { AuthProvider } from "@/components/auth/auth-provider"
 import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/toaster"
 
@@ -24,13 +24,13 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={inter.className}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
-          <AuthProviderWrapper>
+          <AuthProvider>
             <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
               <Navigation />
               <main>{children}</main>
               <Toaster />
             </div>
-          </AuthProviderWrapper>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
