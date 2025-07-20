@@ -3,14 +3,15 @@
 import type React from "react"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useAuthContext } from "@/components/auth/auth-provider"
 import { Eye, EyeOff, Mail, Lock, User, Loader2 } from "lucide-react"
+import { useAuth } from "@/components/auth/auth-provider"
 
 export function SignupForm() {
   const [formData, setFormData] = useState({
@@ -23,8 +24,8 @@ export function SignupForm() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const { signup } = useAuthContext()
+  const { signup, isLoading } = useAuth()
+  const router = useRouter()
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -38,8 +39,8 @@ export function SignupForm() {
     setError("")
 
     // Validation
-    if (formData.password !== formData.confirmPassword) {
-      setError("Passwords do not match")
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
+      setError("Please fill in all fields")
       return
     }
 
@@ -48,7 +49,10 @@ export function SignupForm() {
       return
     }
 
-    setIsLoading(true)
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match")
+      return
+    }
 
     try {
       await signup({
@@ -59,14 +63,12 @@ export function SignupForm() {
       })
       // Navigation is handled in the signup function
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Signup failed")
-    } finally {
-      setIsLoading(false)
+      setError(err instanceof Error ? err.message : "Registration failed")
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
       <Card className="w-full max-w-md bg-black/40 backdrop-blur-xl border-white/10">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center text-white">Create account</CardTitle>
@@ -86,31 +88,37 @@ export function SignupForm() {
                 <Label htmlFor="firstName" className="text-white">
                   First Name
                 </Label>
-                <Input
-                  id="firstName"
-                  name="firstName"
-                  type="text"
-                  placeholder="John"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-gray-400 focus:border-blue-500"
-                  required
-                />
+                <div className="relative">
+                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="firstName"
+                    name="firstName"
+                    type="text"
+                    placeholder="John"
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
+                    required
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="lastName" className="text-white">
                   Last Name
                 </Label>
-                <Input
-                  id="lastName"
-                  name="lastName"
-                  type="text"
-                  placeholder="Doe"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  className="bg-white/5 border-white/10 text-white placeholder:text-gray-400 focus:border-blue-500"
-                  required
-                />
+                <div className="relative">
+                  <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                  <Input
+                    id="lastName"
+                    name="lastName"
+                    type="text"
+                    placeholder="Doe"
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
+                    required
+                  />
+                </div>
               </div>
             </div>
             <div className="space-y-2">
@@ -126,7 +134,7 @@ export function SignupForm() {
                   placeholder="john@example.com"
                   value={formData.email}
                   onChange={handleChange}
-                  className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400 focus:border-blue-500"
+                  className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
                   required
                 />
               </div>
@@ -144,7 +152,7 @@ export function SignupForm() {
                   placeholder="Create a password"
                   value={formData.password}
                   onChange={handleChange}
-                  className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400 focus:border-blue-500"
+                  className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
                   required
                 />
                 <Button
@@ -175,7 +183,7 @@ export function SignupForm() {
                   placeholder="Confirm your password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
-                  className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400 focus:border-blue-500"
+                  className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
                   required
                 />
                 <Button
@@ -200,21 +208,28 @@ export function SignupForm() {
                   Creating account...
                 </>
               ) : (
-                <>
-                  <User className="mr-2 h-4 w-4" />
-                  Create Account
-                </>
+                "Create Account"
               )}
             </Button>
           </form>
         </CardContent>
-        <CardFooter>
-          <p className="text-center text-sm text-gray-400 w-full">
+        <CardFooter className="flex flex-col space-y-2">
+          <div className="text-sm text-center text-gray-400">
             Already have an account?{" "}
-            <Link href="/auth/login" className="text-blue-400 hover:text-blue-300 transition-colors">
+            <Link href="/auth/login" className="text-blue-400 hover:text-blue-300 underline">
               Sign in
             </Link>
-          </p>
+          </div>
+          <div className="text-xs text-center text-gray-500">
+            By creating an account, you agree to our{" "}
+            <Link href="/terms" className="underline hover:text-gray-400">
+              Terms of Service
+            </Link>{" "}
+            and{" "}
+            <Link href="/privacy" className="underline hover:text-gray-400">
+              Privacy Policy
+            </Link>
+          </div>
         </CardFooter>
       </Card>
     </div>

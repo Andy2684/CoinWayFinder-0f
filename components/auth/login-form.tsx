@@ -10,30 +10,31 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useAuthContext } from "@/components/auth/auth-provider"
-import { Eye, EyeOff, Mail, Lock, User, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, Loader2, User } from "lucide-react"
+import { useAuth } from "@/components/auth/auth-provider"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-  const { login } = useAuthContext()
+  const { login, isLoading } = useAuth()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-    setIsLoading(true)
+
+    if (!email || !password) {
+      setError("Please fill in all fields")
+      return
+    }
 
     try {
       await login(email, password)
       // Navigation is handled in the login function
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed")
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -41,19 +42,16 @@ export function LoginForm() {
     setEmail("demo@coinwayfinder.com")
     setPassword("password")
     setError("")
-    setIsLoading(true)
 
     try {
       await login("demo@coinwayfinder.com", "password")
     } catch (err) {
       setError(err instanceof Error ? err.message : "Demo login failed")
-    } finally {
-      setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4">
       <Card className="w-full max-w-md bg-black/40 backdrop-blur-xl border-white/10">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center text-white">Welcome back</CardTitle>
@@ -78,7 +76,7 @@ export function LoginForm() {
                   placeholder="Enter your email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400 focus:border-blue-500"
+                  className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
                   required
                 />
               </div>
@@ -95,7 +93,7 @@ export function LoginForm() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400 focus:border-blue-500"
+                  className="pl-10 pr-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
                   required
                 />
                 <Button
@@ -113,14 +111,6 @@ export function LoginForm() {
                 </Button>
               </div>
             </div>
-            <div className="flex items-center justify-between">
-              <Link
-                href="/auth/forgot-password"
-                className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
-              >
-                Forgot password?
-              </Link>
-            </div>
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={isLoading}>
               {isLoading ? (
                 <>
@@ -128,10 +118,7 @@ export function LoginForm() {
                   Signing in...
                 </>
               ) : (
-                <>
-                  <User className="mr-2 h-4 w-4" />
-                  Sign In
-                </>
+                "Sign In"
               )}
             </Button>
           </form>
@@ -146,27 +133,26 @@ export function LoginForm() {
           <Button
             type="button"
             variant="outline"
-            className="w-full bg-white/5 border-white/10 text-white hover:bg-white/10"
+            className="w-full border-white/10 bg-white/5 text-white hover:bg-white/10"
             onClick={handleDemoLogin}
             disabled={isLoading}
           >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading...
-              </>
-            ) : (
-              "Try Demo Account"
-            )}
+            <User className="mr-2 h-4 w-4" />
+            Try Demo Account
           </Button>
         </CardContent>
-        <CardFooter>
-          <p className="text-center text-sm text-gray-400 w-full">
+        <CardFooter className="flex flex-col space-y-2">
+          <div className="text-sm text-center text-gray-400">
             Don't have an account?{" "}
-            <Link href="/auth/signup" className="text-blue-400 hover:text-blue-300 transition-colors">
+            <Link href="/auth/signup" className="text-blue-400 hover:text-blue-300 underline">
               Sign up
             </Link>
-          </p>
+          </div>
+          <div className="text-sm text-center">
+            <Link href="/auth/forgot-password" className="text-gray-400 hover:text-white underline">
+              Forgot your password?
+            </Link>
+          </div>
         </CardFooter>
       </Card>
     </div>
