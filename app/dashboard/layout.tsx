@@ -1,6 +1,10 @@
+"use client"
+
 import type React from "react"
-import { ProtectedRoute } from "@/components/auth/protected-route"
+
+import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { ProtectedRoute } from "@/components/auth/protected-route"
 
 export default function DashboardLayout({
   children,
@@ -9,10 +13,13 @@ export default function DashboardLayout({
 }) {
   return (
     <ProtectedRoute>
-      <div className="flex min-h-screen w-full flex-col bg-muted/40">
-        <DashboardHeader />
-        <div className="flex flex-1">
-          <main className="flex-1 p-4 lg:p-6">{children}</main>
+      <div className="min-h-screen bg-gray-50">
+        <DashboardSidebar />
+        <div className="lg:pl-64">
+          <DashboardHeader />
+          <main className="py-6">
+            <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">{children}</div>
+          </main>
         </div>
       </div>
     </ProtectedRoute>

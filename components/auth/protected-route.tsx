@@ -4,32 +4,43 @@ import type React from "react"
 
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { useAuth } from "./auth-provider"
+import { useAuthContext } from "./auth-provider"
+import { Loader2 } from "lucide-react"
 
 interface ProtectedRouteProps {
   children: React.ReactNode
+  requireAuth?: boolean
 }
 
-export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, loading } = useAuth()
+export function ProtectedRoute({ children, requireAuth = true }: ProtectedRouteProps) {
+  const { isAuthenticated, isLoading } = useAuthContext()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && !isAuthenticated) {
+    if (!isLoading && requireAuth && !isAuthenticated) {
       router.push("/auth/login")
     }
-  }, [isAuthenticated, loading, router])
+  }, [isAuthenticated, isLoading, requireAuth, router])
 
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
       </div>
     )
   }
 
-  if (!isAuthenticated) {
-    return null
+  if (requireAuth && !isAuthenticated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-muted-foreground">Redirecting to login...</p>
+        </div>
+      </div>
+    )
   }
 
   return <>{children}</>
