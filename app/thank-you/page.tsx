@@ -11,56 +11,46 @@ export default function ThankYouPage() {
           <div className="mx-auto w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
             <CheckCircle className="w-8 h-8 text-green-400" />
           </div>
-          <CardTitle className="text-2xl font-bold text-white">Welcome to CoinWayFinder!</CardTitle>
+          <CardTitle className="text-2xl font-bold text-white">Account Created Successfully!</CardTitle>
           <CardDescription className="text-gray-400">
-            Your account has been successfully created. We're excited to have you on board!
+            Welcome to CoinWayFinder! Your account has been created and you can now sign in to start trading.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-start space-x-3 p-4 bg-blue-500/10 rounded-lg border border-blue-500/20">
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+            <div className="flex items-start space-x-3">
               <Mail className="w-5 h-5 text-blue-400 mt-0.5" />
               <div>
-                <h3 className="text-white font-medium">Check your email</h3>
-                <p className="text-sm text-gray-400">
-                  We've sent you a verification email. Please click the link to verify your account.
+                <h3 className="text-sm font-medium text-white">Next Steps</h3>
+                <p className="text-xs text-gray-400 mt-1">
+                  You can now sign in to your account and start exploring our AI-powered trading platform.
                 </p>
               </div>
             </div>
-            <div className="space-y-3">
-              <h3 className="text-white font-medium">What's next?</h3>
-              <ul className="space-y-2 text-sm text-gray-400">
-                <li className="flex items-center space-x-2">
-                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
-                  <span>Verify your email address</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
-                  <span>Complete your profile setup</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
-                  <span>Explore our AI trading bots</span>
-                </li>
-                <li className="flex items-center space-x-2">
-                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
-                  <span>Start your trading journey</span>
-                </li>
-              </ul>
-            </div>
           </div>
+
           <div className="space-y-3">
-            <Link href="/auth/login">
+            <Link href="/auth/login" className="block">
               <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
                 Sign In to Your Account
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>
-            <Link href="/">
+
+            <Link href="/" className="block">
               <Button variant="outline" className="w-full border-white/10 bg-white/5 text-white hover:bg-white/10">
-                Return to Homepage
+                Back to Homepage
               </Button>
             </Link>
+          </div>
+
+          <div className="text-center">
+            <p className="text-xs text-gray-500">
+              Need help? Contact our{" "}
+              <Link href="/support" className="text-blue-400 hover:text-blue-300 underline">
+                support team
+              </Link>
+            </p>
           </div>
         </CardContent>
       </Card>
