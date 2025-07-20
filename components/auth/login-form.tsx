@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Mail, Lock } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, Loader2 } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 
 export function LoginForm() {
@@ -28,15 +28,20 @@ export function LoginForm() {
     setLoading(true)
     setError("")
 
-    const result = await login(email, password)
+    try {
+      const result = await login(email, password)
 
-    if (result.success) {
-      router.push("/dashboard")
-    } else {
-      setError(result.message || "Login failed")
+      if (result.success) {
+        router.push("/dashboard")
+      } else {
+        setError(result.message || "Login failed")
+      }
+    } catch (error) {
+      console.error("Login form error:", error)
+      setError("An unexpected error occurred. Please try again.")
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   return (
@@ -68,6 +73,7 @@ export function LoginForm() {
                   onChange={(e) => setEmail(e.target.value)}
                   className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                   required
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -86,11 +92,13 @@ export function LoginForm() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                   required
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-gray-400 hover:text-white"
+                  className="absolute right-3 top-3 text-gray-400 hover:text-white disabled:opacity-50"
+                  disabled={loading}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -102,6 +110,12 @@ export function LoginForm() {
                 Forgot password?
               </Link>
             </div>
+
+            <div className="text-sm text-gray-400">
+              <p>Demo accounts:</p>
+              <p>Email: demo@coinwayfinder.com</p>
+              <p>Password: password</p>
+            </div>
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-4">
@@ -110,7 +124,14 @@ export function LoginForm() {
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold"
               disabled={loading}
             >
-              {loading ? "Signing In..." : "Sign In"}
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing In...
+                </>
+              ) : (
+                "Sign In"
+              )}
             </Button>
 
             <p className="text-center text-sm text-gray-300">

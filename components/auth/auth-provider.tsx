@@ -74,18 +74,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       })
 
+      // Check if response is ok first
+      if (!response.ok) {
+        // Try to parse JSON error response
+        try {
+          const errorData = await response.json()
+          return {
+            success: false,
+            message: errorData.message || errorData.error || "Login failed",
+          }
+        } catch (jsonError) {
+          // If JSON parsing fails, return generic error
+          return {
+            success: false,
+            message: `Login failed with status ${response.status}`,
+          }
+        }
+      }
+
+      // Parse successful response
       const data = await response.json()
 
-      if (response.ok) {
+      if (data.success && data.token) {
         localStorage.setItem("auth_token", data.token)
         setUser(data.user)
-        return { success: true }
+        return { success: true, message: data.message }
       } else {
-        return { success: false, message: data.message || "Login failed" }
+        return {
+          success: false,
+          message: data.message || "Login failed",
+        }
       }
     } catch (error) {
       console.error("Login error:", error)
-      return { success: false, message: "Network error occurred" }
+      return {
+        success: false,
+        message: "Network error occurred. Please check your connection and try again.",
+      }
     }
   }
 
@@ -104,18 +129,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify(userData),
       })
 
+      // Check if response is ok first
+      if (!response.ok) {
+        // Try to parse JSON error response
+        try {
+          const errorData = await response.json()
+          return {
+            success: false,
+            message: errorData.message || errorData.error || "Signup failed",
+          }
+        } catch (jsonError) {
+          // If JSON parsing fails, return generic error
+          return {
+            success: false,
+            message: `Signup failed with status ${response.status}`,
+          }
+        }
+      }
+
+      // Parse successful response
       const data = await response.json()
 
-      if (response.ok) {
+      if (data.success) {
         // Don't automatically log in or redirect to dashboard
         // Just return success - user stays on current page or goes to thank you page
-        return { success: true, message: data.message || "Account created successfully" }
+        return {
+          success: true,
+          message: data.message || "Account created successfully",
+        }
       } else {
-        return { success: false, message: data.message || "Signup failed" }
+        return {
+          success: false,
+          message: data.message || "Signup failed",
+        }
       }
     } catch (error) {
       console.error("Signup error:", error)
-      return { success: false, message: "Network error occurred" }
+      return {
+        success: false,
+        message: "Network error occurred. Please check your connection and try again.",
+      }
     }
   }
 

@@ -35,19 +35,40 @@ export async function POST(request: NextRequest) {
 
     // Validation
     if (!email || !password) {
-      return NextResponse.json({ success: false, error: "Email and password are required" }, { status: 400 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Email and password are required",
+          message: "Email and password are required",
+        },
+        { status: 400 },
+      )
     }
 
     // Find user
     const user = users.find((u) => u.email === email)
     if (!user) {
-      return NextResponse.json({ success: false, error: "Invalid email or password" }, { status: 401 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid email or password",
+          message: "Invalid email or password",
+        },
+        { status: 401 },
+      )
     }
 
     // Check password
     const isValidPassword = await bcrypt.compare(password, user.password)
     if (!isValidPassword) {
-      return NextResponse.json({ success: false, error: "Invalid email or password" }, { status: 401 })
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid email or password",
+          message: "Invalid email or password",
+        },
+        { status: 401 },
+      )
     }
 
     // Generate JWT token
@@ -62,9 +83,17 @@ export async function POST(request: NextRequest) {
       success: true,
       token,
       user: userWithoutPassword,
+      message: "Login successful",
     })
   } catch (error) {
     console.error("Login error:", error)
-    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Internal server error",
+        message: "An error occurred during login. Please try again.",
+      },
+      { status: 500 },
+    )
   }
 }

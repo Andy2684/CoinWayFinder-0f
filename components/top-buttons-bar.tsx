@@ -1,24 +1,27 @@
 "use client"
 
-import { Button } from "@/components/ui/button"
-import { LogIn, UserPlus } from "lucide-react"
 import Link from "next/link"
-import { useAuth } from "@/hooks/use-auth"
+import { Button } from "@/components/ui/button"
+import { LogIn, UserPlus, X } from "lucide-react"
+import { useAuth } from "@/components/auth/auth-provider"
+import { useState } from "react"
 
 export function TopButtonsBar() {
   const { user } = useAuth()
+  const [isVisible, setIsVisible] = useState(true)
 
-  // Don't show the bar if user is already logged in
-  if (user) {
+  // Don't show the bar if user is logged in or if dismissed
+  if (!isVisible || user) {
     return null
   }
 
   return (
-    <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 text-white py-2 px-4 backdrop-blur-sm">
-      <div className="max-w-7xl mx-auto flex items-center justify-between">
+    <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 text-white py-2 px-4 relative">
+      <div className="container mx-auto flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <span className="text-sm font-medium">🚀 Start trading crypto with AI-powered bots</span>
-          <span className="hidden md:inline text-xs opacity-90">Free trial • No credit card required</span>
+          <span className="text-sm font-medium">
+            🚀 Start trading crypto with AI-powered bots • Free trial • No credit card required
+          </span>
         </div>
 
         <div className="flex items-center space-x-3">
@@ -35,6 +38,14 @@ export function TopButtonsBar() {
               Sign Up Free
             </Button>
           </Link>
+
+          <button
+            onClick={() => setIsVisible(false)}
+            className="text-white/70 hover:text-white ml-2"
+            aria-label="Close banner"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>
