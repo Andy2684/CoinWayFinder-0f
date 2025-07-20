@@ -1,68 +1,44 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { useRouter } from "next/navigation"
+import type React from "react"
+import { createContext, useContext, useState, useEffect } from "react"
 
 interface User {
   id: string
   email: string
-  firstName?: string
-  lastName?: string
-  name?: string
-  isEmailVerified?: boolean
+  name: string
 }
 
 interface AuthContextType {
   user: User | null
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string }>
-  signup: (userData: {
-    email: string
-    password: string
-    firstName: string
-    lastName: string
-  }) => Promise<{ success: boolean; message?: string }>
+  login: (email: string, password: string) => Promise<void>
+  signup: (email: string, password: string, name: string) => Promise<void>
   logout: () => void
   loading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const router = useRouter()
 
   useEffect(() => {
-    checkAuthStatus()
-  }, [])
+    // Check for existing session
+    const token = localStorage.getItem("auth_token")
+    const userData = localStorage.getItem("user_data")
 
-  const checkAuthStatus = async () => {
-    try {
-      const token = localStorage.getItem("auth_token")
-      if (!token) {
-        setLoading(false)
-        return
-      }
-
-      const response = await fetch("/api/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      })
-
-      if (response.ok) {
-        const userData = await response.json()
-        setUser(userData.user)
-      } else {
+    if (token && userData) {
+      try {
+        setUser(JSON.parse(userData))
+      } catch (error) {
         localStorage.removeItem("auth_token")
+        localStorage.removeItem("user_data")
       }
-    } catch (error) {
-      console.error("Auth check failed:", error)
-      localStorage.removeItem("auth_token")
-    } finally {
-      setLoading(false)
     }
-  }
+
+    setLoading(false)
+  }, [])
 
   const login = async (email: string, password: string) => {
     try {
@@ -75,99 +51,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       if (!response.ok) {
-        try {
-          const errorData = await response.json()
-          return {
-            success: false,
-            message: errorData.message || errorData.error || "Login failed",
-          }
-        } catch (jsonError) {
-          return {
-            success: false,
-            message: `Login failed with status ${response.status}`,
-          }
-        }
+        throw new Error("Login failed")
       }
 
       const data = await response.json()
 
-      if (data.success && data.token) {
-        localStorage.setItem("auth_token", data.token)
-        setUser(data.user)
-        return { success: true, message: data.message }
-      } else {
-        return {
-          success: false,
-          message: data.message || "Login failed",
-        }
-      }
+      localStorage.setItem("auth_token", data.token)
+      localStorage.setItem("user_data", JSON.stringify(data.user))
+      setUser(data.user)
     } catch (error) {
-      console.error("Login error:", error)
-      return {
-        success: false,
-        message: "Network error occurred. Please check your connection and try again.",
-      }
+      throw error
     }
   }
 
-  const signup = async (userData: {
-    email: string
-    password: string
-    firstName: string
-    lastName: string
-  }) => {
+  const signup = async (email: string, password: string, name: string) => {
     try {
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(userData),
+        body: JSON.stringify({ email, password, name }),
       })
 
       if (!response.ok) {
-        try {
-          const errorData = await response.json()
-          return {
-            success: false,
-            message: errorData.message || errorData.error || "Signup failed",
-          }
-        } catch (jsonError) {
-          return {
-            success: false,
-            message: `Signup failed with status ${response.status}`,
-          }
-        }
+        throw new Error("Signup failed")
       }
 
-      const data = await response.json()
-
-      if (data.success) {
-        // Don't automatically log in or redirect to dashboard
-        // Just return success - user stays on current page
-        return {
-          success: true,
-          message: data.message || "Account created successfully",
-        }
-      } else {
-        return {
-          success: false,
-          message: data.message || "Signup failed",
-        }
-      }
+      // Don't automatically log in after signup
+      // User stays on homepage
     } catch (error) {
-      console.error("Signup error:", error)
-      return {
-        success: false,
-        message: "Network error occurred. Please check your connection and try again.",
-      }
+      throw error
     }
   }
 
   const logout = () => {
     localStorage.removeItem("auth_token")
+    localStorage.removeItem("user_data")
     setUser(null)
-    router.push("/")
   }
 
   const value = {
@@ -189,5 +110,5 @@ export function useAuth() {
   return context
 }
 
-// For backward compatibility
+// Backward compatibility export
 export const useAuthContext = useAuth

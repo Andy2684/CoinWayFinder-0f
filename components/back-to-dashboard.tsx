@@ -30,7 +30,7 @@ export function BackToDashboard({ variant = "default" }: BackToDashboardProps) {
   )
 }
 
-function FloatingDashboardButton() {
+export function FloatingDashboardButton() {
   const { user } = useAuth()
 
   if (!user) {
