@@ -10,62 +10,69 @@ export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const { user, logout } = useAuth()
 
-  const toggleMenu = () => setIsOpen(!isOpen)
-
   return (
     <nav className="relative z-50 bg-black/20 backdrop-blur-md border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
-            <TrendingUp className="h-8 w-8 text-blue-400" />
-            <span className="text-xl font-bold text-white">CoinWayFinder</span>
-          </Link>
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link href="#features" className="text-gray-300 hover:text-white transition-colors">
-              Features
-            </Link>
-            <Link href="#pricing" className="text-gray-300 hover:text-white transition-colors">
-              Pricing
-            </Link>
-            <Link href="/news" className="text-gray-300 hover:text-white transition-colors">
-              News
-            </Link>
-            <Link href="/signals" className="text-gray-300 hover:text-white transition-colors">
-              Signals
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center space-x-2">
+              <TrendingUp className="h-8 w-8 text-blue-400" />
+              <span className="text-xl font-bold text-white">CoinWayFinder</span>
             </Link>
           </div>
 
-          {/* Desktop Auth Buttons */}
+          {/* Desktop Navigation */}
+          <div className="hidden md:block">
+            <div className="ml-10 flex items-baseline space-x-4">
+              <Link
+                href="#features"
+                className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Features
+              </Link>
+              <Link
+                href="#pricing"
+                className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Pricing
+              </Link>
+              <Link
+                href="/about"
+                className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                About
+              </Link>
+              <Link
+                href="/contact"
+                className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                Contact
+              </Link>
+            </div>
+          </div>
+
+          {/* Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
             {user ? (
               <>
                 <Link href="/dashboard">
-                  <Button variant="ghost" className="text-white hover:bg-white/10">
+                  <Button variant="outline" size="sm">
                     Dashboard
                   </Button>
                 </Link>
-                <Button
-                  onClick={logout}
-                  variant="outline"
-                  className="border-white/20 text-white hover:bg-white/10 bg-transparent"
-                >
+                <Button variant="ghost" size="sm" onClick={logout}>
                   Logout
                 </Button>
               </>
             ) : (
               <>
                 <Link href="/auth/login">
-                  <Button variant="ghost" className="text-white hover:bg-white/10">
+                  <Button variant="ghost" size="sm">
                     Login
                   </Button>
                 </Link>
                 <Link href="/auth/signup">
-                  <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                    Sign Up
-                  </Button>
+                  <Button size="sm">Get Started</Button>
                 </Link>
               </>
             )}
@@ -73,83 +80,74 @@ export function Navigation() {
 
           {/* Mobile menu button */}
           <div className="md:hidden">
-            <Button variant="ghost" size="sm" onClick={toggleMenu} className="text-white hover:bg-white/10">
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="text-gray-300 hover:text-white focus:outline-none focus:text-white"
+            >
               {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </Button>
+            </button>
           </div>
         </div>
+      </div>
 
-        {/* Mobile Navigation */}
-        {isOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 bg-black/40 backdrop-blur-md rounded-lg mt-2">
-              <Link
-                href="#features"
-                className="block px-3 py-2 text-gray-300 hover:text-white transition-colors"
-                onClick={toggleMenu}
-              >
-                Features
-              </Link>
-              <Link
-                href="#pricing"
-                className="block px-3 py-2 text-gray-300 hover:text-white transition-colors"
-                onClick={toggleMenu}
-              >
-                Pricing
-              </Link>
-              <Link
-                href="/news"
-                className="block px-3 py-2 text-gray-300 hover:text-white transition-colors"
-                onClick={toggleMenu}
-              >
-                News
-              </Link>
-              <Link
-                href="/signals"
-                className="block px-3 py-2 text-gray-300 hover:text-white transition-colors"
-                onClick={toggleMenu}
-              >
-                Signals
-              </Link>
-
-              <div className="border-t border-white/10 pt-3 mt-3">
-                {user ? (
-                  <>
-                    <Link href="/dashboard" onClick={toggleMenu}>
-                      <Button variant="ghost" className="w-full justify-start text-white hover:bg-white/10 mb-2">
-                        Dashboard
-                      </Button>
-                    </Link>
-                    <Button
-                      onClick={() => {
-                        logout()
-                        toggleMenu()
-                      }}
-                      variant="outline"
-                      className="w-full border-white/20 text-white hover:bg-white/10"
-                    >
-                      Logout
+      {/* Mobile Navigation */}
+      {isOpen && (
+        <div className="md:hidden">
+          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-black/40 backdrop-blur-md">
+            <Link
+              href="#features"
+              className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
+            >
+              Features
+            </Link>
+            <Link
+              href="#pricing"
+              className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
+            >
+              Pricing
+            </Link>
+            <Link
+              href="/about"
+              className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
+            >
+              About
+            </Link>
+            <Link
+              href="/contact"
+              className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
+            >
+              Contact
+            </Link>
+            <div className="pt-4 pb-3 border-t border-gray-700">
+              {user ? (
+                <div className="space-y-2">
+                  <Link href="/dashboard" className="block">
+                    <Button variant="outline" size="sm" className="w-full bg-transparent">
+                      Dashboard
                     </Button>
-                  </>
-                ) : (
-                  <>
-                    <Link href="/auth/login" onClick={toggleMenu}>
-                      <Button variant="ghost" className="w-full justify-start text-white hover:bg-white/10 mb-2">
-                        Login
-                      </Button>
-                    </Link>
-                    <Link href="/auth/signup" onClick={toggleMenu}>
-                      <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                        Sign Up
-                      </Button>
-                    </Link>
-                  </>
-                )}
-              </div>
+                  </Link>
+                  <Button variant="ghost" size="sm" onClick={logout} className="w-full">
+                    Logout
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Link href="/auth/login" className="block">
+                    <Button variant="ghost" size="sm" className="w-full">
+                      Login
+                    </Button>
+                  </Link>
+                  <Link href="/auth/signup" className="block">
+                    <Button size="sm" className="w-full">
+                      Get Started
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </nav>
   )
 }

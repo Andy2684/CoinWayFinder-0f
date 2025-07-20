@@ -5,74 +5,70 @@ import { Check } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/components/auth/auth-provider"
 
-const plans = [
-  {
-    name: "Starter",
-    price: "$29",
-    period: "/month",
-    description: "Perfect for beginners",
-    features: ["1 Trading Bot", "Basic Analytics", "Email Support", "5 Active Strategies", "Standard Execution Speed"],
-    popular: false,
-  },
-  {
-    name: "Pro",
-    price: "$99",
-    period: "/month",
-    description: "Most popular choice",
-    features: [
-      "5 Trading Bots",
-      "Advanced Analytics",
-      "Priority Support",
-      "Unlimited Strategies",
-      "Lightning Fast Execution",
-      "Custom Indicators",
-      "Portfolio Management",
-    ],
-    popular: true,
-  },
-  {
-    name: "Enterprise",
-    price: "$299",
-    period: "/month",
-    description: "For professional traders",
-    features: [
-      "Unlimited Trading Bots",
-      "AI-Powered Analytics",
-      "24/7 Phone Support",
-      "Custom Strategies",
-      "Institutional Grade Speed",
-      "Advanced Risk Management",
-      "White-label Solutions",
-      "API Access",
-    ],
-    popular: false,
-  },
-]
-
 export function PricingSection() {
   const { user } = useAuth()
 
+  const plans = [
+    {
+      name: "Starter",
+      price: "$29",
+      period: "/month",
+      description: "Perfect for beginners getting started with crypto trading",
+      features: ["1 Trading Bot", "Basic Analytics", "Email Support", "Mobile App Access", "Basic Portfolio Tracking"],
+      popular: false,
+    },
+    {
+      name: "Professional",
+      price: "$99",
+      period: "/month",
+      description: "Advanced features for serious traders",
+      features: [
+        "5 Trading Bots",
+        "Advanced Analytics",
+        "Priority Support",
+        "API Access",
+        "Advanced Portfolio Management",
+        "Social Trading Features",
+        "Custom Strategies",
+      ],
+      popular: true,
+    },
+    {
+      name: "Enterprise",
+      price: "$299",
+      period: "/month",
+      description: "Full-featured solution for professional traders",
+      features: [
+        "Unlimited Trading Bots",
+        "Real-time Analytics",
+        "24/7 Phone Support",
+        "Full API Access",
+        "White-label Solution",
+        "Dedicated Account Manager",
+        "Custom Integrations",
+        "Advanced Risk Management",
+      ],
+      popular: false,
+    },
+  ]
+
   return (
-    <section id="pricing" className="py-20 lg:py-32">
+    <section id="pricing" className="py-20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
-            Choose Your{" "}
-            <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-              Trading Plan
-            </span>
-          </h2>
+          <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">Choose Your Trading Plan</h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            Start with any plan and upgrade as your trading grows
+            Start with our free trial and upgrade as your trading grows. All plans include our core features and 24/7
+            support.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {plans.map((plan, index) => (
             <div
               key={index}
-              className={`relative bg-white/5 backdrop-blur-sm border rounded-xl p-8 ${
-                plan.popular ? "border-blue-500 ring-2 ring-blue-500/20" : "border-white/10"
+              className={`relative bg-white/5 backdrop-blur-sm rounded-xl p-8 border transition-all duration-300 hover:scale-105 ${
+                plan.popular ? "border-blue-500 ring-2 ring-blue-500/20" : "border-white/10 hover:border-white/20"
               }`}
             >
               {plan.popular && (
@@ -85,10 +81,10 @@ export function PricingSection() {
 
               <div className="text-center mb-8">
                 <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                <p className="text-gray-400 mb-4">{plan.description}</p>
+                <p className="text-gray-300 mb-4">{plan.description}</p>
                 <div className="flex items-baseline justify-center">
                   <span className="text-4xl font-bold text-white">{plan.price}</span>
-                  <span className="text-gray-400 ml-1">{plan.period}</span>
+                  <span className="text-gray-300 ml-1">{plan.period}</span>
                 </div>
               </div>
 
