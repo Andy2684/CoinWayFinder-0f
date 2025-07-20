@@ -1,88 +1,97 @@
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Check } from "lucide-react"
 import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Check } from "lucide-react"
 
 export function PricingSection() {
   const plans = [
     {
       name: "Starter",
-      price: "$29",
+      price: "Free",
+      period: "forever",
       description: "Perfect for beginners getting started with crypto trading",
       features: [
-        "3 AI Trading Bots",
-        "Basic Trading Signals",
+        "1 Trading Bot",
+        "Basic Market Signals",
         "Portfolio Tracking",
-        "Email Support",
+        "Community Support",
         "Mobile App Access",
       ],
+      cta: "Get Started Free",
+      popular: false,
     },
     {
-      name: "Professional",
-      price: "$99",
-      description: "Advanced features for serious traders and investors",
+      name: "Pro",
+      price: "$29",
+      period: "per month",
+      description: "Advanced features for serious traders",
       features: [
-        "Unlimited AI Trading Bots",
-        "Premium Trading Signals",
-        "Advanced Analytics",
+        "5 Trading Bots",
+        "Advanced AI Signals",
+        "Real-time Analytics",
         "Priority Support",
         "API Access",
         "Custom Strategies",
-        "Risk Management Tools",
       ],
+      cta: "Start Pro Trial",
       popular: true,
     },
     {
       name: "Enterprise",
-      price: "$299",
-      description: "Complete solution for professional trading teams",
+      price: "$99",
+      period: "per month",
+      description: "Full-featured solution for professional traders",
       features: [
-        "Everything in Professional",
+        "Unlimited Trading Bots",
+        "Premium AI Signals",
+        "Advanced Analytics",
+        "Dedicated Support",
         "White-label Solution",
-        "Dedicated Account Manager",
         "Custom Integrations",
-        "Advanced Reporting",
-        "Team Management",
-        "SLA Guarantee",
       ],
+      cta: "Contact Sales",
+      popular: false,
     },
   ]
 
   return (
-    <section id="pricing" className="py-20 px-4">
+    <section className="py-20 px-4">
       <div className="container mx-auto">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">Choose Your Trading Plan</h2>
-          <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            Start with our free tier or upgrade to unlock advanced features and maximize your trading potential.
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+            Choose Your
+            <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              {" "}
+              Trading Plan
+            </span>
+          </h2>
+          <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+            Start free and upgrade as you grow. All plans include our core trading features and 24/7 support.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {plans.map((plan, index) => (
             <Card
               key={index}
-              className={`relative bg-white/5 border-white/10 backdrop-blur-sm ${
-                plan.popular ? "ring-2 ring-blue-500" : ""
+              className={`relative bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 ${
+                plan.popular ? "ring-2 ring-blue-500/50 scale-105" : ""
               }`}
             >
               {plan.popular && (
-                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                  <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-1 rounded-full text-sm font-medium">
-                    Most Popular
-                  </span>
-                </div>
+                <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-blue-600 to-purple-600 text-white border-0">
+                  Most Popular
+                </Badge>
               )}
-
-              <CardHeader className="text-center">
-                <CardTitle className="text-white text-2xl">{plan.name}</CardTitle>
-                <div className="mt-4">
+              <CardHeader className="text-center pb-8">
+                <CardTitle className="text-2xl font-bold text-white mb-2">{plan.name}</CardTitle>
+                <div className="mb-4">
                   <span className="text-4xl font-bold text-white">{plan.price}</span>
-                  <span className="text-gray-400">/month</span>
+                  {plan.period && <span className="text-gray-400 ml-2">{plan.period}</span>}
                 </div>
-                <CardDescription className="text-gray-300 mt-2">{plan.description}</CardDescription>
+                <p className="text-gray-400">{plan.description}</p>
               </CardHeader>
-
               <CardContent className="space-y-6">
                 <ul className="space-y-3">
                   {plan.features.map((feature, featureIndex) => (
@@ -92,16 +101,16 @@ export function PricingSection() {
                     </li>
                   ))}
                 </ul>
-
                 <Button
+                  asChild
                   className={`w-full ${
                     plan.popular
                       ? "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                      : "bg-white/10 hover:bg-white/20 text-white"
+                      : "bg-white/10 hover:bg-white/20 text-white border-white/20"
                   }`}
-                  asChild
+                  variant={plan.popular ? "default" : "outline"}
                 >
-                  <Link href="/auth/signup">Get Started</Link>
+                  <Link href="/auth/signup">{plan.cta}</Link>
                 </Button>
               </CardContent>
             </Card>

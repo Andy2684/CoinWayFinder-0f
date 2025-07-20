@@ -74,9 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       })
 
-      // Check if response is ok first
       if (!response.ok) {
-        // Try to parse JSON error response
         try {
           const errorData = await response.json()
           return {
@@ -84,7 +82,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             message: errorData.message || errorData.error || "Login failed",
           }
         } catch (jsonError) {
-          // If JSON parsing fails, return generic error
           return {
             success: false,
             message: `Login failed with status ${response.status}`,
@@ -92,7 +89,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Parse successful response
       const data = await response.json()
 
       if (data.success && data.token) {
@@ -129,9 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify(userData),
       })
 
-      // Check if response is ok first
       if (!response.ok) {
-        // Try to parse JSON error response
         try {
           const errorData = await response.json()
           return {
@@ -139,7 +133,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             message: errorData.message || errorData.error || "Signup failed",
           }
         } catch (jsonError) {
-          // If JSON parsing fails, return generic error
           return {
             success: false,
             message: `Signup failed with status ${response.status}`,
@@ -147,12 +140,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Parse successful response
       const data = await response.json()
 
       if (data.success) {
         // Don't automatically log in or redirect to dashboard
-        // Just return success - user stays on current page or goes to thank you page
+        // Just return success - user stays on current page
         return {
           success: true,
           message: data.message || "Account created successfully",
@@ -196,6 +188,3 @@ export function useAuth() {
   }
   return context
 }
-
-// For backward compatibility
-export const useAuthContext = useAuth

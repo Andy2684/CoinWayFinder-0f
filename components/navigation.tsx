@@ -3,96 +3,125 @@
 import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Menu, X } from "lucide-react"
+import { Menu, X, TrendingUp } from "lucide-react"
+import { useAuth } from "@/components/auth/auth-provider"
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
+  const { user, logout } = useAuth()
+
+  const navItems = [
+    { href: "/features", label: "Features" },
+    { href: "/pricing", label: "Pricing" },
+    { href: "/about", label: "About" },
+    { href: "/contact", label: "Contact" },
+  ]
 
   return (
-    <nav className="border-b border-white/10 bg-black/20 backdrop-blur-md">
+    <nav className="relative z-50 bg-black/20 backdrop-blur-lg border-b border-white/10">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-white">
-              CoinWayFinder
-            </Link>
-          </div>
+          {/* Logo */}
+          <Link href="/" className="flex items-center space-x-2">
+            <TrendingUp className="h-8 w-8 text-blue-400" />
+            <span className="text-xl font-bold text-white">CoinWayFinder</span>
+          </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-4">
-              <Link
-                href="#features"
-                className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium"
-              >
-                Features
+          <div className="hidden md:flex items-center space-x-8">
+            {navItems.map((item) => (
+              <Link key={item.href} href={item.href} className="text-gray-300 hover:text-white transition-colors">
+                {item.label}
               </Link>
-              <Link href="#pricing" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
-                Pricing
-              </Link>
-              <Link href="/news" className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium">
-                News
-              </Link>
-            </div>
+            ))}
           </div>
 
-          {/* Desktop Auth Buttons */}
-          <div className="hidden md:block">
-            <div className="ml-4 flex items-center md:ml-6 space-x-4">
-              <Button variant="ghost" asChild className="text-white hover:text-gray-300">
-                <Link href="/auth/login">Sign In</Link>
-              </Button>
-              <Button
-                asChild
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              >
-                <Link href="/auth/signup">Get Started</Link>
-              </Button>
-            </div>
+          {/* Auth Buttons */}
+          <div className="hidden md:flex items-center space-x-4">
+            {user ? (
+              <>
+                <Button asChild variant="ghost" className="text-white hover:bg-white/10">
+                  <Link href="/dashboard">Dashboard</Link>
+                </Button>
+                <Button
+                  onClick={logout}
+                  variant="outline"
+                  className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+                >
+                  Logout
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button asChild variant="ghost" className="text-white hover:bg-white/10">
+                  <Link href="/auth/login">Login</Link>
+                </Button>
+                <Button
+                  asChild
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                >
+                  <Link href="/auth/signup">Sign Up</Link>
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Mobile menu button */}
-          <div className="md:hidden">
-            <Button variant="ghost" size="sm" onClick={() => setIsOpen(!isOpen)} className="text-white">
-              {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </Button>
-          </div>
+          <button onClick={() => setIsOpen(!isOpen)} className="md:hidden text-white p-2" aria-label="Toggle menu">
+            {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+          </button>
         </div>
 
         {/* Mobile Navigation */}
         {isOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
-              <Link
-                href="#features"
-                className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
-              >
-                Features
-              </Link>
-              <Link
-                href="#pricing"
-                className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
-              >
-                Pricing
-              </Link>
-              <Link
-                href="/news"
-                className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
-              >
-                News
-              </Link>
-              <div className="pt-4 pb-3 border-t border-white/10">
-                <div className="flex items-center px-3 space-x-3">
-                  <Button variant="ghost" asChild className="text-white hover:text-gray-300">
-                    <Link href="/auth/login">Sign In</Link>
-                  </Button>
-                  <Button
-                    asChild
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  >
-                    <Link href="/auth/signup">Get Started</Link>
-                  </Button>
-                </div>
+          <div className="md:hidden py-4 border-t border-white/10">
+            <div className="flex flex-col space-y-4">
+              {navItems.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className="text-gray-300 hover:text-white transition-colors px-2 py-1"
+                  onClick={() => setIsOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              ))}
+              <div className="flex flex-col space-y-2 pt-4 border-t border-white/10">
+                {user ? (
+                  <>
+                    <Button asChild variant="ghost" className="text-white hover:bg-white/10 justify-start">
+                      <Link href="/dashboard" onClick={() => setIsOpen(false)}>
+                        Dashboard
+                      </Link>
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        logout()
+                        setIsOpen(false)
+                      }}
+                      variant="outline"
+                      className="border-white/20 text-white hover:bg-white/10 justify-start"
+                    >
+                      Logout
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button asChild variant="ghost" className="text-white hover:bg-white/10 justify-start">
+                      <Link href="/auth/login" onClick={() => setIsOpen(false)}>
+                        Login
+                      </Link>
+                    </Button>
+                    <Button
+                      asChild
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 justify-start"
+                    >
+                      <Link href="/auth/signup" onClick={() => setIsOpen(false)}>
+                        Sign Up
+                      </Link>
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>

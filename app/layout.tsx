@@ -2,16 +2,17 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
+import { AuthProvider } from "@/components/auth/auth-provider"
 import { ThemeProvider } from "@/components/theme-provider"
-import { AuthProvider } from "@/hooks/use-auth"
 import { Toaster } from "@/components/ui/toaster"
 
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "CoinWayFinder - Advanced Crypto Trading Platform",
+  title: "CoinWayFinder - AI-Powered Crypto Trading Platform",
   description:
-    "Professional cryptocurrency trading platform with AI-powered bots, real-time signals, and comprehensive portfolio management.",
+    "Advanced cryptocurrency trading platform with AI-powered bots, real-time market analysis, and automated trading strategies.",
+  keywords: "cryptocurrency, trading, AI, bots, bitcoin, ethereum, crypto analysis",
     generator: 'v0.dev'
 }
 
