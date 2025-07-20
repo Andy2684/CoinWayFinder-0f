@@ -19,27 +19,27 @@ export default function AuthTestPageClient() {
   const testDemoLogin = async () => {
     addTestResult("Testing demo login...")
     const result = await login("demo@coinwayfinder.com", "password")
-    if (result.success) {
+    if (result) {
       addTestResult("✅ Demo login successful")
     } else {
-      addTestResult(`❌ Demo login failed: ${result.error}`)
+      addTestResult("❌ Demo login failed")
     }
   }
 
   const testAdminLogin = async () => {
     addTestResult("Testing admin login...")
     const result = await login("admin@coinwayfinder.com", "AdminPass123!")
-    if (result.success) {
+    if (result) {
       addTestResult("✅ Admin login successful")
     } else {
-      addTestResult(`❌ Admin login failed: ${result.error}`)
+      addTestResult("❌ Admin login failed")
     }
   }
 
   const testInvalidLogin = async () => {
     addTestResult("Testing invalid login...")
     const result = await login("invalid@test.com", "wrongpassword")
-    if (!result.success) {
+    if (!result) {
       addTestResult("✅ Invalid login correctly rejected")
     } else {
       addTestResult("❌ Invalid login incorrectly accepted")
@@ -63,7 +63,7 @@ export default function AuthTestPageClient() {
     if (result.success) {
       addTestResult("✅ Signup successful")
     } else {
-      addTestResult(`❌ Signup failed: ${result.error}`)
+      addTestResult(`❌ Signup failed: ${result.message}`)
     }
   }
 
@@ -127,9 +127,6 @@ export default function AuthTestPageClient() {
                   <span className="text-gray-300">Role: {user.role}</span>
                   <Badge variant="secondary">{user.plan}</Badge>
                 </div>
-                {user.permissions?.fullAccess && (
-                  <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">Full Access</Badge>
-                )}
               </div>
             )}
           </CardContent>
