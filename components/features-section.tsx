@@ -2,85 +2,46 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import {
-  Bot,
-  TrendingUp,
-  Shield,
-  Zap,
-  BarChart3,
-  Users,
-  Clock,
-  Target,
-  Brain,
-  Smartphone,
-  Globe,
-  Award,
-  UserPlus,
-  LogIn,
-  ArrowRight,
-} from "lucide-react"
+import { Bot, Signal, BarChart3, Shield, Zap, Globe, Award, UserPlus, LogIn, ArrowRight } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 
 export function FeaturesSection() {
   const { user } = useAuth()
 
-  const mainFeatures = [
+  const features = [
     {
       icon: Bot,
       title: "AI Trading Bots",
       description:
-        "Advanced machine learning algorithms that analyze market patterns and execute trades automatically 24/7.",
-      features: ["Smart Risk Management", "Multi-Exchange Support", "Backtesting Tools", "Custom Strategies"],
-      badge: "Most Popular",
+        "Deploy sophisticated AI-powered trading bots that execute strategies 24/7 with precision and speed.",
+    },
+    {
+      icon: Signal,
+      title: "Smart Signals",
+      description: "Receive real-time trading signals based on advanced technical analysis and market sentiment.",
     },
     {
       icon: BarChart3,
-      title: "Real-Time Analytics",
-      description: "Comprehensive market analysis with live charts, technical indicators, and AI-powered insights.",
-      features: ["Live Market Data", "Technical Analysis", "Price Alerts", "Portfolio Tracking"],
-      badge: "Pro Feature",
+      title: "Portfolio Analytics",
+      description: "Track your performance with detailed analytics, risk metrics, and comprehensive reporting.",
     },
     {
       icon: Shield,
       title: "Enterprise Security",
-      description: "Bank-grade security with encrypted API connections and secure wallet integrations.",
-      features: ["2FA Authentication", "API Key Encryption", "Secure Wallets", "Audit Logs"],
-      badge: "Secure",
+      description: "Your funds and data are protected with bank-grade security and encryption protocols.",
     },
-  ]
-
-  const additionalFeatures = [
     {
       icon: Zap,
       title: "Lightning Fast",
-      description: "Execute trades in milliseconds with our optimized infrastructure",
-    },
-    {
-      icon: Brain,
-      title: "Smart AI",
-      description: "Machine learning models trained on years of market data",
-    },
-    {
-      icon: Smartphone,
-      title: "Mobile Ready",
-      description: "Full-featured mobile app for trading on the go",
+      description:
+        "Execute trades in milliseconds with our high-performance infrastructure and direct exchange connections.",
     },
     {
       icon: Globe,
-      title: "Global Markets",
-      description: "Access to major cryptocurrency exchanges worldwide",
-    },
-    {
-      icon: Clock,
-      title: "24/7 Trading",
-      description: "Never miss an opportunity with round-the-clock automation",
-    },
-    {
-      icon: Target,
-      title: "Precision Trading",
-      description: "Advanced algorithms for optimal entry and exit points",
+      title: "Multi-Exchange",
+      description: "Connect to multiple exchanges and trade across different markets from a single platform.",
     },
   ]
 
@@ -108,7 +69,7 @@ export function FeaturesSection() {
 
         {/* Main Features Grid */}
         <div className="grid lg:grid-cols-3 gap-8 mb-16">
-          {mainFeatures.map((feature, index) => (
+          {features.map((feature, index) => (
             <Card
               key={index}
               className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 group"
@@ -118,22 +79,26 @@ export function FeaturesSection() {
                   <div className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
                     <feature.icon className="h-6 w-6 text-white" />
                   </div>
-                  <Badge variant="secondary" className="bg-blue-600/20 text-blue-400 border-blue-600/30">
-                    {feature.badge}
-                  </Badge>
+                  {feature.badge && (
+                    <Badge variant="secondary" className="bg-blue-600/20 text-blue-400 border-blue-600/30">
+                      {feature.badge}
+                    </Badge>
+                  )}
                 </div>
                 <CardTitle className="text-xl text-white">{feature.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-gray-300 mb-6">{feature.description}</p>
-                <ul className="space-y-2 mb-6">
-                  {feature.features.map((item, idx) => (
-                    <li key={idx} className="flex items-center text-sm text-gray-400">
-                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-3" />
-                      {item}
-                    </li>
-                  ))}
-                </ul>
+                <CardDescription className="text-gray-300 mb-6">{feature.description}</CardDescription>
+                {feature.features && (
+                  <ul className="space-y-2 mb-6">
+                    {feature.features.map((item, idx) => (
+                      <li key={idx} className="flex items-center text-sm text-gray-400">
+                        <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mr-3" />
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {!user && (
                   <Button
                     asChild
@@ -145,22 +110,6 @@ export function FeaturesSection() {
                     </Link>
                   </Button>
                 )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-
-        {/* Additional Features Grid */}
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-          {additionalFeatures.map((feature, index) => (
-            <Card
-              key={index}
-              className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-colors"
-            >
-              <CardContent className="p-6">
-                <feature.icon className="h-8 w-8 text-blue-400 mb-4" />
-                <h3 className="text-lg font-semibold text-white mb-2">{feature.title}</h3>
-                <p className="text-gray-400 text-sm">{feature.description}</p>
               </CardContent>
             </Card>
           ))}
@@ -201,28 +150,28 @@ export function FeaturesSection() {
             <div className="space-y-4">
               <Card className="bg-white/5 backdrop-blur-lg border-white/10 p-4">
                 <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-blue-400" />
+                  <Signal className="h-5 w-5 text-blue-400" />
                   <div>
-                    <div className="text-white font-medium">Active Community</div>
-                    <div className="text-gray-400 text-sm">Join 50,000+ active traders</div>
+                    <div className="text-white font-medium">Smart Signals</div>
+                    <div className="text-gray-400 text-sm">Receive real-time trading signals</div>
                   </div>
                 </div>
               </Card>
               <Card className="bg-white/5 backdrop-blur-lg border-white/10 p-4">
                 <div className="flex items-center gap-3">
-                  <TrendingUp className="h-5 w-5 text-green-400" />
+                  <BarChart3 className="h-5 w-5 text-green-400" />
                   <div>
-                    <div className="text-white font-medium">Proven Results</div>
-                    <div className="text-gray-400 text-sm">94% average success rate</div>
+                    <div className="text-white font-medium">Portfolio Analytics</div>
+                    <div className="text-gray-400 text-sm">Track your performance</div>
                   </div>
                 </div>
               </Card>
               <Card className="bg-white/5 backdrop-blur-lg border-white/10 p-4">
                 <div className="flex items-center gap-3">
-                  <Shield className="h-5 w-5 text-purple-400" />
+                  <Globe className="h-5 w-5 text-purple-400" />
                   <div>
-                    <div className="text-white font-medium">Secure & Reliable</div>
-                    <div className="text-gray-400 text-sm">Bank-grade security</div>
+                    <div className="text-white font-medium">Multi-Exchange</div>
+                    <div className="text-gray-400 text-sm">Trade across different markets</div>
                   </div>
                 </div>
               </Card>

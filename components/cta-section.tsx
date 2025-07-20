@@ -174,10 +174,7 @@ export function CTASection() {
                 size="lg"
                 className="text-white border-white/20 hover:bg-white/10 bg-transparent"
               >
-                <Link href="/auth/login">
-                  <LogIn className="mr-2 h-5 w-5" />
-                  Member Login
-                </Link>
+                <Link href="/dashboard">View Live Demo</Link>
               </Button>
             </div>
           </div>

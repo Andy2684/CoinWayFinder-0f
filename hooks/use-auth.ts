@@ -1,207 +1,121 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 
-export interface User {
+interface User {
   id: string
   email: string
-  firstName?: string
-  lastName?: string
-  username?: string
-  role: "user" | "admin"
-  isEmailVerified: boolean
-  createdAt: string
-  updatedAt: string
+  firstName: string
+  lastName: string
+  username: string
+  role: string
+  plan: string
+  isVerified: boolean
 }
 
-export interface AuthState {
+interface AuthContextType {
   user: User | null
-  isLoading: boolean
-  isAuthenticated: boolean
+  login: (email: string, password: string) => Promise<boolean>
+  logout: () => void
+  signup: (userData: any) => Promise<boolean>
+  loading: boolean
 }
 
-// Mock users for demo
-const MOCK_USERS = [
-  {
-    id: "1",
-    email: "demo@coinwayfinder.com",
-    password: "password",
-    firstName: "Demo",
-    lastName: "User",
-    username: "demo_user",
-    role: "user" as const,
-    isEmailVerified: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    email: "admin@coinwayfinder.com",
-    password: "admin123",
-    firstName: "Admin",
-    lastName: "User",
-    username: "admin",
-    role: "admin" as const,
-    isEmailVerified: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
+const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function useAuth() {
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    isLoading: true,
-    isAuthenticated: false,
-  })
-  const router = useRouter()
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check for stored auth token
+    // Check if user is logged in on mount
     const token = localStorage.getItem("auth_token")
-    const userData = localStorage.getItem("user_data")
-
-    if (token && userData) {
-      try {
-        const user = JSON.parse(userData)
-        setAuthState({
-          user,
-          isLoading: false,
-          isAuthenticated: true,
-        })
-      } catch (error) {
-        console.error("Error parsing stored user data:", error)
-        localStorage.removeItem("auth_token")
-        localStorage.removeItem("user_data")
-        setAuthState({
-          user: null,
-          isLoading: false,
-          isAuthenticated: false,
-        })
-      }
-    } else {
-      setAuthState({
-        user: null,
-        isLoading: false,
-        isAuthenticated: false,
+    if (token) {
+      // Verify token and get user data
+      fetch("/api/auth/me", {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            setUser(data.user)
+          } else {
+            localStorage.removeItem("auth_token")
+          }
+        })
+        .catch(() => {
+          localStorage.removeItem("auth_token")
+        })
+        .finally(() => {
+          setLoading(false)
+        })
+    } else {
+      setLoading(false)
     }
   }, [])
 
-  const login = async (email: string, password: string) => {
-    setAuthState((prev) => ({ ...prev, isLoading: true }))
-
+  const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Find user in mock data
-      const mockUser = MOCK_USERS.find((u) => u.email === email && u.password === password)
-
-      if (!mockUser) {
-        throw new Error("Invalid email or password")
-      }
-
-      // Remove password from user object
-      const { password: _, ...user } = mockUser
-
-      // Store auth data
-      const token = `mock_token_${user.id}_${Date.now()}`
-      localStorage.setItem("auth_token", token)
-      localStorage.setItem("user_data", JSON.stringify(user))
-
-      setAuthState({
-        user,
-        isLoading: false,
-        isAuthenticated: true,
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
       })
 
-      // Redirect to dashboard
-      router.push("/dashboard")
-      router.refresh()
+      const data = await response.json()
 
-      return { success: true, user }
+      if (data.success) {
+        localStorage.setItem("auth_token", data.token)
+        setUser(data.user)
+        return true
+      }
+      return false
     } catch (error) {
-      setAuthState((prev) => ({ ...prev, isLoading: false }))
-      throw error
+      console.error("Login error:", error)
+      return false
     }
   }
 
-  const signup = async (userData: {
-    email: string
-    password: string
-    firstName?: string
-    lastName?: string
-    username?: string
-  }) => {
-    setAuthState((prev) => ({ ...prev, isLoading: true }))
-
+  const signup = async (userData: any): Promise<boolean> => {
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1500))
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userData),
+      })
 
-      // Check if user already exists
-      const existingUser = MOCK_USERS.find((u) => u.email === userData.email)
-      if (existingUser) {
-        throw new Error("User with this email already exists")
+      const data = await response.json()
+
+      if (data.success) {
+        localStorage.setItem("auth_token", data.token)
+        setUser(data.user)
+        return true
       }
-
-      // Create new user
-      const newUser: User = {
-        id: `user_${Date.now()}`,
-        email: userData.email,
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        username: userData.username || userData.email.split("@")[0],
-        role: "user",
-        isEmailVerified: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-
-      // For demo purposes, redirect to thank you page without logging in
-      setAuthState((prev) => ({ ...prev, isLoading: false }))
-      router.push("/thank-you")
-
-      return { success: true, user: newUser }
+      return false
     } catch (error) {
-      setAuthState((prev) => ({ ...prev, isLoading: false }))
-      throw error
+      console.error("Signup error:", error)
+      return false
     }
   }
 
   const logout = () => {
     localStorage.removeItem("auth_token")
-    localStorage.removeItem("user_data")
-    setAuthState({
-      user: null,
-      isLoading: false,
-      isAuthenticated: false,
-    })
-    router.push("/")
-    router.refresh()
+    setUser(null)
   }
 
-  const updateUser = async (updates: Partial<User>) => {
-    if (!authState.user) return
+  return <AuthContext.Provider value={{ user, login, logout, signup, loading }}>{children}</AuthContext.Provider>
+}
 
-    const updatedUser = { ...authState.user, ...updates, updatedAt: new Date().toISOString() }
-
-    localStorage.setItem("user_data", JSON.stringify(updatedUser))
-    setAuthState((prev) => ({
-      ...prev,
-      user: updatedUser,
-    }))
-
-    return updatedUser
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider")
   }
-
-  return {
-    ...authState,
-    login,
-    signup,
-    logout,
-    updateUser,
-  }
+  return context
 }
