@@ -1,7 +1,5 @@
 "use client"
 
-import { useState } from "react"
-import { ProtectedRoute } from "@/components/auth/protected-route"
 import { SignalFeed } from "@/components/signals/signal-feed"
 import { SignalPerformance } from "@/components/signals/signal-performance"
 import { SignalAlerts } from "@/components/signals/signal-alerts"
@@ -10,45 +8,32 @@ import { CreateSignalDialog } from "@/components/signals/create-signal-dialog"
 import { BackToDashboard } from "@/components/back-to-dashboard"
 
 export default function SignalsPage() {
-  const [filters, setFilters] = useState({
-    symbols: [],
-    strategies: [],
-    exchanges: [],
-    timeframes: [],
-    confidenceRange: [0, 100],
-    pnlRange: [-100, 100],
-    riskLevels: [],
-  })
-
   return (
-    <ProtectedRoute>
-      <div className="container mx-auto px-4 py-8 space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
+      <div className="container mx-auto space-y-6">
         <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white">Trading Signals</h1>
+            <p className="text-gray-400">AI-powered trading signals and market insights</p>
+          </div>
           <div className="flex items-center gap-4">
             <BackToDashboard />
-            <div>
-              <h1 className="text-3xl font-bold text-white">Trading Signals</h1>
-              <p className="text-gray-400 mt-2">AI-powered trading recommendations and market insights</p>
-            </div>
+            <CreateSignalDialog />
           </div>
-          <CreateSignalDialog />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-1">
-            <SignalFilters filters={filters} onFiltersChange={setFilters} />
+            <SignalFilters />
           </div>
-
-          <div className="lg:col-span-2 space-y-8">
-            <SignalFeed filters={filters} />
-          </div>
-
-          <div className="lg:col-span-1 space-y-8">
+          <div className="lg:col-span-3 space-y-6">
             <SignalPerformance />
-            <SignalAlerts />
+            <SignalFeed />
           </div>
         </div>
+
+        <SignalAlerts />
       </div>
-    </ProtectedRoute>
+    </div>
   )
 }

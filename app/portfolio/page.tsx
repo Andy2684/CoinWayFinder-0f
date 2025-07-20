@@ -133,92 +133,94 @@ export default function PortfolioPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <BackToDashboard />
-          <div>
-            <h1 className="text-3xl font-bold">Portfolio</h1>
-            <p className="text-muted-foreground">Track your trading positions and performance</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6">
+      <div className="container mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <BackToDashboard />
+            <div>
+              <h1 className="text-3xl font-bold text-white">Portfolio</h1>
+              <p className="text-gray-400">Track your cryptocurrency investments and performance</p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={fetchPortfolio} variant="outline" size="sm">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Refresh
+            </Button>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Position
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Position</DialogTitle>
+                  <DialogDescription>Add a new trading position to your portfolio</DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="symbol">Symbol *</Label>
+                    <Input
+                      id="symbol"
+                      placeholder="e.g., BTC/USD"
+                      value={newPosition.symbol}
+                      onChange={(e) => setNewPosition({ ...newPosition, symbol: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="quantity">Quantity *</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      step="0.00000001"
+                      placeholder="0.00000000"
+                      value={newPosition.quantity}
+                      onChange={(e) => setNewPosition({ ...newPosition, quantity: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="averagePrice">Average Price *</Label>
+                    <Input
+                      id="averagePrice"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={newPosition.averagePrice}
+                      onChange={(e) => setNewPosition({ ...newPosition, averagePrice: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="currentPrice">Current Price (optional)</Label>
+                    <Input
+                      id="currentPrice"
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      value={newPosition.currentPrice}
+                      onChange={(e) => setNewPosition({ ...newPosition, currentPrice: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button onClick={handleAddPosition} disabled={isAddingPosition}>
+                    {isAddingPosition ? "Adding..." : "Add Position"}
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={fetchPortfolio} variant="outline" size="sm">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Position
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Position</DialogTitle>
-                <DialogDescription>Add a new trading position to your portfolio</DialogDescription>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="symbol">Symbol *</Label>
-                  <Input
-                    id="symbol"
-                    placeholder="e.g., BTC/USD"
-                    value={newPosition.symbol}
-                    onChange={(e) => setNewPosition({ ...newPosition, symbol: e.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="quantity">Quantity *</Label>
-                  <Input
-                    id="quantity"
-                    type="number"
-                    step="0.00000001"
-                    placeholder="0.00000000"
-                    value={newPosition.quantity}
-                    onChange={(e) => setNewPosition({ ...newPosition, quantity: e.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="averagePrice">Average Price *</Label>
-                  <Input
-                    id="averagePrice"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={newPosition.averagePrice}
-                    onChange={(e) => setNewPosition({ ...newPosition, averagePrice: e.target.value })}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="currentPrice">Current Price (optional)</Label>
-                  <Input
-                    id="currentPrice"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={newPosition.currentPrice}
-                    onChange={(e) => setNewPosition({ ...newPosition, currentPrice: e.target.value })}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={handleAddPosition} disabled={isAddingPosition}>
-                  {isAddingPosition ? "Adding..." : "Add Position"}
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
 
-      <PortfolioOverview
-        positions={positions}
-        totalValue={totalValue}
-        totalPnL={totalPnL}
-        totalPnLPercentage={totalPnLPercentage}
-      />
+        <PortfolioOverview
+          positions={positions}
+          totalValue={totalValue}
+          totalPnL={totalPnL}
+          totalPnLPercentage={totalPnLPercentage}
+        />
+      </div>
     </div>
   )
 }
