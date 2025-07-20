@@ -1,3 +1,5 @@
+import { Navigation } from "@/components/navigation"
+import { TopButtonsBar } from "@/components/top-buttons-bar"
 import { HeroSection } from "@/components/hero-section"
 import { FeaturesSection } from "@/components/features-section"
 import { PricingSection } from "@/components/pricing-section"
@@ -6,12 +8,16 @@ import { Footer } from "@/components/footer"
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen">
-      <HeroSection />
-      <FeaturesSection />
-      <PricingSection />
-      <CTASection />
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+      <Navigation />
+      <TopButtonsBar />
+      <main>
+        <HeroSection />
+        <FeaturesSection />
+        <PricingSection />
+        <CTASection />
+      </main>
       <Footer />
-    </main>
+    </div>
   )
 }
