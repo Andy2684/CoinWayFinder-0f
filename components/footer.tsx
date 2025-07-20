@@ -1,154 +1,156 @@
 "use client"
 
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Bot, Mail, Phone, MapPin, Twitter, Facebook, Instagram, Linkedin, UserPlus, LogIn } from "lucide-react"
-import { useAuth } from "@/components/auth/auth-provider"
+import { Separator } from "@/components/ui/separator"
+import { Twitter, Github, Linkedin, Mail, Phone, MapPin, UserPlus, LogIn, ArrowRight } from "lucide-react"
+import Link from "next/link"
+import { useState } from "react"
+import { useAuth } from "@/hooks/use-auth"
+
+const footerLinks = {
+  product: [
+    { name: "Features", href: "#features" },
+    { name: "Pricing", href: "#pricing" },
+    { name: "API Documentation", href: "/docs" },
+    { name: "Integrations", href: "/integrations" },
+    { name: "Security", href: "/security" },
+  ],
+  company: [
+    { name: "About Us", href: "/about" },
+    { name: "Careers", href: "/careers" },
+    { name: "Press", href: "/press" },
+    { name: "Blog", href: "/blog" },
+    { name: "Contact", href: "/contact" },
+  ],
+  resources: [
+    { name: "Help Center", href: "/help" },
+    { name: "Trading Guide", href: "/guide" },
+    { name: "Community", href: "/community" },
+    { name: "Webinars", href: "/webinars" },
+    { name: "Status", href: "/status" },
+  ],
+  legal: [
+    { name: "Privacy Policy", href: "/privacy" },
+    { name: "Terms of Service", href: "/terms" },
+    { name: "Cookie Policy", href: "/cookies" },
+    { name: "Disclaimer", href: "/disclaimer" },
+    { name: "Compliance", href: "/compliance" },
+  ],
+}
 
 export function Footer() {
+  const [email, setEmail] = useState("")
   const { user } = useAuth()
 
-  const footerLinks = {
-    product: [
-      { name: "Features", href: "#features" },
-      { name: "Pricing", href: "#pricing" },
-      { name: "API", href: "/api-docs" },
-      { name: "Integrations", href: "/integrations" },
-    ],
-    company: [
-      { name: "About", href: "/about" },
-      { name: "Blog", href: "/blog" },
-      { name: "Careers", href: "/careers" },
-      { name: "Press", href: "/press" },
-    ],
-    resources: [
-      { name: "Documentation", href: "/docs" },
-      { name: "Help Center", href: "/help" },
-      { name: "Community", href: "/community" },
-      { name: "Status", href: "/status" },
-    ],
-    legal: [
-      { name: "Privacy", href: "/privacy" },
-      { name: "Terms", href: "/terms" },
-      { name: "Security", href: "/security" },
-      { name: "Compliance", href: "/compliance" },
-    ],
-  }
-
   return (
-    <footer className="bg-gray-900/50 border-t border-white/10 backdrop-blur-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Newsletter Section */}
-        <div className="py-12 border-b border-white/10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-            <div>
-              <h3 className="text-2xl font-bold text-white mb-2">Stay Updated with Market Insights</h3>
-              <p className="text-gray-400">
-                Get the latest trading strategies, market analysis, and platform updates delivered to your inbox.
-              </p>
-            </div>
+    <footer className="bg-slate-900 text-white">
+      {/* Newsletter CTA */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h3 className="text-2xl md:text-3xl font-bold mb-4">Stay Ahead of the Market</h3>
+          <p className="text-blue-100 mb-8 max-w-2xl mx-auto">
+            Get exclusive trading insights, market analysis, and AI bot updates delivered straight to your inbox.
+          </p>
 
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Input
-                  type="email"
-                  placeholder="Enter your email"
-                  className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 backdrop-blur-sm"
-                />
-                <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold whitespace-nowrap">
-                  Subscribe
-                </Button>
-              </div>
-
-              {!user && (
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button
-                    asChild
-                    variant="outline"
-                    className="border-white/30 text-white hover:bg-white/10 flex-1 bg-transparent"
-                  >
-                    <Link href="/auth/login" className="flex items-center justify-center">
-                      <LogIn className="w-4 h-4 mr-2" />
-                      Sign In
-                    </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white font-semibold flex-1"
-                  >
-                    <Link href="/auth/signup" className="flex items-center justify-center">
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      Get Started
-                    </Link>
-                  </Button>
-                </div>
-              )}
+          <div className="max-w-md mx-auto mb-8">
+            <div className="flex flex-col sm:flex-row gap-3 p-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20">
+              <Input
+                type="email"
+                placeholder="Enter your email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="flex-1 bg-transparent border-0 text-white placeholder-white/70 focus:ring-0"
+              />
+              <Button className="bg-white text-blue-600 hover:bg-gray-100 px-6 py-2 rounded-lg font-semibold">
+                Subscribe
+              </Button>
             </div>
           </div>
-        </div>
 
-        {/* Main Footer Content */}
-        <div className="py-12">
+          {!user && (
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/auth/signup">
+                <Button className="bg-white text-blue-600 hover:bg-gray-100 px-6 py-3 font-semibold rounded-lg">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Create Free Account
+                </Button>
+              </Link>
+              <Link href="/auth/login">
+                <Button
+                  variant="outline"
+                  className="border-white/30 text-white hover:bg-white/10 px-6 py-3 font-semibold rounded-lg bg-transparent"
+                >
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Sign In
+                </Button>
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Main Footer */}
+      <div className="py-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
             {/* Company Info */}
             <div className="lg:col-span-2">
-              <Link href="/" className="flex items-center space-x-2 mb-4">
-                <Bot className="w-8 h-8 text-blue-400" />
-                <span className="text-xl font-bold text-white">CoinWayFinder</span>
-              </Link>
-
+              <div className="flex items-center mb-4">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg mr-3"></div>
+                <span className="text-xl font-bold">CoinWayFinder</span>
+              </div>
               <p className="text-gray-400 mb-6 max-w-sm">
-                The most advanced AI-powered cryptocurrency trading platform. Trade smarter, not harder with our
-                intelligent automation.
+                The most advanced AI-powered crypto trading platform. Trade smarter, not harder with our intelligent
+                automation.
               </p>
 
-              {!user && (
-                <div className="flex flex-col sm:flex-row gap-3 mb-6">
-                  <Button
-                    asChild
-                    size="sm"
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold"
-                  >
-                    <Link href="/auth/signup" className="flex items-center">
-                      <UserPlus className="w-4 h-4 mr-2" />
-                      Start Free
-                    </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="border-white/30 text-white hover:bg-white/10 bg-transparent"
-                  >
-                    <Link href="/auth/login" className="flex items-center">
-                      <LogIn className="w-4 h-4 mr-2" />
-                      Sign In
-                    </Link>
-                  </Button>
+              {/* Contact Info */}
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center text-gray-400">
+                  <Mail className="w-4 h-4 mr-3" />
+                  <span className="text-sm">support@coinwayfinder.com</span>
                 </div>
-              )}
-
-              <div className="space-y-2 text-sm text-gray-400">
-                <div className="flex items-center">
-                  <Mail className="w-4 h-4 mr-2" />
-                  support@coinwayfinder.com
+                <div className="flex items-center text-gray-400">
+                  <Phone className="w-4 h-4 mr-3" />
+                  <span className="text-sm">+1 (555) 123-4567</span>
                 </div>
-                <div className="flex items-center">
-                  <Phone className="w-4 h-4 mr-2" />
-                  +1 (555) 123-4567
-                </div>
-                <div className="flex items-center">
-                  <MapPin className="w-4 h-4 mr-2" />
-                  San Francisco, CA
+                <div className="flex items-center text-gray-400">
+                  <MapPin className="w-4 h-4 mr-3" />
+                  <span className="text-sm">San Francisco, CA</span>
                 </div>
               </div>
+
+              {/* Quick Auth Buttons */}
+              {!user && (
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Link href="/auth/signup">
+                    <Button
+                      size="sm"
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                    >
+                      <UserPlus className="w-3 h-3 mr-2" />
+                      Sign Up
+                    </Button>
+                  </Link>
+                  <Link href="/auth/login">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-gray-600 text-gray-300 hover:bg-gray-800 bg-transparent"
+                    >
+                      <LogIn className="w-3 h-3 mr-2" />
+                      Login
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </div>
 
-            {/* Product Links */}
+            {/* Links */}
             <div>
-              <h4 className="text-white font-semibold mb-4">Product</h4>
-              <ul className="space-y-2">
+              <h4 className="text-lg font-semibold mb-4">Product</h4>
+              <ul className="space-y-3">
                 {footerLinks.product.map((link) => (
                   <li key={link.name}>
                     <Link href={link.href} className="text-gray-400 hover:text-white transition-colors">
@@ -159,10 +161,9 @@ export function Footer() {
               </ul>
             </div>
 
-            {/* Company Links */}
             <div>
-              <h4 className="text-white font-semibold mb-4">Company</h4>
-              <ul className="space-y-2">
+              <h4 className="text-lg font-semibold mb-4">Company</h4>
+              <ul className="space-y-3">
                 {footerLinks.company.map((link) => (
                   <li key={link.name}>
                     <Link href={link.href} className="text-gray-400 hover:text-white transition-colors">
@@ -173,10 +174,9 @@ export function Footer() {
               </ul>
             </div>
 
-            {/* Resources Links */}
             <div>
-              <h4 className="text-white font-semibold mb-4">Resources</h4>
-              <ul className="space-y-2">
+              <h4 className="text-lg font-semibold mb-4">Resources</h4>
+              <ul className="space-y-3">
                 {footerLinks.resources.map((link) => (
                   <li key={link.name}>
                     <Link href={link.href} className="text-gray-400 hover:text-white transition-colors">
@@ -187,10 +187,9 @@ export function Footer() {
               </ul>
             </div>
 
-            {/* Legal Links */}
             <div>
-              <h4 className="text-white font-semibold mb-4">Legal</h4>
-              <ul className="space-y-2">
+              <h4 className="text-lg font-semibold mb-4">Legal</h4>
+              <ul className="space-y-3">
                 {footerLinks.legal.map((link) => (
                   <li key={link.name}>
                     <Link href={link.href} className="text-gray-400 hover:text-white transition-colors">
@@ -202,54 +201,48 @@ export function Footer() {
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Bottom Section */}
-        <div className="py-6 border-t border-white/10">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="text-gray-400 text-sm">© 2024 CoinWayFinder. All rights reserved.</div>
+      <Separator className="bg-gray-800" />
 
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-4">
+      {/* Bottom Section */}
+      <div className="py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-8">
+              <p className="text-gray-400 text-sm">© 2024 CoinWayFinder. All rights reserved.</p>
+              <div className="flex items-center space-x-6">
                 <Link href="#" className="text-gray-400 hover:text-white transition-colors">
                   <Twitter className="w-5 h-5" />
                 </Link>
                 <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                  <Facebook className="w-5 h-5" />
-                </Link>
-                <Link href="#" className="text-gray-400 hover:text-white transition-colors">
-                  <Instagram className="w-5 h-5" />
+                  <Github className="w-5 h-5" />
                 </Link>
                 <Link href="#" className="text-gray-400 hover:text-white transition-colors">
                   <Linkedin className="w-5 h-5" />
                 </Link>
               </div>
-
-              {!user && (
-                <div className="flex items-center space-x-3">
-                  <Button
-                    asChild
-                    variant="ghost"
-                    size="sm"
-                    className="text-gray-400 hover:text-white hover:bg-white/10"
-                  >
-                    <Link href="/auth/login" className="flex items-center">
-                      <LogIn className="w-4 h-4 mr-1" />
-                      Login
-                    </Link>
-                  </Button>
-                  <Button
-                    asChild
-                    size="sm"
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold"
-                  >
-                    <Link href="/auth/signup" className="flex items-center">
-                      <UserPlus className="w-4 h-4 mr-1" />
-                      Sign Up
-                    </Link>
-                  </Button>
-                </div>
-              )}
             </div>
+
+            {/* Bottom Auth Buttons */}
+            {!user && (
+              <div className="flex items-center space-x-4 mt-4 md:mt-0">
+                <Link href="/auth/login">
+                  <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                    Login
+                  </Button>
+                </Link>
+                <Link href="/auth/signup">
+                  <Button
+                    size="sm"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                  >
+                    Sign Up
+                    <ArrowRight className="w-3 h-3 ml-2" />
+                  </Button>
+                </Link>
+              </div>
+            )}
           </div>
         </div>
       </div>
