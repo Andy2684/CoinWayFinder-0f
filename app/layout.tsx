@@ -9,10 +9,9 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "CoinWayFinder - AI-Powered Crypto Trading Platform",
+  title: "CoinWayFinder - Advanced Crypto Trading Platform",
   description:
-    "Advanced cryptocurrency trading platform with AI-powered bots, real-time market analysis, and automated trading strategies.",
-  keywords: "cryptocurrency, trading, AI, bots, bitcoin, ethereum, crypto analysis",
+    "Professional cryptocurrency trading platform with AI-powered bots, real-time analytics, and advanced trading tools.",
     generator: 'v0.dev'
 }
 
