@@ -3,145 +3,148 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Twitter, Github, Linkedin, Mail, Phone, MapPin, TrendingUp } from "lucide-react"
+import { BarChart3, Twitter, Github, Linkedin, Mail } from "lucide-react"
 
-export function Footer() {
+export default function Footer() {
+  const footerLinks = {
+    product: [
+      { name: "Features", href: "#features" },
+      { name: "Pricing", href: "#pricing" },
+      { name: "API", href: "/api" },
+      { name: "Documentation", href: "/docs" },
+    ],
+    company: [
+      { name: "About", href: "/about" },
+      { name: "Blog", href: "/blog" },
+      { name: "Careers", href: "/careers" },
+      { name: "Contact", href: "/contact" },
+    ],
+    resources: [
+      { name: "Help Center", href: "/help" },
+      { name: "Community", href: "/community" },
+      { name: "Guides", href: "/guides" },
+      { name: "Status", href: "/status" },
+    ],
+    legal: [
+      { name: "Privacy", href: "/privacy" },
+      { name: "Terms", href: "/terms" },
+      { name: "Security", href: "/security" },
+      { name: "Cookies", href: "/cookies" },
+    ],
+  }
+
   return (
-    <footer className="bg-slate-900 text-white">
+    <footer className="bg-gray-900 text-white">
       <div className="container mx-auto px-4 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          {/* Company Info */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-8 h-8 text-blue-400" />
-              <span className="text-2xl font-bold">CoinWayFinder</span>
-            </div>
-            <p className="text-gray-400 leading-relaxed">
-              The world's most advanced AI-powered cryptocurrency trading platform. Trade smarter, not harder.
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-8">
+          {/* Brand Section */}
+          <div className="lg:col-span-2">
+            <Link href="/" className="flex items-center space-x-2 mb-4">
+              <BarChart3 className="h-8 w-8 text-emerald-500" />
+              <span className="font-bold text-xl">CoinWayFinder</span>
+            </Link>
+            <p className="text-gray-400 mb-6 leading-relaxed">
+              Maximize your crypto profits with advanced AI algorithms, real-time signals, and automated trading bots.
             </p>
-            <div className="flex gap-4">
-              <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white p-2">
-                <Twitter className="w-4 h-4" />
+            <div className="flex space-x-4">
+              <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white">
+                <Twitter className="h-5 w-5" />
               </Button>
-              <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white p-2">
-                <Github className="w-4 h-4" />
+              <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white">
+                <Github className="h-5 w-5" />
               </Button>
-              <Button size="sm" variant="ghost" className="text-gray-400 hover:text-white p-2">
-                <Linkedin className="w-4 h-4" />
+              <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white">
+                <Linkedin className="h-5 w-5" />
+              </Button>
+              <Button variant="ghost" size="icon" className="text-gray-400 hover:text-white">
+                <Mail className="h-5 w-5" />
               </Button>
             </div>
           </div>
 
-          {/* Platform */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Platform</h3>
+          {/* Links Sections */}
+          <div>
+            <h3 className="font-semibold text-white mb-4">Product</h3>
             <ul className="space-y-2">
-              <li>
-                <Link href="/dashboard" className="text-gray-400 hover:text-white transition-colors">
-                  Dashboard
-                </Link>
-              </li>
-              <li>
-                <Link href="/ai-bots" className="text-gray-400 hover:text-white transition-colors">
-                  AI Trading Bots
-                </Link>
-              </li>
-              <li>
-                <Link href="/signals" className="text-gray-400 hover:text-white transition-colors">
-                  Trading Signals
-                </Link>
-              </li>
-              <li>
-                <Link href="/portfolio" className="text-gray-400 hover:text-white transition-colors">
-                  Portfolio
-                </Link>
-              </li>
-              <li>
-                <Link href="/market-analysis" className="text-gray-400 hover:text-white transition-colors">
-                  Market Analysis
-                </Link>
-              </li>
+              {footerLinks.product.map((link) => (
+                <li key={link.name}>
+                  <Link href={link.href} className="text-gray-400 hover:text-white transition-colors">
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Resources */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Resources</h3>
+          <div>
+            <h3 className="font-semibold text-white mb-4">Company</h3>
             <ul className="space-y-2">
-              <li>
-                <Link href="/docs" className="text-gray-400 hover:text-white transition-colors">
-                  Documentation
-                </Link>
-              </li>
-              <li>
-                <Link href="/api" className="text-gray-400 hover:text-white transition-colors">
-                  API Reference
-                </Link>
-              </li>
-              <li>
-                <Link href="/tutorials" className="text-gray-400 hover:text-white transition-colors">
-                  Tutorials
-                </Link>
-              </li>
-              <li>
-                <Link href="/blog" className="text-gray-400 hover:text-white transition-colors">
-                  Blog
-                </Link>
-              </li>
-              <li>
-                <Link href="/support" className="text-gray-400 hover:text-white transition-colors">
-                  Support Center
-                </Link>
-              </li>
+              {footerLinks.company.map((link) => (
+                <li key={link.name}>
+                  <Link href={link.href} className="text-gray-400 hover:text-white transition-colors">
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
 
-          {/* Contact */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold">Contact</h3>
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 text-gray-400">
-                <Mail className="w-4 h-4" />
-                <span>support@coinwayfinder.com</span>
-              </div>
-              <div className="flex items-center gap-3 text-gray-400">
-                <Phone className="w-4 h-4" />
-                <span>+1 (555) 123-4567</span>
-              </div>
-              <div className="flex items-center gap-3 text-gray-400">
-                <MapPin className="w-4 h-4" />
-                <span>San Francisco, CA</span>
-              </div>
-            </div>
+          <div>
+            <h3 className="font-semibold text-white mb-4">Resources</h3>
+            <ul className="space-y-2">
+              {footerLinks.resources.map((link) => (
+                <li key={link.name}>
+                  <Link href={link.href} className="text-gray-400 hover:text-white transition-colors">
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="font-semibold text-white mb-4">Legal</h3>
+            <ul className="space-y-2">
+              {footerLinks.legal.map((link) => (
+                <li key={link.name}>
+                  <Link href={link.href} className="text-gray-400 hover:text-white transition-colors">
+                    {link.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
           </div>
         </div>
 
-        {/* Newsletter */}
-        <div className="border-t border-slate-800 mt-12 pt-8">
-          <div className="max-w-md mx-auto text-center">
-            <h3 className="text-lg font-semibold mb-2">Stay Updated</h3>
-            <p className="text-gray-400 mb-4">Get the latest market insights and platform updates.</p>
-            <div className="flex gap-2">
+        {/* Newsletter Section */}
+        <div className="border-t border-gray-800 mt-12 pt-8">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="mb-4 md:mb-0">
+              <h3 className="font-semibold text-white mb-2">Stay updated</h3>
+              <p className="text-gray-400">Get the latest news and updates from CoinWayFinder.</p>
+            </div>
+            <div className="flex space-x-2 w-full md:w-auto">
               <Input
+                type="email"
                 placeholder="Enter your email"
-                className="bg-slate-800 border-slate-700 text-white placeholder:text-gray-400"
+                className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-400"
               />
-              <Button className="bg-blue-600 hover:bg-blue-700">Subscribe</Button>
+              <Button className="bg-emerald-600 hover:bg-emerald-700">Subscribe</Button>
             </div>
           </div>
         </div>
 
-        {/* Bottom */}
-        <div className="border-t border-slate-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        {/* Bottom Section */}
+        <div className="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-gray-400 text-sm">© 2024 CoinWayFinder. All rights reserved.</p>
-          <div className="flex gap-6 text-sm">
-            <Link href="/privacy" className="text-gray-400 hover:text-white transition-colors">
+          <div className="flex space-x-6 mt-4 md:mt-0">
+            <Link href="/privacy" className="text-gray-400 hover:text-white text-sm transition-colors">
               Privacy Policy
             </Link>
-            <Link href="/terms" className="text-gray-400 hover:text-white transition-colors">
+            <Link href="/terms" className="text-gray-400 hover:text-white text-sm transition-colors">
               Terms of Service
             </Link>
-            <Link href="/cookies" className="text-gray-400 hover:text-white transition-colors">
+            <Link href="/cookies" className="text-gray-400 hover:text-white text-sm transition-colors">
               Cookie Policy
             </Link>
           </div>
@@ -150,5 +153,3 @@ export function Footer() {
     </footer>
   )
 }
-
-export default Footer
