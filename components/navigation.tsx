@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Menu, X, TrendingUp } from "lucide-react"
@@ -8,7 +8,16 @@ import { useAuth } from "@/hooks/use-auth"
 
 export function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const { user, logout } = useAuth()
+  const [mounted, setMounted] = useState(false)
+
+  // Handle SSR
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const auth = useAuth()
+  const user = mounted ? auth?.user : null
+  const logout = mounted ? auth?.logout : () => {}
 
   const handleLogout = () => {
     logout()
@@ -43,7 +52,7 @@ export function Navigation() {
 
           {/* Desktop Auth Buttons */}
           <div className="hidden md:flex items-center space-x-4">
-            {user ? (
+            {mounted && user ? (
               <>
                 <Link href="/dashboard">
                   <Button variant="ghost" className="text-white hover:bg-white/10">
@@ -117,7 +126,7 @@ export function Navigation() {
               </Link>
 
               <div className="border-t border-white/10 pt-3 mt-3">
-                {user ? (
+                {mounted && user ? (
                   <>
                     <Link
                       href="/dashboard"
