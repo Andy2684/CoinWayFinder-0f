@@ -1,17 +1,16 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { TrendingUp, TrendingDown, Activity, DollarSign, BarChart3, Play, Pause, RefreshCw } from "lucide-react"
+import { TrendingUp, Activity, DollarSign, BarChart3, Brain, Target, Zap, Play, Pause } from "lucide-react"
 
 interface MarketData {
   symbol: string
-  name: string
   price: number
   change24h: number
   volume24h: number
@@ -23,439 +22,397 @@ interface MarketData {
 interface TechnicalIndicator {
   name: string
   value: number
-  signal: "BUY" | "SELL" | "HOLD"
+  signal: "buy" | "sell" | "hold"
   strength: number
 }
 
-interface SentimentData {
+interface MarketSentiment {
   fearGreedIndex: number
   socialSentiment: number
   newsImpact: number
   technicalScore: number
 }
 
-interface SupportResistance {
-  type: "support" | "resistance"
-  level: number
-  strength: number
-  distance: number
-}
-
-const MOCK_ASSETS = [
-  { symbol: "BTC", name: "Bitcoin" },
-  { symbol: "ETH", name: "Ethereum" },
-  { symbol: "BNB", name: "Binance Coin" },
-  { symbol: "ADA", name: "Cardano" },
-  { symbol: "SOL", name: "Solana" },
-  { symbol: "DOT", name: "Polkadot" },
-]
-
 export function MarketAnalysis() {
-  const [selectedAsset, setSelectedAsset] = useState("BTC")
+  const [selectedAsset, setSelectedAsset] = useState("BTC/USDT")
   const [isLive, setIsLive] = useState(true)
-  const [marketData, setMarketData] = useState<MarketData | null>(null)
-  const [technicalIndicators, setTechnicalIndicators] = useState<TechnicalIndicator[]>([])
-  const [sentimentData, setSentimentData] = useState<SentimentData | null>(null)
-  const [supportResistance, setSupportResistance] = useState<SupportResistance[]>([])
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date())
+  const [lastUpdate, setLastUpdate] = useState(new Date())
 
-  // Generate mock data
-  const generateMockData = () => {
-    const basePrice = selectedAsset === "BTC" ? 45000 : selectedAsset === "ETH" ? 3000 : 1000
-    const variation = (Math.random() - 0.5) * 0.1
+  const [marketData, setMarketData] = useState<MarketData>({
+    symbol: "BTC/USDT",
+    price: 43250.75,
+    change24h: 2.34,
+    volume24h: 28500000000,
+    marketCap: 847000000000,
+    high24h: 44100.5,
+    low24h: 42800.25,
+  })
 
-    const mockMarketData: MarketData = {
-      symbol: selectedAsset,
-      name: MOCK_ASSETS.find((a) => a.symbol === selectedAsset)?.name || selectedAsset,
-      price: basePrice * (1 + variation),
-      change24h: (Math.random() - 0.5) * 10,
-      volume24h: Math.random() * 1000000000,
-      marketCap: Math.random() * 100000000000,
-      high24h: basePrice * (1 + Math.abs(variation) + 0.02),
-      low24h: basePrice * (1 + variation - 0.02),
-    }
+  const [technicalIndicators, setTechnicalIndicators] = useState<TechnicalIndicator[]>([
+    { name: "RSI (14)", value: 67.3, signal: "buy", strength: 75 },
+    { name: "MACD", value: 245.8, signal: "buy", strength: 82 },
+    { name: "Bollinger Bands", value: 0.78, signal: "hold", strength: 45 },
+    { name: "Stochastic", value: 72.1, signal: "sell", strength: 68 },
+    { name: "Williams %R", value: -28.4, signal: "buy", strength: 71 },
+  ])
 
-    const mockTechnicalIndicators: TechnicalIndicator[] = [
-      {
-        name: "RSI (14)",
-        value: Math.random() * 100,
-        signal: Math.random() > 0.6 ? "BUY" : Math.random() > 0.3 ? "SELL" : "HOLD",
-        strength: Math.random() * 100,
-      },
-      {
-        name: "MACD",
-        value: (Math.random() - 0.5) * 100,
-        signal: Math.random() > 0.6 ? "BUY" : Math.random() > 0.3 ? "SELL" : "HOLD",
-        strength: Math.random() * 100,
-      },
-      {
-        name: "Bollinger Bands",
-        value: Math.random() * 100,
-        signal: Math.random() > 0.6 ? "BUY" : Math.random() > 0.3 ? "SELL" : "HOLD",
-        strength: Math.random() * 100,
-      },
-      {
-        name: "Stochastic",
-        value: Math.random() * 100,
-        signal: Math.random() > 0.6 ? "BUY" : Math.random() > 0.3 ? "SELL" : "HOLD",
-        strength: Math.random() * 100,
-      },
-      {
-        name: "Williams %R",
-        value: Math.random() * -100,
-        signal: Math.random() > 0.6 ? "BUY" : Math.random() > 0.3 ? "SELL" : "HOLD",
-        strength: Math.random() * 100,
-      },
-    ]
+  const [sentiment, setSentiment] = useState<MarketSentiment>({
+    fearGreedIndex: 73,
+    socialSentiment: 68,
+    newsImpact: 82,
+    technicalScore: 76,
+  })
 
-    const mockSentimentData: SentimentData = {
-      fearGreedIndex: Math.random() * 100,
-      socialSentiment: Math.random() * 100,
-      newsImpact: Math.random() * 100,
-      technicalScore: Math.random() * 100,
-    }
+  const [supportResistance] = useState([
+    { level: 44500, type: "resistance", strength: 85, distance: 2.9 },
+    { level: 43800, type: "resistance", strength: 72, distance: 1.3 },
+    { level: 42900, type: "support", strength: 78, distance: -0.8 },
+    { level: 42200, type: "support", strength: 91, distance: -2.4 },
+  ])
 
-    const mockSupportResistance: SupportResistance[] = [
-      {
-        type: "resistance",
-        level: basePrice * 1.05,
-        strength: Math.random() * 100,
-        distance: 5,
-      },
-      {
-        type: "support",
-        level: basePrice * 0.95,
-        strength: Math.random() * 100,
-        distance: -5,
-      },
-      {
-        type: "resistance",
-        level: basePrice * 1.1,
-        strength: Math.random() * 100,
-        distance: 10,
-      },
-    ]
+  const [tradingSignals] = useState([
+    {
+      type: "buy",
+      confidence: 78,
+      timeframe: "4h",
+      reason: "Bullish divergence detected",
+      strength: "Strong",
+    },
+    {
+      type: "hold",
+      confidence: 65,
+      timeframe: "1d",
+      reason: "Consolidation phase",
+      strength: "Medium",
+    },
+    {
+      type: "buy",
+      confidence: 82,
+      timeframe: "15m",
+      reason: "Breakout above resistance",
+      strength: "Strong",
+    },
+  ])
 
-    setMarketData(mockMarketData)
-    setTechnicalIndicators(mockTechnicalIndicators)
-    setSentimentData(mockSentimentData)
-    setSupportResistance(mockSupportResistance)
-    setLastUpdate(new Date())
-  }
+  const assets = ["BTC/USDT", "ETH/USDT", "BNB/USDT", "ADA/USDT", "SOL/USDT", "DOT/USDT"]
 
-  useEffect(() => {
-    generateMockData()
-  }, [selectedAsset])
-
+  // Simulate live data updates
   useEffect(() => {
     if (!isLive) return
 
     const interval = setInterval(() => {
-      generateMockData()
-    }, 3000) // Update every 3 seconds when live
+      setMarketData((prev) => ({
+        ...prev,
+        price: prev.price + (Math.random() - 0.5) * 100,
+        change24h: prev.change24h + (Math.random() - 0.5) * 0.5,
+      }))
+
+      setTechnicalIndicators((prev) =>
+        prev.map((indicator) => ({
+          ...indicator,
+          value: indicator.value + (Math.random() - 0.5) * 5,
+          strength: Math.max(0, Math.min(100, indicator.strength + (Math.random() - 0.5) * 10)),
+        })),
+      )
+
+      setLastUpdate(new Date())
+    }, 3000)
 
     return () => clearInterval(interval)
-  }, [isLive, selectedAsset])
+  }, [isLive])
 
   const getSignalColor = (signal: string) => {
     switch (signal) {
-      case "BUY":
-        return "text-green-600 bg-green-100"
-      case "SELL":
-        return "text-red-600 bg-red-100"
+      case "buy":
+        return "bg-green-500/10 text-green-400 border-green-500/20"
+      case "sell":
+        return "bg-red-500/10 text-red-400 border-red-500/20"
+      case "hold":
+        return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20"
       default:
-        return "text-yellow-600 bg-yellow-100"
+        return "bg-gray-500/10 text-gray-400 border-gray-500/20"
     }
-  }
-
-  const getSentimentColor = (value: number) => {
-    if (value >= 70) return "text-green-600"
-    if (value >= 30) return "text-yellow-600"
-    return "text-red-600"
-  }
-
-  if (!marketData || !sentimentData) {
-    return <div>Loading...</div>
   }
 
   return (
     <div className="space-y-6">
       {/* Header Controls */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
           <Select value={selectedAsset} onValueChange={setSelectedAsset}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {MOCK_ASSETS.map((asset) => (
-                <SelectItem key={asset.symbol} value={asset.symbol}>
-                  {asset.name} ({asset.symbol})
+              {assets.map((asset) => (
+                <SelectItem key={asset} value={asset}>
+                  {asset}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          <Button
-            variant={isLive ? "default" : "outline"}
-            size="sm"
-            onClick={() => setIsLive(!isLive)}
-            className="flex items-center gap-2"
-          >
-            {isLive ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            {isLive ? "Live" : "Paused"}
+          <Button variant={isLive ? "default" : "outline"} size="sm" onClick={() => setIsLive(!isLive)}>
+            {isLive ? (
+              <>
+                <Pause className="w-4 h-4 mr-2" />
+                Live
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4 mr-2" />
+                Paused
+              </>
+            )}
           </Button>
         </div>
 
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <RefreshCw className="h-4 w-4" />
-          Last update: {lastUpdate.toLocaleTimeString()}
-        </div>
+        <div className="text-sm text-muted-foreground">Last updated: {lastUpdate.toLocaleTimeString()}</div>
       </div>
 
       {/* Market Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Price</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${marketData.price.toLocaleString()}</div>
-            <div
-              className={`flex items-center text-xs ${marketData.change24h >= 0 ? "text-green-600" : "text-red-600"}`}
-            >
-              {marketData.change24h >= 0 ? (
-                <TrendingUp className="h-3 w-3 mr-1" />
-              ) : (
-                <TrendingDown className="h-3 w-3 mr-1" />
-              )}
-              {marketData.change24h.toFixed(2)}%
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Price</p>
+                <p className="text-2xl font-bold">${marketData.price.toLocaleString()}</p>
+                <p className={`text-sm ${marketData.change24h >= 0 ? "text-green-400" : "text-red-400"}`}>
+                  {marketData.change24h >= 0 ? "+" : ""}
+                  {marketData.change24h.toFixed(2)}%
+                </p>
+              </div>
+              <DollarSign className="w-8 h-8 text-blue-400" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">24h Volume</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${(marketData.volume24h / 1000000).toFixed(1)}M</div>
-            <p className="text-xs text-muted-foreground">Trading volume</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Market Cap</CardTitle>
-            <Activity className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${(marketData.marketCap / 1000000000).toFixed(1)}B</div>
-            <p className="text-xs text-muted-foreground">Total market value</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">24h Range</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm font-medium">
-              ${marketData.low24h.toLocaleString()} - ${marketData.high24h.toLocaleString()}
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">24h Volume</p>
+                <p className="text-2xl font-bold">${(marketData.volume24h / 1e9).toFixed(2)}B</p>
+                <p className="text-sm text-muted-foreground">Trading volume</p>
+              </div>
+              <Activity className="w-8 h-8 text-green-400" />
             </div>
-            <p className="text-xs text-muted-foreground">High/Low range</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Market Cap</p>
+                <p className="text-2xl font-bold">${(marketData.marketCap / 1e9).toFixed(0)}B</p>
+                <p className="text-sm text-muted-foreground">Total value</p>
+              </div>
+              <BarChart3 className="w-8 h-8 text-purple-400" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">24h Range</p>
+                <p className="text-lg font-bold">
+                  ${marketData.low24h.toLocaleString()} - ${marketData.high24h.toLocaleString()}
+                </p>
+                <p className="text-sm text-muted-foreground">High/Low</p>
+              </div>
+              <TrendingUp className="w-8 h-8 text-orange-400" />
+            </div>
           </CardContent>
         </Card>
       </div>
 
       {/* Analysis Tabs */}
-      <Tabs defaultValue="technical" className="space-y-4">
-        <TabsList>
+      <Tabs defaultValue="technical" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="technical">Technical</TabsTrigger>
           <TabsTrigger value="sentiment">Sentiment</TabsTrigger>
           <TabsTrigger value="levels">Levels</TabsTrigger>
           <TabsTrigger value="signals">Signals</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="technical" className="space-y-4">
+        <TabsContent value="technical" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Technical Indicators</CardTitle>
-              <CardDescription>Real-time technical analysis indicators</CardDescription>
+              <CardTitle className="flex items-center">
+                <BarChart3 className="w-5 h-5 mr-2" />
+                Technical Indicators
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {technicalIndicators.map((indicator, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium">{indicator.name}</span>
-                      <Badge className={getSignalColor(indicator.signal)}>{indicator.signal}</Badge>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-muted-foreground">Value: {indicator.value.toFixed(2)}</span>
-                      <div className="flex-1">
-                        <Progress value={indicator.strength} className="h-2" />
+            <CardContent>
+              <div className="space-y-4">
+                {technicalIndicators.map((indicator, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">{indicator.name}</span>
+                      <div className="flex items-center space-x-2">
+                        <Badge className={getSignalColor(indicator.signal)}>{indicator.signal.toUpperCase()}</Badge>
+                        <span className="text-sm text-muted-foreground">{indicator.value.toFixed(2)}</span>
                       </div>
-                      <span className="text-sm text-muted-foreground">{indicator.strength.toFixed(0)}%</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Progress value={indicator.strength} className="flex-1" />
+                      <span className="text-xs text-muted-foreground w-12">{indicator.strength}%</span>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="sentiment" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <TabsContent value="sentiment" className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <Card>
               <CardHeader>
-                <CardTitle>Fear & Greed Index</CardTitle>
-                <CardDescription>Market psychology indicator</CardDescription>
+                <CardTitle className="flex items-center">
+                  <Brain className="w-5 h-5 mr-2" />
+                  Market Sentiment
+                </CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="text-center space-y-4">
-                  <div className={`text-4xl font-bold ${getSentimentColor(sentimentData.fearGreedIndex)}`}>
-                    {sentimentData.fearGreedIndex.toFixed(0)}
+              <CardContent className="space-y-4">
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span>Fear & Greed Index</span>
+                    <span className="font-medium">{sentiment.fearGreedIndex}/100</span>
                   </div>
-                  <Progress value={sentimentData.fearGreedIndex} className="h-3" />
-                  <p className="text-sm text-muted-foreground">
-                    {sentimentData.fearGreedIndex >= 70
+                  <Progress value={sentiment.fearGreedIndex} className="h-3" />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {sentiment.fearGreedIndex > 75
                       ? "Extreme Greed"
-                      : sentimentData.fearGreedIndex >= 50
+                      : sentiment.fearGreedIndex > 50
                         ? "Greed"
-                        : sentimentData.fearGreedIndex >= 30
+                        : sentiment.fearGreedIndex > 25
                           ? "Fear"
                           : "Extreme Fear"}
                   </p>
                 </div>
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Social Sentiment</CardTitle>
-                <CardDescription>Social media sentiment analysis</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center space-y-4">
-                  <div className={`text-4xl font-bold ${getSentimentColor(sentimentData.socialSentiment)}`}>
-                    {sentimentData.socialSentiment.toFixed(0)}%
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span>Social Sentiment</span>
+                    <span className="font-medium">{sentiment.socialSentiment}%</span>
                   </div>
-                  <Progress value={sentimentData.socialSentiment} className="h-3" />
-                  <p className="text-sm text-muted-foreground">
-                    {sentimentData.socialSentiment >= 60
-                      ? "Very Bullish"
-                      : sentimentData.socialSentiment >= 40
-                        ? "Bullish"
-                        : "Bearish"}
-                  </p>
+                  <Progress value={sentiment.socialSentiment} className="h-3" />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span>News Impact</span>
+                    <span className="font-medium">{sentiment.newsImpact}%</span>
+                  </div>
+                  <Progress value={sentiment.newsImpact} className="h-3" />
+                </div>
+
+                <div>
+                  <div className="flex justify-between text-sm mb-2">
+                    <span>Technical Score</span>
+                    <span className="font-medium">{sentiment.technicalScore}%</span>
+                  </div>
+                  <Progress value={sentiment.technicalScore} className="h-3" />
                 </div>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader>
-                <CardTitle>News Impact</CardTitle>
-                <CardDescription>Recent news sentiment impact</CardDescription>
+                <CardTitle>Market Psychology</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-center space-y-4">
-                  <div className={`text-4xl font-bold ${getSentimentColor(sentimentData.newsImpact)}`}>
-                    {sentimentData.newsImpact.toFixed(0)}%
+                <div className="space-y-4">
+                  <div className="text-center">
+                    <div className="text-4xl font-bold text-green-400 mb-2">{sentiment.fearGreedIndex}</div>
+                    <Badge className="bg-green-500/10 text-green-400 border-green-500/20">GREED</Badge>
                   </div>
-                  <Progress value={sentimentData.newsImpact} className="h-3" />
-                  <p className="text-sm text-muted-foreground">
-                    {sentimentData.newsImpact >= 60
-                      ? "Positive Impact"
-                      : sentimentData.newsImpact >= 40
-                        ? "Neutral"
-                        : "Negative Impact"}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Technical Score</CardTitle>
-                <CardDescription>Combined technical analysis score</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center space-y-4">
-                  <div className={`text-4xl font-bold ${getSentimentColor(sentimentData.technicalScore)}`}>
-                    {sentimentData.technicalScore.toFixed(0)}%
+                  <div className="space-y-2 text-sm">
+                    <p className="text-muted-foreground">
+                      Current market sentiment indicates strong bullish momentum with high confidence levels.
+                    </p>
+                    <p className="text-muted-foreground">
+                      Social media sentiment is positive with increased trading activity.
+                    </p>
                   </div>
-                  <Progress value={sentimentData.technicalScore} className="h-3" />
-                  <p className="text-sm text-muted-foreground">
-                    {sentimentData.technicalScore >= 60
-                      ? "Strong Buy"
-                      : sentimentData.technicalScore >= 40
-                        ? "Hold"
-                        : "Strong Sell"}
-                  </p>
                 </div>
               </CardContent>
             </Card>
           </div>
         </TabsContent>
 
-        <TabsContent value="levels" className="space-y-4">
+        <TabsContent value="levels" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Support & Resistance Levels</CardTitle>
-              <CardDescription>Key price levels to watch</CardDescription>
+              <CardTitle className="flex items-center">
+                <Target className="w-5 h-5 mr-2" />
+                Support & Resistance Levels
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {supportResistance.map((level, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-4">
-                    <Badge variant={level.type === "resistance" ? "destructive" : "default"}>
-                      {level.type.toUpperCase()}
-                    </Badge>
-                    <div>
-                      <div className="font-medium">${level.level.toLocaleString()}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {level.distance > 0 ? "+" : ""}
-                        {level.distance.toFixed(1)}% from current
+            <CardContent>
+              <div className="space-y-4">
+                {supportResistance.map((level, index) => (
+                  <div key={index} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+                    <div className="flex items-center space-x-3">
+                      <Badge
+                        className={
+                          level.type === "resistance" ? "bg-red-500/10 text-red-400" : "bg-green-500/10 text-green-400"
+                        }
+                      >
+                        {level.type.toUpperCase()}
+                      </Badge>
+                      <span className="font-medium">${level.level.toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm text-muted-foreground">Strength:</span>
+                        <Progress value={level.strength} className="w-16 h-2" />
+                        <span className="text-sm">{level.strength}%</span>
                       </div>
+                      <span className={`text-sm ${level.distance >= 0 ? "text-green-400" : "text-red-400"}`}>
+                        {level.distance >= 0 ? "+" : ""}
+                        {level.distance.toFixed(1)}%
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-sm font-medium">Strength: {level.strength.toFixed(0)}%</div>
-                    <Progress value={level.strength} className="h-2 w-20" />
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
 
-        <TabsContent value="signals" className="space-y-4">
+        <TabsContent value="signals" className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Trading Signals</CardTitle>
-              <CardDescription>AI-powered trading recommendations</CardDescription>
+              <CardTitle className="flex items-center">
+                <Zap className="w-5 h-5 mr-2" />
+                AI Trading Signals
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              {technicalIndicators.slice(0, 3).map((indicator, index) => (
-                <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex-1">
+            <CardContent>
+              <div className="space-y-4">
+                {tradingSignals.map((signal, index) => (
+                  <div key={index} className="p-4 rounded-lg border">
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium">{indicator.name} Signal</span>
-                      <Badge className={getSignalColor(indicator.signal)}>{indicator.signal}</Badge>
+                      <div className="flex items-center space-x-2">
+                        <Badge className={getSignalColor(signal.type)}>{signal.type.toUpperCase()}</Badge>
+                        <span className="text-sm text-muted-foreground">{signal.timeframe}</span>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-medium">{signal.confidence}%</span>
+                        <Badge variant="outline">{signal.strength}</Badge>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-sm text-muted-foreground">Timeframe: 1H</span>
-                      <span className="text-sm text-muted-foreground">
-                        Confidence: {indicator.strength.toFixed(0)}%
-                      </span>
-                    </div>
+                    <p className="text-sm text-muted-foreground">{signal.reason}</p>
+                    <Progress value={signal.confidence} className="mt-2 h-2" />
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

@@ -1,13 +1,21 @@
-"use client"
-
+import type { Metadata } from "next"
 import { MarketAnalysis } from "@/components/market/market-analysis"
+
+export const metadata: Metadata = {
+  title: "Market Analysis | CoinWayFinder",
+  description: "Real-time cryptocurrency market analysis with technical indicators and AI insights",
+}
 
 export default function MarketAnalysisPage() {
   return (
-    <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Market Analysis</h2>
+    <div className="container mx-auto px-4 py-8">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold mb-2">Live Market Analysis</h1>
+        <p className="text-muted-foreground">
+          Real-time technical analysis, market sentiment, and AI-powered trading insights
+        </p>
       </div>
+
       <MarketAnalysis />
     </div>
   )

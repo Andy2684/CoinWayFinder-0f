@@ -1,32 +1,27 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react"
 
 export interface User {
   id: string
   email: string
-  firstName: string
-  lastName: string
-  username: string
+  firstName?: string
+  lastName?: string
+  username?: string
   role: "user" | "admin"
-  plan: string
-  isVerified: boolean
+  isEmailVerified: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-export interface AuthContextType {
+export interface AuthState {
   user: User | null
-  loading: boolean
+  isLoading: boolean
   isAuthenticated: boolean
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  signup: (userData: any) => Promise<{ success: boolean; error?: string }>
-  logout: () => Promise<void>
 }
 
-export const AuthContext = createContext<AuthContextType | undefined>(undefined)
-
-// Local mock users - no external API calls
-const mockUsers = [
+// Mock users for demo
+const MOCK_USERS = [
   {
     id: "1",
     email: "demo@coinwayfinder.com",
@@ -35,158 +30,169 @@ const mockUsers = [
     lastName: "User",
     username: "demo_user",
     role: "user" as const,
-    plan: "free",
-    isVerified: true,
+    isEmailVerified: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
   {
     id: "2",
     email: "admin@coinwayfinder.com",
-    password: "AdminPass123!",
+    password: "admin123",
     firstName: "Admin",
     lastName: "User",
-    username: "admin_user",
+    username: "admin",
     role: "admin" as const,
-    plan: "enterprise",
-    isVerified: true,
+    isEmailVerified: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
 ]
 
-export function useAuthProvider(): AuthContextType {
-  const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
-  const router = useRouter()
+export function useAuth() {
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    isLoading: true,
+    isAuthenticated: false,
+  })
 
   useEffect(() => {
-    checkAuth()
+    // Check for stored auth token
+    const token = localStorage.getItem("auth_token")
+    const userData = localStorage.getItem("user_data")
+
+    if (token && userData) {
+      try {
+        const user = JSON.parse(userData)
+        setAuthState({
+          user,
+          isLoading: false,
+          isAuthenticated: true,
+        })
+      } catch (error) {
+        console.error("Error parsing stored user data:", error)
+        localStorage.removeItem("auth_token")
+        localStorage.removeItem("user_data")
+        setAuthState({
+          user: null,
+          isLoading: false,
+          isAuthenticated: false,
+        })
+      }
+    } else {
+      setAuthState({
+        user: null,
+        isLoading: false,
+        isAuthenticated: false,
+      })
+    }
   }, [])
 
-  const checkAuth = async () => {
-    try {
-      const userData = getStoredUser()
-      if (userData) {
-        setUser(userData)
-      }
-    } catch (error) {
-      console.error("Auth check failed:", error)
-      removeStoredUser()
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const login = async (email: string, password: string) => {
+    setAuthState((prev) => ({ ...prev, isLoading: true }))
+
     try {
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      // Simulate API call delay
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
       // Find user in mock data
-      const foundUser = mockUsers.find((u) => u.email === email && u.password === password)
+      const mockUser = MOCK_USERS.find((u) => u.email === email && u.password === password)
 
-      if (!foundUser) {
-        return { success: false, error: "Invalid email or password" }
+      if (!mockUser) {
+        throw new Error("Invalid email or password")
       }
 
       // Remove password from user object
-      const { password: _, ...userWithoutPassword } = foundUser
+      const { password: _, ...user } = mockUser
 
-      // Store user data locally
-      storeUser(userWithoutPassword)
-      setUser(userWithoutPassword)
+      // Store auth data
+      const token = `mock_token_${user.id}_${Date.now()}`
+      localStorage.setItem("auth_token", token)
+      localStorage.setItem("user_data", JSON.stringify(user))
 
-      return { success: true }
+      setAuthState({
+        user,
+        isLoading: false,
+        isAuthenticated: true,
+      })
+
+      return { success: true, user }
     } catch (error) {
-      console.error("Login error:", error)
-      return { success: false, error: "Login failed" }
+      setAuthState((prev) => ({ ...prev, isLoading: false }))
+      throw error
     }
   }
 
-  const signup = async (userData: any) => {
+  const signup = async (userData: {
+    email: string
+    password: string
+    firstName?: string
+    lastName?: string
+    username?: string
+  }) => {
+    setAuthState((prev) => ({ ...prev, isLoading: true }))
+
     try {
-      // Simulate API delay
-      await new Promise((resolve) => setTimeout(resolve, 500))
+      // Simulate API call delay
+      await new Promise((resolve) => setTimeout(resolve, 1500))
 
       // Check if user already exists
-      const existingUser = mockUsers.find((u) => u.email === userData.email)
+      const existingUser = MOCK_USERS.find((u) => u.email === userData.email)
       if (existingUser) {
-        return { success: false, error: "User already exists" }
+        throw new Error("User with this email already exists")
       }
 
       // Create new user
-      const newUser = {
-        id: Date.now().toString(),
+      const newUser: User = {
+        id: `user_${Date.now()}`,
         email: userData.email,
-        firstName: userData.firstName || userData.name?.split(" ")[0] || "User",
-        lastName: userData.lastName || userData.name?.split(" ")[1] || "",
-        username: userData.email.split("@")[0],
-        role: "user" as const,
-        plan: "free",
-        isVerified: false,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        username: userData.username || userData.email.split("@")[0],
+        role: "user",
+        isEmailVerified: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
       }
 
-      // Add to mock users (in real app, this would be saved to database)
-      mockUsers.push({ ...newUser, password: userData.password })
+      // For demo purposes, we'll just return success without actually storing
+      setAuthState((prev) => ({ ...prev, isLoading: false }))
 
-      // Don't automatically log in after signup
-      // Just redirect to thank you page
-      router.push("/thank-you")
-      return { success: true }
+      return { success: true, user: newUser }
     } catch (error) {
-      console.error("Signup error:", error)
-      return { success: false, error: "Registration failed" }
+      setAuthState((prev) => ({ ...prev, isLoading: false }))
+      throw error
     }
   }
 
-  const logout = async () => {
-    try {
-      removeStoredUser()
-      setUser(null)
-      router.push("/")
-    } catch (error) {
-      console.error("Logout error:", error)
-    }
+  const logout = () => {
+    localStorage.removeItem("auth_token")
+    localStorage.removeItem("user_data")
+    setAuthState({
+      user: null,
+      isLoading: false,
+      isAuthenticated: false,
+    })
+  }
+
+  const updateUser = async (updates: Partial<User>) => {
+    if (!authState.user) return
+
+    const updatedUser = { ...authState.user, ...updates, updatedAt: new Date().toISOString() }
+
+    localStorage.setItem("user_data", JSON.stringify(updatedUser))
+    setAuthState((prev) => ({
+      ...prev,
+      user: updatedUser,
+    }))
+
+    return updatedUser
   }
 
   return {
-    user,
-    loading,
-    isAuthenticated: !!user,
+    ...authState,
     login,
     signup,
     logout,
-  }
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider")
-  }
-  return context
-}
-
-// Local storage utility functions
-function storeUser(user: User) {
-  if (typeof window !== "undefined") {
-    localStorage.setItem("coinwayfinder-user", JSON.stringify(user))
-  }
-}
-
-function getStoredUser(): User | null {
-  if (typeof window !== "undefined") {
-    const stored = localStorage.getItem("coinwayfinder-user")
-    if (stored) {
-      try {
-        return JSON.parse(stored)
-      } catch {
-        return null
-      }
-    }
-  }
-  return null
-}
-
-function removeStoredUser() {
-  if (typeof window !== "undefined") {
-    localStorage.removeItem("coinwayfinder-user")
+    updateUser,
   }
 }

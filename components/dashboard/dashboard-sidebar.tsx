@@ -1,11 +1,12 @@
 "use client"
+
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import { BarChart3, Bot, Briefcase, Home, Menu, Settings, Signal, TrendingUp, Zap } from "lucide-react"
+import { Bot, Brain, Briefcase, Home, Menu, Settings, Signal, TrendingUp, Zap, Globe, Bell } from "lucide-react"
 
 const sidebarItems = [
   {
@@ -17,6 +18,11 @@ const sidebarItems = [
     title: "Market Analysis",
     href: "/market-analysis",
     icon: TrendingUp,
+  },
+  {
+    title: "AI Trading Bots",
+    href: "/ai-bots",
+    icon: Brain,
   },
   {
     title: "Trading Bots",
@@ -34,14 +40,19 @@ const sidebarItems = [
     icon: Signal,
   },
   {
-    title: "Analytics",
-    href: "/analytics",
-    icon: BarChart3,
+    title: "News",
+    href: "/news",
+    icon: Globe,
   },
   {
     title: "Integrations",
     href: "/integrations",
     icon: Zap,
+  },
+  {
+    title: "Alerts",
+    href: "/alerts",
+    icon: Bell,
   },
   {
     title: "Settings",
@@ -61,8 +72,8 @@ export function DashboardSidebar({ className }: DashboardSidebarProps) {
     <div className="flex h-full flex-col">
       <div className="flex h-14 items-center border-b px-4">
         <Link className="flex items-center space-x-2" href="/">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-            <TrendingUp className="h-4 w-4 text-primary-foreground" />
+          <div className="h-8 w-8 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 flex items-center justify-center">
+            <TrendingUp className="h-4 w-4 text-white" />
           </div>
           <span className="font-bold">CoinWayFinder</span>
         </Link>
