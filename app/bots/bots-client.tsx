@@ -1,127 +1,130 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ActiveBots } from "@/components/bots/active-bots"
-import { BotPerformance } from "@/components/bots/bot-performance"
-import { BotStrategies } from "@/components/bots/bot-strategies"
-import { BotsOverview } from "@/components/bots/bots-overview"
-import { CreateBotDialog } from "@/components/bots/create-bot-dialog"
-import { ArrowLeft, Plus, Bot, TrendingUp, Activity, DollarSign } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { ArrowLeft, Plus, Play, Pause, Settings, TrendingUp } from "lucide-react"
 import Link from "next/link"
 
 export default function BotsClient() {
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
+  const [bots] = useState([
+    {
+      id: 1,
+      name: "Bitcoin Scalper",
+      strategy: "Scalping",
+      status: "active",
+      profit: 1234.56,
+      trades: 45,
+      winRate: 78.5,
+    },
+    {
+      id: 2,
+      name: "Ethereum Grid",
+      strategy: "Grid Trading",
+      status: "paused",
+      profit: -123.45,
+      trades: 23,
+      winRate: 65.2,
+    },
+    {
+      id: 3,
+      name: "DCA Bot",
+      strategy: "Dollar Cost Average",
+      status: "active",
+      profit: 567.89,
+      trades: 67,
+      winRate: 82.1,
+    },
+  ])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <div className="container mx-auto px-4 py-8">
-        <div className="space-y-6">
-          {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <Link href="/">
-                <Button variant="ghost" size="sm" className="text-white hover:text-gray-300">
-                  <ArrowLeft className="h-4 w-4 mr-2" />
-                  Back to Home
-                </Button>
-              </Link>
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight text-white">Trading Bots</h1>
-                <p className="text-gray-400">Manage and monitor your automated trading strategies</p>
-              </div>
-            </div>
-            <Button onClick={() => setShowCreateDialog(true)} className="bg-blue-600 hover:bg-blue-700">
-              <Plus className="h-4 w-4 mr-2" />
-              Create Bot
+        <div className="flex items-center gap-4 mb-8">
+          <Link href="/">
+            <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Home
             </Button>
-          </div>
+          </Link>
+          <h1 className="text-3xl font-bold text-white">Trading Bots</h1>
+        </div>
 
-          {/* Key Metrics */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Bots</CardTitle>
-                <Bot className="h-4 w-4 text-muted-foreground" />
+        {/* Create Bot Button */}
+        <div className="mb-8">
+          <Button className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="h-4 w-4 mr-2" />
+            Create New Bot
+          </Button>
+        </div>
+
+        {/* Bots Grid */}
+        <div className="grid gap-6">
+          {bots.map((bot) => (
+            <Card key={bot.id} className="bg-white/10 border-white/20 text-white">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-xl">{bot.name}</CardTitle>
+                    <CardDescription className="text-gray-300">
+                      {bot.strategy} • {bot.trades} trades
+                    </CardDescription>
+                  </div>
+                  <Badge className={bot.status === "active" ? "bg-green-600" : "bg-yellow-600"}>{bot.status}</Badge>
+                </div>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">8</div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">+2</span> from last week
-                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <p className="text-sm text-gray-400">Profit/Loss</p>
+                    <p className={`text-lg font-bold ${bot.profit >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      {bot.profit >= 0 ? "+" : ""}${bot.profit.toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Win Rate</p>
+                    <p className="text-lg font-bold text-blue-400">{bot.winRate}%</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-400">Performance</p>
+                    <div className="flex items-center text-green-400">
+                      <TrendingUp className="h-4 w-4 mr-1" />
+                      <span className="text-sm">Good</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={bot.status === "active" ? "destructive" : "default"}
+                    className={bot.status === "active" ? "" : "bg-green-600 hover:bg-green-700"}
+                  >
+                    {bot.status === "active" ? (
+                      <>
+                        <Pause className="h-4 w-4 mr-2" />
+                        Pause
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4 mr-2" />
+                        Start
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+                  >
+                    <Settings className="h-4 w-4 mr-2" />
+                    Configure
+                  </Button>
+                </div>
               </CardContent>
             </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Profit</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">+$3,247.89</div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">+12.3%</span> this month
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">68.5%</div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">+3.2%</span> vs last month
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Active Trades</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">24</div>
-                <p className="text-xs text-muted-foreground">
-                  <span className="text-blue-600">Running</span> across all bots
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Main Content */}
-          <Tabs defaultValue="overview" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="active">Active Bots</TabsTrigger>
-              <TabsTrigger value="performance">Performance</TabsTrigger>
-              <TabsTrigger value="strategies">Strategies</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="overview">
-              <BotsOverview />
-            </TabsContent>
-
-            <TabsContent value="active">
-              <ActiveBots />
-            </TabsContent>
-
-            <TabsContent value="performance">
-              <BotPerformance />
-            </TabsContent>
-
-            <TabsContent value="strategies">
-              <BotStrategies />
-            </TabsContent>
-          </Tabs>
-
-          {/* Create Bot Dialog */}
-          <CreateBotDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} />
+          ))}
         </div>
       </div>
     </div>
