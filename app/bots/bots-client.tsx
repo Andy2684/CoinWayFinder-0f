@@ -9,7 +9,8 @@ import { BotPerformance } from "@/components/bots/bot-performance"
 import { BotStrategies } from "@/components/bots/bot-strategies"
 import { BotsOverview } from "@/components/bots/bots-overview"
 import { CreateBotDialog } from "@/components/bots/create-bot-dialog"
-import { Plus, Bot, TrendingUp, Activity, AlertCircle } from "lucide-react"
+import { Plus, Bot, TrendingUp, Activity, AlertCircle, Home } from "lucide-react"
+import Link from "next/link"
 
 export default function BotsPageClient() {
   const [createBotOpen, setCreateBotOpen] = useState(false)
@@ -19,9 +20,17 @@ export default function BotsPageClient() {
       <div className="container mx-auto px-4 py-8">
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-white">Trading Bots</h1>
-              <p className="text-gray-400">Manage your automated trading strategies and monitor performance</p>
+            <div className="flex items-center gap-4">
+              <Link href="/">
+                <Button variant="ghost" size="sm">
+                  <Home className="h-4 w-4 mr-2" />
+                  Home
+                </Button>
+              </Link>
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-white">Trading Bots</h1>
+                <p className="text-gray-400">Manage your automated trading strategies and monitor performance</p>
+              </div>
             </div>
             <Button onClick={() => setCreateBotOpen(true)}>
               <Plus className="h-4 w-4 mr-2" />
