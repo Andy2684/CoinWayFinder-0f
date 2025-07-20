@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
@@ -10,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Mail, Lock, User, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Mail, Lock, User, Loader2 } from 'lucide-react'
 import { useAuth } from "@/components/auth/auth-provider"
 
 export function SignupForm() {
@@ -54,16 +53,27 @@ export function SignupForm() {
       return
     }
 
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(formData.email)) {
+      setError("Please enter a valid email address")
+      return
+    }
+
     try {
-      await signup({
+      const success = await signup({
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName,
         lastName: formData.lastName,
       })
-      // Navigation is handled in the signup function
+
+      if (!success) {
+        setError("Registration failed. User may already exist.")
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed")
+      console.error("Signup error:", err)
+      setError("Registration failed. Please try again.")
     }
   }
 

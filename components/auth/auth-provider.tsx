@@ -13,10 +13,17 @@ interface User {
   role?: string
 }
 
+interface SignupData {
+  email: string
+  password: string
+  firstName: string
+  lastName: string
+}
+
 interface AuthContextType {
   user: User | null
   login: (email: string, password: string) => Promise<boolean>
-  signup: (email: string, password: string, name: string) => Promise<boolean>
+  signup: (userData: SignupData) => Promise<boolean>
   logout: () => void
   isLoading: boolean
 }
@@ -147,12 +154,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }
 
-  const signup = async (email: string, password: string, name: string): Promise<boolean> => {
+  const signup = async (userData: SignupData): Promise<boolean> => {
     setIsLoading(true)
 
     try {
       // Simulate API delay
       await new Promise((resolve) => setTimeout(resolve, 1500))
+
+      const { email, password, firstName, lastName } = userData
+
+      // Validate required fields
+      if (!email || !password || !firstName || !lastName) {
+        console.error("Missing required fields")
+        setIsLoading(false)
+        return false
+      }
 
       // Get existing users
       const existingUsers = JSON.parse(localStorage.getItem("registered_users") || "[]")
@@ -160,21 +176,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       // Check if user already exists
       if (allUsers.some((u: any) => u.email === email)) {
+        console.error("User already exists")
         setIsLoading(false)
         return false
       }
 
       // Create new user
-      const [firstName, ...lastNameParts] = name.split(" ")
-      const lastName = lastNameParts.join(" ")
-
       const newUser = {
         id: `user_${Date.now()}`,
         email,
         password,
-        firstName: firstName || "",
-        lastName: lastName || "",
-        name,
+        firstName,
+        lastName,
+        name: `${firstName} ${lastName}`,
         avatar: "/placeholder-user.jpg",
         role: "user",
         createdAt: new Date().toISOString(),
