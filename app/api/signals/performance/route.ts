@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 
+export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
 // Mock performance data - in production, this would come from your database

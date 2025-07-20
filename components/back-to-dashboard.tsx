@@ -1,35 +1,62 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Home } from "lucide-react"
+import { ArrowLeft, LayoutDashboard } from "lucide-react"
 import Link from "next/link"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/components/auth/auth-provider"
 
 export function BackToDashboard() {
+  const [mounted, setMounted] = useState(false)
+  const { user, loading } = useAuth()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted || loading) {
+    return (
+      <Button variant="outline" size="sm" disabled className="bg-transparent">
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Dashboard
+      </Button>
+    )
+  }
+
+  if (!user) {
+    return null
+  }
+
   return (
-    <Link href="/dashboard">
-      <Button variant="outline" size="sm" className="mb-4 bg-transparent">
+    <Button asChild variant="outline" size="sm" className="bg-transparent">
+      <Link href="/dashboard">
         <ArrowLeft className="h-4 w-4 mr-2" />
         Back to Dashboard
-      </Button>
-    </Link>
+      </Link>
+    </Button>
   )
 }
 
 export function FloatingDashboardButton() {
-  const { user } = useAuth()
+  const [mounted, setMounted] = useState(false)
+  const { user, loading } = useAuth()
 
-  if (!user) return null
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  if (!mounted || loading || !user) {
+    return null
+  }
 
   return (
-    <Link href="/dashboard">
-      <Button
-        size="lg"
-        className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-      >
-        <Home className="h-5 w-5 mr-2" />
-        Dashboard
+    <div className="fixed bottom-6 right-6 z-50">
+      <Button asChild size="lg" className="rounded-full shadow-lg bg-blue-600 hover:bg-blue-700">
+        <Link href="/dashboard">
+          <LayoutDashboard className="h-5 w-5 mr-2" />
+          Dashboard
+        </Link>
       </Button>
-    </Link>
+    </div>
   )
 }

@@ -2,114 +2,142 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, TrendingUp, Users, Shield } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { ArrowRight, Rocket, TrendingUp, Shield, Zap } from "lucide-react"
 import Link from "next/link"
-import { useAuth } from "@/hooks/use-auth"
+import { useAuth } from "@/components/auth/auth-provider"
 
 export function CTASection() {
-  const { user, loading } = useAuth()
   const [mounted, setMounted] = useState(false)
+  const { user, loading } = useAuth()
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  if (!mounted) {
-    return (
-      <section className="py-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="h-12 bg-gray-700 rounded mb-6 mx-auto max-w-2xl animate-pulse"></div>
-          <div className="h-6 bg-gray-700 rounded mb-8 mx-auto max-w-3xl animate-pulse"></div>
-          <div className="h-12 w-48 bg-gray-700 rounded mx-auto animate-pulse"></div>
-        </div>
-      </section>
-    )
-  }
-
   return (
-    <section className="py-20 px-4 sm:px-6 lg:px-8">
+    <section className="py-20 px-4 relative">
       <div className="max-w-4xl mx-auto text-center">
-        <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 backdrop-blur-xl border border-white/10 rounded-2xl p-12">
-          {user ? (
-            <>
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">Welcome back, {user.firstName}!</h2>
-              <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-                Your trading dashboard is ready. Continue managing your bots, analyzing performance, and maximizing your
-                profits.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Link href="/dashboard">
-                  <Button
-                    size="lg"
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3"
-                  >
-                    <ArrowRight className="h-5 w-5 mr-2" />
+        {/* Background Gradient */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-500/20 via-purple-500/20 to-cyan-500/20 backdrop-blur-xl rounded-3xl border border-white/10" />
+
+        <div className="relative z-10 p-12">
+          {/* Badge */}
+          <Badge variant="secondary" className="mb-6 bg-rocket-500/20 text-orange-300 border-orange-500/30">
+            <Rocket className="w-4 h-4 mr-2" />
+            Ready to Launch
+          </Badge>
+
+          {/* Heading */}
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+            {!mounted || loading ? (
+              "Loading..."
+            ) : user ? (
+              <>
+                Welcome Back!
+                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent block mt-2">
+                  Continue Your Trading Journey
+                </span>
+              </>
+            ) : (
+              <>
+                Start Your Trading Journey
+                <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent block mt-2">
+                  Today
+                </span>
+              </>
+            )}
+          </h2>
+
+          {/* Description */}
+          <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
+            {!mounted || loading
+              ? "Loading your personalized experience..."
+              : user
+                ? "Access your dashboard to monitor your bots, check performance, and optimize your trading strategies."
+                : "Join thousands of successful traders who trust our AI-powered platform to maximize their crypto profits. Start your free trial today - no credit card required."}
+          </p>
+
+          {/* Stats */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="flex items-center justify-center space-x-2">
+              <TrendingUp className="w-5 h-5 text-green-400" />
+              <span className="text-white font-semibold">98.7% Success Rate</span>
+            </div>
+            <div className="flex items-center justify-center space-x-2">
+              <Shield className="w-5 h-5 text-blue-400" />
+              <span className="text-white font-semibold">Bank-Grade Security</span>
+            </div>
+            <div className="flex items-center justify-center space-x-2">
+              <Zap className="w-5 h-5 text-yellow-400" />
+              <span className="text-white font-semibold">24/7 Trading</span>
+            </div>
+          </div>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            {!mounted || loading ? (
+              <>
+                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4" disabled>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                  Loading...
+                </Button>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="border-white/20 text-white hover:bg-white/10 px-8 py-4 bg-transparent"
+                  disabled
+                >
+                  Loading...
+                </Button>
+              </>
+            ) : user ? (
+              <>
+                <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4">
+                  <Link href="/dashboard">
                     Go to Dashboard
-                  </Button>
-                </Link>
-                <Link href="/bots">
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className="border-white/20 text-white hover:bg-white/10 px-8 py-3 bg-transparent"
-                  >
-                    Manage Bots
-                  </Button>
-                </Link>
-              </div>
-            </>
-          ) : (
-            <>
-              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">Ready to Start Your Trading Journey?</h2>
-              <p className="text-xl text-gray-300 mb-8 max-w-2xl mx-auto">
-                Join thousands of successful traders who trust CoinWayFinder to automate their cryptocurrency trading
-                and maximize their profits.
-              </p>
-
-              {loading ? (
-                <div className="flex justify-center space-x-4">
-                  <div className="h-12 w-40 bg-gray-700 rounded animate-pulse"></div>
-                  <div className="h-12 w-32 bg-gray-700 rounded animate-pulse"></div>
-                </div>
-              ) : (
-                <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </Link>
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="border-white/20 text-white hover:bg-white/10 px-8 py-4 bg-transparent"
+                >
+                  <Link href="/bots">Manage Bots</Link>
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button asChild size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4">
                   <Link href="/auth/signup">
-                    <Button
-                      size="lg"
-                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-3"
-                    >
-                      <ArrowRight className="h-5 w-5 mr-2" />
-                      Start Free Trial
-                    </Button>
+                    Start Free Trial
+                    <ArrowRight className="w-5 h-5 ml-2" />
                   </Link>
-                  <Link href="/auth/login">
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      className="border-white/20 text-white hover:bg-white/10 px-8 py-3 bg-transparent"
-                    >
-                      Sign In
-                    </Button>
-                  </Link>
-                </div>
-              )}
+                </Button>
+                <Button
+                  asChild
+                  variant="outline"
+                  size="lg"
+                  className="border-white/20 text-white hover:bg-white/10 px-8 py-4 bg-transparent"
+                >
+                  <Link href="/auth/login">Sign In</Link>
+                </Button>
+              </>
+            )}
+          </div>
 
-              {/* Trust Indicators */}
-              <div className="flex flex-wrap justify-center items-center gap-8 text-sm text-gray-400">
-                <div className="flex items-center space-x-2">
-                  <TrendingUp className="h-4 w-4 text-green-400" />
-                  <span>$2.5M+ Volume Traded</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Users className="h-4 w-4 text-blue-400" />
-                  <span>10,000+ Active Users</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Shield className="h-4 w-4 text-purple-400" />
-                  <span>Bank-Grade Security</span>
-                </div>
+          {/* Trust Indicators */}
+          {(!mounted || loading || !user) && (
+            <div className="mt-8 text-center">
+              <p className="text-gray-400 text-sm mb-4">No credit card required • 14-day free trial • Cancel anytime</p>
+              <div className="flex justify-center items-center space-x-6 opacity-60">
+                <div className="text-white text-sm">🔒 SSL Secured</div>
+                <div className="text-white text-sm">⚡ Instant Setup</div>
+                <div className="text-white text-sm">📱 Mobile Ready</div>
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>
