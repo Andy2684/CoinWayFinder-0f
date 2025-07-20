@@ -1,221 +1,284 @@
 "use client"
 
 import { useState } from "react"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Bot,
-  TrendingUp,
+  Brain,
   Shield,
   Zap,
   BarChart3,
-  Settings,
+  TrendingUp,
+  Users,
   Globe,
-  Clock,
-  Target,
   Smartphone,
+  Lock,
   Bell,
-  DollarSign,
+  Target,
   ArrowRight,
+  Play,
+  Star,
   CheckCircle,
+  Activity,
+  PieChart,
 } from "lucide-react"
 
-const features = [
-  {
-    icon: Bot,
-    title: "AI-Powered Trading Bots",
-    description: "Advanced machine learning algorithms that adapt to market conditions and execute trades 24/7.",
-    benefits: ["Never miss opportunities", "Emotion-free trading", "Continuous learning"],
-    color: "blue",
-    popular: true,
-  },
-  {
-    icon: TrendingUp,
-    title: "Real-Time Market Analysis",
-    description: "Get instant insights with live charts, technical indicators, and market sentiment analysis.",
-    benefits: ["Live price feeds", "Technical analysis", "Market sentiment"],
-    color: "green",
-  },
-  {
-    icon: Shield,
-    title: "Advanced Security",
-    description: "Bank-level encryption, secure API connections, and comprehensive risk management tools.",
-    benefits: ["256-bit encryption", "Secure API keys", "Risk controls"],
-    color: "purple",
-  },
-  {
-    icon: Zap,
-    title: "Lightning Fast Execution",
-    description: "Ultra-low latency trading with direct exchange connections for optimal trade execution.",
-    benefits: ["Sub-second execution", "Direct connections", "Minimal slippage"],
-    color: "yellow",
-  },
-  {
-    icon: BarChart3,
-    title: "Comprehensive Analytics",
-    description: "Detailed performance metrics, profit/loss tracking, and portfolio optimization insights.",
-    benefits: ["Performance tracking", "P&L analysis", "Portfolio insights"],
-    color: "cyan",
-  },
-  {
-    icon: Settings,
-    title: "Customizable Strategies",
-    description: "Create and customize trading strategies with our intuitive drag-and-drop interface.",
-    benefits: ["Strategy builder", "Backtesting", "Custom indicators"],
-    color: "orange",
-  },
-  {
-    icon: Globe,
-    title: "Multi-Exchange Support",
-    description: "Trade across 15+ major cryptocurrency exchanges from a single unified platform.",
-    benefits: ["15+ exchanges", "Unified interface", "Cross-exchange arbitrage"],
-    color: "indigo",
-  },
-  {
-    icon: Clock,
-    title: "24/7 Automated Trading",
-    description: "Your bots work around the clock, capturing opportunities even while you sleep.",
-    benefits: ["Never stops trading", "Global markets", "Passive income"],
-    color: "pink",
-  },
-  {
-    icon: Target,
-    title: "Precision Risk Management",
-    description: "Advanced stop-loss, take-profit, and position sizing tools to protect your capital.",
-    benefits: ["Stop-loss orders", "Position sizing", "Risk limits"],
-    color: "red",
-  },
-  {
-    icon: Smartphone,
-    title: "Mobile Trading App",
-    description: "Monitor and control your trading bots on-the-go with our native mobile applications.",
-    benefits: ["iOS & Android", "Push notifications", "Remote control"],
-    color: "teal",
-  },
-  {
-    icon: Bell,
-    title: "Smart Notifications",
-    description: "Get instant alerts for important market events, trade executions, and bot status updates.",
-    benefits: ["Real-time alerts", "Custom triggers", "Multi-channel"],
-    color: "violet",
-  },
-  {
-    icon: DollarSign,
-    title: "Profit Optimization",
-    description: "AI-driven profit maximization with dynamic rebalancing and compound growth strategies.",
-    benefits: ["Compound growth", "Auto-rebalancing", "Profit reinvestment"],
-    color: "emerald",
-  },
-]
-
 export function FeaturesSection() {
-  const [hoveredFeature, setHoveredFeature] = useState<number | null>(null)
+  const [activeTab, setActiveTab] = useState("trading")
+
+  const mainFeatures = [
+    {
+      icon: Bot,
+      title: "AI Trading Bots",
+      description: "Advanced algorithms that trade 24/7 with machine learning capabilities",
+      benefits: ["24/7 Automated Trading", "Machine Learning", "Risk Management", "Backtesting"],
+      color: "blue",
+      category: "trading",
+    },
+    {
+      icon: Brain,
+      title: "Smart Analytics",
+      description: "Real-time market analysis with predictive insights and trend detection",
+      benefits: ["Predictive Analysis", "Market Trends", "Risk Assessment", "Performance Metrics"],
+      color: "purple",
+      category: "analytics",
+    },
+    {
+      icon: Shield,
+      title: "Bank-Grade Security",
+      description: "Military-grade encryption and multi-layer security protocols",
+      benefits: ["256-bit Encryption", "2FA Authentication", "Cold Storage", "Insurance Coverage"],
+      color: "green",
+      category: "security",
+    },
+    {
+      icon: Zap,
+      title: "Lightning Fast Execution",
+      description: "Ultra-low latency trading with direct exchange connections",
+      benefits: ["Sub-millisecond Execution", "Direct API Access", "High Frequency Trading", "Smart Routing"],
+      color: "yellow",
+      category: "trading",
+    },
+    {
+      icon: BarChart3,
+      title: "Advanced Portfolio Management",
+      description: "Comprehensive portfolio tracking with rebalancing and optimization",
+      benefits: ["Auto Rebalancing", "Diversification", "Tax Optimization", "Performance Tracking"],
+      color: "indigo",
+      category: "portfolio",
+    },
+    {
+      icon: TrendingUp,
+      title: "Market Intelligence",
+      description: "AI-powered market insights with sentiment analysis and news integration",
+      benefits: ["Sentiment Analysis", "News Integration", "Social Signals", "Market Predictions"],
+      color: "pink",
+      category: "analytics",
+    },
+    {
+      icon: Users,
+      title: "Copy Trading",
+      description: "Follow and copy successful traders with transparent performance metrics",
+      benefits: ["Top Trader Rankings", "Performance History", "Risk Metrics", "Auto Copy"],
+      color: "cyan",
+      category: "social",
+    },
+    {
+      icon: Globe,
+      title: "Multi-Exchange Support",
+      description: "Connect to 50+ exchanges with unified portfolio management",
+      benefits: ["50+ Exchanges", "Unified Interface", "Cross-Exchange Arbitrage", "Single Dashboard"],
+      color: "orange",
+      category: "trading",
+    },
+    {
+      icon: Smartphone,
+      title: "Mobile Trading",
+      description: "Full-featured mobile app with push notifications and alerts",
+      benefits: ["iOS & Android Apps", "Push Notifications", "Mobile Alerts", "Offline Access"],
+      color: "teal",
+      category: "mobile",
+    },
+    {
+      icon: Lock,
+      title: "Regulatory Compliance",
+      description: "Fully compliant with global financial regulations and standards",
+      benefits: ["KYC/AML Compliance", "Regulatory Reporting", "Audit Trails", "Legal Framework"],
+      color: "red",
+      category: "security",
+    },
+    {
+      icon: Bell,
+      title: "Smart Alerts",
+      description: "Customizable alerts for price movements, portfolio changes, and opportunities",
+      benefits: ["Price Alerts", "Portfolio Alerts", "News Alerts", "Custom Triggers"],
+      color: "amber",
+      category: "alerts",
+    },
+    {
+      icon: Target,
+      title: "Strategy Builder",
+      description: "Visual strategy builder with backtesting and optimization tools",
+      benefits: ["Drag & Drop Builder", "Backtesting Engine", "Strategy Optimization", "Paper Trading"],
+      color: "emerald",
+      category: "trading",
+    },
+  ]
+
+  const categories = [
+    { id: "trading", label: "Trading", icon: Bot },
+    { id: "analytics", label: "Analytics", icon: BarChart3 },
+    { id: "security", label: "Security", icon: Shield },
+    { id: "portfolio", label: "Portfolio", icon: PieChart },
+    { id: "social", label: "Social", icon: Users },
+    { id: "mobile", label: "Mobile", icon: Smartphone },
+    { id: "alerts", label: "Alerts", icon: Bell },
+  ]
+
+  const filteredFeatures = mainFeatures.filter((feature) => feature.category === activeTab)
 
   return (
-    <section className="py-24 bg-gradient-to-b from-slate-900 to-slate-800 relative overflow-hidden">
-      {/* Background Elements */}
-      <div className="absolute inset-0">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
-      </div>
-
-      <div className="relative z-10 container mx-auto px-4">
-        {/* Section Header */}
+    <section id="features" className="py-24 bg-gradient-to-b from-slate-900 to-slate-800">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
         <div className="text-center mb-16">
-          <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 mb-4">Features</Badge>
+          <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30 mb-4">
+            <Star className="w-4 h-4 mr-2" />
+            Premium Features
+          </Badge>
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Everything You Need to
-            <span className="block bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              Trade Like a Pro
+            <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent block">
+              Dominate the Markets
             </span>
           </h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            Our comprehensive suite of tools and features empowers both beginners and experienced traders to maximize
-            their cryptocurrency trading potential.
+            Our comprehensive suite of tools and features gives you the edge you need to succeed in crypto trading.
           </p>
         </div>
 
-        {/* Features Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
-          {features.map((feature, index) => (
-            <Card
-              key={index}
-              className={`bg-black/40 border-white/10 backdrop-blur-xl hover:bg-black/50 transition-all duration-300 hover:scale-105 hover:shadow-2xl group cursor-pointer relative overflow-hidden ${
-                hoveredFeature === index ? `hover:shadow-${feature.color}-500/20` : ""
-              }`}
-              onMouseEnter={() => setHoveredFeature(index)}
-              onMouseLeave={() => setHoveredFeature(null)}
-            >
-              {feature.popular && (
-                <div className="absolute top-4 right-4">
-                  <Badge className="bg-gradient-to-r from-yellow-400 to-orange-500 text-black font-semibold">
-                    Popular
-                  </Badge>
+        {/* Feature Categories */}
+        <div className="mb-12">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-3 md:grid-cols-7 bg-slate-800/50 border border-slate-700">
+              {categories.map((category) => {
+                const Icon = category.icon
+                return (
+                  <TabsTrigger
+                    key={category.id}
+                    value={category.id}
+                    className="flex items-center space-x-2 text-gray-400 data-[state=active]:text-white data-[state=active]:bg-blue-600"
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="hidden sm:inline">{category.label}</span>
+                  </TabsTrigger>
+                )
+              })}
+            </TabsList>
+
+            {categories.map((category) => (
+              <TabsContent key={category.id} value={category.id} className="mt-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {filteredFeatures.map((feature, index) => {
+                    const Icon = feature.icon
+                    return (
+                      <Card
+                        key={index}
+                        className="bg-slate-800/50 border-slate-700 hover:bg-slate-800/70 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-blue-500/20 group cursor-pointer"
+                      >
+                        <CardHeader>
+                          <div
+                            className={`w-12 h-12 rounded-lg bg-${feature.color}-500/20 flex items-center justify-center mb-4 group-hover:bg-${feature.color}-500/30 transition-colors`}
+                          >
+                            <Icon className={`w-6 h-6 text-${feature.color}-400`} />
+                          </div>
+                          <CardTitle className="text-white text-xl">{feature.title}</CardTitle>
+                          <CardDescription className="text-gray-400">{feature.description}</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <ul className="space-y-2 mb-6">
+                            {feature.benefits.map((benefit, benefitIndex) => (
+                              <li key={benefitIndex} className="flex items-center text-gray-300 text-sm">
+                                <CheckCircle className={`w-4 h-4 text-${feature.color}-400 mr-2 flex-shrink-0`} />
+                                {benefit}
+                              </li>
+                            ))}
+                          </ul>
+                          <div className="flex space-x-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className={`border-${feature.color}-500/30 text-${feature.color}-400 hover:bg-${feature.color}-500/20 flex-1`}
+                            >
+                              Learn More
+                            </Button>
+                            <Button
+                              size="sm"
+                              className={`bg-${feature.color}-600 hover:bg-${feature.color}-700 text-white`}
+                            >
+                              <Play className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  })}
                 </div>
-              )}
-
-              <CardHeader className="pb-4">
-                <div
-                  className={`w-12 h-12 rounded-xl bg-${feature.color}-500/20 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}
-                >
-                  <feature.icon className={`h-6 w-6 text-${feature.color}-400`} />
-                </div>
-                <CardTitle className="text-xl text-white group-hover:text-blue-400 transition-colors">
-                  {feature.title}
-                </CardTitle>
-                <CardDescription className="text-gray-400 leading-relaxed">{feature.description}</CardDescription>
-              </CardHeader>
-
-              <CardContent>
-                <ul className="space-y-2 mb-4">
-                  {feature.benefits.map((benefit, benefitIndex) => (
-                    <li key={benefitIndex} className="flex items-center text-sm text-gray-300">
-                      <CheckCircle className={`h-4 w-4 text-${feature.color}-400 mr-2 flex-shrink-0`} />
-                      {benefit}
-                    </li>
-                  ))}
-                </ul>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className={`w-full text-${feature.color}-400 hover:bg-${feature.color}-500/20 group-hover:translate-x-1 transition-all`}
-                >
-                  Learn More
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
-              </CardContent>
-
-              {/* Hover Effect Overlay */}
-              <div
-                className={`absolute inset-0 bg-gradient-to-br from-${feature.color}-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none`}
-              />
-            </Card>
-          ))}
+              </TabsContent>
+            ))}
+          </Tabs>
         </div>
 
-        {/* Bottom CTA */}
-        <div className="text-center">
-          <div className="bg-gradient-to-r from-blue-600/20 to-purple-600/20 backdrop-blur-xl rounded-2xl p-8 border border-white/10">
-            <h3 className="text-2xl font-bold text-white mb-4">Ready to Experience All These Features?</h3>
-            <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
-              Join thousands of successful traders who are already using our platform to automate their trading and
-              maximize their profits.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8">
-                Start Free Trial
-                <ArrowRight className="ml-2 h-5 w-5" />
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-white/20 text-white hover:bg-white/10 px-8 bg-transparent"
-              >
-                Schedule Demo
-              </Button>
-            </div>
+        {/* Quick Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16">
+          {[
+            { icon: Activity, label: "Uptime", value: "99.9%", color: "green" },
+            { icon: Zap, label: "Avg Response", value: "<50ms", color: "yellow" },
+            { icon: Shield, label: "Security Score", value: "A+", color: "blue" },
+            { icon: Users, label: "Active Users", value: "50K+", color: "purple" },
+          ].map((stat, index) => {
+            const Icon = stat.icon
+            return (
+              <div key={index} className="text-center">
+                <div
+                  className={`w-16 h-16 rounded-full bg-${stat.color}-500/20 flex items-center justify-center mx-auto mb-4`}
+                >
+                  <Icon className={`w-8 h-8 text-${stat.color}-400`} />
+                </div>
+                <div className="text-2xl font-bold text-white">{stat.value}</div>
+                <div className="text-gray-400 text-sm">{stat.label}</div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* CTA Section */}
+        <div className="text-center bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-2xl p-8 border border-blue-500/30">
+          <h3 className="text-2xl font-bold text-white mb-4">Ready to Get Started?</h3>
+          <p className="text-gray-300 mb-6">Join thousands of traders already using our platform</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button
+              size="lg"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-8"
+            >
+              Start Free Trial
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
+            <Button
+              variant="outline"
+              size="lg"
+              className="border-white/30 text-white hover:bg-white/10 px-8 bg-transparent"
+            >
+              Schedule Demo
+              <Play className="ml-2 h-5 w-5" />
+            </Button>
+            <Button variant="ghost" size="lg" className="text-white hover:bg-white/10 px-8">
+              View Pricing
+              <ArrowRight className="ml-2 h-5 w-5" />
+            </Button>
           </div>
         </div>
       </div>
