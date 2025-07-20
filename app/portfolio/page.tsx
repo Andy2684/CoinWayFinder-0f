@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Plus, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
+import { BackToDashboard } from "@/components/back-to-dashboard"
 
 interface PortfolioPosition {
   id: string
@@ -123,6 +124,7 @@ export default function PortfolioPage() {
   if (loading) {
     return (
       <div className="container mx-auto p-6">
+        <BackToDashboard className="mb-6" />
         <div className="flex items-center justify-center h-64">
           <RefreshCw className="h-8 w-8 animate-spin" />
         </div>
@@ -133,9 +135,12 @@ export default function PortfolioPage() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Portfolio</h1>
-          <p className="text-muted-foreground">Track your trading positions and performance</p>
+        <div className="flex items-center gap-4">
+          <BackToDashboard />
+          <div>
+            <h1 className="text-3xl font-bold">Portfolio</h1>
+            <p className="text-muted-foreground">Track your trading positions and performance</p>
+          </div>
         </div>
         <div className="flex gap-2">
           <Button onClick={fetchPortfolio} variant="outline" size="sm">

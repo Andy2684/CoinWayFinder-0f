@@ -13,6 +13,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { User, Bell, Shield, CreditCard, Key, CheckCircle, AlertCircle } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
+import { BackToDashboard } from "@/components/back-to-dashboard"
 
 export default function SettingsPage() {
   const { user } = useAuth()
@@ -28,9 +29,12 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground">Manage your account settings and preferences</p>
+      <div className="flex items-center gap-4">
+        <BackToDashboard />
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+          <p className="text-muted-foreground">Manage your account settings and preferences</p>
+        </div>
       </div>
 
       <Tabs defaultValue="profile" className="space-y-4">

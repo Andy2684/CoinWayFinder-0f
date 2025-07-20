@@ -7,6 +7,7 @@ import { SignalPerformance } from "@/components/signals/signal-performance"
 import { SignalAlerts } from "@/components/signals/signal-alerts"
 import { SignalFilters } from "@/components/signals/signal-filters"
 import { CreateSignalDialog } from "@/components/signals/create-signal-dialog"
+import { BackToDashboard } from "@/components/back-to-dashboard"
 
 export default function SignalsPage() {
   const [filters, setFilters] = useState({
@@ -23,9 +24,12 @@ export default function SignalsPage() {
     <ProtectedRoute>
       <div className="container mx-auto px-4 py-8 space-y-8">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-white">Trading Signals</h1>
-            <p className="text-gray-400 mt-2">AI-powered trading recommendations and market insights</p>
+          <div className="flex items-center gap-4">
+            <BackToDashboard />
+            <div>
+              <h1 className="text-3xl font-bold text-white">Trading Signals</h1>
+              <p className="text-gray-400 mt-2">AI-powered trading recommendations and market insights</p>
+            </div>
           </div>
           <CreateSignalDialog />
         </div>

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { Plus, Play, Pause, Settings, TrendingUp, Bot, DollarSign } from "lucide-react"
+import { BackToDashboard } from "@/components/back-to-dashboard"
 
 export default function BotsPage() {
   const [bots] = useState([
@@ -48,9 +49,12 @@ export default function BotsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Trading Bots</h1>
-          <p className="text-muted-foreground">Manage your automated trading strategies</p>
+        <div className="flex items-center gap-4">
+          <BackToDashboard />
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Trading Bots</h1>
+            <p className="text-muted-foreground">Manage your automated trading strategies</p>
+          </div>
         </div>
         <Button>
           <Plus className="mr-2 h-4 w-4" />

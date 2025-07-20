@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Search, TrendingUp, TrendingDown, Minus, Clock, Tag, AlertCircle } from "lucide-react"
 import { Navigation } from "@/components/navigation"
+import { BackToDashboard } from "@/components/back-to-dashboard"
 
 interface NewsArticle {
   id: string
@@ -126,6 +127,7 @@ export default function NewsPage() {
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <Navigation />
         <div className="container mx-auto px-4 py-8">
+          <BackToDashboard className="mb-6" />
           <div className="flex items-center justify-center min-h-[400px]">
             <Card className="w-full max-w-md">
               <CardContent className="flex flex-col items-center justify-center p-6">
@@ -146,9 +148,12 @@ export default function NewsPage() {
       <Navigation />
 
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Crypto News</h1>
-          <p className="text-white/70">Stay updated with the latest cryptocurrency news and market insights</p>
+        <div className="flex items-center gap-4 mb-8">
+          <BackToDashboard />
+          <div>
+            <h1 className="text-4xl font-bold text-white mb-2">Crypto News</h1>
+            <p className="text-white/70">Stay updated with the latest cryptocurrency news and market insights</p>
+          </div>
         </div>
 
         {/* Filters */}
