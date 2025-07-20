@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ArrowRight, Bot, TrendingUp, Zap, Shield, BarChart3, Target } from "lucide-react"
 import Link from "next/link"
-import { useAuth } from "@/components/auth/auth-provider"
 
 const floatingIcons = [
   { Icon: Bot, delay: 0, position: "top-20 left-20" },
@@ -18,11 +17,40 @@ const floatingIcons = [
 
 export function HeroSection() {
   const [mounted, setMounted] = useState(false)
-  const { user, loading } = useAuth()
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setMounted(true)
+    // Check for user data in localStorage after mount
+    try {
+      const userData = localStorage.getItem("user_data")
+      if (userData) {
+        setUser(JSON.parse(userData))
+      }
+    } catch (error) {
+      console.error("Error loading user data:", error)
+    }
+    setLoading(false)
   }, [])
+
+  if (!mounted) {
+    return (
+      <section className="relative min-h-screen flex items-center justify-center px-4 py-20 overflow-hidden">
+        <div className="max-w-6xl mx-auto text-center relative z-10">
+          <div className="animate-pulse">
+            <div className="h-8 bg-gray-700 rounded mb-6 mx-auto w-64"></div>
+            <div className="h-16 bg-gray-700 rounded mb-6 mx-auto"></div>
+            <div className="h-6 bg-gray-700 rounded mb-8 mx-auto w-96"></div>
+            <div className="flex justify-center space-x-4">
+              <div className="h-12 w-40 bg-gray-700 rounded"></div>
+              <div className="h-12 w-32 bg-gray-700 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    )
+  }
 
   return (
     <section className="relative min-h-screen flex items-center justify-center px-4 py-20 overflow-hidden">
@@ -76,7 +104,7 @@ export function HeroSection() {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          {!mounted || loading ? (
+          {loading ? (
             <>
               <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg" disabled>
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />

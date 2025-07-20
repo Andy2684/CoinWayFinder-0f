@@ -1,125 +1,97 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Switch } from "@/components/ui/switch"
-import { Check, Star, Zap, Crown } from "lucide-react"
+import { Check, Star, Zap, Crown, Rocket } from "lucide-react"
 import Link from "next/link"
-import { useAuth } from "@/components/auth/auth-provider"
 
 const plans = [
   {
     name: "Starter",
+    price: "Free",
+    description: "Perfect for beginners to get started with automated trading",
     icon: Zap,
-    description: "Perfect for beginners",
-    monthlyPrice: 29,
-    yearlyPrice: 290,
-    badge: null,
+    badge: "Most Popular",
+    badgeColor: "bg-blue-500/20 text-blue-300 border-blue-500/30",
     features: [
-      "2 Trading Bots",
+      "1 Trading Bot",
       "Basic Strategies",
       "Email Support",
       "Mobile App Access",
       "Basic Analytics",
-      "1 Exchange Connection",
+      "Demo Trading",
     ],
-    limitations: ["Limited to $10K trading volume", "Standard execution speed"],
+    buttonText: "Start Free",
+    buttonVariant: "default" as const,
+    highlighted: true,
   },
   {
-    name: "Professional",
+    name: "Pro",
+    price: "$29",
+    period: "/month",
+    description: "Advanced features for serious traders",
     icon: Star,
-    description: "Most popular choice",
-    monthlyPrice: 99,
-    yearlyPrice: 990,
-    badge: "Most Popular",
+    badge: "Best Value",
+    badgeColor: "bg-purple-500/20 text-purple-300 border-purple-500/30",
     features: [
-      "10 Trading Bots",
-      "Advanced Strategies",
+      "5 Trading Bots",
+      "Advanced AI Strategies",
       "Priority Support",
-      "Mobile & Web App",
       "Advanced Analytics",
-      "5 Exchange Connections",
-      "Custom Indicators",
       "Risk Management Tools",
-      "Backtesting Features",
+      "Multi-Exchange Support",
+      "Custom Indicators",
+      "Backtesting",
     ],
-    limitations: ["Limited to $100K trading volume"],
+    buttonText: "Go Pro",
+    buttonVariant: "outline" as const,
+    highlighted: false,
   },
   {
     name: "Enterprise",
+    price: "$99",
+    period: "/month",
+    description: "For professional traders and institutions",
     icon: Crown,
-    description: "For serious traders",
-    monthlyPrice: 299,
-    yearlyPrice: 2990,
-    badge: "Best Value",
+    badge: "Premium",
+    badgeColor: "bg-yellow-500/20 text-yellow-300 border-yellow-500/30",
     features: [
       "Unlimited Trading Bots",
-      "All Strategies + Custom",
-      "24/7 Phone Support",
-      "All Platform Access",
-      "Premium Analytics",
-      "Unlimited Exchanges",
-      "Custom Indicators",
-      "Advanced Risk Management",
-      "Full Backtesting Suite",
+      "Custom AI Strategies",
+      "Dedicated Support",
+      "White-label Solution",
       "API Access",
-      "White-label Options",
-      "Dedicated Account Manager",
+      "Advanced Risk Controls",
+      "Institutional Features",
+      "Custom Integrations",
+      "Priority Execution",
     ],
-    limitations: [],
+    buttonText: "Contact Sales",
+    buttonVariant: "outline" as const,
+    highlighted: false,
   },
 ]
 
 export function PricingSection() {
-  const [isYearly, setIsYearly] = useState(false)
-  const [mounted, setMounted] = useState(false)
-  const { user, loading } = useAuth()
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  const getButtonText = (planName: string) => {
-    if (!mounted || loading) return "Loading..."
-    if (user) return "Upgrade Plan"
-    return planName === "Starter" ? "Start Free Trial" : "Get Started"
-  }
-
-  const getButtonHref = (planName: string) => {
-    if (user) return "/dashboard/settings"
-    return "/auth/signup"
-  }
-
   return (
     <section className="py-20 px-4 relative">
       <div className="max-w-7xl mx-auto">
         {/* Section Header */}
         <div className="text-center mb-16">
           <Badge variant="secondary" className="mb-4 bg-green-500/20 text-green-300 border-green-500/30">
-            Pricing
+            <Rocket className="w-4 h-4 mr-2" />
+            Simple Pricing
           </Badge>
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
             Choose Your
-            <span className="bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent block mt-2">
+            <span className="bg-gradient-to-r from-green-400 to-blue-400 bg-clip-text text-transparent block">
               Trading Plan
             </span>
           </h2>
-          <p className="text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-            Start with our free trial and upgrade as you grow. All plans include our core AI trading features with no
-            hidden fees or setup costs.
+          <p className="text-xl text-gray-300 max-w-3xl mx-auto">
+            Start free and scale as you grow. No hidden fees, cancel anytime.
           </p>
-
-          {/* Billing Toggle */}
-          <div className="flex items-center justify-center gap-4 mb-12">
-            <span className={`text-lg ${!isYearly ? "text-white" : "text-gray-400"}`}>Monthly</span>
-            <Switch checked={isYearly} onCheckedChange={setIsYearly} className="data-[state=checked]:bg-green-500" />
-            <span className={`text-lg ${isYearly ? "text-white" : "text-gray-400"}`}>Yearly</span>
-            <Badge variant="secondary" className="bg-green-500/20 text-green-300 border-green-500/30 ml-2">
-              Save 20%
-            </Badge>
-          </div>
         </div>
 
         {/* Pricing Cards */}
@@ -127,87 +99,51 @@ export function PricingSection() {
           {plans.map((plan, index) => (
             <Card
               key={index}
-              className={`relative bg-white/5 backdrop-blur-xl border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105 hover:shadow-2xl ${
-                plan.badge === "Most Popular"
-                  ? "ring-2 ring-blue-500/50 hover:shadow-blue-500/20"
-                  : "hover:shadow-purple-500/20"
+              className={`relative bg-white/5 backdrop-blur-xl border-white/10 hover:bg-white/10 transition-all duration-300 ${
+                plan.highlighted ? "ring-2 ring-blue-500/50 scale-105" : ""
               }`}
             >
-              {plan.badge && (
+              {plan.highlighted && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <Badge
-                    className={`${
-                      plan.badge === "Most Popular" ? "bg-blue-500 text-white" : "bg-green-500 text-white"
-                    } px-4 py-1`}
-                  >
-                    {plan.badge}
-                  </Badge>
+                  <Badge className={plan.badgeColor}>{plan.badge}</Badge>
                 </div>
               )}
 
               <CardHeader className="text-center pb-8">
                 <div className="flex justify-center mb-4">
-                  <div className="p-3 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 bg-opacity-20">
-                    <plan.icon className="w-8 h-8 text-white" />
+                  <div className="p-3 rounded-full bg-white/10">
+                    <plan.icon className="w-8 h-8 text-blue-400" />
                   </div>
                 </div>
-                <CardTitle className="text-2xl text-white mb-2">{plan.name}</CardTitle>
-                <CardDescription className="text-gray-300 mb-6">{plan.description}</CardDescription>
+                <CardTitle className="text-2xl font-bold text-white mb-2">{plan.name}</CardTitle>
+                <div className="mb-4">
+                  <span className="text-4xl font-bold text-white">{plan.price}</span>
+                  {plan.period && <span className="text-gray-400">{plan.period}</span>}
+                </div>
+                <CardDescription className="text-gray-300">{plan.description}</CardDescription>
+              </CardHeader>
 
-                <div className="mb-6">
-                  <div className="flex items-baseline justify-center">
-                    <span className="text-4xl font-bold text-white">
-                      ${isYearly ? plan.yearlyPrice : plan.monthlyPrice}
-                    </span>
-                    <span className="text-gray-400 ml-2">/{isYearly ? "year" : "month"}</span>
-                  </div>
-                  {isYearly && (
-                    <div className="text-sm text-green-400 mt-2">
-                      Save ${plan.monthlyPrice * 12 - plan.yearlyPrice} per year
-                    </div>
-                  )}
-                </div>
+              <CardContent className="space-y-6">
+                <ul className="space-y-3">
+                  {plan.features.map((feature, featureIndex) => (
+                    <li key={featureIndex} className="flex items-center text-gray-300">
+                      <Check className="w-5 h-5 text-green-400 mr-3 flex-shrink-0" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
 
                 <Button
                   asChild
+                  variant={plan.buttonVariant}
                   className={`w-full ${
-                    plan.badge === "Most Popular"
-                      ? "bg-blue-600 hover:bg-blue-700"
-                      : "bg-purple-600 hover:bg-purple-700"
-                  } text-white`}
-                  disabled={!mounted || loading}
+                    plan.buttonVariant === "default"
+                      ? "bg-blue-600 hover:bg-blue-700 text-white"
+                      : "border-white/20 text-white hover:bg-white/10 bg-transparent"
+                  }`}
                 >
-                  <Link href={getButtonHref(plan.name)}>{getButtonText(plan.name)}</Link>
+                  <Link href={plan.name === "Enterprise" ? "/contact" : "/auth/signup"}>{plan.buttonText}</Link>
                 </Button>
-              </CardHeader>
-
-              <CardContent>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-white font-semibold mb-3">Features Included:</h4>
-                    <ul className="space-y-2">
-                      {plan.features.map((feature, featureIndex) => (
-                        <li key={featureIndex} className="flex items-center text-gray-300">
-                          <Check className="w-4 h-4 text-green-400 mr-3 flex-shrink-0" />
-                          {feature}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-
-                  {plan.limitations.length > 0 && (
-                    <div className="pt-4 border-t border-white/10">
-                      <h4 className="text-gray-400 font-semibold mb-2 text-sm">Limitations:</h4>
-                      <ul className="space-y-1">
-                        {plan.limitations.map((limitation, limitIndex) => (
-                          <li key={limitIndex} className="text-gray-500 text-sm">
-                            • {limitation}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
               </CardContent>
             </Card>
           ))}
@@ -218,27 +154,27 @@ export function PricingSection() {
           <h3 className="text-2xl font-bold text-white mb-8">Frequently Asked Questions</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
             <div className="text-left">
-              <h4 className="text-white font-semibold mb-2">Can I change plans anytime?</h4>
+              <h4 className="font-semibold text-white mb-2">Can I change plans anytime?</h4>
               <p className="text-gray-300 text-sm">
                 Yes, you can upgrade or downgrade your plan at any time. Changes take effect immediately.
               </p>
             </div>
             <div className="text-left">
-              <h4 className="text-white font-semibold mb-2">Is there a free trial?</h4>
+              <h4 className="font-semibold text-white mb-2">Is there a free trial?</h4>
               <p className="text-gray-300 text-sm">
-                Yes, all plans come with a 14-day free trial. No credit card required to start.
+                Our Starter plan is completely free forever. No credit card required to get started.
               </p>
             </div>
             <div className="text-left">
-              <h4 className="text-white font-semibold mb-2">What exchanges are supported?</h4>
+              <h4 className="font-semibold text-white mb-2">What exchanges are supported?</h4>
               <p className="text-gray-300 text-sm">
-                We support 15+ major exchanges including Binance, Coinbase Pro, Kraken, and more.
+                We support all major exchanges including Binance, Coinbase, Kraken, KuCoin, and more.
               </p>
             </div>
             <div className="text-left">
-              <h4 className="text-white font-semibold mb-2">Is my data secure?</h4>
+              <h4 className="font-semibold text-white mb-2">Is my data secure?</h4>
               <p className="text-gray-300 text-sm">
-                Yes, we use bank-grade encryption and never store your exchange withdrawal permissions.
+                Yes, we use bank-grade encryption and never store your exchange API secret keys.
               </p>
             </div>
           </div>
