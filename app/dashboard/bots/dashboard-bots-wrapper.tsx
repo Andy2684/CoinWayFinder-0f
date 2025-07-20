@@ -1,7 +1,8 @@
-import dynamic from "next/dynamic"
-import DashboardWrapper from "./dashboard-wrapper"
+"use client"
 
-const DashboardPageClient = dynamic(() => import("./dashboard-client"), {
+import dynamic from "next/dynamic"
+
+const DashboardBotsClient = dynamic(() => import("./dashboard-bots-client"), {
   ssr: false,
   loading: () => (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
@@ -10,6 +11,6 @@ const DashboardPageClient = dynamic(() => import("./dashboard-client"), {
   ),
 })
 
-export default function DashboardPage() {
-  return <DashboardWrapper />
+export default function DashboardBotsWrapper() {
+  return <DashboardBotsClient />
 }

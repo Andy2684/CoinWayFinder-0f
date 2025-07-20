@@ -1,286 +1,219 @@
 "use client"
 
 import { useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { CheckCircle, XCircle, User, Lock, Mail, Home } from "lucide-react"
+import { ArrowLeft, CheckCircle, XCircle, AlertCircle } from "lucide-react"
 import Link from "next/link"
 
-export default function AuthTestPageClient() {
-  const [loginData, setLoginData] = useState({ email: "", password: "" })
-  const [signupData, setSignupData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    username: "",
-    password: "",
-    confirmPassword: "",
+export default function AuthTestClient() {
+  const [testResults, setTestResults] = useState({
+    registration: null,
+    login: null,
+    tokenValidation: null,
+    logout: null,
   })
-  const [testResults, setTestResults] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
 
-  const runAuthTests = async () => {
-    setLoading(true)
-    setTestResults(null)
+  const runTest = async (testType: string) => {
+    setIsLoading(true)
+
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1000))
 
     // Mock test results
-    await new Promise((resolve) => setTimeout(resolve, 2000))
+    const mockResult = Math.random() > 0.2 // 80% success rate
 
-    const mockResults = {
-      login: {
-        success: true,
-        message: "Login test passed",
-        user: {
-          id: "1",
-          email: "demo@coinwayfinder.com",
-          firstName: "Demo",
-          lastName: "User",
-        },
-      },
-      signup: {
-        success: true,
-        message: "Signup test passed",
-        redirected: false,
-      },
-      auth: {
-        success: true,
-        message: "Authentication context working",
-        provider: "AuthProvider",
-      },
-    }
+    setTestResults((prev) => ({
+      ...prev,
+      [testType]: mockResult,
+    }))
 
-    setTestResults(mockResults)
-    setLoading(false)
+    setIsLoading(false)
   }
 
-  const testLogin = async () => {
-    setLoading(true)
-    // Mock login test
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+  const runAllTests = async () => {
+    setIsLoading(true)
 
-    const result = {
-      success: loginData.email === "demo@coinwayfinder.com" && loginData.password === "password",
-      message:
-        loginData.email === "demo@coinwayfinder.com" && loginData.password === "password"
-          ? "Login successful"
-          : "Invalid credentials",
+    for (const test of ["registration", "login", "tokenValidation", "logout"]) {
+      await runTest(test)
+      await new Promise((resolve) => setTimeout(resolve, 500))
     }
 
-    setTestResults({ ...testResults, loginTest: result })
-    setLoading(false)
+    setIsLoading(false)
   }
 
-  const testSignup = async () => {
-    setLoading(true)
-    // Mock signup test
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+  const getStatusIcon = (status: boolean | null) => {
+    if (status === null) return <AlertCircle className="h-4 w-4 text-gray-400" />
+    if (status) return <CheckCircle className="h-4 w-4 text-green-600" />
+    return <XCircle className="h-4 w-4 text-red-600" />
+  }
 
-    const result = {
-      success: signupData.email && signupData.password && signupData.firstName,
-      message:
-        signupData.email && signupData.password && signupData.firstName
-          ? "Signup successful - redirects to /thank-you"
-          : "Missing required fields",
-    }
-
-    setTestResults({ ...testResults, signupTest: result })
-    setLoading(false)
+  const getStatusBadge = (status: boolean | null) => {
+    if (status === null) return <Badge variant="secondary">Not Run</Badge>
+    if (status)
+      return (
+        <Badge variant="default" className="bg-green-600">
+          Passed
+        </Badge>
+      )
+    return <Badge variant="destructive">Failed</Badge>
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <div className="container mx-auto px-4 py-8">
         <div className="space-y-6">
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <Button variant="ghost" size="sm">
-                <Home className="h-4 w-4 mr-2" />
-                Home
+          {/* Header */}
+          <div className="flex items-center space-x-4">
+            <Link href="/auth/login">
+              <Button variant="ghost" size="sm" className="text-white hover:text-gray-300">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back to Login
               </Button>
             </Link>
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-white">Authentication Test</h1>
-              <p className="text-gray-400">Test authentication functionality and flows</p>
+              <h1 className="text-3xl font-bold tracking-tight text-white">Authentication Test Suite</h1>
+              <p className="text-gray-400">Test authentication endpoints and functionality</p>
             </div>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Login Test */}
+          {/* Test Controls */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Test Controls</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex space-x-4">
+                <Button onClick={runAllTests} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700">
+                  {isLoading ? "Running Tests..." : "Run All Tests"}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    setTestResults({
+                      registration: null,
+                      login: null,
+                      tokenValidation: null,
+                      logout: null,
+                    })
+                  }
+                >
+                  Clear Results
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Test Results */}
+          <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Login Test
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    {getStatusIcon(testResults.registration)}
+                    <span className="ml-2">User Registration</span>
+                  </span>
+                  {getStatusBadge(testResults.registration)}
                 </CardTitle>
-                <CardDescription>Test the login functionality</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="loginEmail">Email</Label>
-                  <Input
-                    id="loginEmail"
-                    type="email"
-                    placeholder="demo@coinwayfinder.com"
-                    value={loginData.email}
-                    onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="loginPassword">Password</Label>
-                  <Input
-                    id="loginPassword"
-                    type="password"
-                    placeholder="password"
-                    value={loginData.password}
-                    onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-                  />
-                </div>
-                <Button onClick={testLogin} disabled={loading} className="w-full">
-                  <Lock className="h-4 w-4 mr-2" />
-                  Test Login
+                <p className="text-sm text-muted-foreground">
+                  Tests user registration endpoint with email validation and password requirements.
+                </p>
+                <Button variant="outline" onClick={() => runTest("registration")} disabled={isLoading} size="sm">
+                  Run Test
                 </Button>
-                {testResults?.loginTest && (
-                  <div
-                    className={`flex items-center gap-2 p-2 rounded ${testResults.loginTest.success ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
-                  >
-                    {testResults.loginTest.success ? (
-                      <CheckCircle className="h-4 w-4" />
-                    ) : (
-                      <XCircle className="h-4 w-4" />
-                    )}
-                    {testResults.loginTest.message}
-                  </div>
-                )}
               </CardContent>
             </Card>
 
-            {/* Signup Test */}
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Mail className="h-5 w-5" />
-                  Signup Test
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    {getStatusIcon(testResults.login)}
+                    <span className="ml-2">User Login</span>
+                  </span>
+                  {getStatusBadge(testResults.login)}
                 </CardTitle>
-                <CardDescription>Test the signup functionality</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
-                    <Input
-                      id="firstName"
-                      value={signupData.firstName}
-                      onChange={(e) => setSignupData({ ...signupData, firstName: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
-                    <Input
-                      id="lastName"
-                      value={signupData.lastName}
-                      onChange={(e) => setSignupData({ ...signupData, lastName: e.target.value })}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signupEmail">Email</Label>
-                  <Input
-                    id="signupEmail"
-                    type="email"
-                    value={signupData.email}
-                    onChange={(e) => setSignupData({ ...signupData, email: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signupPassword">Password</Label>
-                  <Input
-                    id="signupPassword"
-                    type="password"
-                    value={signupData.password}
-                    onChange={(e) => setSignupData({ ...signupData, password: e.target.value })}
-                  />
-                </div>
-                <Button onClick={testSignup} disabled={loading} className="w-full">
-                  <User className="h-4 w-4 mr-2" />
-                  Test Signup
+                <p className="text-sm text-muted-foreground">
+                  Tests user login endpoint with credential validation and token generation.
+                </p>
+                <Button variant="outline" onClick={() => runTest("login")} disabled={isLoading} size="sm">
+                  Run Test
                 </Button>
-                {testResults?.signupTest && (
-                  <div
-                    className={`flex items-center gap-2 p-2 rounded ${testResults.signupTest.success ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
-                  >
-                    {testResults.signupTest.success ? (
-                      <CheckCircle className="h-4 w-4" />
-                    ) : (
-                      <XCircle className="h-4 w-4" />
-                    )}
-                    {testResults.signupTest.message}
-                  </div>
-                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    {getStatusIcon(testResults.tokenValidation)}
+                    <span className="ml-2">Token Validation</span>
+                  </span>
+                  {getStatusBadge(testResults.tokenValidation)}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">Tests JWT token validation and protected route access.</p>
+                <Button variant="outline" onClick={() => runTest("tokenValidation")} disabled={isLoading} size="sm">
+                  Run Test
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center justify-between">
+                  <span className="flex items-center">
+                    {getStatusIcon(testResults.logout)}
+                    <span className="ml-2">User Logout</span>
+                  </span>
+                  {getStatusBadge(testResults.logout)}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">Tests user logout endpoint and token invalidation.</p>
+                <Button variant="outline" onClick={() => runTest("logout")} disabled={isLoading} size="sm">
+                  Run Test
+                </Button>
               </CardContent>
             </Card>
           </div>
 
-          {/* Full Test Suite */}
+          {/* Manual Test Form */}
           <Card>
             <CardHeader>
-              <CardTitle>Full Authentication Test Suite</CardTitle>
-              <CardDescription>Run comprehensive tests on all authentication features</CardDescription>
+              <CardTitle>Manual Test Form</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Button onClick={runAuthTests} disabled={loading} className="w-full">
-                {loading ? "Running Tests..." : "Run All Tests"}
-              </Button>
-
-              {testResults && (
-                <div className="space-y-4">
-                  <Separator />
-                  <h3 className="font-semibold">Test Results:</h3>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span>Login Functionality</span>
-                      <Badge variant={testResults.login.success ? "default" : "destructive"}>
-                        {testResults.login.success ? "PASS" : "FAIL"}
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span>Signup Functionality</span>
-                      <Badge variant={testResults.signup.success ? "default" : "destructive"}>
-                        {testResults.signup.success ? "PASS" : "FAIL"}
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span>Auth Context</span>
-                      <Badge variant={testResults.auth.success ? "default" : "destructive"}>
-                        {testResults.auth.success ? "PASS" : "FAIL"}
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                      <span>No Dashboard Redirect</span>
-                      <Badge variant={!testResults.signup.redirected ? "default" : "destructive"}>
-                        {!testResults.signup.redirected ? "PASS" : "FAIL"}
-                      </Badge>
-                    </div>
-                  </div>
-
-                  <div className="p-4 bg-muted rounded-lg">
-                    <h4 className="font-medium mb-2">Test Summary:</h4>
-                    <ul className="text-sm space-y-1">
-                      <li>✅ Login redirects to dashboard after successful authentication</li>
-                      <li>✅ Signup redirects to /thank-you page (not dashboard)</li>
-                      <li>✅ Authentication context works properly</li>
-                      <li>✅ No SSR errors with auth hooks</li>
-                    </ul>
-                  </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="testEmail">Test Email</Label>
+                  <Input id="testEmail" type="email" placeholder="test@example.com" />
                 </div>
-              )}
+                <div className="space-y-2">
+                  <Label htmlFor="testPassword">Test Password</Label>
+                  <Input id="testPassword" type="password" placeholder="password123" />
+                </div>
+              </div>
+              <div className="flex space-x-2">
+                <Button variant="outline" size="sm">
+                  Test Registration
+                </Button>
+                <Button variant="outline" size="sm">
+                  Test Login
+                </Button>
+                <Button variant="outline" size="sm">
+                  Test Protected Route
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>

@@ -1,44 +1,45 @@
 "use client"
 
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ActiveBots } from "@/components/bots/active-bots"
 import { BotPerformance } from "@/components/bots/bot-performance"
 import { BotStrategies } from "@/components/bots/bot-strategies"
 import { BotsOverview } from "@/components/bots/bots-overview"
 import { CreateBotDialog } from "@/components/bots/create-bot-dialog"
-import { Plus, Bot, TrendingUp, Activity, AlertCircle, Home } from "lucide-react"
+import { ArrowLeft, Plus, Bot, TrendingUp, Activity, DollarSign } from "lucide-react"
 import Link from "next/link"
 
-export default function BotsPageClient() {
-  const [createBotOpen, setCreateBotOpen] = useState(false)
+export default function BotsClient() {
+  const [showCreateDialog, setShowCreateDialog] = useState(false)
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <div className="container mx-auto px-4 py-8">
         <div className="space-y-6">
+          {/* Header */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+            <div className="flex items-center space-x-4">
               <Link href="/">
-                <Button variant="ghost" size="sm">
-                  <Home className="h-4 w-4 mr-2" />
-                  Home
+                <Button variant="ghost" size="sm" className="text-white hover:text-gray-300">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Home
                 </Button>
               </Link>
               <div>
                 <h1 className="text-3xl font-bold tracking-tight text-white">Trading Bots</h1>
-                <p className="text-gray-400">Manage your automated trading strategies and monitor performance</p>
+                <p className="text-gray-400">Manage and monitor your automated trading strategies</p>
               </div>
             </div>
-            <Button onClick={() => setCreateBotOpen(true)}>
+            <Button onClick={() => setShowCreateDialog(true)} className="bg-blue-600 hover:bg-blue-700">
               <Plus className="h-4 w-4 mr-2" />
               Create Bot
             </Button>
           </div>
 
-          {/* Bot Stats */}
+          {/* Key Metrics */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -46,7 +47,7 @@ export default function BotsPageClient() {
                 <Bot className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">12</div>
+                <div className="text-2xl font-bold">8</div>
                 <p className="text-xs text-muted-foreground">
                   <span className="text-green-600">+2</span> from last week
                 </p>
@@ -56,12 +57,12 @@ export default function BotsPageClient() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Profit</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <DollarSign className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">+$8,234.56</div>
+                <div className="text-2xl font-bold text-green-600">+$3,247.89</div>
                 <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">+15.2%</span> this month
+                  <span className="text-green-600">+12.3%</span> this month
                 </p>
               </CardContent>
             </Card>
@@ -69,38 +70,42 @@ export default function BotsPageClient() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-                <Activity className="h-4 w-4 text-muted-foreground" />
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">73.5%</div>
+                <div className="text-2xl font-bold">68.5%</div>
                 <p className="text-xs text-muted-foreground">
-                  <span className="text-green-600">+2.1%</span> vs last month
+                  <span className="text-green-600">+3.2%</span> vs last month
                 </p>
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Alerts</CardTitle>
-                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Active Trades</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">3</div>
+                <div className="text-2xl font-bold">24</div>
                 <p className="text-xs text-muted-foreground">
-                  <span className="text-yellow-600">2 warnings</span>, 1 error
+                  <span className="text-blue-600">Running</span> across all bots
                 </p>
               </CardContent>
             </Card>
           </div>
 
-          {/* Bot Management Tabs */}
-          <Tabs defaultValue="active" className="space-y-4">
-            <TabsList>
+          {/* Main Content */}
+          <Tabs defaultValue="overview" className="space-y-4">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
               <TabsTrigger value="active">Active Bots</TabsTrigger>
               <TabsTrigger value="performance">Performance</TabsTrigger>
               <TabsTrigger value="strategies">Strategies</TabsTrigger>
-              <TabsTrigger value="overview">Overview</TabsTrigger>
             </TabsList>
+
+            <TabsContent value="overview">
+              <BotsOverview />
+            </TabsContent>
 
             <TabsContent value="active">
               <ActiveBots />
@@ -113,13 +118,10 @@ export default function BotsPageClient() {
             <TabsContent value="strategies">
               <BotStrategies />
             </TabsContent>
-
-            <TabsContent value="overview">
-              <BotsOverview />
-            </TabsContent>
           </Tabs>
 
-          <CreateBotDialog open={createBotOpen} onOpenChange={setCreateBotOpen} />
+          {/* Create Bot Dialog */}
+          <CreateBotDialog open={showCreateDialog} onOpenChange={setShowCreateDialog} />
         </div>
       </div>
     </div>

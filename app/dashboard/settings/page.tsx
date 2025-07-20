@@ -1,4 +1,5 @@
 import dynamic from "next/dynamic"
+import DashboardSettingsWrapper from "./dashboard-settings-wrapper"
 
 const DashboardSettingsPageClient = dynamic(() => import("./dashboard-settings-client"), {
   ssr: false,
@@ -10,5 +11,5 @@ const DashboardSettingsPageClient = dynamic(() => import("./dashboard-settings-c
 })
 
 export default function DashboardSettingsPage() {
-  return <DashboardSettingsPageClient />
+  return <DashboardSettingsWrapper />
 }

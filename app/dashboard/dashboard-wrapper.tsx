@@ -1,5 +1,6 @@
+"use client"
+
 import dynamic from "next/dynamic"
-import DashboardWrapper from "./dashboard-wrapper"
 
 const DashboardPageClient = dynamic(() => import("./dashboard-client"), {
   ssr: false,
@@ -10,6 +11,6 @@ const DashboardPageClient = dynamic(() => import("./dashboard-client"), {
   ),
 })
 
-export default function DashboardPage() {
-  return <DashboardWrapper />
+export default function DashboardWrapper() {
+  return <DashboardPageClient />
 }
