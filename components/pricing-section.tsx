@@ -3,64 +3,68 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Check, Star, Shield } from "lucide-react"
-import Link from "next/link"
+import { Check, Star, Zap, Crown } from "lucide-react"
 
 export function PricingSection() {
   const plans = [
     {
       name: "Starter",
-      price: "$29",
-      period: "/month",
+      price: "Free",
       description: "Perfect for beginners getting started with crypto trading",
+      icon: Star,
       features: [
-        "1 Trading Bot",
-        "Basic Signals",
-        "Email Support",
-        "Mobile App Access",
-        "Basic Analytics",
-        "Community Access",
+        "Basic trading signals",
+        "1 AI trading bot",
+        "Email support",
+        "Basic market analysis",
+        "Mobile app access",
+        "Community access",
       ],
+      buttonText: "Get Started Free",
+      buttonVariant: "outline" as const,
       popular: false,
-      cta: "Start Free Trial",
     },
     {
-      name: "Professional",
-      price: "$99",
+      name: "Pro",
+      price: "$49",
       period: "/month",
-      description: "Advanced features for serious traders and professionals",
+      description: "Advanced features for serious traders",
+      icon: Zap,
       features: [
-        "5 Trading Bots",
-        "Premium Signals",
-        "Priority Support",
-        "Advanced Analytics",
-        "Risk Management Tools",
-        "API Access",
-        "Custom Strategies",
-        "Portfolio Management",
+        "Advanced trading signals",
+        "5 AI trading bots",
+        "Priority support",
+        "Advanced analytics",
+        "Risk management tools",
+        "Multi-exchange support",
+        "Custom strategies",
+        "Real-time alerts",
       ],
+      buttonText: "Start Pro Trial",
+      buttonVariant: "default" as const,
       popular: true,
-      cta: "Start Free Trial",
     },
     {
       name: "Enterprise",
-      price: "$299",
+      price: "$199",
       period: "/month",
-      description: "Complete solution for institutions and high-volume traders",
+      description: "Complete solution for professional traders",
+      icon: Crown,
       features: [
-        "Unlimited Bots",
-        "VIP Signals",
-        "24/7 Phone Support",
-        "White-label Solution",
-        "Dedicated Account Manager",
-        "Custom Integrations",
-        "Advanced Risk Controls",
-        "Institutional Features",
-        "Multi-user Access",
-        "Custom Reporting",
+        "Unlimited trading signals",
+        "Unlimited AI bots",
+        "24/7 phone support",
+        "Custom AI models",
+        "Portfolio management",
+        "API access",
+        "White-label solution",
+        "Dedicated account manager",
+        "Custom integrations",
+        "Advanced reporting",
       ],
+      buttonText: "Contact Sales",
+      buttonVariant: "outline" as const,
       popular: false,
-      cta: "Contact Sales",
     },
   ]
 
@@ -69,7 +73,7 @@ export function PricingSection() {
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
           <Badge variant="outline" className="mb-4">
-            Pricing
+            Pricing Plans
           </Badge>
           <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
             Choose Your{" "}
@@ -78,11 +82,11 @@ export function PricingSection() {
             </span>
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Start with our free trial and upgrade as you grow. All plans include our core features with no hidden fees.
+            Start free and upgrade as you grow. All plans include our core AI trading features with no hidden fees.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-7xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
           {plans.map((plan, index) => (
             <Card
               key={index}
@@ -92,57 +96,61 @@ export function PricingSection() {
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
-                  <Badge className="bg-emerald-500 text-white px-4 py-1">
-                    <Star className="w-4 h-4 mr-1" />
-                    Most Popular
-                  </Badge>
+                  <Badge className="bg-emerald-600 text-white px-4 py-1">Most Popular</Badge>
                 </div>
               )}
 
               <CardHeader className="text-center pb-8">
+                <div
+                  className={`w-16 h-16 mx-auto mb-4 rounded-2xl flex items-center justify-center ${
+                    plan.popular ? "bg-emerald-100" : "bg-gray-100"
+                  }`}
+                >
+                  <plan.icon className={`w-8 h-8 ${plan.popular ? "text-emerald-600" : "text-gray-600"}`} />
+                </div>
                 <CardTitle className="text-2xl font-bold text-gray-900">{plan.name}</CardTitle>
                 <div className="mt-4">
-                  <span className="text-5xl font-bold text-gray-900">{plan.price}</span>
-                  <span className="text-gray-600 ml-1">{plan.period}</span>
+                  <span className="text-4xl font-bold text-gray-900">{plan.price}</span>
+                  {plan.period && <span className="text-gray-600 ml-1">{plan.period}</span>}
                 </div>
-                <CardDescription className="mt-4 text-gray-600">{plan.description}</CardDescription>
+                <CardDescription className="mt-2 text-gray-600">{plan.description}</CardDescription>
               </CardHeader>
 
               <CardContent className="space-y-6">
-                <ul className="space-y-4">
+                <ul className="space-y-3">
                   {plan.features.map((feature, featureIndex) => (
-                    <li key={featureIndex} className="flex items-center">
-                      <Check className="w-5 h-5 text-emerald-500 mr-3 flex-shrink-0" />
+                    <li key={featureIndex} className="flex items-center gap-3">
+                      <Check className="w-5 h-5 text-emerald-600 flex-shrink-0" />
                       <span className="text-gray-700">{feature}</span>
                     </li>
                   ))}
                 </ul>
 
-                <Link href="/auth/signup" className="block">
-                  <Button
-                    className={`w-full py-3 text-lg ${
-                      plan.popular
-                        ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                        : "bg-gray-900 hover:bg-gray-800 text-white"
-                    }`}
-                  >
-                    {plan.cta}
-                  </Button>
-                </Link>
+                <Button
+                  className={`w-full py-3 ${
+                    plan.buttonVariant === "default"
+                      ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                      : "border-emerald-600 text-emerald-600 hover:bg-emerald-50"
+                  }`}
+                  variant={plan.buttonVariant}
+                  size="lg"
+                >
+                  {plan.buttonText}
+                </Button>
               </CardContent>
             </Card>
           ))}
         </div>
 
-        {/* Money Back Guarantee */}
-        <div className="text-center mt-16">
-          <div className="inline-flex items-center space-x-2 bg-emerald-50 px-6 py-3 rounded-full">
-            <Shield className="w-5 h-5 text-emerald-600" />
-            <span className="text-emerald-700 font-medium">30-day money-back guarantee</span>
+        {/* Additional Info */}
+        <div className="mt-16 text-center">
+          <p className="text-gray-600 mb-4">All plans include a 14-day free trial. No credit card required.</p>
+          <div className="flex flex-wrap justify-center gap-8 text-sm text-gray-500">
+            <span>✓ Cancel anytime</span>
+            <span>✓ 30-day money-back guarantee</span>
+            <span>✓ No setup fees</span>
+            <span>✓ Free migration support</span>
           </div>
-          <p className="text-gray-600 mt-4">
-            Try any plan risk-free. If you're not satisfied, get a full refund within 30 days.
-          </p>
         </div>
       </div>
     </section>
