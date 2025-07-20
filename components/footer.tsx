@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { TrendingUp, Twitter, Github, Linkedin } from "lucide-react"
+import { TrendingUp, Twitter, Github, Linkedin, Mail } from "lucide-react"
 
 export function Footer() {
   return (
@@ -12,9 +12,9 @@ export function Footer() {
               <TrendingUp className="h-8 w-8 text-blue-400" />
               <span className="text-xl font-bold text-white">CoinWayFinder</span>
             </Link>
-            <p className="text-gray-300 mb-4 max-w-md">
-              The most advanced cryptocurrency trading platform with AI-powered bots, real-time analytics, and
-              professional-grade tools.
+            <p className="text-gray-400 mb-6 max-w-md">
+              The most advanced AI-powered cryptocurrency trading platform. Automate your trades, maximize profits, and
+              trade like a pro.
             </p>
             <div className="flex space-x-4">
               <a href="#" className="text-gray-400 hover:text-white transition-colors">
@@ -26,6 +26,9 @@ export function Footer() {
               <a href="#" className="text-gray-400 hover:text-white transition-colors">
                 <Linkedin className="h-5 w-5" />
               </a>
+              <a href="#" className="text-gray-400 hover:text-white transition-colors">
+                <Mail className="h-5 w-5" />
+              </a>
             </div>
           </div>
 
@@ -34,23 +37,23 @@ export function Footer() {
             <h3 className="text-white font-semibold mb-4">Product</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="#features" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="#features" className="text-gray-400 hover:text-white transition-colors">
                   Features
                 </Link>
               </li>
               <li>
-                <Link href="#pricing" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="#pricing" className="text-gray-400 hover:text-white transition-colors">
                   Pricing
                 </Link>
               </li>
               <li>
-                <Link href="/news" className="text-gray-300 hover:text-white transition-colors">
-                  News
+                <Link href="/signals" className="text-gray-400 hover:text-white transition-colors">
+                  Trading Signals
                 </Link>
               </li>
               <li>
-                <Link href="/integrations" className="text-gray-300 hover:text-white transition-colors">
-                  Integrations
+                <Link href="/news" className="text-gray-400 hover:text-white transition-colors">
+                  Market News
                 </Link>
               </li>
             </ul>
@@ -61,22 +64,22 @@ export function Footer() {
             <h3 className="text-white font-semibold mb-4">Company</h3>
             <ul className="space-y-2">
               <li>
-                <Link href="/about" className="text-gray-300 hover:text-white transition-colors">
-                  About
+                <Link href="/about" className="text-gray-400 hover:text-white transition-colors">
+                  About Us
                 </Link>
               </li>
               <li>
-                <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/contact" className="text-gray-400 hover:text-white transition-colors">
                   Contact
                 </Link>
               </li>
               <li>
-                <Link href="/privacy" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/privacy" className="text-gray-400 hover:text-white transition-colors">
                   Privacy Policy
                 </Link>
               </li>
               <li>
-                <Link href="/terms" className="text-gray-300 hover:text-white transition-colors">
+                <Link href="/terms" className="text-gray-400 hover:text-white transition-colors">
                   Terms of Service
                 </Link>
               </li>
@@ -84,8 +87,11 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-white/10 mt-8 pt-8 text-center">
-          <p className="text-gray-400">© 2024 CoinWayFinder. All rights reserved.</p>
+        <div className="border-t border-white/10 mt-12 pt-8">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <p className="text-gray-400 text-sm">© 2024 CoinWayFinder. All rights reserved.</p>
+            <p className="text-gray-400 text-sm mt-4 md:mt-0">Built with ❤️ for crypto traders worldwide</p>
+          </div>
         </div>
       </div>
     </footer>

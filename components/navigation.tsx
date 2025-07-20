@@ -33,20 +33,30 @@ export function Navigation() {
             <Link href="/news" className="text-gray-300 hover:text-white transition-colors">
               News
             </Link>
+            <Link href="/signals" className="text-gray-300 hover:text-white transition-colors">
+              Signals
+            </Link>
+          </div>
 
+          {/* Desktop Auth Buttons */}
+          <div className="hidden md:flex items-center space-x-4">
             {user ? (
-              <div className="flex items-center space-x-4">
+              <>
                 <Link href="/dashboard">
-                  <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+                  <Button variant="ghost" className="text-white hover:bg-white/10">
                     Dashboard
                   </Button>
                 </Link>
-                <Button onClick={logout} variant="ghost" className="text-gray-300 hover:text-white">
+                <Button
+                  onClick={logout}
+                  variant="outline"
+                  className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+                >
                   Logout
                 </Button>
-              </div>
+              </>
             ) : (
-              <div className="flex items-center space-x-4">
+              <>
                 <Link href="/auth/login">
                   <Button variant="ghost" className="text-white hover:bg-white/10">
                     Login
@@ -54,10 +64,10 @@ export function Navigation() {
                 </Link>
                 <Link href="/auth/signup">
                   <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                    Get Started
+                    Sign Up
                   </Button>
                 </Link>
-              </div>
+              </>
             )}
           </div>
 
@@ -94,42 +104,48 @@ export function Navigation() {
               >
                 News
               </Link>
+              <Link
+                href="/signals"
+                className="block px-3 py-2 text-gray-300 hover:text-white transition-colors"
+                onClick={toggleMenu}
+              >
+                Signals
+              </Link>
 
-              {user ? (
-                <>
-                  <Link href="/dashboard" onClick={toggleMenu}>
+              <div className="border-t border-white/10 pt-3 mt-3">
+                {user ? (
+                  <>
+                    <Link href="/dashboard" onClick={toggleMenu}>
+                      <Button variant="ghost" className="w-full justify-start text-white hover:bg-white/10 mb-2">
+                        Dashboard
+                      </Button>
+                    </Link>
                     <Button
+                      onClick={() => {
+                        logout()
+                        toggleMenu()
+                      }}
                       variant="outline"
-                      className="w-full mt-2 border-white/20 text-white hover:bg-white/10 bg-transparent"
+                      className="w-full border-white/20 text-white hover:bg-white/10"
                     >
-                      Dashboard
+                      Logout
                     </Button>
-                  </Link>
-                  <Button
-                    onClick={() => {
-                      logout()
-                      toggleMenu()
-                    }}
-                    variant="ghost"
-                    className="w-full mt-2 text-gray-300 hover:text-white"
-                  >
-                    Logout
-                  </Button>
-                </>
-              ) : (
-                <div className="space-y-2 pt-2">
-                  <Link href="/auth/login" onClick={toggleMenu}>
-                    <Button variant="ghost" className="w-full text-white hover:bg-white/10">
-                      Login
-                    </Button>
-                  </Link>
-                  <Link href="/auth/signup" onClick={toggleMenu}>
-                    <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                      Get Started
-                    </Button>
-                  </Link>
-                </div>
-              )}
+                  </>
+                ) : (
+                  <>
+                    <Link href="/auth/login" onClick={toggleMenu}>
+                      <Button variant="ghost" className="w-full justify-start text-white hover:bg-white/10 mb-2">
+                        Login
+                      </Button>
+                    </Link>
+                    <Link href="/auth/signup" onClick={toggleMenu}>
+                      <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                        Sign Up
+                      </Button>
+                    </Link>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )}

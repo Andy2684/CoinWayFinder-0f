@@ -1,87 +1,102 @@
 "use client"
 
-import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
 
 interface User {
   id: string
   email: string
-  name: string
+  firstName: string
+  lastName: string
+  username: string
+  role: string
+  plan: string
+  isVerified: boolean
 }
 
 interface AuthContextType {
   user: User | null
-  login: (email: string, password: string) => Promise<void>
-  signup: (email: string, password: string, name: string) => Promise<void>
+  login: (email: string, password: string) => Promise<boolean>
   logout: () => void
+  signup: (userData: any) => Promise<{ success: boolean; message?: string }>
   loading: boolean
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Check for existing session
+    // Check if user is logged in on mount
     const token = localStorage.getItem("auth_token")
-    const userData = localStorage.getItem("user_data")
-
-    if (token && userData) {
+    if (token) {
+      // Simulate checking token validity
       try {
-        setUser(JSON.parse(userData))
+        const userData = localStorage.getItem("user_data")
+        if (userData) {
+          setUser(JSON.parse(userData))
+        }
       } catch (error) {
         localStorage.removeItem("auth_token")
         localStorage.removeItem("user_data")
       }
     }
-
     setLoading(false)
   }, [])
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<boolean> => {
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      })
+      setLoading(true)
 
-      if (!response.ok) {
-        throw new Error("Login failed")
+      // Mock login - in real app, this would be an API call
+      if (email === "demo@coinwayfinder.com" && password === "password") {
+        const mockUser: User = {
+          id: "1",
+          email: "demo@coinwayfinder.com",
+          firstName: "Demo",
+          lastName: "User",
+          username: "demo_user",
+          role: "user",
+          plan: "pro",
+          isVerified: true,
+        }
+
+        localStorage.setItem("auth_token", "mock_token_123")
+        localStorage.setItem("user_data", JSON.stringify(mockUser))
+        setUser(mockUser)
+        return true
       }
 
-      const data = await response.json()
-
-      localStorage.setItem("auth_token", data.token)
-      localStorage.setItem("user_data", JSON.stringify(data.user))
-      setUser(data.user)
+      return false
     } catch (error) {
-      throw error
+      console.error("Login error:", error)
+      return false
+    } finally {
+      setLoading(false)
     }
   }
 
-  const signup = async (email: string, password: string, name: string) => {
+  const signup = async (userData: any): Promise<{ success: boolean; message?: string }> => {
     try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password, name }),
-      })
+      setLoading(true)
 
-      if (!response.ok) {
-        throw new Error("Signup failed")
-      }
+      // Mock signup - in real app, this would be an API call
+      await new Promise((resolve) => setTimeout(resolve, 1000))
 
       // Don't automatically log in after signup
-      // User stays on homepage
+      return {
+        success: true,
+        message: "Account created successfully! Please check your email to verify your account.",
+      }
     } catch (error) {
-      throw error
+      console.error("Signup error:", error)
+      return {
+        success: false,
+        message: "Failed to create account. Please try again.",
+      }
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -91,15 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null)
   }
 
-  const value = {
-    user,
-    login,
-    signup,
-    logout,
-    loading,
-  }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={{ user, login, logout, signup, loading }}>{children}</AuthContext.Provider>
 }
 
 export function useAuth() {

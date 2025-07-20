@@ -1,8 +1,8 @@
 "use client"
 
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Check } from "lucide-react"
+import Link from "next/link"
 import { useAuth } from "@/components/auth/auth-provider"
 
 const plans = [
@@ -10,29 +10,23 @@ const plans = [
     name: "Starter",
     price: "$29",
     period: "/month",
-    description: "Perfect for beginners getting started with crypto trading",
-    features: [
-      "Up to 3 trading bots",
-      "Basic market analysis",
-      "Email support",
-      "Mobile app access",
-      "Basic portfolio tracking",
-    ],
+    description: "Perfect for beginners",
+    features: ["1 Trading Bot", "Basic Analytics", "Email Support", "5 Active Strategies", "Standard Execution Speed"],
     popular: false,
   },
   {
-    name: "Professional",
+    name: "Pro",
     price: "$99",
     period: "/month",
-    description: "Advanced features for serious traders",
+    description: "Most popular choice",
     features: [
-      "Unlimited trading bots",
-      "Advanced AI strategies",
-      "Real-time alerts",
-      "Priority support",
-      "Advanced analytics",
-      "API access",
-      "Custom indicators",
+      "5 Trading Bots",
+      "Advanced Analytics",
+      "Priority Support",
+      "Unlimited Strategies",
+      "Lightning Fast Execution",
+      "Custom Indicators",
+      "Portfolio Management",
     ],
     popular: true,
   },
@@ -40,15 +34,16 @@ const plans = [
     name: "Enterprise",
     price: "$299",
     period: "/month",
-    description: "Full-featured solution for professional teams",
+    description: "For professional traders",
     features: [
-      "Everything in Professional",
-      "White-label solution",
-      "Dedicated account manager",
-      "Custom integrations",
-      "Advanced risk management",
-      "Multi-user accounts",
-      "24/7 phone support",
+      "Unlimited Trading Bots",
+      "AI-Powered Analytics",
+      "24/7 Phone Support",
+      "Custom Strategies",
+      "Institutional Grade Speed",
+      "Advanced Risk Management",
+      "White-label Solutions",
+      "API Access",
     ],
     popular: false,
   },
@@ -68,12 +63,11 @@ export function PricingSection() {
             </span>
           </h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            Start with our free trial and upgrade as you grow. All plans include our core features with no hidden fees
-            or long-term commitments.
+            Start with any plan and upgrade as your trading grows
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {plans.map((plan, index) => (
             <div
               key={index}
@@ -91,10 +85,10 @@ export function PricingSection() {
 
               <div className="text-center mb-8">
                 <h3 className="text-2xl font-bold text-white mb-2">{plan.name}</h3>
-                <p className="text-gray-300 mb-4">{plan.description}</p>
+                <p className="text-gray-400 mb-4">{plan.description}</p>
                 <div className="flex items-baseline justify-center">
                   <span className="text-4xl font-bold text-white">{plan.price}</span>
-                  <span className="text-gray-300 ml-1">{plan.period}</span>
+                  <span className="text-gray-400 ml-1">{plan.period}</span>
                 </div>
               </div>
 
