@@ -1,6 +1,5 @@
 "use client"
 
-import dynamic from "next/dynamic"
 import { useState } from "react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { Button } from "@/components/ui/button"
@@ -9,16 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { CheckCircle, XCircle, User, Mail, Shield } from "lucide-react"
 
-const AuthTestPageClient = dynamic(() => import("./auth-test-client"), {
-  ssr: false,
-  loading: () => (
-    <div className="min-h-screen flex items-center justify-center bg-[#191A1E]">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#30D5C8]"></div>
-    </div>
-  ),
-})
-
-export default function AuthTestPage() {
+export default function AuthTestPageClient() {
   const { user, login, logout, signup, loading, isAuthenticated } = useAuth()
   const [testResults, setTestResults] = useState<string[]>([])
 
