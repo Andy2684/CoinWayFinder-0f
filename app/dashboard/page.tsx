@@ -7,7 +7,13 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { WalletConnectButton } from "@/components/wallet-connect-button"
+import { Switch } from "@/components/ui/switch"
+import { Slider } from "@/components/ui/slider"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   TrendingUp,
   TrendingDown,
@@ -36,6 +42,2879 @@ import {
   PieChart,
   Smartphone,
   Monitor,
+  Download,
+  Upload,
+  Filter,
+  Search,
+  Bell,
+  Moon,
+  Sun,
+  Maximize,
+  Minimize,
+  MoreHorizontal,
+  Edit,
+  Trash2,
+  Share,
+  BookOpen,
+  HelpCircle,
+  AlertTriangle,
+  Lock,
+  Unlock,
+  Power,
+  Wifi,
+  WifiOff,
+  Database,
+  Cloud,
+  Cpu,
+  MemoryStick,
+  HardDrive,
+  Network,
+  Timer,
+  Calendar,
+  Clock,
+  MapPin,
+  Users,
+  UserPlus,
+  Mail,
+  Phone,
+  MessageSquare,
+  Video,
+  Camera,
+  Mic,
+  Volume2,
+  VolumeX,
+  Headphones,
+  Radio,
+  Tv,
+  Gamepad2,
+  Joystick,
+  Keyboard,
+  Mouse,
+  Printer,
+  Scanner,
+  Fax,
+  FileText,
+  File,
+  Folder,
+  FolderOpen,
+  Archive,
+  Package,
+  ShoppingCart,
+  CreditCard,
+  Banknote,
+  Coins,
+  Receipt,
+  Calculator,
+  Briefcase,
+  Building,
+  Home,
+  Car,
+  Plane,
+  Train,
+  Ship,
+  Truck,
+  Bike,
+  Footprints,
+  MapPin as Location,
+  Compass,
+  Navigation,
+  Route,
+  Flag,
+  Star,
+  Heart,
+  ThumbsUp,
+  ThumbsDown,
+  Bookmark,
+  Tag,
+  Hash,
+  AtSign,
+  Percent,
+  Slash,
+  Backslash,
+  Pipe,
+  Equal,
+  NotEqual,
+  MoreVertical,
+  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ArrowUp,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  RotateCcw,
+  RotateCw,
+  Repeat,
+  Shuffle,
+  SkipBack,
+  SkipForward,
+  FastForward,
+  Rewind,
+  PlayCircle,
+  PauseCircle,
+  StopCircle,
+  Square,
+  Circle,
+  Triangle,
+  Hexagon,
+  Octagon,
+  Diamond,
+  Shapes,
+  Palette,
+  Brush,
+  Pen,
+  PenTool,
+  Eraser,
+  Ruler,
+  Scissors,
+  Paperclip,
+  Link,
+  Unlink,
+  Chain,
+  Anchor,
+  Award,
+  Medal,
+  Trophy,
+  Crown,
+  Gift,
+  PartyPopper,
+  Cake,
+  Coffee,
+  Pizza,
+  Apple,
+  Cherry,
+  Grape,
+  Banana,
+  Carrot,
+  Leaf,
+  Tree,
+  Flower,
+  Sun as SunIcon,
+  Moon as MoonIcon,
+  Cloud as CloudIcon,
+  CloudRain,
+  CloudSnow,
+  CloudLightning,
+  Zap as Lightning,
+  Flame,
+  Droplet,
+  Snowflake,
+  Wind,
+  Thermometer,
+  Umbrella,
+  Rainbow,
+  Sunrise,
+  Sunset,
+  Mountain,
+  Waves,
+  Volcano,
+  Island,
+  Desert,
+  Forest,
+  Cactus,
+  PalmTree,
+  Evergreen,
+  Deciduous,
+  Mushroom,
+  Clover,
+  Seedling,
+  Herb,
+  Wheat,
+  Corn,
+  Rice,
+  Potato,
+  Tomato,
+  Eggplant,
+  Avocado,
+  Broccoli,
+  Cucumber,
+  Pepper,
+  Onion,
+  Garlic,
+  Ginger,
+  Lemon,
+  Lime,
+  Orange,
+  Peach,
+  Pear,
+  Strawberry,
+  Blueberry,
+  Raspberry,
+  Blackberry,
+  Coconut,
+  Pineapple,
+  Mango,
+  Kiwi,
+  Watermelon,
+  Melon,
+  Grapes,
+  Cherries,
+  Olives,
+  Nuts,
+  Bread,
+  Croissant,
+  Bagel,
+  Pretzel,
+  Cheese,
+  Meat,
+  Poultry,
+  Fish,
+  Shrimp,
+  Crab,
+  Lobster,
+  Squid,
+  Oyster,
+  Sushi,
+  Ramen,
+  Spaghetti,
+  Taco,
+  Burrito,
+  Sandwich,
+  Hotdog,
+  Hamburger,
+  Fries,
+  Popcorn,
+  Candy,
+  Chocolate,
+  Cookie,
+  Donut,
+  IceCream,
+  Popsicle,
+  Honey,
+  Milk,
+  Butter,
+  Egg,
+  Salt,
+  Pepper as Spice,
+  Herb as Herbs,
+  Spoon,
+  Fork,
+  Knife,
+  Plate,
+  Bowl,
+  Cup,
+  Mug,
+  Glass,
+  Bottle,
+  Can,
+  Jar,
+  Pot,
+  Pan,
+  Kettle,
+  Toaster,
+  Microwave,
+  Oven,
+  Stove,
+  Refrigerator,
+  Freezer,
+  Dishwasher,
+  WashingMachine,
+  Dryer,
+  Iron,
+  VacuumCleaner,
+  Broom,
+  Mop,
+  Bucket,
+  Sponge,
+  Soap,
+  Towel,
+  Tissue,
+  ToiletPaper,
+  Shampoo,
+  Conditioner,
+  BodyWash,
+  Lotion,
+  Perfume,
+  Makeup,
+  Lipstick,
+  Mascara,
+  Eyeshadow,
+  Foundation,
+  Blush,
+  Nail,
+  NailPolish,
+  Hairbrush,
+  Comb,
+  Scissors as HairScissors,
+  Razor,
+  Toothbrush,
+  Toothpaste,
+  Floss,
+  Mouthwash,
+  Deodorant,
+  Sunscreen,
+  Bandage,
+  Pill,
+  Syringe,
+  Thermometer as MedicalThermometer,
+  Stethoscope,
+  Glasses,
+  Sunglasses,
+  ContactLens,
+  Hearing,
+  Wheelchair,
+  Crutch,
+  Bandage as MedicalBandage,
+  FirstAid,
+  Hospital,
+  Ambulance,
+  Doctor,
+  Nurse,
+  Patient,
+  Medicine,
+  Pharmacy,
+  Clinic,
+  Surgery,
+  XRay,
+  MRI,
+  Ultrasound,
+  BloodTest,
+  Vaccine,
+  Injection,
+  IV,
+  Oxygen,
+  HeartRate,
+  BloodPressure,
+  Temperature,
+  Weight,
+  Height,
+  BMI,
+  Fitness,
+  Exercise,
+  Yoga,
+  Meditation,
+  Running,
+  Walking,
+  Cycling,
+  Swimming,
+  Dancing,
+  Boxing,
+  Wrestling,
+  MartialArts,
+  Gymnastics,
+  Weightlifting,
+  Cardio,
+  Strength,
+  Flexibility,
+  Balance,
+  Endurance,
+  Speed,
+  Agility,
+  Coordination,
+  Reaction,
+  Focus,
+  Concentration,
+  Memory,
+  Learning,
+  Thinking,
+  Problem,
+  Solution,
+  Idea,
+  Innovation,
+  Creativity,
+  Imagination,
+  Inspiration,
+  Motivation,
+  Determination,
+  Persistence,
+  Patience,
+  Discipline,
+  Consistency,
+  Progress,
+  Achievement,
+  Success,
+  Victory,
+  Win,
+  Loss,
+  Defeat,
+  Challenge,
+  Opportunity,
+  Risk,
+  Reward,
+  Investment,
+  Profit,
+  Revenue,
+  Income,
+  Expense,
+  Cost,
+  Budget,
+  Savings,
+  Debt,
+  Credit,
+  Loan,
+  Interest,
+  Tax,
+  Insurance,
+  Pension,
+  Retirement,
+  Salary,
+  Wage,
+  Bonus,
+  Commission,
+  Tip,
+  Discount,
+  Sale,
+  Purchase,
+  Order,
+  Delivery,
+  Shipping,
+  Return,
+  Refund,
+  Exchange,
+  Warranty,
+  Guarantee,
+  Quality,
+  Quantity,
+  Price,
+  Value,
+  Worth,
+  Cost as Expense,
+  Cheap,
+  Expensive,
+  Free,
+  Premium,
+  Luxury,
+  Basic,
+  Standard,
+  Advanced,
+  Professional,
+  Expert,
+  Beginner,
+  Intermediate,
+  Master,
+  Student,
+  Teacher,
+  Mentor,
+  Coach,
+  Trainer,
+  Instructor,
+  Guide,
+  Leader,
+  Manager,
+  Director,
+  CEO,
+  President,
+  Chairman,
+  Owner,
+  Founder,
+  Partner,
+  Investor,
+  Shareholder,
+  Stakeholder,
+  Customer,
+  Client,
+  User,
+  Member,
+  Subscriber,
+  Follower,
+  Fan,
+  Supporter,
+  Advocate,
+  Ambassador,
+  Representative,
+  Agent,
+  Broker,
+  Dealer,
+  Seller,
+  Buyer,
+  Vendor,
+  Supplier,
+  Manufacturer,
+  Producer,
+  Creator,
+  Designer,
+  Developer,
+  Programmer,
+  Engineer,
+  Architect,
+  Builder,
+  Constructor,
+  Contractor,
+  Worker,
+  Employee,
+  Staff,
+  Team,
+  Group,
+  Organization,
+  Company,
+  Business,
+  Enterprise,
+  Corporation,
+  Firm,
+  Agency,
+  Institution,
+  Foundation,
+  Association,
+  Society,
+  Club,
+  Community,
+  Network,
+  Platform,
+  System,
+  Service,
+  Product,
+  Brand,
+  Logo,
+  Identity,
+  Image,
+  Reputation,
+  Trust,
+  Credibility,
+  Reliability,
+  Security,
+  Safety,
+  Protection,
+  Privacy,
+  Confidentiality,
+  Transparency,
+  Honesty,
+  Integrity,
+  Ethics,
+  Morals,
+  Values,
+  Principles,
+  Beliefs,
+  Culture,
+  Tradition,
+  Custom,
+  Habit,
+  Routine,
+  Schedule,
+  Plan,
+  Strategy,
+  Tactic,
+  Method,
+  Approach,
+  Technique,
+  Skill,
+  Talent,
+  Ability,
+  Capability,
+  Capacity,
+  Potential,
+  Strength,
+  Weakness,
+  Advantage,
+  Disadvantage,
+  Benefit,
+  Drawback,
+  Pro,
+  Con,
+  Positive,
+  Negative,
+  Good,
+  Bad,
+  Right,
+  Wrong,
+  Correct,
+  Incorrect,
+  True,
+  False,
+  Real,
+  Fake,
+  Genuine,
+  Authentic,
+  Original,
+  Copy,
+  Duplicate,
+  Replica,
+  Imitation,
+  Counterfeit,
+  Fraud,
+  Scam,
+  Cheat,
+  Lie,
+  Truth,
+  Fact,
+  Fiction,
+  Reality,
+  Fantasy,
+  Dream,
+  Nightmare,
+  Hope,
+  Fear,
+  Love,
+  Hate,
+  Like,
+  Dislike,
+  Prefer,
+  Choose,
+  Select,
+  Pick,
+  Decide,
+  Determine,
+  Judge,
+  Evaluate,
+  Assess,
+  Analyze,
+  Examine,
+  Inspect,
+  Review,
+  Check,
+  Test,
+  Try,
+  Attempt,
+  Effort,
+  Work,
+  Job,
+  Task,
+  Assignment,
+  Project,
+  Mission,
+  Goal,
+  Objective,
+  Target as Aim,
+  Purpose,
+  Reason,
+  Cause,
+  Effect,
+  Result,
+  Outcome,
+  Consequence,
+  Impact,
+  Influence,
+  Power as Authority,
+  Control,
+  Command,
+  Order as Command,
+  Request,
+  Ask,
+  Question,
+  Answer,
+  Response,
+  Reply,
+  Feedback,
+  Comment,
+  Opinion,
+  View,
+  Perspective,
+  Point,
+  Argument,
+  Debate,
+  Discussion,
+  Conversation,
+  Talk,
+  Chat,
+  Communication,
+  Language,
+  Word,
+  Sentence,
+  Paragraph,
+  Text,
+  Writing,
+  Reading,
+  Speaking,
+  Listening,
+  Understanding,
+  Comprehension,
+  Knowledge,
+  Information,
+  Data,
+  Facts,
+  Details,
+  Specifics,
+  Particulars,
+  General,
+  Specific,
+  Exact,
+  Precise,
+  Accurate,
+  Correct as Right,
+  Perfect,
+  Flawless,
+  Ideal,
+  Best,
+  Worst,
+  Better,
+  Worse,
+  Good as Great,
+  Excellent,
+  Outstanding,
+  Amazing,
+  Awesome,
+  Fantastic,
+  Wonderful,
+  Marvelous,
+  Incredible,
+  Unbelievable,
+  Extraordinary,
+  Remarkable,
+  Notable,
+  Significant,
+  Important,
+  Essential,
+  Necessary,
+  Required,
+  Mandatory,
+  Optional,
+  Voluntary,
+  Automatic,
+  Manual,
+  Easy,
+  Difficult,
+  Hard,
+  Simple,
+  Complex,
+  Complicated,
+  Confusing,
+  Clear,
+  Obvious,
+  Hidden,
+  Secret,
+  Private,
+  Public,
+  Open,
+  Closed,
+  Locked,
+  Unlocked,
+  Available,
+  Unavailable,
+  Accessible,
+  Inaccessible,
+  Visible,
+  Invisible,
+  Apparent,
+  Evident,
+  Obvious as Clear,
+  Unclear,
+  Ambiguous,
+  Vague,
+  Specific as Exact,
+  General as Broad,
+  Narrow,
+  Wide,
+  Broad as Wide,
+  Thin,
+  Thick,
+  Fat,
+  Skinny,
+  Tall,
+  Short,
+  High,
+  Low,
+  Deep,
+  Shallow,
+  Long,
+  Brief,
+  Quick,
+  Slow,
+  Fast,
+  Rapid,
+  Swift,
+  Speedy,
+  Instant,
+  Immediate,
+  Delayed,
+  Late,
+  Early,
+  On,
+  Off,
+  Start,
+  Stop,
+  Begin,
+  End,
+  Finish,
+  Complete,
+  Incomplete,
+  Partial,
+  Full,
+  Empty,
+  Half,
+  Quarter,
+  Third,
+  Double,
+  Triple,
+  Multiple,
+  Single,
+  Alone,
+  Together,
+  Apart,
+  Separate,
+  Combined,
+  United,
+  Divided,
+  Split,
+  Broken,
+  Fixed,
+  Repaired,
+  Damaged,
+  Destroyed,
+  Created,
+  Made,
+  Built,
+  Constructed,
+  Designed,
+  Planned,
+  Organized,
+  Arranged,
+  Sorted,
+  Ordered,
+  Structured,
+  Formatted,
+  Styled,
+  Decorated,
+  Painted,
+  Colored,
+  Black,
+  White,
+  Gray,
+  Red,
+  Blue,
+  Green,
+  Yellow,
+  Orange,
+  Purple,
+  Pink,
+  Brown,
+  Beige,
+  Tan,
+  Gold,
+  Silver,
+  Bronze,
+  Copper,
+  Platinum,
+  Diamond as Gem,
+  Ruby,
+  Emerald,
+  Sapphire,
+  Pearl,
+  Crystal,
+  Glass as Material,
+  Plastic,
+  Metal,
+  Wood,
+  Stone,
+  Rock,
+  Sand,
+  Dirt,
+  Soil,
+  Clay,
+  Mud,
+  Water as H2O,
+  Ice,
+  Steam,
+  Gas,
+  Oil,
+  Fuel,
+  Energy,
+  Electricity,
+  Battery,
+  Solar,
+  Wind as Power,
+  Nuclear,
+  Coal,
+  Natural,
+  Renewable,
+  Sustainable,
+  Environmental,
+  Ecological,
+  Green as Eco,
+  Clean,
+  Pure,
+  Fresh,
+  New,
+  Old,
+  Ancient,
+  Modern,
+  Contemporary,
+  Current,
+  Latest,
+  Recent,
+  Past,
+  Present,
+  Future,
+  Tomorrow,
+  Yesterday,
+  Today,
+  Now,
+  Then,
+  When,
+  Where,
+  What,
+  Who,
+  Why,
+  How,
+  Which,
+  Whose,
+  Whom,
+  This,
+  That,
+  These,
+  Those,
+  Here,
+  There,
+  Everywhere,
+  Somewhere,
+  Nowhere,
+  Anywhere,
+  Everyone,
+  Someone,
+  No,
+  Anyone,
+  Everything,
+  Something,
+  Nothing,
+  Anything,
+  All,
+  Some,
+  None,
+  Any,
+  Each,
+  Every,
+  Both,
+  Either,
+  Neither,
+  One,
+  Two,
+  Three,
+  Four,
+  Five,
+  Six,
+  Seven,
+  Eight,
+  Nine,
+  Ten,
+  Eleven,
+  Twelve,
+  Thirteen,
+  Fourteen,
+  Fifteen,
+  Sixteen,
+  Seventeen,
+  Eighteen,
+  Nineteen,
+  Twenty,
+  Thirty,
+  Forty,
+  Fifty,
+  Sixty,
+  Seventy,
+  Eighty,
+  Ninety,
+  Hundred,
+  Thousand,
+  Million,
+  Billion,
+  Trillion,
+  First,
+  Second,
+  Third,
+  Fourth,
+  Fifth,
+  Sixth,
+  Seventh,
+  Eighth,
+  Ninth,
+  Tenth,
+  Last,
+  Next,
+  Previous,
+  Before,
+  After,
+  During,
+  While,
+  Until,
+  Since,
+  From,
+  To,
+  At,
+  In,
+  On as Preposition,
+  Under,
+  Over,
+  Above,
+  Below,
+  Between,
+  Among,
+  Through,
+  Across,
+  Around,
+  Near,
+  Far,
+  Close,
+  Distant,
+  Inside,
+  Outside,
+  Within,
+  Without,
+  With,
+  Against,
+  For,
+  Of,
+  By,
+  About,
+  Like as Similar,
+  Unlike,
+  As,
+  Than,
+  If,
+  Unless,
+  Although,
+  Though,
+  However,
+  Nevertheless,
+  Therefore,
+  Thus,
+  Hence,
+  Consequently,
+  Accordingly,
+  Moreover,
+  Furthermore,
+  Additionally,
+  Also,
+  Too,
+  Either as Also,
+  Neither as Not,
+  Both as Two,
+  And,
+  Or,
+  But,
+  Yet,
+  So,
+  Because,
+  Since as Because,
+  As as Because,
+  For as Because,
+  Due,
+  Owing,
+  Thanks,
+  Regarding,
+  Concerning,
+  Considering,
+  Given,
+  Provided,
+  Assuming,
+  Suppose,
+  Imagine,
+  Think,
+  Believe,
+  Know,
+  Understand as Comprehend,
+  Realize,
+  Recognize,
+  Remember,
+  Forget,
+  Recall,
+  Remind,
+  Notice,
+  Observe,
+  See,
+  Look,
+  Watch,
+  View,
+  Glance,
+  Stare,
+  Gaze,
+  Peek,
+  Glimpse,
+  Spot,
+  Find,
+  Discover,
+  Locate,
+  Search,
+  Seek,
+  Hunt,
+  Explore,
+  Investigate,
+  Research,
+  Study,
+  Learn,
+  Teach,
+  Educate,
+  Train,
+  Practice,
+  Rehearse,
+  Prepare,
+  Ready,
+  Set,
+  Go,
+  Come,
+  Arrive,
+  Reach,
+  Get,
+  Obtain,
+  Acquire,
+  Gain,
+  Earn,
+  Win as Earn,
+  Lose as Miss,
+  Miss,
+  Catch,
+  Grab,
+  Hold,
+  Keep,
+  Save,
+  Store,
+  Put,
+  Place,
+  Set as Put,
+  Lay,
+  Rest,
+  Sit,
+  Stand,
+  Walk,
+  Run,
+  Jump,
+  Hop,
+  Skip,
+  Dance as Move,
+  Move,
+  Shift,
+  Transfer,
+  Transport,
+  Carry,
+  Bring,
+  Take,
+  Give,
+  Offer,
+  Provide,
+  Supply,
+  Deliver,
+  Send,
+  Receive,
+  Accept,
+  Reject,
+  Refuse,
+  Deny,
+  Allow,
+  Permit,
+  Enable,
+  Disable,
+  Activate,
+  Deactivate,
+  Turn,
+  Switch,
+  Change,
+  Modify,
+  Alter,
+  Adjust,
+  Adapt,
+  Convert,
+  Transform,
+  Improve,
+  Enhance,
+  Upgrade,
+  Update,
+  Refresh as Update,
+  Renew,
+  Replace,
+  Substitute,
+  Swap,
+  Exchange as Swap,
+  Trade,
+  Buy,
+  Sell,
+  Purchase as Buy,
+  Pay,
+  Spend,
+  Invest as Spend,
+  Save as Store,
+  Waste,
+  Use,
+  Utilize,
+  Apply,
+  Employ,
+  Operate,
+  Function,
+  Work as Function,
+  Perform,
+  Execute,
+  Run as Execute,
+  Process,
+  Handle,
+  Manage,
+  Control as Manage,
+  Direct,
+  Guide as Direct,
+  Lead,
+  Follow,
+  Accompany,
+  Join,
+  Leave,
+  Stay,
+  Remain,
+  Continue,
+  Proceed,
+  Advance,
+  Progress as Advance,
+  Develop,
+  Grow,
+  Increase,
+  Decrease,
+  Reduce,
+  Lower,
+  Raise,
+  Lift,
+  Drop,
+  Fall,
+  Rise,
+  Climb,
+  Descend,
+  Ascend,
+  Enter,
+  Exit,
+  Return,
+  Depart,
+  Travel,
+  Journey,
+  Trip,
+  Visit,
+  Tour,
+  Explore as Visit,
+  Adventure,
+  Experience,
+  Enjoy,
+  Like as Enjoy,
+  Love as Enjoy,
+  Hate as Dislike,
+  Prefer as Like,
+  Want,
+  Need,
+  Require as Need,
+  Demand,
+  Request as Demand,
+  Ask as Request,
+  Tell,
+  Say,
+  Speak,
+  Talk as Speak,
+  Communicate as Speak,
+  Express,
+  Explain,
+  Describe,
+  Define,
+  Clarify,
+  Specify,
+  Detail,
+  Elaborate,
+  Expand,
+  Extend,
+  Stretch,
+  Reach as Extend,
+  Touch,
+  Feel,
+  Sense,
+  Perceive,
+  Detect,
+  Identify,
+  Recognize as Identify,
+  Distinguish,
+  Differentiate,
+  Compare,
+  Contrast,
+  Match,
+  Fit,
+  Suit,
+  Appropriate,
+  Suitable,
+  Proper,
+  Right as Proper,
+  Correct as Proper,
+  Wrong as Improper,
+  Inappropriate,
+  Unsuitable,
+  Improper,
+  Incorrect as Wrong,
+  False as Wrong,
+  True as Correct,
+  Real as True,
+  Actual,
+  Genuine as Real,
+  Authentic as Genuine,
+  Original as Authentic,
+  Unique,
+  Special,
+  Particular,
+  Individual,
+  Personal,
+  Private as Personal,
+  Confidential as Private,
+  Secret as Confidential,
+  Hidden as Secret,
+  Invisible as Hidden,
+  Visible as Apparent,
+  Clear as Visible,
+  Obvious as Clear,
+  Evident as Obvious,
+  Apparent as Evident,
+  Manifest,
+  Display,
+  Show,
+  Reveal,
+  Expose,
+  Uncover,
+  Discover as Uncover,
+  Find as Discover,
+  Locate as Find,
+  Position,
+  Place as Position,
+  Spot as Position,
+  Point as Spot,
+  Indicate,
+  Signal,
+  Mark,
+  Label,
+  Tag as Label,
+  Name,
+  Title,
+  Heading,
+  Header,
+  Footer,
+  Top,
+  Bottom,
+  Left,
+  Right as Direction,
+  Center,
+  Middle,
+  Side,
+  Edge,
+  Corner,
+  Border,
+  Boundary,
+  Limit,
+  Range,
+  Scope,
+  Extent,
+  Degree,
+  Level,
+  Grade,
+  Rank,
+  Status,
+  Position as Status,
+  Role,
+  Function as Role,
+  Purpose as Role,
+  Job as Role,
+  Task as Job,
+  Duty,
+  Responsibility,
+  Obligation,
+  Commitment,
+  Promise,
+  Agreement,
+  Contract,
+  Deal,
+  Arrangement,
+  Plan as Arrangement,
+  Scheme,
+  Program,
+  Project as Program,
+  Initiative,
+  Campaign,
+  Operation,
+  Activity,
+  Action,
+  Behavior,
+  Conduct,
+  Performance as Behavior,
+  Achievement as Performance,
+  Accomplishment,
+  Success as Accomplishment,
+  Failure,
+  Mistake,
+  Error,
+  Fault,
+  Problem as Error,
+  Issue,
+  Matter,
+  Subject,
+  Topic,
+  Theme,
+  Content,
+  Material as Content,
+  Substance,
+  Element,
+  Component,
+  Part,
+  Section,
+  Division,
+  Department,
+  Unit,
+  Group as Unit,
+  Team as Group,
+  Organization as Team,
+  Company as Organization,
+  Business as Company,
+  Industry,
+  Market,
+  Economy,
+  Finance,
+  Money,
+  Currency,
+  Cash,
+  Coin,
+  Bill,
+  Note,
+  Check,
+  Card as Payment,
+  Credit as Card,
+  Debit,
+  Account,
+  Balance,
+  Amount,
+  Sum,
+  Total,
+  Subtotal,
+  Tax as Fee,
+  Fee,
+  Charge,
+  Rate,
+  Price as Rate,
+  Cost as Price,
+  Value as Cost,
+  Worth as Value,
+  Benefit as Worth,
+  Advantage as Benefit,
+  Profit as Advantage,
+  Loss as Disadvantage,
+  Risk as Loss,
+  Danger,
+  Threat,
+  Warning,
+  Alert,
+  Alarm,
+  Emergency,
+  Crisis,
+  Problem as Crisis,
+  Difficulty,
+  Challenge as Difficulty,
+  Obstacle,
+  Barrier,
+  Block,
+  Stop as Block,
+  Prevent,
+  Avoid,
+  Escape,
+  Exit as Escape,
+  Leave as Exit,
+  Go as Leave,
+  Move as Go,
+  Travel as Move,
+  Journey as Travel,
+  Trip as Journey,
+  Visit as Trip,
+  Stay as Visit,
+  Remain as Stay,
+  Continue as Remain,
+  Keep as Continue,
+  Maintain,
+  Preserve,
+  Protect,
+  Defend,
+  Guard,
+  Secure,
+  Safe,
+  Safety as Secure,
+  Security as Safety,
+  Protection as Security,
+  Defense,
+  Shield as Defense,
+  Armor,
+  Weapon,
+  Tool,
+  Equipment,
+  Device,
+  Machine,
+  Engine,
+  Motor,
+  Generator,
+  Power as Generator,
+  Energy as Power,
+  Force,
+  Strength as Force,
+  Muscle,
+  Body,
+  Health,
+  Fitness as Health,
+  Exercise as Fitness,
+  Sport,
+  Game,
+  Play,
+  Fun,
+  Entertainment,
+  Amusement,
+  Recreation,
+  Leisure,
+  Relaxation,
+  Rest as Relaxation,
+  Sleep,
+  Dream as Sleep,
+  Wake,
+  Awake,
+  Alert as Awake,
+  Aware,
+  Conscious,
+  Unconscious,
+  Asleep,
+  Tired,
+  Exhausted,
+  Weary,
+  Fatigue,
+  Energy as Vitality,
+  Vitality,
+  Life,
+  Living,
+  Alive,
+  Dead,
+  Death,
+  Die,
+  Kill,
+  Murder,
+  Crime,
+  Law,
+  Legal,
+  Illegal,
+  Rule,
+  Regulation,
+  Policy,
+  Procedure,
+  Process as Procedure,
+  Method as Process,
+  Way,
+  Manner,
+  Style as Manner,
+  Fashion,
+  Trend,
+  Popular,
+  Famous,
+  Celebrity,
+  Star as Celebrity,
+  Hero,
+  Champion,
+  Winner,
+  Loser,
+  Player,
+  Participant,
+  Competitor,
+  Opponent,
+  Enemy,
+  Friend,
+  Ally,
+  Partner as Ally,
+  Colleague,
+  Associate,
+  Member as Associate,
+  Participant as Member,
+  Attendee,
+  Guest,
+  Visitor,
+  Tourist,
+  Traveler,
+  Passenger,
+  Driver,
+  Pilot,
+  Captain,
+  Officer,
+  Official,
+  Authority,
+  Government,
+  State,
+  Country,
+  Nation,
+  City,
+  Town,
+  Village,
+  Community as Village,
+  Neighborhood,
+  Area,
+  Region,
+  Zone,
+  District,
+  Territory,
+  Land,
+  Ground,
+  Floor,
+  Ceiling,
+  Wall,
+  Door,
+  Window,
+  Room,
+  Space,
+  Place as Space,
+  Location as Place,
+  Site,
+  Spot as Site,
+  Position as Spot,
+  Point as Position,
+  Coordinate,
+  Address,
+  Direction as Address,
+  Path,
+  Road,
+  Street,
+  Avenue,
+  Boulevard,
+  Highway,
+  Freeway,
+  Bridge,
+  Tunnel,
+  Intersection,
+  Corner as Intersection,
+  Turn as Corner,
+  Curve,
+  Straight,
+  Line,
+  Circle as Line,
+  Square as Circle,
+  Rectangle,
+  Triangle as Rectangle,
+  Shape,
+  Form,
+  Structure as Form,
+  Building as Structure,
+  Construction,
+  Architecture,
+  Design as Architecture,
+  Plan as Design,
+  Blueprint,
+  Drawing,
+  Sketch,
+  Picture,
+  Image as Picture,
+  Photo,
+  Photograph,
+  Camera as Photo,
+  Video as Camera,
+  Film,
+  Movie,
+  Cinema,
+  Theater,
+  Stage,
+  Performance as Stage,
+  Show as Performance,
+  Display as Show,
+  Exhibition,
+  Museum,
+  Gallery,
+  Library,
+  School,
+  University,
+  College,
+  Education,
+  Learning as Education,
+  Teaching,
+  Training as Teaching,
+  Course,
+  Class,
+  Lesson,
+  Subject as Lesson,
+  Topic as Subject,
+  Chapter,
+  Section as Chapter,
+  Page,
+  Book,
+  Magazine,
+  Newspaper,
+  Article,
+  Story,
+  Report,
+  News,
+  Information as News,
+  Data as Information,
+  Fact as Data,
+  Detail as Fact,
+  Specific as Detail,
+  General as Broad,
+  Overview,
+  Summary,
+  Abstract,
+  Introduction,
+  Conclusion,
+  Result as Conclusion,
+  Outcome as Result,
+  Effect as Outcome,
+  Impact as Effect,
+  Influence as Impact,
+  Change as Influence,
+  Difference,
+  Variation,
+  Alternative,
+  Option,
+  Choice,
+  Selection,
+  Decision as Choice,
+  Judgment,
+  Opinion as Judgment,
+  View as Opinion,
+  Perspective as View,
+  Angle,
+  Approach as Angle,
+  Method as Approach,
+  Technique as Method,
+  Skill as Technique,
+  Ability as Skill,
+  Talent as Ability,
+  Gift,
+  Present,
+  Reward,
+  Prize,
+  Award as Prize,
+  Recognition,
+  Appreciation,
+  Thanks as Appreciation,
+  Gratitude,
+  Respect,
+  Honor,
+  Dignity,
+  Pride,
+  Confidence,
+  Trust as Confidence,
+  Faith,
+  Belief,
+  Hope as Faith,
+  Wish,
+  Desire,
+  Want as Desire,
+  Need as Want,
+  Requirement,
+  Demand as Requirement,
+  Supply as Demand,
+  Provide as Supply,
+  Offer as Provide,
+  Give as Offer,
+  Present as Give,
+  Gift as Present,
+  Donation,
+  Contribution,
+  Support,
+  Help,
+  Assistance,
+  Aid,
+  Service as Aid,
+  Favor,
+  Kindness,
+  Generosity,
+  Charity,
+  Love as Charity,
+  Care,
+  Concern,
+  Worry,
+  Anxiety,
+  Stress,
+  Pressure,
+  Tension,
+  Strain,
+  Burden,
+  Load,
+  Weight,
+  Heavy,
+  Light,
+  Bright,
+  Dark,
+  Shadow,
+  Shade,
+  Color as Shade,
+  Paint,
+  Draw,
+  Create as Draw,
+  Make as Create,
+  Build as Make,
+  Construct as Build,
+  Assemble,
+  Install,
+  Setup,
+  Configure,
+  Adjust as Configure,
+  Customize,
+  Personalize,
+  Individual as Personal,
+  Unique as Individual,
+  Different,
+  Same,
+  Similar,
+  Alike,
+  Equal as Same,
+  Identical,
+  Exact as Identical,
+  Precise as Exact,
+  Accurate as Precise,
+  Correct as Accurate,
+  Right as Correct,
+  Proper as Right,
+  Appropriate as Proper,
+  Suitable as Appropriate,
+  Fit as Suitable,
+  Match as Fit,
+  Compatible,
+  Consistent,
+  Stable,
+  Steady,
+  Constant,
+  Continuous,
+  Ongoing,
+  Permanent,
+  Temporary,
+  Brief as Temporary,
+  Short as Brief,
+  Long as Extended,
+  Extended,
+  Expanded,
+  Large,
+  Big,
+  Huge,
+  Enormous,
+  Giant,
+  Massive,
+  Tiny,
+  Small,
+  Little,
+  Mini,
+  Micro,
+  Nano,
+  Compact,
+  Dense,
+  Thick as Dense,
+  Thin as Light,
+  Narrow as Thin,
+  Wide as Broad,
+  Broad as Wide,
+  Spacious,
+  Roomy,
+  Comfortable,
+  Cozy,
+  Warm,
+  Hot,
+  Cold,
+  Cool,
+  Fresh as Cool,
+  Clean as Fresh,
+  Dirty,
+  Messy,
+  Neat,
+  Tidy,
+  Organized as Neat,
+  Structured as Organized,
+  Systematic,
+  Methodical,
+  Logical,
+  Rational,
+  Reasonable,
+  Sensible,
+  Practical,
+  Useful,
+  Helpful,
+  Beneficial,
+  Valuable,
+  Important as Valuable,
+  Significant as Important,
+  Major,
+  Minor,
+  Main,
+  Primary,
+  Secondary,
+  Basic as Primary,
+  Advanced as Secondary,
+  Complex as Advanced,
+  Simple as Basic,
+  Easy as Simple,
+  Difficult as Complex,
+  Hard as Difficult,
+  Tough,
+  Strong as Tough,
+  Weak,
+  Soft,
+  Gentle,
+  Mild,
+  Harsh,
+  Rough,
+  Smooth,
+  Fine,
+  Coarse,
+  Sharp,
+  Dull,
+  Bright as Sharp,
+  Dim,
+  Faint,
+  Clear as Bright,
+  Blurry,
+  Fuzzy,
+  Vague as Fuzzy,
+  Unclear as Vague,
+  Confusing as Unclear,
+  Complicated as Confusing,
+  Complex as Complicated,
+  Intricate,
+  Detailed,
+  Thorough,
+  Complete as Thorough,
+  Comprehensive,
+  Full as Complete,
+  Partial as Incomplete,
+  Half as Partial,
+  Empty as Half,
+  Vacant,
+  Available as Vacant,
+  Free as Available,
+  Busy,
+  Occupied,
+  Engaged,
+  Active as Engaged,
+  Inactive,
+  Passive,
+  Static,
+  Dynamic,
+  Moving as Dynamic,
+  Still,
+  Stationary,
+  Fixed as Stationary,
+  Mobile,
+  Portable,
+  Flexible,
+  Rigid,
+  Stiff,
+  Loose,
+  Tight,
+  Secure as Tight,
+  Insecure,
+  Unsafe,
+  Dangerous as Unsafe,
+  Risky,
+  Safe as Secure,
+  Protected,
+  Guarded,
+  Defended,
+  Attacked,
+  Threatened,
+  Warned,
+  Informed,
+  Educated as Informed,
+  Trained as Educated,
+  Skilled,
+  Experienced,
+  Expert as Experienced,
+  Professional as Expert,
+  Amateur,
+  Beginner as Amateur,
+  Novice,
+  Student as Novice,
+  Learner,
+  Pupil,
+  Scholar,
+  Researcher,
+  Scientist,
+  Engineer as Scientist,
+  Doctor as Engineer,
+  Lawyer,
+  Teacher as Lawyer,
+  Professor,
+  Instructor as Professor,
+  Trainer as Instructor,
+  Coach as Trainer,
+  Manager as Coach,
+  Leader as Manager,
+  Boss,
+  Chief,
+  Head,
+  Director as Head,
+  President as Director,
+  CEO as President,
+  Owner as CEO,
+  Founder as Owner,
+  Creator as Founder,
+  Inventor,
+  Designer as Inventor,
+  Artist,
+  Musician,
+  Singer,
+  Dancer as Singer,
+  Actor,
+  Actress,
+  Performer as Actor,
+  Entertainer,
+  Celebrity as Entertainer,
+  Star as Celebrity,
+  Famous as Star,
+  Popular as Famous,
+  Well,
+  Known,
+  Recognized as Known,
+  Acknowledged,
+  Accepted,
+  Approved,
+  Confirmed,
+  Verified,
+  Validated,
+  Certified,
+  Licensed,
+  Authorized,
+  Permitted,
+  Allowed as Authorized,
+  Enabled as Allowed,
+  Disabled as Prevented,
+  Blocked,
+  Restricted,
+  Limited as Restricted,
+  Unlimited,
+  Infinite,
+  Endless,
+  Eternal,
+  Forever,
+  Always,
+  Never,
+  Sometimes,
+  Often,
+  Frequently,
+  Rarely,
+  Seldom,
+  Occasionally,
+  Usually,
+  Normally,
+  Typically,
+  Generally,
+  Commonly,
+  Regularly,
+  Consistently as Regularly,
+  Constantly,
+  Continuously as Constantly,
+  Repeatedly,
+  Again,
+  Once,
+  Twice,
+  Thrice,
+  Multiple as Many,
+  Several,
+  Few,
+  Many,
+  Much,
+  Little as Few,
+  Less,
+  More,
+  Most,
+  Least,
+  Best as Most,
+  Worst as Least,
+  Better as More,
+  Worse as Less,
+  Good as Better,
+  Bad as Worse,
+  Excellent as Best,
+  Poor as Worst,
+  Great as Excellent,
+  Terrible,
+  Awful,
+  Horrible,
+  Wonderful as Great,
+  Amazing as Wonderful,
+  Fantastic as Amazing,
+  Incredible as Fantastic,
+  Unbelievable as Incredible,
+  Impossible,
+  Possible,
+  Probable,
+  Likely,
+  Unlikely,
+  Certain,
+  Uncertain,
+  Sure,
+  Unsure,
+  Confident as Sure,
+  Doubtful,
+  Skeptical,
+  Suspicious,
+  Trustworthy,
+  Reliable as Trustworthy,
+  Dependable,
+  Responsible as Dependable,
+  Accountable,
+  Liable,
+  Guilty,
+  Innocent,
+  Honest as Innocent,
+  Dishonest,
+  Truthful,
+  Lying,
+  Fake as Lying,
+  False as Fake,
+  Genuine as True,
+  Real as Genuine,
+  Authentic as Real,
+  Original as Authentic,
+  Natural,
+  Artificial,
+  Synthetic,
+  Organic,
+  Chemical,
+  Physical,
+  Mental,
+  Emotional,
+  Spiritual,
+  Psychological,
+  Social,
+  Cultural,
+  Political,
+  Economic,
+  Financial,
+  Commercial,
+  Industrial,
+  Agricultural,
+  Environmental as Ecological,
+  Technological,
+  Scientific,
+  Medical,
+  Educational,
+  Religious,
+  Philosophical,
+  Artistic,
+  Creative as Artistic,
+  Innovative as Creative,
+  Inventive,
+  Imaginative,
+  Original as Inventive,
+  Unique as Original,
+  Special as Unique,
+  Extraordinary as Special,
+  Unusual,
+  Strange,
+  Weird,
+  Odd,
+  Funny,
+  Amusing,
+  Entertaining as Amusing,
+  Interesting,
+  Boring,
+  Dull as Boring,
+  Exciting,
+  Thrilling,
+  Adventurous,
+  Dangerous as Thrilling,
+  Safe as Protected,
+  Secure as Safe,
+  Protected as Secure,
+  Defended as Protected,
+  Guarded as Defended,
+  Watched,
+  Observed as Watched,
+  Monitored,
+  Controlled as Monitored,
+  Managed as Controlled,
+  Operated as Managed,
+  Handled,
+  Processed as Handled,
+  Treated,
+  Served,
+  Helped as Served,
+  Assisted as Helped,
+  Supported as Assisted,
+  Backed,
+  Sponsored,
+  Funded,
+  Financed,
+  Paid as Financed,
+  Purchased as Paid,
+  Bought,
+  Sold as Bought,
+  Traded as Sold,
+  Exchanged as Traded,
+  Swapped as Exchanged,
+  Replaced as Swapped,
+  Substituted as Replaced,
+  Changed as Substituted,
+  Modified as Changed,
+  Altered as Modified,
+  Adjusted as Altered,
+  Adapted as Adjusted,
+  Converted as Adapted,
+  Transformed as Converted,
+  Improved as Transformed,
+  Enhanced as Improved,
+  Upgraded as Enhanced,
+  Updated as Upgraded,
+  Refreshed as Updated,
+  Renewed as Refreshed,
+  Restored,
+  Repaired as Restored,
+  Fixed as Repaired,
+  Corrected as Fixed,
+  Solved,
+  Resolved,
+  Settled,
+  Decided as Settled,
+  Determined as Decided,
+  Chosen as Determined,
+  Selected as Chosen,
+  Picked as Selected,
+  Taken,
+  Given as Taken,
+  Received as Given,
+  Accepted as Received,
+  Rejected as Refused,
+  Refused as Rejected,
+  Denied as Refused,
+  Approved as Accepted,
+  Confirmed as Approved,
+  Agreed,
+  Disagreed,
+  Argued,
+  Debated as Argued,
+  Discussed as Debated,
+  Talked as Discussed,
+  Spoke,
+  Said as Spoke,
+  Told as Said,
+  Asked as Told,
+  Answered as Asked,
+  Replied as Answered,
+  Responded as Replied,
+  Reacted,
+  Acted as Reacted,
+  Performed as Acted,
+  Played as Performed,
+  Worked as Played,
+  Functioned as Worked,
+  Operated as Functioned,
+  Ran as Operated,
+  Started as Ran,
+  Began as Started,
+  Initiated,
+  Launched,
+  Opened as Launched,
+  Closed as Opened,
+  Shut,
+  Locked as Shut,
+  Unlocked as Locked,
+  Secured as Unlocked,
+  Protected as Secured,
+  Saved as Protected,
+  Stored as Saved,
+  Kept as Stored,
+  Held as Kept,
+  Carried as Held,
+  Moved as Carried,
+  Transported as Moved,
+  Delivered as Transported,
+  Sent as Delivered,
+  Shipped,
+  Mailed,
+  Posted,
+  Published,
+  Released,
+  Issued,
+  Distributed,
+  Shared as Distributed,
+  Spread,
+  Extended as Spread,
+  Expanded as Extended,
+  Increased as Expanded,
+  Grew,
+  Developed as Grew,
+  Evolved,
+  Advanced as Evolved,
+  Progressed as Advanced,
+  Improved as Progressed,
+  Enhanced as Improved,
+  Upgraded as Enhanced,
+  Updated as Upgraded,
+  Modernized,
+  Renovated,
+  Refurbished,
+  Restored as Renovated,
+  Rebuilt,
+  Reconstructed,
+  Redesigned,
+  Remodeled,
+  Reformed,
+  Revised,
+  Reviewed as Reformed,
+  Examined as Reviewed,
+  Inspected as Examined,
+  Checked as Inspected,
+  Tested as Checked,
+  Tried as Tested,
+  Attempted as Tried,
+  Experimented,
+  Explored as Experimented,
+  Investigated as Explored,
+  Researched as Investigated,
+  Studied as Researched,
+  Analyzed as Studied,
+  Evaluated as Analyzed,
+  Assessed as Evaluated,
+  Measured,
+  Calculated as Measured,
+  Computed,
+  Processed as Computed,
+  Generated,
+  Created as Generated,
+  Produced,
+  Made as Produced,
+  Built as Made,
+  Constructed as Built,
+  Assembled as Constructed,
+  Manufactured,
+  Fabricated,
+  Crafted,
+  Designed as Crafted,
+  Planned as Designed,
+  Organized as Planned,
+  Arranged as Organized,
+  Prepared as Arranged,
+  Setup as Prepared,
+  Configured as Setup,
+  Installed as Configured,
+  Implemented,
+  Executed as Implemented,
+  Performed as Executed,
+  Completed as Performed,
+  Finished as Completed,
+  Ended as Finished,
+  Stopped as Ended,
+  Paused as Stopped,
+  Resumed,
+  Continued as Resumed,
+  Proceeded as Continued,
+  Went,
+  Came as Went,
+  Arrived as Came,
+  Reached as Arrived,
+  Left as Reached,
+  Departed as Left,
+  Returned as Departed,
+  Stayed as Returned,
+  Remained as Stayed,
+  Waited,
+  Expected,
+  Anticipated,
+  Predicted,
+  Forecasted,
+  Estimated,
+  Guessed,
+  Assumed as Guessed,
+  Supposed as Assumed,
+  Believed as Supposed,
+  Thought as Believed,
+  Considered,
+  Regarded,
+  Viewed as Regarded,
+  Seen as Viewed,
+  Looked as Seen,
+  Watched as Looked,
+  Observed as Watched,
+  Noticed as Observed,
+  Spotted as Noticed,
+  Found as Spotted,
+  Discovered as Found,
+  Located as Discovered,
+  Identified as Located,
+  Recognized as Identified,
+  Realized as Recognized,
+  Understood as Realized,
+  Comprehended as Understood,
+  Grasped,
+  Learned as Grasped,
+  Acquired as Learned,
+  Gained as Acquired,
+  Obtained as Gained,
+  Received as Obtained,
+  Got as Received,
+  Took as Got,
+  Grabbed as Took,
+  Caught as Grabbed,
+  Captured,
+  Seized,
+  Held as Seized,
+  Gripped,
+  Grasped as Gripped,
+  Clutched,
+  Squeezed,
+  Pressed,
+  Pushed as Pressed,
+  Pulled,
+  Dragged,
+  Lifted as Dragged,
+  Raised as Lifted,
+  Lowered,
+  Dropped as Lowered,
+  Released as Dropped,
+  Let,
+  Allowed as Let,
+  Permitted as Allowed,
+  Enabled as Permitted,
+  Authorized as Enabled,
+  Approved as Authorized,
+  Accepted as Approved,
+  Agreed as Accepted,
+  Consented,
+  Confirmed as Consented,
+  Verified as Confirmed,
+  Validated as Verified,
+  Certified as Validated,
+  Guaranteed,
+  Promised as Guaranteed,
+  Committed as Promised,
+  Pledged,
+  Vowed,
+  Sworn,
+  Declared,
+  Announced as Declared,
+  Proclaimed,
+  Stated as Proclaimed,
+  Mentioned,
+  Noted as Mentioned,
+  Remarked,
+  Commented as Remarked,
+  Observed as Commented,
+  Pointed,
+  Indicated as Pointed,
+  Showed as Indicated,
+  Demonstrated,
+  Illustrated,
+  Explained as Illustrated,
+  Described as Explained,
+  Detailed as Described,
+  Specified as Detailed,
+  Defined as Specified,
+  Clarified as Defined,
+  Interpreted,
+  Translated,
+  Converted as Translated,
+  Changed as Converted,
+  Transformed as Changed,
+  Altered as Transformed,
+  Modified as Altered,
+  Adjusted as Modified,
+  Adapted as Adjusted,
+  Customized as Adapted,
+  Personalized as Customized,
+  Tailored,
+  Fitted as Tailored,
+  Matched as Fitted,
+  Suited as Matched,
+  Appropriate as Suited,
+  Suitable as Appropriate,
+  Proper as Suitable,
+  Correct as Proper,
+  Right as Correct,
+  Accurate as Right,
+  Precise as Accurate,
+  Exact as Precise,
+  Perfect as Exact,
+  Ideal as Perfect,
+  Optimal,
+  Best as Optimal,
+  Excellent as Best,
+  Outstanding,
+  Exceptional,
+  Remarkable as Exceptional,
+  Notable as Remarkable,
+  Significant as Notable,
+  Important as Significant,
+  Crucial,
+  Critical as Crucial,
+  Essential as Critical,
+  Vital,
+  Necessary as Vital,
+  Required as Necessary,
+  Needed as Required,
+  Wanted as Needed,
+  Desired as Wanted,
+  Preferred as Desired,
+  Chosen as Preferred,
+  Selected as Chosen,
+  Picked as Selected,
+  Decided as Picked,
+  Determined as Decided,
+  Resolved as Determined,
+  Settled as Resolved,
+  Fixed as Settled,
+  Solved as Fixed,
+  Answered as Solved,
+  Addressed,
+  Handled as Addressed,
+  Dealt,
+  Managed as Dealt,
+  Controlled as Managed,
+  Directed as Controlled,
+  Guided as Directed,
+  Led as Guided,
+  Headed,
+  Supervised,
+  Overseen,
+  Monitored as Overseen,
+  Watched as Monitored,
+  Observed as Watched,
+  Tracked,
+  Followed as Tracked,
+  Pursued,
+  Chased,
+  Hunted as Chased,
+  Searched as Hunted,
+  Looked as Searched,
+  Sought,
+  Found as Sought,
+  Located as Found,
+  Discovered as Located,
+  Uncovered as Discovered,
+  Revealed as Uncovered,
+  Exposed as Revealed,
+  Shown as Exposed,
+  Displayed as Shown,
+  Presented as Displayed,
+  Exhibited,
+  Featured,
+  Highlighted,
+  Emphasized,
+  Stressed,
+  Underlined,
+  Marked as Underlined,
+  Noted as Marked,
+  Recorded,
+  Documented,
+  Registered,
+  Listed as Registered,
+  Catalogued,
+  Indexed,
+  Filed,
+  Stored as Filed,
+  Archived,
+  Saved as Archived,
+  Preserved as Saved,
+  Maintained as Preserved,
+  Kept as Maintained,
+  Retained,
+  Held as Retained,
+  Possessed,
+  Owned as Possessed,
+  Belonged,
+  Had as Belonged,
+  Contained,
+  Included as Contained,
+  Comprised,
+  Consisted,
+  Made as Consisted,
+  Formed as Made,
+  Shaped as Formed,
+  Molded,
+  Sculpted,
+  Carved,
+  Cut as Carved,
+  Sliced,
+  Chopped,
+  Diced,
+  Minced,
+  Crushed,
+  Ground,
+  Milled,
+  Processed as Milled,
+  Refined,
+  Purified,
+  Cleaned as Purified,
+  Washed,
+  Rinsed,
+  Dried as Rinsed,
+  Wiped,
+  Polished,
+  Shined,
+  Buffed,
+  Scrubbed,
+  Brushed as Scrubbed,
+  Combed,
+  Styled as Combed,
+  Arranged as Styled,
+  Organized as Arranged,
+  Sorted as Organized,
+  Classified,
+  Categorized,
+  Grouped as Categorized,
+  Divided as Grouped,
+  Separated as Divided,
+  Split as Separated,
+  Broken as Split,
+  Cracked,
+  Damaged as Cracked,
+  Destroyed as Damaged,
+  Ruined,
+  Wrecked,
+  Demolished,
+  Torn,
+  Ripped,
+  Cut as Torn,
+  Pierced,
+  Punctured,
+  Stabbed,
+  Shot,
+  Hit as Shot,
+  Struck,
+  Beaten,
+  Punched,
+  Kicked,
+  Slapped,
+  Pushed as Kicked,
+  Shoved,
+  Pulled as Shoved,
+  Tugged,
+  Yanked,
+  Jerked,
+  Twisted,
+  Turned as Twisted,
+  Rotated,
+  Spun,
+  Rolled as Spun,
+  Flipped,
+  Tossed,
+  Threw,
+  Hurled,
+  Launched as Hurled,
+  Fired,
+  Shot as Fired,
+  Aimed,
+  Targeted as Aimed,
+  Focused as Targeted,
+  Concentrated,
+  Centered as Concentrated,
+  Balanced,
+  Stabilized,
+  Steadied,
+  Secured as Steadied,
+  Fastened,
+  Attached as Fastened,
+  Connected as Attached,
+  Linked as Connected,
+  Joined as Linked,
+  United as Joined,
+  Combined as United,
+  Merged,
+  Blended,
+  Mixed as Blended,
+  Stirred,
+  Shaken,
+  Beaten as Shaken,
+  Whipped,
+  Folded,
+  Kneaded,
+  Rolled as Kneaded,
+  Pressed as Rolled,
+  Squeezed as Pressed,
+  Compressed,
+  Compacted,
+  Condensed,
+  Concentrated as Condensed,
+  Focused as Concentrated,
+  Directed as Focused,
+  Aimed as Directed,
+  Pointed as Aimed,
+  Targeted as Pointed,
+  Addressed as Targeted,
+  Approached,
+  Reached as Approached,
+  Arrived as Reached,
+  Came as Arrived,
+  Entered as Came,
+  Went as Entered,
+  Left as Went,
+  Exited,
+  Departed as Exited,
+  Returned as Departed,
+  Came as Returned,
+  Back,
+  Again as Back,
+  Once as Again,
+  More as Once,
+  Again as More,
+  Repeat as Again,
+  Redo,
+  Retry,
+  Attempt as Retry,
+  Try as Attempt,
+  Test as Try,
+  Check as Test,
+  Verify as Check,
+  Confirm as Verify,
+  Validate as Confirm,
+  Approve as Validate,
+  Accept as Approve,
+  Agree as Accept,
+  Consent as Agree,
+  Allow as Consent,
+  Permit as Allow,
+  Enable as Permit,
+  Activate as Enable,
+  Turn as Activate,
+  Switch as Turn,
+  Change as Switch,
+  Alter as Change,
+  Modify as Alter,
+  Adjust as Modify,
+  Adapt as Adjust,
+  Convert as Adapt,
+  Transform as Convert,
+  Change as Transform,
+  Shift,
+  Move as Shift,
+  Transfer as Move,
+  Transport as Transfer,
+  Carry as Transport,
+  Bring as Carry,
+  Take as Bring,
+  Get as Take,
+  Fetch,
+  Retrieve,
+  Collect,
+  Gather as Collect,
+  Assemble as Gather,
+  Group as Assemble,
+  Organize as Group,
+  Arrange as Organize,
+  Sort as Arrange,
+  Order as Sort,
+  Rank as Order,
+  Rate,
+  Score,
+  Grade as Score,
+  Mark as Grade,
+  Label as Mark,
+  Tag as Label,
+  Name as Tag,
+  Call,
+  Refer,
+  Mention as Refer,
+  Cite,
+  Quote,
+  Reference,
+  Source,
+  Origin,
+  Beginning as Origin,
+  Start as Beginning,
+  Commencement,
+  Launch as Commencement,
+  Opening,
+  Introduction as Opening,
+  Preface,
+  Foreword,
+  Prologue,
+  Epilogue,
+  Conclusion as Epilogue,
+  End as Conclusion,
+  Finish as End,
+  Completion,
+  Termination,
+  Closure,
+  Final,
+  Last as Final,
+  Ultimate,
+  Maximum,
+  Minimum,
+  Limit as Maximum,
+  Boundary as Limit,
+  Border as Boundary,
+  Edge as Border,
+  Margin,
+  Space as Margin,
+  Gap,
+  Distance,
+  Length,
+  Width,
+  Height as Length,
+  Depth,
+  Thickness,
+  Size,
+  Dimension,
+  Scale,
+  Proportion,
+  Ratio,
+  Percentage,
+  Fraction,
+  Decimal,
+  Number,
+  Digit,
+  Figure,
+  Amount as Figure,
+  Quantity,
+  Volume as Quantity,
+  Capacity,
+  Weight as Capacity,
+  Mass,
+  Density,
+  Pressure as Density,
+  Force as Pressure,
+  Power as Force,
+  Energy as Power,
+  Strength as Energy,
+  Intensity,
+  Level as Intensity,
+  Degree as Level,
+  Grade as Degree,
+  Class as Grade,
+  Category,
+  Type,
+  Kind,
+  Sort as Kind,
+  Variety,
+  Species,
+  Breed,
+  Race,
+  Ethnicity,
+  Nationality,
+  Citizenship,
+  Identity as Nationality,
+  Character,
+  Personality,
+  Nature as Personality,
+  Behavior as Nature,
+  Conduct as Behavior,
+  Action as Conduct,
+  Activity as Action,
+  Operation as Activity,
+  Function as Operation,
+  Role as Function,
+  Purpose as Role,
+  Goal as Purpose,
+  Objective as Goal,
+  Target as Objective,
+  Aim as Target,
+  Intention,
+  Plan as Intention,
+  Strategy as Plan,
+  Approach as Strategy,
+  Method as Approach,
+  Way as Method,
+  Means,
+  Tool as Means,
+  Instrument,
+  Device as Instrument,
+  Equipment as Device,
+  Machine as Equipment,
+  Apparatus,
+  System as Apparatus,
+  Network as System,
+  Connection as Network,
+  Link as Connection,
+  Relationship,
+  Association as Relationship,
+  Partnership,
+  Alliance,
+  Union,
+  Federation,
+  Organization as Union,
+  Institution as Organization,
+  Company as Institution,
+  Corporation as Company,
+  Business as Corporation,
+  Enterprise as Business,
+  Firm as Enterprise,
+  Agency as Firm,
+  Office,
+  Department as Office,
+  Division as Department,
+  Section as Division,
+  Unit as Section,
+  Group as Unit,
+  Team as Group,
+  Squad,
+  Crew,
+  Staff as Crew,
+  Personnel,
+  Workforce,
+  Employee as Personnel,
+  Worker as Employee,
+  Member as Worker,
+  Participant as Member,
+  Player as Participant,
+  Competitor as Player,
+  Contestant,
+  Candidate,
+  Applicant,
+  Nominee,
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
@@ -47,6 +2926,13 @@ export default function DashboardPage() {
   const [hideBalances, setHideBalances] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [activeTab, setActiveTab] = useState("overview")
+  const [darkMode, setDarkMode] = useState(false)
+  const [autoRefresh, setAutoRefresh] = useState(true)
+  const [refreshInterval, setRefreshInterval] = useState(30)
+  const [notifications, setNotifications] = useState(true)
+  const [soundEnabled, setSoundEnabled] = useState(true)
+  const [compactView, setCompactView] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const [stats, setStats] = useState({
     totalBalance: 125678.32,
@@ -68,6 +2954,17 @@ export default function DashboardPage() {
     riskScore: 6.8,
     sharpeRatio: 1.45,
   })
+
+  const [quickActions, setQuickActions] = useState([
+    { id: 1, name: "Create Bot", icon: Bot, color: "bg-blue-600", action: "/bots/create" },
+    { id: 2, name: "Quick Trade", icon: Zap, color: "bg-green-600", action: "trade" },
+    { id: 3, name: "Portfolio", icon: PieChart, color: "bg-purple-600", action: "/portfolio" },
+    { id: 4, name: "Signals", icon: Signal, color: "bg-yellow-600", action: "/signals" },
+    { id: 5, name: "Analytics", icon: BarChart3, color: "bg-orange-600", action: "/analytics" },
+    { id: 6, name: "Settings", icon: Settings, color: "bg-gray-600", action: "/settings" },
+    { id: 7, name: "Export Data", icon: Download, color: "bg-indigo-600", action: "export" },
+    { id: 8, name: "Import Config", icon: Upload, color: "bg-pink-600", action: "import" },
+  ])
 
   const [walletConnections, setWalletConnections] = useState([
     {
@@ -112,389 +3009,13 @@ export default function DashboardPage() {
     },
   ])
 
-  const [portfolioHoldings, setPortfolioHoldings] = useState([
-    {
-      symbol: "BTC",
-      name: "Bitcoin",
-      amount: 2.3456,
-      value: 156340.67,
-      change: 3.4,
-      allocation: 42.2,
-      avgPrice: 58000,
-      profit: 12456.78,
-      profitPercent: 8.7,
-      exchange: "Binance",
-    },
-    {
-      symbol: "ETH",
-      name: "Ethereum",
-      amount: 25.8765,
-      value: 89765.43,
-      change: -1.8,
-      allocation: 24.2,
-      avgPrice: 3200,
-      profit: 5678.9,
-      profitPercent: 6.8,
-      exchange: "Coinbase",
-    },
-    {
-      symbol: "ADA",
-      name: "Cardano",
-      amount: 45000,
-      value: 23456.78,
-      change: 7.2,
-      allocation: 6.3,
-      avgPrice: 0.45,
-      profit: 2345.67,
-      profitPercent: 11.1,
-      exchange: "Kraken",
-    },
-    {
-      symbol: "SOL",
-      name: "Solana",
-      amount: 234.67,
-      value: 18456.78,
-      change: 4.5,
-      allocation: 5.0,
-      avgPrice: 65,
-      profit: 3456.78,
-      profitPercent: 23.1,
-      exchange: "FTX",
-    },
-    {
-      symbol: "DOT",
-      name: "Polkadot",
-      amount: 1890.45,
-      value: 12234.56,
-      change: -2.1,
-      allocation: 3.3,
-      avgPrice: 5.8,
-      profit: -567.89,
-      profitPercent: -4.4,
-      exchange: "Bybit",
-    },
-    {
-      symbol: "LINK",
-      name: "Chainlink",
-      amount: 567.89,
-      value: 8945.67,
-      change: 5.6,
-      allocation: 2.4,
-      avgPrice: 14.5,
-      profit: 1234.56,
-      profitPercent: 16.0,
-      exchange: "KuCoin",
-    },
-    {
-      symbol: "UNI",
-      name: "Uniswap",
-      amount: 890.12,
-      value: 6789.45,
-      change: 2.8,
-      allocation: 1.8,
-      avgPrice: 6.8,
-      profit: 456.78,
-      profitPercent: 7.2,
-      exchange: "Uniswap",
-    },
-    {
-      symbol: "MATIC",
-      name: "Polygon",
-      amount: 3456.78,
-      value: 4567.89,
-      change: 1.9,
-      allocation: 1.2,
-      avgPrice: 1.2,
-      profit: 234.56,
-      profitPercent: 5.4,
-      exchange: "Polygon",
-    },
-  ])
-
-  const [recentTrades, setRecentTrades] = useState([
-    {
-      id: 1,
-      type: "BUY",
-      symbol: "BTC/USDT",
-      amount: 0.2345,
-      price: 67234.5,
-      total: 15761.89,
-      time: "2 minutes ago",
-      pnl: 456.78,
-      exchange: "Binance",
-      status: "Filled",
-      fee: 15.76,
-      orderId: "BIN123456789",
-    },
-    {
-      id: 2,
-      type: "SELL",
-      symbol: "ETH/USDT",
-      amount: 3.5,
-      price: 3456.78,
-      total: 12098.73,
-      time: "5 minutes ago",
-      pnl: -123.45,
-      exchange: "Coinbase",
-      status: "Filled",
-      fee: 12.1,
-      orderId: "CB987654321",
-    },
-    {
-      id: 3,
-      type: "BUY",
-      symbol: "ADA/USDT",
-      amount: 2000,
-      price: 0.5234,
-      total: 1046.8,
-      time: "12 minutes ago",
-      pnl: 89.12,
-      exchange: "Kraken",
-      status: "Filled",
-      fee: 1.05,
-      orderId: "KR456789123",
-    },
-    {
-      id: 4,
-      type: "SELL",
-      symbol: "SOL/USDT",
-      amount: 15.234,
-      price: 156.78,
-      total: 2388.49,
-      time: "18 minutes ago",
-      pnl: 345.67,
-      exchange: "FTX",
-      status: "Partial",
-      fee: 2.39,
-      orderId: "FTX789123456",
-    },
-    {
-      id: 5,
-      type: "BUY",
-      symbol: "DOT/USDT",
-      amount: 200,
-      price: 6.45,
-      total: 1290.0,
-      time: "25 minutes ago",
-      pnl: -23.45,
-      exchange: "Bybit",
-      status: "Filled",
-      fee: 1.29,
-      orderId: "BY123789456",
-    },
-    {
-      id: 6,
-      type: "SELL",
-      symbol: "LINK/USDT",
-      amount: 50,
-      price: 15.67,
-      total: 783.5,
-      time: "32 minutes ago",
-      pnl: 67.89,
-      exchange: "KuCoin",
-      status: "Filled",
-      fee: 0.78,
-      orderId: "KC456123789",
-    },
-  ])
-
-  const [activeBots, setActiveBots] = useState([
-    {
-      id: 1,
-      name: "BTC DCA Master Pro",
-      strategy: "DCA",
-      status: "active",
-      profit: 8456.78,
-      profitPercent: 18.4,
-      winRate: 82.3,
-      trades: 256,
-      allocation: 15000,
-      lastTrade: "2 hours ago",
-      exchange: "Binance",
-      risk: "Medium",
-      timeframe: "4H",
-      created: "2024-01-15",
-    },
-    {
-      id: 2,
-      name: "ETH Grid Trader Elite",
-      strategy: "Grid",
-      status: "active",
-      profit: 6834.56,
-      profitPercent: 22.7,
-      winRate: 78.4,
-      trades: 434,
-      allocation: 12000,
-      lastTrade: "15 minutes ago",
-      exchange: "Coinbase",
-      risk: "Low",
-      timeframe: "1H",
-      created: "2024-01-20",
-    },
-    {
-      id: 3,
-      name: "Multi-Coin Scalper AI",
-      strategy: "Scalping",
-      status: "active",
-      profit: 4567.43,
-      profitPercent: 15.2,
-      winRate: 71.9,
-      trades: 1245,
-      allocation: 8500,
-      lastTrade: "5 minutes ago",
-      exchange: "Kraken",
-      risk: "High",
-      timeframe: "5M",
-      created: "2024-02-01",
-    },
-    {
-      id: 4,
-      name: "AI Trend Follower V2",
-      strategy: "AI",
-      status: "active",
-      profit: 3245.67,
-      profitPercent: 10.8,
-      winRate: 69.2,
-      trades: 189,
-      allocation: 7000,
-      lastTrade: "1 hour ago",
-      exchange: "Bybit",
-      risk: "Medium",
-      timeframe: "1D",
-      created: "2024-02-10",
-    },
-    {
-      id: 5,
-      name: "Arbitrage Hunter",
-      strategy: "Arbitrage",
-      status: "paused",
-      profit: -345.67,
-      profitPercent: -4.9,
-      winRate: 58.2,
-      trades: 89,
-      allocation: 5000,
-      lastTrade: "2 days ago",
-      exchange: "KuCoin",
-      risk: "Low",
-      timeframe: "1M",
-      created: "2024-02-15",
-    },
-    {
-      id: 6,
-      name: "Momentum Rider",
-      strategy: "Momentum",
-      status: "active",
-      profit: 2156.78,
-      profitPercent: 7.2,
-      winRate: 65.4,
-      trades: 167,
-      allocation: 6000,
-      lastTrade: "30 minutes ago",
-      exchange: "FTX",
-      risk: "High",
-      timeframe: "15M",
-      created: "2024-02-20",
-    },
-  ])
-
-  const [marketData, setMarketData] = useState({
-    btcPrice: 67234.56,
-    btcChange: 3.2,
-    ethPrice: 3456.78,
-    ethChange: -1.8,
-    totalMarketCap: "2.3T",
-    fearGreedIndex: 78,
-    dominance: 54.2,
-    volume24h: "89.5B",
-    defiTvl: "156.7B",
-    activeAddresses: "1.2M",
-  })
-
-  const [activeSignals, setActiveSignals] = useState([
-    {
-      id: 1,
-      symbol: "BTC/USDT",
-      type: "BUY",
-      confidence: 89,
-      targetPrice: 72500,
-      currentPrice: 67234,
-      timeframe: "4H",
-      source: "AI Analysis",
-      strength: "Strong",
-      rsi: 45.6,
-      macd: "Bullish",
-    },
-    {
-      id: 2,
-      symbol: "ETH/USDT",
-      type: "SELL",
-      confidence: 76,
-      targetPrice: 3200,
-      currentPrice: 3456,
-      timeframe: "1H",
-      source: "Technical",
-      strength: "Medium",
-      rsi: 72.3,
-      macd: "Bearish",
-    },
-    {
-      id: 3,
-      symbol: "ADA/USDT",
-      type: "BUY",
-      confidence: 82,
-      targetPrice: 0.65,
-      currentPrice: 0.5234,
-      timeframe: "1D",
-      source: "Fundamental",
-      strength: "Strong",
-      rsi: 38.9,
-      macd: "Bullish",
-    },
-    {
-      id: 4,
-      symbol: "SOL/USDT",
-      type: "BUY",
-      confidence: 71,
-      targetPrice: 180,
-      currentPrice: 156.78,
-      timeframe: "2H",
-      source: "Social Sentiment",
-      strength: "Medium",
-      rsi: 42.1,
-      macd: "Neutral",
-    },
-    {
-      id: 5,
-      symbol: "DOT/USDT",
-      type: "SELL",
-      confidence: 68,
-      targetPrice: 5.8,
-      currentPrice: 6.45,
-      timeframe: "6H",
-      source: "Technical",
-      strength: "Weak",
-      rsi: 68.7,
-      macd: "Bearish",
-    },
-  ])
-
-  const [exchangeStatus, setExchangeStatus] = useState([
-    { name: "Binance", status: "operational", latency: "12ms", uptime: "99.9%" },
-    { name: "Coinbase", status: "operational", latency: "18ms", uptime: "99.8%" },
-    { name: "Kraken", status: "operational", latency: "25ms", uptime: "99.7%" },
-    { name: "Bybit", status: "maintenance", latency: "45ms", uptime: "98.9%" },
-    { name: "KuCoin", status: "operational", latency: "22ms", uptime: "99.6%" },
-    { name: "FTX", status: "operational", latency: "15ms", uptime: "99.9%" },
-    { name: "OKX", status: "operational", latency: "20ms", uptime: "99.5%" },
-    { name: "Huobi", status: "operational", latency: "28ms", uptime: "99.4%" },
-  ])
-
   // Real-time updates simulation
   useEffect(() => {
+    if (!autoRefresh) return
+
     const timer = setInterval(() => {
       setCurrentTime(new Date())
-
-      // Update stats with small random changes
+      
       setStats((prev) => ({
         ...prev,
         totalBalance: prev.totalBalance + (Math.random() - 0.5) * 500,
@@ -504,33 +3025,13 @@ export default function DashboardPage() {
         winRate: Math.max(70, Math.min(85, prev.winRate + (Math.random() - 0.5) * 0.5)),
         totalVolume: prev.totalVolume + Math.random() * 10000,
       }))
-
-      // Update market data
-      setMarketData((prev) => ({
-        ...prev,
-        btcPrice: prev.btcPrice + (Math.random() - 0.5) * 1000,
-        btcChange: prev.btcChange + (Math.random() - 0.5) * 0.5,
-        ethPrice: prev.ethPrice + (Math.random() - 0.5) * 200,
-        ethChange: prev.ethChange + (Math.random() - 0.5) * 0.5,
-        fearGreedIndex: Math.max(0, Math.min(100, prev.fearGreedIndex + (Math.random() - 0.5) * 5)),
-      }))
-
-      // Update portfolio holdings
-      setPortfolioHoldings((prev) =>
-        prev.map((holding) => ({
-          ...holding,
-          change: holding.change + (Math.random() - 0.5) * 2,
-          value: holding.value * (1 + (Math.random() - 0.5) * 0.02),
-        })),
-      )
-    }, 3000)
+    }, refreshInterval * 1000)
 
     return () => clearInterval(timer)
-  }, [])
+  }, [autoRefresh, refreshInterval])
 
   const handleRefresh = async () => {
     setRefreshing(true)
-    // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 2000))
     setRefreshing(false)
     toast({
@@ -539,12 +3040,23 @@ export default function DashboardPage() {
     })
   }
 
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    toast({
-      title: "Copied to Clipboard",
-      description: "Address copied successfully.",
-    })
+  const handleQuickAction = (action: string) => {
+    if (action === "trade") {
+      toast({
+        title: "Quick Trade",
+        description: "Opening quick trade dialog...",
+      })
+    } else if (action === "export") {
+      toast({
+        title: "Export Started",
+        description: "Your data export is being prepared...",
+      })
+    } else if (action === "import") {
+      toast({
+        title: "Import Config",
+        description: "Select a configuration file to import...",
+      })
+    }
   }
 
   if (isLoading) {
@@ -578,149 +3090,454 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4">
+    <div className={`min-h-screen ${darkMode ? 'bg-black' : 'bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900'} p-4`}>
       <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-white">
+        {/* Enhanced Header with More Controls */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-3xl font-bold text-white mb-2">
               Welcome back, {user.firstName || user.name || "Trader"}! 👋
             </h1>
-            <p className="text-gray-400 mt-1">
-              {currentTime.toLocaleDateString()} • {currentTime.toLocaleTimeString()} • Last updated:{" "}
-              {refreshing ? "Updating..." : "Just now"}
-            </p>
+            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-400">
+              <span>{currentTime.toLocaleDateString()} • {currentTime.toLocaleTimeString()}</span>
+              <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
+                <CheckCircle className="w-3 h-3 mr-1" />
+                System Operational
+              </Badge>
+              <Badge className={`${autoRefresh ? 'bg-blue-500/10 text-blue-400' : 'bg-gray-500/10 text-gray-400'}`}>
+                <RefreshCw className={`w-3 h-3 mr-1 ${autoRefresh ? 'animate-spin' : ''}`} />
+                Auto-refresh: {autoRefresh ? 'ON' : 'OFF'}
+              </Badge>
+            </div>
           </div>
-          <div className="flex items-center space-x-3">
-            <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
-              <CheckCircle className="w-3 h-3 mr-1" />
-              System Operational
-            </Badge>
+
+          {/* Control Panel */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Theme Toggle */}
+            <Button
+              onClick={() => setDarkMode(!darkMode)}
+              variant="outline"
+              size="sm"
+              className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+            >
+              {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+            </Button>
+
+            {/* View Toggle */}
+            <Button
+              onClick={() => setCompactView(!compactView)}
+              variant="outline"
+              size="sm"
+              className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+            >
+              {compactView ? <Maximize className="w-4 h-4" /> : <Minimize className="w-4 h-4" />}
+            </Button>
+
+            {/* Balance Visibility */}
+            <Button
+              onClick={() => setHideBalances(!hideBalances)}
+              variant="outline"
+              size="sm"
+              className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+            >
+              {hideBalances ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+            </Button>
+
+            {/* Notifications */}
+            <Button
+              onClick={() => setNotifications(!notifications)}
+              variant="outline"
+              size="sm"
+              className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+            >
+              <Bell className={`w-4 h-4 ${notifications ? 'text-yellow-400' : ''}`} />
+            </Button>
+
+            {/* Sound Toggle */}
+            <Button
+              onClick={() => setSoundEnabled(!soundEnabled)}
+              variant="outline"
+              size="sm"
+              className="bg-white/5 border-white/10 text-white hover:bg-white/10"
+            >
+              {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            </Button>
+
+            {/* Settings Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white">
+                <DropdownMenuItem onClick={() => setShowAdvanced(!showAdvanced)}>
+                  <Cpu className="w-4 h-4 mr-2" />
+                  Advanced Mode
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Download className="w-4 h-4 mr-2" />
+                  Export Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Import Settings
+                </DropdownMenuItem>
+                <DropdownMenuItem>
+                  <HelpCircle className="w-4 h-4 mr-2" />
+                  Help & Support
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Refresh Button */}
             <Button
               onClick={handleRefresh}
               disabled={refreshing}
               variant="outline"
+              size="sm"
               className="bg-white/5 border-white/10 text-white hover:bg-white/10"
             >
-              <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-              Refresh
-            </Button>
-            <Button
-              onClick={() => setHideBalances(!hideBalances)}
-              variant="outline"
-              className="bg-white/5 border-white/10 text-white hover:bg-white/10"
-            >
-              {hideBalances ? <Eye className="w-4 h-4 mr-2" /> : <EyeOff className="w-4 h-4 mr-2" />}
-              {hideBalances ? "Show" : "Hide"}
-            </Button>
-            <Button asChild className="bg-blue-600 hover:bg-blue-700">
-              <Link href="/bots">
-                <Plus className="w-4 h-4 mr-2" />
-                Create Bot
-              </Link>
+              <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
             </Button>
           </div>
         </div>
 
-        {/* Main Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="bg-black/40 backdrop-blur-xl border-white/10">
+        {/* Quick Settings Panel */}
+        <Card className="bg-black/40 backdrop-blur-xl border-white/10">
+          <CardContent className="p-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="flex items-center space-x-3">
+                <Label htmlFor="auto-refresh" className="text-white text-sm">Auto Refresh</Label>
+                <Switch
+                  id="auto-refresh"
+                  checked={autoRefresh}
+                  onCheckedChange={setAutoRefresh}
+                />
+              </div>
+              
+              <div className="flex items-center space-x-3">
+                <Label htmlFor="refresh-interval" className="text-white text-sm">Interval (s)</Label>
+                <Select value={refreshInterval.toString()} onValueChange={(value) => setRefreshInterval(Number(value))}>
+                  <SelectTrigger className="w-20 bg-gray-800 border-gray-700 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-900 border-gray-700">
+                    <SelectItem value="10">10s</SelectItem>
+                    <SelectItem value="30">30s</SelectItem>
+                    <SelectItem value="60">1m</SelectItem>
+                    <SelectItem value="300">5m</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <Label htmlFor="notifications" className="text-white text-sm">Notifications</Label>
+                <Switch
+                  id="notifications"
+                  checked={notifications}
+                  onCheckedChange={setNotifications}
+                />
+              </div>
+
+              <div className="flex items-center space-x-3">
+                <Label htmlFor="sound" className="text-white text-sm">Sound Alerts</Label>
+                <Switch
+                  id="sound"
+                  checked={soundEnabled}
+                  onCheckedChange={setSoundEnabled}
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Enhanced Stats Cards */}
+        <div className={`grid ${compactView ? 'grid-cols-2 lg:grid-cols-6' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'} gap-4`}>
+          <Card className="bg-black/40 backdrop-blur-xl border-white/10 hover:border-green-500/50 transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Total Portfolio Value</CardTitle>
-              <DollarSign className="h-4 w-4 text-green-400" />
+              <CardTitle className="text-sm font-medium text-gray-400">Total Portfolio</CardTitle>
+              <div className="flex items-center space-x-2">
+                <DollarSign className="h-4 w-4 text-green-400" />
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                  <MoreHorizontal className="h-3 w-3" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">
                 {hideBalances ? "••••••••" : `$${stats.totalBalance.toLocaleString()}`}
               </div>
-              <div className="flex items-center text-xs mt-1">
-                <TrendingUp className="w-3 h-3 mr-1 text-green-400" />
-                <span className="text-green-400">
-                  {hideBalances ? "••••" : `+$${stats.totalPnL.toFixed(2)} (${stats.pnlPercent}%)`}
-                </span>
+              <div className="flex items-center justify-between text-xs mt-1">
+                <div className="flex items-center">
+                  <TrendingUp className="w-3 h-3 mr-1 text-green-400" />
+                  <span className="text-green-400">
+                    {hideBalances ? "••••" : `+$${stats.totalPnL.toFixed(2)} (${stats.pnlPercent}%)`}
+                  </span>
+                </div>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-400 hover:text-white">
+                  <Share className="h-3 w-3" />
+                </Button>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Volume: {hideBalances ? "••••••••" : `$${stats.totalVolume.toLocaleString()}`}
-              </p>
+              <Progress value={stats.pnlPercent} className="mt-2 h-1" />
             </CardContent>
           </Card>
 
-          <Card className="bg-black/40 backdrop-blur-xl border-white/10">
+          <Card className="bg-black/40 backdrop-blur-xl border-white/10 hover:border-blue-500/50 transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400">Active Bots</CardTitle>
+              <div className="flex items-center space-x-2">
+                <Bot className="h-4 w-4 text-blue-400" />
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                  <Plus className="h-3 w-3" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">{stats.activeBots}</div>
+              <div className="flex items-center justify-between text-xs mt-1">
+                <div className="flex items-center">
+                  <Target className="w-3 h-3 mr-1 text-blue-400" />
+                  <span className="text-blue-400">{stats.winRate.toFixed(1)}% win rate</span>
+                </div>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-400 hover:text-white">
+                  <Edit className="h-3 w-3" />
+                </Button>
+              </div>
+              <Progress value={stats.winRate} className="mt-2 h-1" />
+            </CardContent>
+          </Card>
+
+          <Card className="bg-black/40 backdrop-blur-xl border-white/10 hover:border-purple-500/50 transition-all duration-300">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-gray-400">Active Signals</CardTitle>
+              <div className="flex items-center space-x-2">
+                <Zap className="h-4 w-4 text-purple-400" />
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                  <Filter className="h-3 w-3" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-white">{stats.activeSignals}</div>
+              <div className="flex items-center justify-between text-xs mt-1">
+                <div className="flex items-center">
+                  <Signal className="w-3 h-3 mr-1 text-purple-400" />
+                  <span className="text-purple-400">Real-time signals</span>
+                </div>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-400 hover:text-white">
+                  <Bell className="h-3 w-3" />
+                </Button>
+              </div>
+              <Progress value={85} className="mt-2 h-1" />
+            </CardContent>
+          </Card>
+
+          <Card className="bg-black/40 backdrop-blur-xl border-white/10 hover:border-yellow-500/50 transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-400">Today's P&L</CardTitle>
-              <TrendingUp className="h-4 w-4 text-green-400" />
+              <div className="flex items-center space-x-2">
+                <TrendingUp className="h-4 w-4 text-green-400" />
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                  <Calendar className="h-3 w-3" />
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-green-400">
                 {hideBalances ? "••••••••" : `+$${stats.todayPnL.toFixed(2)}`}
               </div>
-              <div className="flex items-center text-xs mt-1">
-                <ArrowUpRight className="w-3 h-3 mr-1 text-green-400" />
-                <span className="text-green-400">
-                  {hideBalances ? "••••" : `+${stats.todayPnLPercent.toFixed(2)}% today`}
-                </span>
+              <div className="flex items-center justify-between text-xs mt-1">
+                <div className="flex items-center">
+                  <ArrowUpRight className="w-3 h-3 mr-1 text-green-400" />
+                  <span className="text-green-400">
+                    {hideBalances ? "••••" : `+${stats.todayPnLPercent.toFixed(2)}% today`}
+                  </span>
+                </div>
+                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-400 hover:text-white">
+                  <BarChart3 className="h-3 w-3" />
+                </Button>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Weekly: {hideBalances ? "••••••••" : `+$${stats.weeklyPnL.toFixed(2)}`}
-              </p>
+              <Progress value={Math.abs(stats.todayPnLPercent) * 10} className="mt-2 h-1" />
             </CardContent>
           </Card>
 
-          <Card className="bg-black/40 backdrop-blur-xl border-white/10">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Active Bots</CardTitle>
-              <Bot className="h-4 w-4 text-blue-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{stats.activeBots}</div>
-              <div className="flex items-center text-xs mt-1">
-                <Target className="w-3 h-3 mr-1 text-blue-400" />
-                <span className="text-blue-400">{stats.winRate.toFixed(1)}% win rate</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Best: {stats.bestPerformer} • Risk: {stats.riskScore}/10
-              </p>
-            </CardContent>
-          </Card>
+          {showAdvanced && (
+            <>
+              <Card className="bg-black/40 backdrop-blur-xl border-white/10 hover:border-orange-500/50 transition-all duration-300">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-400">Risk Score</CardTitle>
+                  <Shield className="h-4 w-4 text-orange-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-orange-400">{stats.riskScore}/10</div>
+                  <div className="flex items-center text-xs mt-1">
+                    <AlertTriangle className="w-3 h-3 mr-1 text-orange-400" />
+                    <span className="text-orange-400">Medium Risk</span>
+                  </div>
+                  <Progress value={stats.riskScore * 10} className="mt-2 h-1" />
+                </CardContent>
+              </Card>
 
-          <Card className="bg-black/40 backdrop-blur-xl border-white/10">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-400">Active Signals</CardTitle>
-              <Zap className="h-4 w-4 text-purple-400" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{stats.activeSignals}</div>
-              <div className="flex items-center text-xs mt-1">
-                <Signal className="w-3 h-3 mr-1 text-purple-400" />
-                <span className="text-purple-400">Real-time signals</span>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Avg Trade: {hideBalances ? "••••••••" : `$${stats.avgTradeSize.toFixed(2)}`}
-              </p>
-            </CardContent>
-          </Card>
+              <Card className="bg-black/40 backdrop-blur-xl border-white/10 hover:border-cyan-500/50 transition-all duration-300">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium text-gray-400">Sharpe Ratio</CardTitle>
+                  <BarChart3 className="h-4 w-4 text-cyan-400" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-cyan-400">{stats.sharpeRatio}</div>
+                  <div className="flex items-center text-xs mt-1">
+                    <TrendingUp className="w-3 h-3 mr-1 text-cyan-400" />
+                    <span className="text-cyan-400">Excellent</span>
+                  </div>
+                  <Progress value={stats.sharpeRatio * 50} className="mt-2 h-1" />
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
 
-        {/* Wallet Connections */}
+        {/* Enhanced Quick Actions Grid */}
         <Card className="bg-black/40 backdrop-blur-xl border-white/10">
           <CardHeader>
-            <CardTitle className="text-white flex items-center">
-              <Wallet className="w-5 h-5 mr-2 text-green-400" />
-              Wallet Connections
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-white flex items-center">
+                <Zap className="w-5 h-5 mr-2 text-yellow-400" />
+                Quick Actions
+              </CardTitle>
+              <div className="flex items-center space-x-2">
+                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add Action
+                </Button>
+                <Button variant="ghost" size="sm" className="text-gray-400 hover:text-white">
+                  <Edit className="w-4 h-4 mr-1" />
+                  Customize
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className={`grid ${compactView ? 'grid-cols-4 lg:grid-cols-8' : 'grid-cols-2 md:grid-cols-4 lg:grid-cols-8'} gap-4`}>
+              {quickActions.map((action) => (
+                <div key={action.id} className="relative group">
+                  <Button
+                    onClick={() => action.action.startsWith('/') ? window.location.href = action.action : handleQuickAction(action.action)}
+                    className={`h-20 w-full flex-col ${action.color} hover:opacity-90 transition-all duration-300 transform hover:scale-105`}
+                  >
+                    <action.icon className="w-6 h-6 mb-2" />
+                    <span className="text-xs font-medium">{action.name}</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="absolute -top-2 -right-2 h-6 w-6 p-0 bg-gray-800 border border-gray-600 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <MoreHorizontal className="h-3 w-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            {/* Additional Action Buttons */}
+            <div className="mt-6 flex flex-wrap gap-2">
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+                    <Search className="w-4 h-4 mr-2" />
+                    Search Assets
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-gray-900 border-gray-800 text-white">
+                  <DialogHeader>
+                    <DialogTitle>Search Trading Assets</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <Input
+                      placeholder="Search for cryptocurrencies..."
+                      className="bg-gray-800 border-gray-700 text-white"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      {['BTC', 'ETH', 'ADA', 'SOL', 'DOT', 'LINK'].map((symbol) => (
+                        <Button key={symbol} variant="outline" size="sm" className="bg-gray-800 border-gray-700">
+                          {symbol}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+                <Calculator className="w-4 h-4 mr-2" />
+                P&L Calculator
+              </Button>
+
+              <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+                <Timer className="w-4 h-4 mr-2" />
+                Set Alerts
+              </Button>
+
+              <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+                <BookOpen className="w-4 h-4 mr-2" />
+                Trading Journal
+              </Button>
+
+              <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+                <Users className="w-4 h-4 mr-2" />
+                Copy Trading
+              </Button>
+
+              <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+                <Globe className="w-4 h-4 mr-2" />
+                Market News
+              </Button>
+
+              <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Community Chat
+              </Button>
+
+              <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+                <Video className="w-4 h-4 mr-2" />
+                Video Tutorials
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Enhanced Wallet Connections */}
+        <Card className="bg-black/40 backdrop-blur-xl border-white/10">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-white flex items-center">
+                <Wallet className="w-5 h-5 mr-2 text-green-400" />
+                Wallet Connections ({walletConnections.filter(w => w.status === 'connected').length}/4)
+              </CardTitle>
+              <div className="flex items-center space-x-2">
+                <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Wallet
+                </Button>
+                <Button variant="outline" size="sm" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+                  <Settings className="w-4 h-4 mr-2" />
+                  Manage
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               {walletConnections.map((wallet) => (
                 <div
                   key={wallet.id}
-                  className={`p-4 rounded-lg border transition-colors ${
+                  className={`p-4 rounded-lg border transition-all duration-300 hover:scale-105 ${
                     wallet.status === "connected"
-                      ? "bg-green-500/10 border-green-500/20"
-                      : "bg-red-500/10 border-red-500/20"
+                      ? "bg-green-500/10 border-green-500/20 hover:border-green-500/40"
+                      : "bg-red-500/10 border-red-500/20 hover:border-red-500/40"
                   }`}
                 >
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center space-x-2">
                       <div
                         className={`w-3 h-3 rounded-full ${
@@ -729,497 +3546,168 @@ export default function DashboardPage() {
                       ></div>
                       <p className="font-medium text-white text-sm">{wallet.name}</p>
                     </div>
-                    <Badge variant={wallet.status === "connected" ? "default" : "destructive"} className="text-xs">
-                      {wallet.status}
-                    </Badge>
+                    <div className="flex items-center space-x-1">
+                      <Badge variant={wallet.status === "connected" ? "default" : "destructive"} className="text-xs">
+                        {wallet.status}
+                      </Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                            <MoreHorizontal className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="bg-gray-900 border-gray-700 text-white">
+                          <DropdownMenuItem>
+                            <Eye className="w-4 h-4 mr-2" />
+                            View Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Copy className="w-4 h-4 mr-2" />
+                            Copy Address
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <LinkIcon className="w-4 h-4 mr-2" />
+                            View on Explorer
+                          </DropdownMenuItem>
+                          <DropdownMenuItem className="text-red-400">
+                            <Trash2 className="w-4 h-4 mr-2" />
+                            Disconnect
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
-                  <div className="space-y-1 text-xs">
+                  
+                  <div className="space-y-2 text-xs">
                     <div className="flex items-center justify-between">
                       <span className="text-gray-400">Network:</span>
-                      <span className="text-white">{wallet.network}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {wallet.network}
+                      </Badge>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-gray-400">Balance:</span>
-                      <span className="text-white">{hideBalances ? "••••••••" : wallet.balance}</span>
+                      <span className="text-white font-medium">
+                        {hideBalances ? "••••••••" : wallet.balance}
+                      </span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-gray-400">USD Value:</span>
-                      <span className="text-green-400">
+                      <span className="text-green-400 font-medium">
                         {hideBalances ? "••••••••" : `$${wallet.usdValue.toLocaleString()}`}
                       </span>
                     </div>
-                    <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-700">
                       <span className="text-gray-400 truncate mr-2">
                         {wallet.address.slice(0, 8)}...{wallet.address.slice(-6)}
                       </span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => copyToClipboard(wallet.address)}
-                        className="h-6 w-6 p-0"
-                      >
-                        <Copy className="w-3 h-3" />
-                      </Button>
+                      <div className="flex items-center space-x-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigator.clipboard.writeText(wallet.address)}
+                          className="h-6 w-6 p-0 hover:bg-white/10"
+                        >
+                          <Copy className="w-3 h-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 hover:bg-white/10"
+                        >
+                          <LinkIcon className="w-3 h-3" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                   <p className="text-xs text-gray-500 mt-2">Last used: {wallet.lastUsed}</p>
                 </div>
               ))}
             </div>
-            <div className="flex flex-wrap gap-2">
-              <WalletConnectButton />
+
+            {/* Wallet Connection Options */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
               <Button variant="outline" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
                 <Smartphone className="w-4 h-4 mr-2" />
-                Connect Mobile
+                MetaMask
               </Button>
               <Button variant="outline" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
                 <Monitor className="w-4 h-4 mr-2" />
-                Hardware Wallet
+                Coinbase
               </Button>
               <Button variant="outline" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
                 <LinkIcon className="w-4 h-4 mr-2" />
                 WalletConnect
               </Button>
+              <Button variant="outline" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+                <Shield className="w-4 h-4 mr-2" />
+                Ledger
+              </Button>
+              <Button variant="outline" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+                <Lock className="w-4 h-4 mr-2" />
+                Trezor
+              </Button>
+              <Button variant="outline" className="bg-white/5 border-white/10 text-white hover:bg-white/10">
+                <Plus className="w-4 h-4 mr-2" />
+                More
+              </Button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Tabs for Different Views */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-5 bg-black/40 backdrop-blur-xl border-white/10">
-            <TabsTrigger value="overview" className="text-white">
-              Overview
-            </TabsTrigger>
-            <TabsTrigger value="portfolio" className="text-white">
-              Portfolio
-            </TabsTrigger>
-            <TabsTrigger value="bots" className="text-white">
-              Trading Bots
-            </TabsTrigger>
-            <TabsTrigger value="signals" className="text-white">
-              Signals
-            </TabsTrigger>
-            <TabsTrigger value="trades" className="text-white">
-              Trade History
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-6">
-            {/* Market Summary */}
-            <Card className="bg-black/40 backdrop-blur-xl border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <Globe className="w-5 h-5 mr-2 text-blue-400" />
-                  Market Summary
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
-                  <div className="text-center">
-                    <p className="text-xs text-gray-400 mb-1">BTC/USD</p>
-                    <p className="text-lg font-bold text-white">${marketData.btcPrice.toLocaleString()}</p>
-                    <div className="flex items-center justify-center space-x-1">
-                      {marketData.btcChange > 0 ? (
-                        <TrendingUp className="w-3 h-3 text-green-400" />
-                      ) : (
-                        <TrendingDown className="w-3 h-3 text-red-400" />
-                      )}
-                      <span className={marketData.btcChange > 0 ? "text-green-400" : "text-red-400"}>
-                        {marketData.btcChange > 0 ? "+" : ""}
-                        {marketData.btcChange.toFixed(2)}%
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="text-center">
-                    <p className="text-xs text-gray-400 mb-1">ETH/USD</p>
-                    <p className="text-lg font-bold text-white">${marketData.ethPrice.toLocaleString()}</p>
-                    <div className="flex items-center justify-center space-x-1">
-                      {marketData.ethChange > 0 ? (
-                        <TrendingUp className="w-3 h-3 text-green-400" />
-                      ) : (
-                        <TrendingDown className="w-3 h-3 text-red-400" />
-                      )}
-                      <span className={marketData.ethChange > 0 ? "text-green-400" : "text-red-400"}>
-                        {marketData.ethChange > 0 ? "+" : ""}
-                        {marketData.ethChange.toFixed(2)}%
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="text-center">
-                    <p className="text-xs text-gray-400 mb-1">Market Cap</p>
-                    <p className="text-lg font-bold text-white">${marketData.totalMarketCap}</p>
-                    <span className="text-green-400 text-sm">+2.1%</span>
-                  </div>
-
-                  <div className="text-center">
-                    <p className="text-xs text-gray-400 mb-1">Fear & Greed</p>
-                    <p className="text-lg font-bold text-yellow-400">{marketData.fearGreedIndex}</p>
-                    <span className="text-yellow-400 text-sm">Extreme Greed</span>
-                  </div>
-
-                  <div className="text-center">
-                    <p className="text-xs text-gray-400 mb-1">24h Volume</p>
-                    <p className="text-lg font-bold text-white">${marketData.volume24h}</p>
-                    <span className="text-blue-400 text-sm">+5.2%</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Exchange Status */}
-            <Card className="bg-black/40 backdrop-blur-xl border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <Shield className="w-5 h-5 mr-2 text-green-400" />
-                  Exchange Status
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {exchangeStatus.map((exchange) => (
-                    <div key={exchange.name} className="p-3 rounded-lg bg-white/5">
-                      <div className="flex items-center justify-between mb-2">
-                        <p className="font-medium text-white text-sm">{exchange.name}</p>
-                        <div
-                          className={`w-2 h-2 rounded-full ${
-                            exchange.status === "operational" ? "bg-green-400" : "bg-yellow-400"
-                          }`}
-                        ></div>
-                      </div>
-                      <div className="space-y-1 text-xs">
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Status:</span>
-                          <span className={exchange.status === "operational" ? "text-green-400" : "text-yellow-400"}>
-                            {exchange.status}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Latency:</span>
-                          <span className="text-white">{exchange.latency}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Uptime:</span>
-                          <span className="text-green-400">{exchange.uptime}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="portfolio" className="space-y-6">
-            {/* Portfolio Holdings */}
-            <Card className="bg-black/40 backdrop-blur-xl border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <PieChart className="w-5 h-5 mr-2 text-green-400" />
-                  Portfolio Holdings
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {portfolioHoldings.map((holding) => (
-                    <div
-                      key={holding.symbol}
-                      className="flex items-center justify-between p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-r from-orange-400 to-yellow-400 flex items-center justify-center text-white font-bold">
-                          {holding.symbol.charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-white">{holding.symbol}</p>
-                          <p className="text-sm text-gray-400">{holding.name}</p>
-                          <p className="text-xs text-gray-500">
-                            {hideBalances ? "••••••••" : `${holding.amount.toLocaleString()} ${holding.symbol}`}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-white">
-                          {hideBalances ? "••••••••" : `$${holding.value.toLocaleString()}`}
-                        </p>
-                        <p
-                          className={`text-sm flex items-center justify-end ${holding.change >= 0 ? "text-green-400" : "text-red-400"}`}
-                        >
-                          {holding.change >= 0 ? (
-                            <ArrowUpRight className="w-3 h-3 mr-1" />
-                          ) : (
-                            <ArrowDownRight className="w-3 h-3 mr-1" />
-                          )}
-                          {Math.abs(holding.change).toFixed(2)}%
-                        </p>
-                        <div className="text-xs text-gray-500 space-y-1">
-                          <p>Allocation: {holding.allocation}%</p>
-                          <p>
-                            P&L:{" "}
-                            <span className={holding.profit >= 0 ? "text-green-400" : "text-red-400"}>
-                              {hideBalances
-                                ? "••••••••"
-                                : `${holding.profit >= 0 ? "+" : ""}$${holding.profit.toFixed(2)} (${holding.profitPercent}%)`}
-                            </span>
-                          </p>
-                          <p>Exchange: {holding.exchange}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="bots" className="space-y-6">
-            {/* Active Bots */}
-            <Card className="bg-black/40 backdrop-blur-xl border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <Bot className="w-5 h-5 mr-2 text-blue-400" />
-                  Trading Bots ({activeBots.filter((bot) => bot.status === "active").length} Active)
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {activeBots.map((bot) => (
-                    <div
-                      key={bot.id}
-                      className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <p className="font-medium text-white">{bot.name}</p>
-                        <Badge variant={bot.status === "active" ? "default" : "secondary"} className="text-xs">
-                          {bot.status === "active" ? (
-                            <>
-                              <Play className="w-3 h-3 mr-1" /> Active
-                            </>
-                          ) : (
-                            <>
-                              <Pause className="w-3 h-3 mr-1" /> Paused
-                            </>
-                          )}
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 text-xs">
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Strategy:</span>
-                            <span className="text-white">{bot.strategy}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Exchange:</span>
-                            <span className="text-white">{bot.exchange}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Risk:</span>
-                            <span
-                              className={
-                                bot.risk === "High"
-                                  ? "text-red-400"
-                                  : bot.risk === "Medium"
-                                    ? "text-yellow-400"
-                                    : "text-green-400"
-                              }
-                            >
-                              {bot.risk}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Timeframe:</span>
-                            <span className="text-white">{bot.timeframe}</span>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Profit:</span>
-                            <span className={bot.profit >= 0 ? "text-green-400" : "text-red-400"}>
-                              {hideBalances ? "••••••••" : `${bot.profit >= 0 ? "+" : ""}$${bot.profit.toFixed(2)}`}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Win Rate:</span>
-                            <span className="text-white">{bot.winRate}%</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Trades:</span>
-                            <span className="text-white">{bot.trades}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-400">Allocation:</span>
-                            <span className="text-white">
-                              {hideBalances ? "••••••••" : `$${bot.allocation.toLocaleString()}`}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <Progress value={bot.winRate} className="mt-3 h-2" />
-                      <div className="flex items-center justify-between mt-3 text-xs">
-                        <span className="text-gray-500">Created: {bot.created}</span>
-                        <span className="text-gray-500">Last trade: {bot.lastTrade}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="signals" className="space-y-6">
-            {/* Active Signals */}
-            <Card className="bg-black/40 backdrop-blur-xl border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <Zap className="w-5 h-5 mr-2 text-yellow-400" />
-                  Active Trading Signals ({activeSignals.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {activeSignals.map((signal) => (
-                    <div
-                      key={signal.id}
-                      className="p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <p className="font-medium text-white">{signal.symbol}</p>
-                        <Badge variant={signal.type === "BUY" ? "default" : "destructive"} className="text-xs">
-                          {signal.type}
-                        </Badge>
-                      </div>
-                      <div className="space-y-2 text-xs">
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Confidence:</span>
-                          <span className="text-green-400">{signal.confidence}%</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Strength:</span>
-                          <span
-                            className={
-                              signal.strength === "Strong"
-                                ? "text-green-400"
-                                : signal.strength === "Medium"
-                                  ? "text-yellow-400"
-                                  : "text-red-400"
-                            }
-                          >
-                            {signal.strength}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Target:</span>
-                          <span className="text-white">${signal.targetPrice.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Current:</span>
-                          <span className="text-white">${signal.currentPrice.toLocaleString()}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">Timeframe:</span>
-                          <span className="text-white">{signal.timeframe}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">RSI:</span>
-                          <span className="text-white">{signal.rsi}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-gray-400">MACD:</span>
-                          <span
-                            className={
-                              signal.macd === "Bullish"
-                                ? "text-green-400"
-                                : signal.macd === "Bearish"
-                                  ? "text-red-400"
-                                  : "text-yellow-400"
-                            }
-                          >
-                            {signal.macd}
-                          </span>
-                        </div>
-                      </div>
-                      <Progress value={signal.confidence} className="mt-3 h-2" />
-                      <p className="text-xs text-gray-500 mt-2">Source: {signal.source}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="trades" className="space-y-6">
-            {/* Recent Trades */}
-            <Card className="bg-black/40 backdrop-blur-xl border-white/10">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center">
-                  <Activity className="w-5 h-5 mr-2 text-purple-400" />
-                  Recent Trades ({recentTrades.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {recentTrades.map((trade) => (
-                    <div
-                      key={trade.id}
-                      className="flex items-center justify-between p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors border border-white/10"
-                    >
-                      <div className="flex items-center space-x-4">
-                        <Badge variant={trade.type === "BUY" ? "default" : "destructive"} className="text-xs">
-                          {trade.type}
-                        </Badge>
-                        <div>
-                          <p className="font-medium text-white text-sm">{trade.symbol}</p>
-                          <p className="text-xs text-gray-400">{trade.exchange}</p>
-                          <p className="text-xs text-gray-500">ID: {trade.orderId}</p>
-                        </div>
-                        <div className="text-xs text-gray-400">
-                          <p>{hideBalances ? "••••••••" : `${trade.amount} @ $${trade.price.toLocaleString()}`}</p>
-                          <p>Total: {hideBalances ? "••••••••" : `$${trade.total.toLocaleString()}`}</p>
-                          <p>Fee: {hideBalances ? "••••••••" : `$${trade.fee.toFixed(2)}`}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <Badge variant={trade.status === "Filled" ? "default" : "secondary"} className="text-xs mb-2">
-                          {trade.status}
-                        </Badge>
-                        <p className={`font-medium text-sm ${trade.pnl >= 0 ? "text-green-400" : "text-red-400"}`}>
-                          {hideBalances ? "••••••••" : `${trade.pnl >= 0 ? "+" : ""}$${trade.pnl.toFixed(2)}`}
-                        </p>
-                        <p className="text-xs text-gray-400">{trade.time}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Button asChild className="h-16 bg-blue-600 hover:bg-blue-700 text-white">
+        {/* Enhanced Bottom Action Bar */}
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+          <Button asChild className="h-16 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg">
             <Link href="/bots">
-              <Bot className="w-5 h-5 mr-2" />
-              Create New Bot
+              <div className="flex flex-col items-center">
+                <Bot className="w-6 h-6 mb-1" />
+                <span className="text-sm">Create Bot</span>
+              </div>
             </Link>
           </Button>
-          <Button asChild className="h-16 bg-purple-600 hover:bg-purple-700 text-white">
+
+          <Button asChild className="h-16 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white shadow-lg">
             <Link href="/signals">
-              <Zap className="w-5 h-5 mr-2" />
-              View All Signals
+              <div className="flex flex-col items-center">
+                <Zap className="w-6 h-6 mb-1" />
+                <span className="text-sm">View Signals</span>
+              </div>
             </Link>
           </Button>
-          <Button asChild className="h-16 bg-green-600 hover:bg-green-700 text-white">
+
+          <Button asChild className="h-16 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white shadow-lg">
             <Link href="/portfolio">
-              <BarChart3 className="w-5 h-5 mr-2" />
-              Portfolio Analytics
+              <div className="flex flex-col items-center">
+                <BarChart3 className="w-6 h-6 mb-1" />
+                <span className="text-sm">Analytics</span>
+              </div>
             </Link>
           </Button>
-          <Button asChild className="h-16 bg-orange-600 hover:bg-orange-700 text-white">
+
+          <Button asChild className="h-16 bg-gradient-to-r from-orange-600 to-orange-700 hover:from-orange-700 hover:to-orange-800 text-white shadow-lg">
             <Link href="/integrations">
-              <Settings className="w-5 h-5 mr-2" />
-              Exchange Settings
+              <div className="flex flex-col items-center">
+                <Settings className="w-6 h-6 mb-1" />
+                <span className="text-sm">Exchanges</span>
+              </div>
+            </Link>
+          </Button>
+
+          <Button asChild className="h-16 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white shadow-lg">
+            <Link href="/news">
+              <div className="flex flex-col items-center">
+                <Globe className="w-6 h-6 mb-1" />
+                <span className="text-sm">Market News</span>
+              </div>
+            </Link>
+          </Button>
+
+          <Button asChild className="h-16 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white shadow-lg">
+            <Link href="/ai-bots">
+              <div className="flex flex-col items-center">
+                <Cpu className="w-6 h-6 mb-1" />
+                <span className="text-sm">AI Trading</span>
+              </div>
             </Link>
           </Button>
         </div>
