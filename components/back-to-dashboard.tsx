@@ -14,7 +14,8 @@ export function BackToDashboard({ className }: BackToDashboardProps) {
     <Link href="/dashboard">
       <Button
         variant="outline"
-        className={cn("bg-transparent border-white/10 text-white hover:bg-white/10", className)}
+        size="sm"
+        className={cn("border-white/10 text-white hover:bg-white/10 bg-transparent backdrop-blur-sm", className)}
       >
         <ArrowLeft className="h-4 w-4 mr-2" />
         Back to Dashboard
@@ -29,9 +30,10 @@ export function FloatingDashboardButton() {
       <Link href="/dashboard">
         <Button
           size="lg"
-          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105 rounded-full p-4"
+          className="rounded-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105"
         >
-          <Home className="h-6 w-6" />
+          <Home className="h-5 w-5 mr-2" />
+          Dashboard
         </Button>
       </Link>
     </div>
