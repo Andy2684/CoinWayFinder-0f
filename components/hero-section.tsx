@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, TrendingUp, Shield, Zap } from "lucide-react"
+import { ArrowRight, Bot, TrendingUp, Zap, Shield } from "lucide-react"
 
 export function HeroSection() {
   const [mounted, setMounted] = useState(false)
@@ -12,7 +12,7 @@ export function HeroSection() {
   useEffect(() => {
     setMounted(true)
     // Check for user in localStorage after mount
-    const userData = localStorage.getItem("user")
+    const userData = localStorage.getItem("user_data")
     if (userData) {
       try {
         setUser(JSON.parse(userData))
@@ -22,65 +22,73 @@ export function HeroSection() {
     }
   }, [])
 
-  if (!mounted) {
-    return (
-      <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="text-center">
-            <div className="h-16 bg-gray-700/50 rounded animate-pulse mb-6 mx-auto max-w-4xl"></div>
-            <div className="h-6 bg-gray-700/50 rounded animate-pulse mb-8 mx-auto max-w-2xl"></div>
-            <div className="flex justify-center space-x-4">
-              <div className="w-32 h-12 bg-gray-700/50 rounded animate-pulse"></div>
-              <div className="w-32 h-12 bg-gray-700/50 rounded animate-pulse"></div>
-            </div>
-          </div>
-        </div>
-      </section>
-    )
-  }
-
   return (
-    <section className="pt-32 pb-20 px-4 sm:px-6 lg:px-8">
+    <section className="relative pt-32 pb-20 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
         <div className="text-center">
-          <div className="inline-flex items-center px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-sm font-medium mb-8">
-            <TrendingUp className="w-4 h-4 mr-2" />
-            Advanced Crypto Trading Platform
-          </div>
-
-          <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-            Trade Smarter with
-            <span className="block bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
-              AI-Powered Bots
+          {/* Main Heading */}
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
+            <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+              AI-Powered
             </span>
+            <br />
+            Crypto Trading
           </h1>
 
-          <p className="text-xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Maximize your crypto profits with our advanced trading algorithms, real-time market analysis, and automated
-            strategies. Join thousands of successful traders today.
+          {/* Subheading */}
+          <p className="text-xl sm:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
+            Automate your cryptocurrency trading with advanced AI algorithms, real-time market analysis, and
+            professional-grade tools.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-            {user ? (
+          {/* Feature Pills */}
+          <div className="flex flex-wrap justify-center gap-4 mb-12">
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+              <Bot className="w-4 h-4 text-blue-400" />
+              <span className="text-sm font-medium">AI Trading Bots</span>
+            </div>
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+              <TrendingUp className="w-4 h-4 text-green-400" />
+              <span className="text-sm font-medium">Real-time Analytics</span>
+            </div>
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+              <Zap className="w-4 h-4 text-yellow-400" />
+              <span className="text-sm font-medium">Lightning Fast</span>
+            </div>
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2 text-white">
+              <Shield className="w-4 h-4 text-purple-400" />
+              <span className="text-sm font-medium">Bank-Grade Security</span>
+            </div>
+          </div>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            {mounted && user ? (
               <Link href="/dashboard">
-                <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg">
+                <Button
+                  size="lg"
+                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105"
+                >
                   Go to Dashboard
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                  <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </Link>
             ) : (
               <>
                 <Link href="/auth/signup">
-                  <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg">
+                  <Button
+                    size="lg"
+                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105"
+                  >
                     Start Trading Now
-                    <ArrowRight className="ml-2 h-5 w-5" />
+                    <ArrowRight className="ml-2 w-5 h-5" />
                   </Button>
                 </Link>
                 <Link href="/auth/login">
                   <Button
-                    size="lg"
                     variant="outline"
-                    className="border-gray-600 text-gray-300 hover:bg-gray-800 px-8 py-4 text-lg bg-transparent"
+                    size="lg"
+                    className="border-2 border-white/20 text-white hover:bg-white/10 px-8 py-4 text-lg font-semibold rounded-xl backdrop-blur-sm transition-all duration-300 bg-transparent"
                   >
                     Sign In
                   </Button>
@@ -89,19 +97,19 @@ export function HeroSection() {
             )}
           </div>
 
-          {/* Feature highlights */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            <div className="flex items-center justify-center space-x-3 text-gray-300">
-              <Shield className="h-6 w-6 text-green-400" />
-              <span>Bank-Grade Security</span>
+          {/* Stats */}
+          <div className="mt-16 grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-2xl mx-auto">
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white mb-2">$2.5B+</div>
+              <div className="text-gray-400">Trading Volume</div>
             </div>
-            <div className="flex items-center justify-center space-x-3 text-gray-300">
-              <Zap className="h-6 w-6 text-yellow-400" />
-              <span>Lightning Fast Execution</span>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white mb-2">50K+</div>
+              <div className="text-gray-400">Active Traders</div>
             </div>
-            <div className="flex items-center justify-center space-x-3 text-gray-300">
-              <TrendingUp className="h-6 w-6 text-blue-400" />
-              <span>AI-Powered Analytics</span>
+            <div className="text-center">
+              <div className="text-3xl font-bold text-white mb-2">99.9%</div>
+              <div className="text-gray-400">Uptime</div>
             </div>
           </div>
         </div>
