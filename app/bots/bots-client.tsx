@@ -3,36 +3,15 @@
 import { useState } from "react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
-import {
-  Bot,
-  Play,
-  Pause,
-  Square,
-  Settings,
-  DollarSign,
-  Activity,
-  BarChart3,
-  Target,
-  Plus,
-  Copy,
-  Upload,
-  Filter,
-  Search,
-  MoreHorizontal,
-  Eye,
-  EyeOff,
-  ArrowUpRight,
-  ArrowDownRight,
-  Maximize2,
-  Minimize2,
-} from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ActiveBots } from "@/components/bots/active-bots"
+import { BotPerformance } from "@/components/bots/bot-performance"
+import { BotStrategies } from "@/components/bots/bot-strategies"
+import { BotsOverview } from "@/components/bots/bots-overview"
+import { CreateBotDialog } from "@/components/bots/create-bot-dialog"
+import { BackToDashboard, FloatingDashboardButton } from "@/components/back-to-dashboard"
+import { Plus, Bot, TrendingUp, Activity, AlertCircle } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
 
@@ -117,6 +96,7 @@ export default function BotsPageClient() {
   const [filterStatus, setFilterStatus] = useState<string>("all")
   const [searchTerm, setSearchTerm] = useState("")
   const [isCompactView, setIsCompactView] = useState(false)
+  const [createBotOpen, setCreateBotOpen] = useState(false)
 
   const filteredBots = bots.filter((bot) => {
     const matchesSearch =
@@ -179,6 +159,8 @@ export default function BotsPageClient() {
   const totalTrades = bots.reduce((sum, bot) => sum + bot.trades, 0)
   const runningBots = bots.filter((bot) => bot.status === "running").length
   const avgWinRate = bots.reduce((sum, bot) => sum + bot.winRate, 0) / bots.length
+  const alerts =
+    bots.filter((bot) => bot.status === "error").length + bots.filter((bot) => bot.profitPercent < 0).length
 
   if (!user) {
     return (
@@ -197,343 +179,109 @@ export default function BotsPageClient() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-      {/* Header */}
-      <div className="sticky top-0 z-50 backdrop-blur-xl bg-black/20 border-b border-white/10">
-        <div className="container mx-auto px-4 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="container mx-auto px-4 py-8">
+        <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold text-white">Trading Bots</h1>
-              <Badge variant="secondary" className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-                {runningBots} Active
-              </Badge>
+            <div className="flex items-center gap-4">
+              <BackToDashboard />
+              <div>
+                <h1 className="text-3xl font-bold tracking-tight text-white">Trading Bots</h1>
+                <p className="text-gray-400">Manage your automated trading strategies and monitor performance</p>
+              </div>
             </div>
-
-            <div className="flex items-center space-x-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsCompactView(!isCompactView)}
-                className="text-white hover:bg-white/10"
-              >
-                {isCompactView ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowBalances(!showBalances)}
-                className="text-white hover:bg-white/10"
-              >
-                {showBalances ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
-              </Button>
-
-              <Link href="/dashboard">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-white/10 text-white hover:bg-white/10 bg-transparent"
-                >
-                  Dashboard
-                </Button>
-              </Link>
-
-              <Button variant="destructive" size="sm" onClick={logout}>
-                Logout
-              </Button>
-            </div>
+            <Button onClick={() => setCreateBotOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Bot
+            </Button>
           </div>
-        </div>
-      </div>
 
-      <div className="container mx-auto px-4 py-6 space-y-6">
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-300">Total Profit</CardTitle>
-              <DollarSign className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">
-                {showBalances ? `$${totalProfit.toLocaleString()}` : "••••••"}
-              </div>
-              <div className="flex items-center space-x-2 mt-2">
-                {totalProfit >= 0 ? (
-                  <ArrowUpRight className="h-4 w-4 text-green-500" />
-                ) : (
-                  <ArrowDownRight className="h-4 w-4 text-red-500" />
-                )}
-                <span className={`text-sm font-medium ${totalProfit >= 0 ? "text-green-500" : "text-red-500"}`}>
-                  {totalProfit >= 0 ? "+" : ""}
-                  {((totalProfit / 40000) * 100).toFixed(2)}%
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-300">Active Bots</CardTitle>
-              <Bot className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{runningBots}</div>
-              <p className="text-sm text-gray-400 mt-2">{bots.length - runningBots} inactive</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-300">Total Trades</CardTitle>
-              <Activity className="h-4 w-4 text-purple-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{totalTrades.toLocaleString()}</div>
-              <p className="text-sm text-gray-400 mt-2">Across all bots</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-300">Avg Win Rate</CardTitle>
-              <Target className="h-4 w-4 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-white">{avgWinRate.toFixed(1)}%</div>
-              <Progress value={avgWinRate} className="mt-2" />
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Controls */}
-        <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-white">Bot Management</CardTitle>
-              <div className="flex items-center space-x-2">
-                <Button className="bg-blue-600 hover:bg-blue-700">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Bot
-                </Button>
-                <Button variant="outline" className="border-white/10 text-white hover:bg-white/10 bg-transparent">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Import
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col md:flex-row gap-4">
-              <div className="flex-1">
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                  <Input
-                    placeholder="Search bots..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 bg-white/5 border-white/10 text-white placeholder:text-gray-400"
-                  />
-                </div>
-              </div>
-              <Select value={filterStatus} onValueChange={setFilterStatus}>
-                <SelectTrigger className="w-[180px] bg-white/5 border-white/10 text-white">
-                  <Filter className="h-4 w-4 mr-2" />
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="running">Running</SelectItem>
-                  <SelectItem value="paused">Paused</SelectItem>
-                  <SelectItem value="stopped">Stopped</SelectItem>
-                  <SelectItem value="error">Error</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Bots Grid */}
-        <div
-          className={`grid gap-6 ${isCompactView ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3" : "grid-cols-1 lg:grid-cols-2"}`}
-        >
-          {filteredBots.map((bot) => (
-            <Card
-              key={bot.id}
-              className="bg-black/40 border-white/10 backdrop-blur-xl hover:bg-black/50 transition-all duration-300 hover:shadow-lg hover:shadow-blue-500/20 group cursor-pointer"
-              onClick={() => setSelectedBot(selectedBot === bot.id ? null : bot.id)}
-            >
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 rounded-lg bg-blue-500/20">
-                      <Bot className="h-5 w-5 text-blue-500" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-white">{bot.name}</CardTitle>
-                      <CardDescription className="text-gray-400">{bot.strategy}</CardDescription>
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge className={getStatusColor(bot.status)}>{bot.status}</Badge>
-                    <Select>
-                      <SelectTrigger className="w-[40px] h-8 bg-white/5 border-white/10">
-                        <MoreHorizontal className="h-4 w-4 text-white" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="edit">Edit</SelectItem>
-                        <SelectItem value="clone">Clone</SelectItem>
-                        <SelectItem value="export">Export</SelectItem>
-                        <SelectItem value="delete">Delete</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+          {/* Bot Stats */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Active Bots</CardTitle>
+                <Bot className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
-
-              <CardContent className="space-y-4">
-                {/* Performance Metrics */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-gray-400 text-xs">Profit</Label>
-                    <div className="flex items-center space-x-2">
-                      <span className={`text-lg font-bold ${bot.profit >= 0 ? "text-green-400" : "text-red-400"}`}>
-                        {showBalances ? `$${bot.profit.toLocaleString()}` : "••••••"}
-                      </span>
-                      <span className={`text-sm ${bot.profit >= 0 ? "text-green-400" : "text-red-400"}`}>
-                        ({bot.profitPercent >= 0 ? "+" : ""}
-                        {bot.profitPercent}%)
-                      </span>
-                    </div>
-                  </div>
-                  <div>
-                    <Label className="text-gray-400 text-xs">Win Rate</Label>
-                    <div className="text-lg font-bold text-white">{bot.winRate}%</div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label className="text-gray-400 text-xs">Trades</Label>
-                    <div className="text-lg font-bold text-white">{bot.trades}</div>
-                  </div>
-                  <div>
-                    <Label className="text-gray-400 text-xs">Risk Level</Label>
-                    <div className={`text-lg font-bold ${getRiskColor(bot.risk)}`}>{bot.risk.toUpperCase()}</div>
-                  </div>
-                </div>
-
-                {/* Progress Bar */}
-                <div>
-                  <div className="flex justify-between text-xs text-gray-400 mb-1">
-                    <span>Performance</span>
-                    <span>{bot.winRate}%</span>
-                  </div>
-                  <Progress value={bot.winRate} className="h-2" />
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex items-center justify-between pt-2">
-                  <div className="flex items-center space-x-2">
-                    {bot.status === "running" ? (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleBotAction(bot.id, "pause")
-                        }}
-                        className="border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/20"
-                      >
-                        <Pause className="h-3 w-3 mr-1" />
-                        Pause
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleBotAction(bot.id, "start")
-                        }}
-                        className="border-green-500/30 text-green-400 hover:bg-green-500/20"
-                      >
-                        <Play className="h-3 w-3 mr-1" />
-                        Start
-                      </Button>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleBotAction(bot.id, "stop")
-                      }}
-                      className="border-red-500/30 text-red-400 hover:bg-red-500/20"
-                    >
-                      <Square className="h-3 w-3 mr-1" />
-                      Stop
-                    </Button>
-                  </div>
-                  <div className="text-xs text-gray-400">Last active: {bot.lastActive}</div>
-                </div>
-
-                {/* Expanded Details */}
-                {selectedBot === bot.id && (
-                  <div className="mt-4 pt-4 border-t border-white/10 space-y-3">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <Label className="text-gray-400">Balance</Label>
-                        <div className="text-white font-medium">
-                          {showBalances ? `$${bot.balance.toLocaleString()}` : "••••••"}
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-gray-400">Created</Label>
-                        <div className="text-white font-medium">{bot.created}</div>
-                      </div>
-                    </div>
-
-                    <Separator className="bg-white/10" />
-
-                    <div className="flex items-center justify-between">
-                      <Button size="sm" variant="ghost" className="text-blue-400 hover:bg-blue-500/20">
-                        <Settings className="h-3 w-3 mr-1" />
-                        Configure
-                      </Button>
-                      <Button size="sm" variant="ghost" className="text-purple-400 hover:bg-purple-500/20">
-                        <BarChart3 className="h-3 w-3 mr-1" />
-                        Analytics
-                      </Button>
-                      <Button size="sm" variant="ghost" className="text-green-400 hover:bg-green-500/20">
-                        <Copy className="h-3 w-3 mr-1" />
-                        Clone
-                      </Button>
-                    </div>
-                  </div>
-                )}
+              <CardContent>
+                <div className="text-2xl font-bold">{runningBots}</div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+2</span> from last week
+                </p>
               </CardContent>
             </Card>
-          ))}
-        </div>
 
-        {filteredBots.length === 0 && (
-          <Card className="bg-black/40 border-white/10 backdrop-blur-xl">
-            <CardContent className="p-12 text-center">
-              <Bot className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-xl font-semibold text-white mb-2">No bots found</h3>
-              <p className="text-gray-400 mb-6">
-                {searchTerm || filterStatus !== "all"
-                  ? "Try adjusting your search or filter criteria"
-                  : "Create your first trading bot to get started"}
-              </p>
-              <Button className="bg-blue-600 hover:bg-blue-700">
-                <Plus className="h-4 w-4 mr-2" />
-                Create Your First Bot
-              </Button>
-            </CardContent>
-          </Card>
-        )}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Total Profit</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {showBalances ? `$${totalProfit.toLocaleString()}` : "••••••"}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+15.2%</span> this month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
+                <Activity className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{avgWinRate.toFixed(1)}%</div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-green-600">+2.1%</span> vs last month
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Alerts</CardTitle>
+                <AlertCircle className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{alerts}</div>
+                <p className="text-xs text-muted-foreground">
+                  <span className="text-yellow-600">2 warnings</span>, 1 error
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Bot Management Tabs */}
+          <Tabs defaultValue="active" className="space-y-4">
+            <TabsList>
+              <TabsTrigger value="active">Active Bots</TabsTrigger>
+              <TabsTrigger value="performance">Performance</TabsTrigger>
+              <TabsTrigger value="strategies">Strategies</TabsTrigger>
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="active">
+              <ActiveBots bots={bots} handleBotAction={handleBotAction} />
+            </TabsContent>
+
+            <TabsContent value="performance">
+              <BotPerformance bots={bots} />
+            </TabsContent>
+
+            <TabsContent value="strategies">
+              <BotStrategies bots={bots} />
+            </TabsContent>
+
+            <TabsContent value="overview">
+              <BotsOverview bots={bots} />
+            </TabsContent>
+          </Tabs>
+
+          <CreateBotDialog open={createBotOpen} onOpenChange={setCreateBotOpen} />
+          <FloatingDashboardButton />
+        </div>
       </div>
     </div>
   )

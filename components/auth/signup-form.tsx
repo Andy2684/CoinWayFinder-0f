@@ -1,7 +1,6 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -11,7 +10,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Checkbox } from "@/components/ui/checkbox"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Eye, EyeOff, CheckCircle, AlertCircle } from "lucide-react"
-import { useAuth } from "./auth-provider"
 import Link from "next/link"
 
 interface SignupFormData {
@@ -27,7 +25,7 @@ interface SignupFormData {
 
 export function SignupForm() {
   const router = useRouter()
-  const { signup, loading } = useAuth()
+  const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState("")
@@ -80,19 +78,22 @@ export function SignupForm() {
       return
     }
 
+    setLoading(true)
+
     try {
-      const result = await signup(formData)
-      if (result.success) {
-        setSuccess(result.message || "Account created successfully!")
-        // Redirect to thank you page instead of dashboard
-        setTimeout(() => {
-          router.push("/thank-you")
-        }, 2000)
-      } else {
-        setError(result.message || "Failed to create account")
-      }
+      // Mock signup - simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 1000))
+
+      setSuccess("Account created successfully! Please check your email to verify your account.")
+
+      // Redirect to thank you page instead of dashboard
+      setTimeout(() => {
+        router.push("/thank-you")
+      }, 2000)
     } catch (err) {
       setError("An unexpected error occurred")
+    } finally {
+      setLoading(false)
     }
   }
 
