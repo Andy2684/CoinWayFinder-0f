@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 
+export const runtime = "nodejs"
+
 // Mock news data with realistic crypto articles
 const mockNews = [
   {

@@ -1,6 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { generateText } from "ai"
-import { xai } from "@ai-sdk/openai"
+import { openai } from "@ai-sdk/openai"
+
+export const runtime = "nodejs"
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,7 +13,7 @@ export async function POST(request: NextRequest) {
     }
 
     const { text: analysis } = await generateText({
-      model: xai("grok-3"),
+      model: openai("gpt-4o"),
       prompt: `Analyze the sentiment of this cryptocurrency-related text and provide a score from -1 (very negative) to 1 (very positive), along with key insights:
 
 Text: "${text}"

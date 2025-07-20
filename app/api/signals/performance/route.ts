@@ -1,5 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 
+export const runtime = "nodejs"
+
 // Mock performance data - in production, this would come from your database
 const mockPerformanceData = {
   "7d": {

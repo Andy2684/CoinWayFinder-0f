@@ -9,7 +9,7 @@ import { SignalPerformance } from "@/components/signals/signal-performance"
 import { SignalAlerts } from "@/components/signals/signal-alerts"
 import { SignalFilters } from "@/components/signals/signal-filters"
 import { CreateSignalDialog } from "@/components/signals/create-signal-dialog"
-import { BackToDashboard, FloatingDashboardButton } from "@/components/back-to-dashboard"
+import { BackToDashboard } from "@/components/back-to-dashboard"
 import { Plus, TrendingUp, Target, Bell, Activity, RefreshCw } from "lucide-react"
 
 export default function SignalsPage() {
@@ -117,7 +117,6 @@ export default function SignalsPage() {
       </Tabs>
 
       <CreateSignalDialog open={createSignalOpen} onOpenChange={setCreateSignalOpen} />
-      <FloatingDashboardButton />
     </div>
   )
 }
