@@ -10,45 +10,32 @@ export function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const { user, logout } = useAuth()
 
+  const toggleMenu = () => setIsOpen(!isOpen)
+
   return (
-    <nav className="relative z-50 bg-black/20 backdrop-blur-md border-b border-white/10">
+    <nav className="relative z-50 bg-black/20 backdrop-blur-lg border-b border-white/10">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2">
-              <TrendingUp className="h-8 w-8 text-blue-400" />
-              <span className="text-xl font-bold text-white">CoinWayFinder</span>
-            </Link>
-          </div>
+        <div className="flex justify-between items-center py-4">
+          {/* Logo */}
+          <Link href="/" className="flex items-center space-x-2">
+            <TrendingUp className="h-8 w-8 text-blue-400" />
+            <span className="text-xl font-bold text-white">CoinWayFinder</span>
+          </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-4">
-              <Link
-                href="#features"
-                className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                Features
-              </Link>
-              <Link
-                href="#pricing"
-                className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                Pricing
-              </Link>
-              <Link
-                href="/about"
-                className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                About
-              </Link>
-              <Link
-                href="/contact"
-                className="text-gray-300 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                Contact
-              </Link>
-            </div>
+          <div className="hidden md:flex items-center space-x-8">
+            <Link href="#features" className="text-gray-300 hover:text-white transition-colors">
+              Features
+            </Link>
+            <Link href="#pricing" className="text-gray-300 hover:text-white transition-colors">
+              Pricing
+            </Link>
+            <Link href="/about" className="text-gray-300 hover:text-white transition-colors">
+              About
+            </Link>
+            <Link href="/contact" className="text-gray-300 hover:text-white transition-colors">
+              Contact
+            </Link>
           </div>
 
           {/* Auth Buttons */}
@@ -56,23 +43,29 @@ export function Navigation() {
             {user ? (
               <>
                 <Link href="/dashboard">
-                  <Button variant="outline" size="sm">
+                  <Button variant="ghost" className="text-white hover:bg-white/10">
                     Dashboard
                   </Button>
                 </Link>
-                <Button variant="ghost" size="sm" onClick={logout}>
+                <Button
+                  variant="outline"
+                  onClick={logout}
+                  className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+                >
                   Logout
                 </Button>
               </>
             ) : (
               <>
                 <Link href="/auth/login">
-                  <Button variant="ghost" size="sm">
-                    Login
+                  <Button variant="ghost" className="text-white hover:bg-white/10">
+                    Sign In
                   </Button>
                 </Link>
                 <Link href="/auth/signup">
-                  <Button size="sm">Get Started</Button>
+                  <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                    Get Started
+                  </Button>
                 </Link>
               </>
             )}
@@ -80,74 +73,67 @@ export function Navigation() {
 
           {/* Mobile menu button */}
           <div className="md:hidden">
-            <button
-              onClick={() => setIsOpen(!isOpen)}
-              className="text-gray-300 hover:text-white focus:outline-none focus:text-white"
-            >
+            <Button variant="ghost" size="icon" onClick={toggleMenu} className="text-white">
               {isOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
+            </Button>
           </div>
         </div>
-      </div>
 
-      {/* Mobile Navigation */}
-      {isOpen && (
-        <div className="md:hidden">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-black/40 backdrop-blur-md">
-            <Link
-              href="#features"
-              className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
-            >
-              Features
-            </Link>
-            <Link
-              href="#pricing"
-              className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
-            >
-              Pricing
-            </Link>
-            <Link
-              href="/about"
-              className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
-            >
-              About
-            </Link>
-            <Link
-              href="/contact"
-              className="text-gray-300 hover:text-white block px-3 py-2 rounded-md text-base font-medium"
-            >
-              Contact
-            </Link>
-            <div className="pt-4 pb-3 border-t border-gray-700">
-              {user ? (
-                <div className="space-y-2">
-                  <Link href="/dashboard" className="block">
-                    <Button variant="outline" size="sm" className="w-full bg-transparent">
-                      Dashboard
+        {/* Mobile Navigation */}
+        {isOpen && (
+          <div className="md:hidden py-4 border-t border-white/10">
+            <div className="flex flex-col space-y-4">
+              <Link href="#features" className="text-gray-300 hover:text-white transition-colors" onClick={toggleMenu}>
+                Features
+              </Link>
+              <Link href="#pricing" className="text-gray-300 hover:text-white transition-colors" onClick={toggleMenu}>
+                Pricing
+              </Link>
+              <Link href="/about" className="text-gray-300 hover:text-white transition-colors" onClick={toggleMenu}>
+                About
+              </Link>
+              <Link href="/contact" className="text-gray-300 hover:text-white transition-colors" onClick={toggleMenu}>
+                Contact
+              </Link>
+
+              <div className="pt-4 border-t border-white/10">
+                {user ? (
+                  <>
+                    <Link href="/dashboard" onClick={toggleMenu}>
+                      <Button variant="ghost" className="w-full text-white hover:bg-white/10 mb-2">
+                        Dashboard
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        logout()
+                        toggleMenu()
+                      }}
+                      className="w-full border-white/20 text-white hover:bg-white/10"
+                    >
+                      Logout
                     </Button>
-                  </Link>
-                  <Button variant="ghost" size="sm" onClick={logout} className="w-full">
-                    Logout
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <Link href="/auth/login" className="block">
-                    <Button variant="ghost" size="sm" className="w-full">
-                      Login
-                    </Button>
-                  </Link>
-                  <Link href="/auth/signup" className="block">
-                    <Button size="sm" className="w-full">
-                      Get Started
-                    </Button>
-                  </Link>
-                </div>
-              )}
+                  </>
+                ) : (
+                  <>
+                    <Link href="/auth/login" onClick={toggleMenu}>
+                      <Button variant="ghost" className="w-full text-white hover:bg-white/10 mb-2">
+                        Sign In
+                      </Button>
+                    </Link>
+                    <Link href="/auth/signup" onClick={toggleMenu}>
+                      <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+                        Get Started
+                      </Button>
+                    </Link>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </nav>
   )
 }

@@ -9,7 +9,7 @@ export function HeroSection() {
   const { user } = useAuth()
 
   return (
-    <section className="relative py-20 lg:py-32">
+    <section className="relative py-20 lg:py-32 overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-6">

@@ -1,66 +1,67 @@
-import { Bot, BarChart3, Shield, Zap, TrendingUp, Users } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { Bot, Shield, Zap, BarChart3, Users, DollarSign } from "lucide-react"
 
 export function FeaturesSection() {
   const features = [
     {
       icon: Bot,
-      title: "AI Trading Bots",
-      description:
-        "Advanced algorithms that trade 24/7, analyzing market patterns and executing optimal trades automatically.",
+      title: "AI-Powered Trading Bots",
+      description: "Advanced algorithms that analyze market trends and execute trades automatically 24/7.",
     },
     {
       icon: BarChart3,
-      title: "Real-time Analytics",
-      description: "Comprehensive market analysis with live charts, technical indicators, and performance metrics.",
+      title: "Real-Time Analytics",
+      description: "Comprehensive market analysis with live charts, indicators, and performance metrics.",
     },
     {
       icon: Shield,
-      title: "Bank-level Security",
-      description: "Your funds and data are protected with enterprise-grade security and encryption protocols.",
+      title: "Bank-Grade Security",
+      description: "Military-grade encryption and secure API connections to protect your assets.",
     },
     {
       icon: Zap,
       title: "Lightning Fast Execution",
-      description:
-        "Execute trades in milliseconds with our high-performance infrastructure and direct exchange connections.",
-    },
-    {
-      icon: TrendingUp,
-      title: "Portfolio Management",
-      description: "Track your investments, analyze performance, and optimize your portfolio with professional tools.",
+      description: "Execute trades in milliseconds with our high-performance trading infrastructure.",
     },
     {
       icon: Users,
       title: "Social Trading",
-      description: "Follow successful traders, copy their strategies, and learn from the community.",
+      description: "Follow successful traders and copy their strategies with automated portfolio management.",
+    },
+    {
+      icon: DollarSign,
+      title: "Portfolio Management",
+      description: "Advanced portfolio tracking with profit/loss analysis and risk management tools.",
     },
   ]
 
   return (
-    <section id="features" className="py-20 bg-black/20">
+    <section id="features" className="py-20 lg:py-32">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center mb-16">
           <h2 className="text-3xl lg:text-4xl font-bold text-white mb-4">Everything You Need to Trade Like a Pro</h2>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
-            Our platform combines cutting-edge technology with user-friendly design to give you the edge in
-            cryptocurrency trading.
+            Our comprehensive suite of tools and features helps both beginners and experienced traders maximize their
+            cryptocurrency investments.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
-            <div
+            <Card
               key={index}
-              className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300"
+              className="bg-white/5 backdrop-blur-lg border-white/10 hover:bg-white/10 transition-all duration-300 hover:scale-105"
             >
-              <div className="flex items-center mb-4">
-                <div className="p-2 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg">
-                  <feature.icon className="h-6 w-6 text-white" />
+              <CardContent className="p-6">
+                <div className="flex items-center mb-4">
+                  <div className="p-2 rounded-lg bg-gradient-to-r from-blue-600/20 to-purple-600/20">
+                    <feature.icon className="h-6 w-6 text-blue-400" />
+                  </div>
                 </div>
-                <h3 className="text-xl font-semibold text-white ml-3">{feature.title}</h3>
-              </div>
-              <p className="text-gray-300">{feature.description}</p>
-            </div>
+                <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
+                <p className="text-gray-400">{feature.description}</p>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>
