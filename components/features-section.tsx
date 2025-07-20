@@ -2,63 +2,95 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Bot, TrendingUp, Shield, Zap, BarChart3, Users, Clock, Target, Brain, Smartphone } from "lucide-react"
+import {
+  Bot,
+  TrendingUp,
+  Shield,
+  Zap,
+  BarChart3,
+  Users,
+  Clock,
+  Target,
+  Brain,
+  Smartphone,
+  Lock,
+  Globe,
+} from "lucide-react"
 
-export default function FeaturesSection() {
+export function FeaturesSection() {
   const features = [
     {
       icon: Bot,
       title: "AI Trading Bots",
-      description: "Automated trading strategies powered by advanced machine learning algorithms that work 24/7.",
+      description:
+        "Advanced machine learning algorithms that analyze market patterns and execute trades automatically.",
       badge: "Popular",
     },
     {
       icon: TrendingUp,
       title: "Real-time Signals",
-      description: "Get instant notifications for profitable trading opportunities across all major cryptocurrencies.",
+      description: "Get instant notifications for profitable trading opportunities across all major exchanges.",
       badge: "New",
     },
     {
       icon: BarChart3,
-      title: "Market Analysis",
-      description: "Comprehensive market insights and analytics to help you make informed trading decisions.",
+      title: "Advanced Analytics",
+      description: "Comprehensive market analysis with technical indicators and sentiment analysis.",
       badge: null,
     },
     {
       icon: Shield,
       title: "Risk Management",
-      description: "Advanced risk management tools to protect your investments and minimize losses.",
+      description: "Built-in stop-loss and take-profit mechanisms to protect your investments.",
+      badge: null,
+    },
+    {
+      icon: Clock,
+      title: "24/7 Trading",
+      description: "Never miss an opportunity with round-the-clock automated trading capabilities.",
+      badge: null,
+    },
+    {
+      icon: Target,
+      title: "Precision Targeting",
+      description: "Highly accurate entry and exit points based on multiple technical indicators.",
+      badge: null,
+    },
+    {
+      icon: Brain,
+      title: "Smart Learning",
+      description: "AI that continuously learns and adapts to changing market conditions.",
+      badge: "AI",
+    },
+    {
+      icon: Smartphone,
+      title: "Mobile Ready",
+      description: "Full-featured mobile app to monitor and control your trades on the go.",
+      badge: null,
+    },
+    {
+      icon: Lock,
+      title: "Bank-Grade Security",
+      description: "Military-grade encryption and security protocols to protect your assets.",
+      badge: null,
+    },
+    {
+      icon: Globe,
+      title: "Multi-Exchange",
+      description: "Connect to all major cryptocurrency exchanges from a single platform.",
+      badge: null,
+    },
+    {
+      icon: Users,
+      title: "Community Signals",
+      description: "Access signals from top traders and share strategies with the community.",
       badge: null,
     },
     {
       icon: Zap,
       title: "Lightning Fast",
-      description: "Execute trades in milliseconds with our high-performance trading infrastructure.",
+      description: "Ultra-low latency execution ensures you never miss profitable opportunities.",
       badge: null,
-    },
-    {
-      icon: Users,
-      title: "Community Insights",
-      description: "Learn from successful traders and share strategies with our active community.",
-      badge: null,
-    },
-    {
-      icon: Clock,
-      title: "24/7 Monitoring",
-      description: "Continuous market monitoring ensures you never miss a profitable opportunity.",
-      badge: null,
-    },
-    {
-      icon: Target,
-      title: "Precision Trading",
-      description: "High-accuracy signals with detailed entry and exit points for maximum profits.",
-      badge: null,
-    },
-    {
-      icon: Brain,
-      title: "Smart Analytics",
-      description: "AI-powered analytics that learn from market patterns and adapt to changing conditions.",
-      badge: "AI",
     },
   ]
 
@@ -66,33 +98,40 @@ export default function FeaturesSection() {
     <section id="features" className="py-20 bg-gray-50">
       <div className="container mx-auto px-4">
         <div className="text-center mb-16">
-          <Badge variant="secondary" className="mb-4">
-            <Smartphone className="w-4 h-4 mr-2" />
+          <Badge variant="outline" className="mb-4">
             Features
           </Badge>
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Everything You Need to <span className="text-emerald-600">Succeed</span>
+          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-6">
+            Everything You Need to{" "}
+            <span className="bg-gradient-to-r from-emerald-600 to-green-600 bg-clip-text text-transparent">
+              Dominate
+            </span>{" "}
+            the Markets
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Our comprehensive suite of tools and features is designed to give you the edge in cryptocurrency trading.
+            Our comprehensive suite of tools and features gives you the edge you need to succeed in cryptocurrency
+            trading.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {features.map((feature, index) => (
-            <Card key={index} className="hover:shadow-lg transition-shadow duration-300 border-0 shadow-md">
+            <Card
+              key={index}
+              className="border-0 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+            >
               <CardHeader>
                 <div className="flex items-center justify-between mb-2">
-                  <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                  <div className="p-2 bg-emerald-100 rounded-lg">
                     <feature.icon className="w-6 h-6 text-emerald-600" />
                   </div>
                   {feature.badge && (
-                    <Badge variant={feature.badge === "Popular" ? "default" : "secondary"} className="text-xs">
+                    <Badge variant="secondary" className="bg-emerald-100 text-emerald-700">
                       {feature.badge}
                     </Badge>
                   )}
                 </div>
-                <CardTitle className="text-xl">{feature.title}</CardTitle>
+                <CardTitle className="text-xl text-gray-900">{feature.title}</CardTitle>
               </CardHeader>
               <CardContent>
                 <CardDescription className="text-gray-600 leading-relaxed">{feature.description}</CardDescription>
@@ -101,30 +140,24 @@ export default function FeaturesSection() {
           ))}
         </div>
 
-        {/* Additional Info Section */}
-        <div className="mt-20 text-center">
-          <div className="bg-white rounded-2xl p-8 shadow-lg border">
-            <h3 className="text-2xl font-bold text-gray-900 mb-4">Trusted by Over 50,000+ Traders Worldwide</h3>
-            <p className="text-gray-600 mb-6">
-              Join thousands of successful traders who are already using our platform to maximize their profits.
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-emerald-600">50K+</div>
-                <div className="text-sm text-gray-500">Active Users</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-emerald-600">$100M+</div>
-                <div className="text-sm text-gray-500">Volume Traded</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-emerald-600">99.9%</div>
-                <div className="text-sm text-gray-500">Uptime</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-emerald-600">24/7</div>
-                <div className="text-sm text-gray-500">Support</div>
-              </div>
+        {/* Stats Section */}
+        <div className="mt-20 bg-white rounded-2xl p-8 shadow-lg">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-emerald-600 mb-2">10,000+</div>
+              <div className="text-gray-600">Active Users</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-emerald-600 mb-2">$100M+</div>
+              <div className="text-gray-600">Volume Traded</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-emerald-600 mb-2">99.9%</div>
+              <div className="text-gray-600">Uptime</div>
+            </div>
+            <div className="text-center">
+              <div className="text-3xl md:text-4xl font-bold text-emerald-600 mb-2">24/7</div>
+              <div className="text-gray-600">Support</div>
             </div>
           </div>
         </div>

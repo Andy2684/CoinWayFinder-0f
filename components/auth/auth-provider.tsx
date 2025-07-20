@@ -176,3 +176,8 @@ export function useAuth() {
   }
   return context
 }
+
+// Export the context for compatibility
+export const useAuthContext = useAuth
+export { AuthContext }
+export default AuthProvider

@@ -1,233 +1,165 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { useState } from "react"
-import { Menu, X, User, LogOut, Settings, BarChart3 } from "lucide-react"
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Menu, TrendingUp } from "lucide-react"
+import { useAuth } from "@/components/auth/auth-provider"
+import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useAuth } from "@/components/auth/auth-provider"
 
 export function Navigation() {
-  const { user, logout, isLoading } = useAuth()
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false)
+  const { user, logout } = useAuth()
 
-  const handleLogout = async () => {
-    await logout()
-    setIsMenuOpen(false)
-  }
+  const navItems = [
+    { name: "Features", href: "#features" },
+    { name: "Pricing", href: "#pricing" },
+    { name: "About", href: "#about" },
+    { name: "Contact", href: "#contact" },
+  ]
 
   return (
-    <nav className="bg-white/10 backdrop-blur-md border-b border-white/20 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center">
-            <Link href="/" className="text-2xl font-bold text-white hover:text-blue-200 transition-colors">
-              CoinWayFinder
-            </Link>
-          </div>
+    <nav className="fixed top-0 w-full z-50 bg-white/10 backdrop-blur-xl border-b border-white/10">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-16">
+          {/* Logo */}
+          <Link href="/" className="flex items-center space-x-2">
+            <TrendingUp className="h-8 w-8 text-emerald-400" />
+            <span className="text-xl font-bold text-white">CoinWayFinder</span>
+          </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-4">
-              <Link
-                href="/news"
-                className="text-white/80 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-white/10"
-              >
-                News
+          <div className="hidden md:flex items-center space-x-8">
+            {navItems.map((item) => (
+              <Link key={item.name} href={item.href} className="text-gray-300 hover:text-white transition-colors">
+                {item.name}
               </Link>
-              <Link
-                href="/signals"
-                className="text-white/80 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-white/10"
-              >
-                Signals
-              </Link>
-              <Link
-                href="/bots"
-                className="text-white/80 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-white/10"
-              >
-                Bots
-              </Link>
-              <Link
-                href="/ai-bots"
-                className="text-white/80 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-white/10"
-              >
-                AI Bots
-              </Link>
-              <Link
-                href="/portfolio"
-                className="text-white/80 hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors hover:bg-white/10"
-              >
-                Portfolio
-              </Link>
-            </div>
+            ))}
           </div>
 
-          {/* Auth Buttons */}
-          <div className="hidden md:block">
-            {isLoading ? (
-              <div className="flex items-center space-x-4">
-                <div className="w-8 h-8 rounded-full bg-white/20 animate-pulse"></div>
-              </div>
-            ) : user ? (
-              <div className="flex items-center space-x-4">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name || user.email} />
-                        <AvatarFallback className="bg-blue-600 text-white">
-                          {(user.name || user.email)?.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-56" align="end" forceMount>
-                    <DropdownMenuLabel className="font-normal">
-                      <div className="flex flex-col space-y-1">
-                        <p className="text-sm font-medium leading-none">{user.name || "User"}</p>
-                        <p className="text-xs leading-none text-muted-foreground">{user.email}</p>
-                      </div>
-                    </DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard" className="cursor-pointer">
-                        <BarChart3 className="mr-2 h-4 w-4" />
-                        <span>Dashboard</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/settings" className="cursor-pointer">
-                        <Settings className="mr-2 h-4 w-4" />
-                        <span>Settings</span>
-                      </Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-                      <LogOut className="mr-2 h-4 w-4" />
-                      <span>Log out</span>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+          {/* Auth Buttons / User Menu */}
+          <div className="hidden md:flex items-center space-x-4">
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback className="bg-emerald-600 text-white">
+                        {user.name?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56 bg-black/90 backdrop-blur-xl border-white/10" align="end">
+                  <div className="flex items-center justify-start gap-2 p-2">
+                    <div className="flex flex-col space-y-1 leading-none">
+                      <p className="font-medium text-white">{user.name || "User"}</p>
+                      <p className="w-[200px] truncate text-sm text-gray-400">{user.email}</p>
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard" className="text-white hover:bg-white/10">
+                      Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/bots" className="text-white hover:bg-white/10">
+                      Trading Bots
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/signals" className="text-white hover:bg-white/10">
+                      Signals
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator className="bg-white/10" />
+                  <DropdownMenuItem onClick={logout} className="text-red-400 hover:bg-red-500/10">
+                    Log out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             ) : (
-              <div className="flex items-center space-x-3">
-                <Button asChild variant="ghost" size="sm" className="text-white hover:text-blue-200 hover:bg-white/10">
-                  <Link href="/auth/login">
-                    <User className="mr-2 h-4 w-4" />
+              <>
+                <Link href="/auth/login">
+                  <Button variant="ghost" className="text-white hover:bg-white/10">
                     Login
-                  </Link>
-                </Button>
-                <Button asChild size="sm" className="bg-blue-600 hover:bg-blue-700 text-white shadow-lg">
-                  <Link href="/auth/signup">Sign Up</Link>
-                </Button>
-              </div>
+                  </Button>
+                </Link>
+                <Link href="/auth/signup">
+                  <Button className="bg-blue-600 hover:bg-blue-700 text-white">Sign Up</Button>
+                </Link>
+              </>
             )}
           </div>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <Button variant="ghost" size="sm" onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-white">
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </Button>
-          </div>
-        </div>
-
-        {/* Mobile Navigation */}
-        {isMenuOpen && (
-          <div className="md:hidden">
-            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white/10 backdrop-blur-md rounded-lg mt-2">
-              <Link
-                href="/news"
-                className="text-white/80 hover:text-white block px-3 py-2 rounded-md text-base font-medium hover:bg-white/10"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                News
-              </Link>
-              <Link
-                href="/signals"
-                className="text-white/80 hover:text-white block px-3 py-2 rounded-md text-base font-medium hover:bg-white/10"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Signals
-              </Link>
-              <Link
-                href="/bots"
-                className="text-white/80 hover:text-white block px-3 py-2 rounded-md text-base font-medium hover:bg-white/10"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Bots
-              </Link>
-              <Link
-                href="/ai-bots"
-                className="text-white/80 hover:text-white block px-3 py-2 rounded-md text-base font-medium hover:bg-white/10"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                AI Bots
-              </Link>
-              <Link
-                href="/portfolio"
-                className="text-white/80 hover:text-white block px-3 py-2 rounded-md text-base font-medium hover:bg-white/10"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                Portfolio
-              </Link>
-
-              <div className="border-t border-white/20 pt-4">
-                {isLoading ? (
-                  <div className="px-3 py-2">
-                    <div className="w-full h-8 rounded bg-white/20 animate-pulse"></div>
-                  </div>
-                ) : user ? (
-                  <div className="space-y-2">
-                    <div className="text-white/80 px-3 py-2 text-sm">Welcome, {user.name || user.email}</div>
-                    <Button
-                      asChild
-                      variant="outline"
-                      size="sm"
-                      className="w-full bg-transparent border-white/30 text-white hover:bg-white/10"
-                    >
-                      <Link href="/dashboard" onClick={() => setIsMenuOpen(false)}>
-                        <BarChart3 className="mr-2 h-4 w-4" />
-                        Dashboard
+          {/* Mobile Menu */}
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="ghost" size="icon" className="text-white">
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="bg-black/90 backdrop-blur-xl border-white/10">
+              <div className="flex flex-col space-y-4 mt-8">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className="text-gray-300 hover:text-white transition-colors text-lg"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+                <div className="pt-4 border-t border-white/10">
+                  {user ? (
+                    <div className="space-y-4">
+                      <div className="text-white">
+                        <p className="font-medium">{user.name || "User"}</p>
+                        <p className="text-sm text-gray-400">{user.email}</p>
+                      </div>
+                      <Link href="/dashboard" onClick={() => setIsOpen(false)}>
+                        <Button variant="ghost" className="w-full justify-start text-white">
+                          Dashboard
+                        </Button>
                       </Link>
-                    </Button>
-                    <Button
-                      onClick={handleLogout}
-                      variant="ghost"
-                      size="sm"
-                      className="w-full text-white hover:bg-white/10"
-                    >
-                      <LogOut className="mr-2 h-4 w-4" />
-                      Logout
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <Button asChild variant="ghost" size="sm" className="w-full text-white hover:bg-white/10">
-                      <Link href="/auth/login" onClick={() => setIsMenuOpen(false)}>
-                        <User className="mr-2 h-4 w-4" />
-                        Login
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-red-400"
+                        onClick={() => {
+                          logout()
+                          setIsOpen(false)
+                        }}
+                      >
+                        Log out
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <Link href="/auth/login" onClick={() => setIsOpen(false)}>
+                        <Button variant="ghost" className="w-full text-white">
+                          Login
+                        </Button>
                       </Link>
-                    </Button>
-                    <Button asChild size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-                      <Link href="/auth/signup" onClick={() => setIsMenuOpen(false)}>
-                        Sign Up
+                      <Link href="/auth/signup" onClick={() => setIsOpen(false)}>
+                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">Sign Up</Button>
                       </Link>
-                    </Button>
-                  </div>
-                )}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </nav>
   )
