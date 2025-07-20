@@ -1,139 +1,116 @@
 "use client"
-
-import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
-import {
-  LayoutDashboard,
-  Bot,
-  BarChart3,
-  Zap,
-  Bell,
-  Settings,
-  TrendingUp,
-  Wallet,
-  Menu,
-  Globe,
-  Activity,
-} from "lucide-react"
+import { BarChart3, Bot, Briefcase, Home, Menu, Settings, Signal, TrendingUp, Zap } from "lucide-react"
 
-const navigation = [
+const sidebarItems = [
   {
-    name: "Dashboard",
+    title: "Dashboard",
     href: "/dashboard",
-    icon: LayoutDashboard,
+    icon: Home,
   },
   {
-    name: "Trading Bots",
-    href: "/dashboard/bots",
-    icon: Bot,
-  },
-  {
-    name: "Portfolio",
-    href: "/portfolio",
-    icon: Wallet,
-  },
-  {
-    name: "Market Analysis",
+    title: "Market Analysis",
     href: "/market-analysis",
     icon: TrendingUp,
   },
   {
-    name: "Signals",
+    title: "Trading Bots",
+    href: "/bots",
+    icon: Bot,
+  },
+  {
+    title: "Portfolio",
+    href: "/portfolio",
+    icon: Briefcase,
+  },
+  {
+    title: "Signals",
     href: "/signals",
+    icon: Signal,
+  },
+  {
+    title: "Analytics",
+    href: "/analytics",
+    icon: BarChart3,
+  },
+  {
+    title: "Integrations",
+    href: "/integrations",
     icon: Zap,
   },
   {
-    name: "News",
-    href: "/news",
-    icon: Globe,
-  },
-  {
-    name: "Integrations",
-    href: "/integrations",
-    icon: Activity,
-  },
-  {
-    name: "Alerts",
-    href: "/alerts",
-    icon: Bell,
-  },
-  {
-    name: "Settings",
-    href: "/dashboard/settings",
+    title: "Settings",
+    href: "/settings",
     icon: Settings,
   },
 ]
 
-interface SidebarProps {
+interface DashboardSidebarProps {
   className?: string
 }
 
-export function DashboardSidebar({ className }: SidebarProps) {
+export function DashboardSidebar({ className }: DashboardSidebarProps) {
   const pathname = usePathname()
 
-  return (
-    <div className={cn("pb-12", className)}>
-      <div className="space-y-4 py-4">
-        <div className="px-3 py-2">
-          <div className="flex items-center space-x-2 mb-6">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <BarChart3 className="w-5 h-5 text-white" />
-            </div>
-            <h2 className="text-lg font-semibold">CoinWayFinder</h2>
+  const SidebarContent = () => (
+    <div className="flex h-full flex-col">
+      <div className="flex h-14 items-center border-b px-4">
+        <Link className="flex items-center space-x-2" href="/">
+          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
+            <TrendingUp className="h-4 w-4 text-primary-foreground" />
           </div>
-          <div className="space-y-1">
-            {navigation.map((item) => (
+          <span className="font-bold">CoinWayFinder</span>
+        </Link>
+      </div>
+      <ScrollArea className="flex-1 px-3">
+        <div className="space-y-2 py-4">
+          {sidebarItems.map((item) => {
+            const Icon = item.icon
+            return (
               <Button
-                key={item.name}
+                key={item.href}
                 variant={pathname === item.href ? "secondary" : "ghost"}
-                className={cn("w-full justify-start", pathname === item.href && "bg-muted font-medium")}
+                className={cn("w-full justify-start", pathname === item.href && "bg-secondary")}
                 asChild
               >
                 <Link href={item.href}>
-                  <item.icon className="mr-2 h-4 w-4" />
-                  {item.name}
+                  <Icon className="mr-2 h-4 w-4" />
+                  {item.title}
                 </Link>
               </Button>
-            ))}
-          </div>
+            )
+          })}
         </div>
-      </div>
+      </ScrollArea>
     </div>
   )
-}
-
-interface MobileSidebarProps {
-  className?: string
-}
-
-export function MobileDashboardSidebar({ className }: MobileSidebarProps) {
-  const [open, setOpen] = useState(false)
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <Button
-          variant="ghost"
-          className={cn(
-            "mr-2 px-0 text-base hover:bg-transparent focus-visible:bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 md:hidden",
-            className,
-          )}
-        >
-          <Menu className="h-6 w-6" />
-          <span className="sr-only">Toggle Menu</span>
-        </Button>
-      </SheetTrigger>
-      <SheetContent side="left" className="pr-0">
-        <ScrollArea className="my-4 h-[calc(100vh-8rem)] pb-10 pl-6">
-          <DashboardSidebar />
-        </ScrollArea>
-      </SheetContent>
-    </Sheet>
+    <>
+      {/* Desktop Sidebar */}
+      <div className={cn("hidden md:flex", className)}>
+        <div className="w-64 border-r bg-background">
+          <SidebarContent />
+        </div>
+      </div>
+
+      {/* Mobile Sidebar */}
+      <Sheet>
+        <SheetTrigger asChild>
+          <Button variant="outline" size="icon" className="md:hidden bg-transparent">
+            <Menu className="h-4 w-4" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="w-64 p-0">
+          <SidebarContent />
+        </SheetContent>
+      </Sheet>
+    </>
   )
 }
 

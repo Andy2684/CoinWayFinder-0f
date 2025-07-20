@@ -1,34 +1,160 @@
 "use client"
 
 import { createContext, useContext, useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 
 export interface User {
   id: string
   email: string
-  firstName?: string
-  lastName?: string
-  username?: string
+  firstName: string
+  lastName: string
+  username: string
   role: "user" | "admin"
-  isEmailVerified: boolean
-  createdAt: string
-  updatedAt: string
+  plan: string
+  isVerified: boolean
 }
 
-interface AuthContextType {
+export interface AuthContextType {
   user: User | null
-  isLoading: boolean
+  loading: boolean
   isAuthenticated: boolean
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
-  signup: (
-    email: string,
-    password: string,
-    firstName?: string,
-    lastName?: string,
-  ) => Promise<{ success: boolean; error?: string }>
-  logout: () => void
+  signup: (userData: any) => Promise<{ success: boolean; error?: string }>
+  logout: () => Promise<void>
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+// Local mock users - no external API calls
+const mockUsers = [
+  {
+    id: "1",
+    email: "demo@coinwayfinder.com",
+    password: "password",
+    firstName: "Demo",
+    lastName: "User",
+    username: "demo_user",
+    role: "user" as const,
+    plan: "free",
+    isVerified: true,
+  },
+  {
+    id: "2",
+    email: "admin@coinwayfinder.com",
+    password: "AdminPass123!",
+    firstName: "Admin",
+    lastName: "User",
+    username: "admin_user",
+    role: "admin" as const,
+    plan: "enterprise",
+    isVerified: true,
+  },
+]
+
+export function useAuthProvider(): AuthContextType {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+  const router = useRouter()
+
+  useEffect(() => {
+    checkAuth()
+  }, [])
+
+  const checkAuth = async () => {
+    try {
+      const userData = getStoredUser()
+      if (userData) {
+        setUser(userData)
+      }
+    } catch (error) {
+      console.error("Auth check failed:", error)
+      removeStoredUser()
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const login = async (email: string, password: string) => {
+    try {
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
+      // Find user in mock data
+      const foundUser = mockUsers.find((u) => u.email === email && u.password === password)
+
+      if (!foundUser) {
+        return { success: false, error: "Invalid email or password" }
+      }
+
+      // Remove password from user object
+      const { password: _, ...userWithoutPassword } = foundUser
+
+      // Store user data locally
+      storeUser(userWithoutPassword)
+      setUser(userWithoutPassword)
+
+      return { success: true }
+    } catch (error) {
+      console.error("Login error:", error)
+      return { success: false, error: "Login failed" }
+    }
+  }
+
+  const signup = async (userData: any) => {
+    try {
+      // Simulate API delay
+      await new Promise((resolve) => setTimeout(resolve, 500))
+
+      // Check if user already exists
+      const existingUser = mockUsers.find((u) => u.email === userData.email)
+      if (existingUser) {
+        return { success: false, error: "User already exists" }
+      }
+
+      // Create new user
+      const newUser = {
+        id: Date.now().toString(),
+        email: userData.email,
+        firstName: userData.firstName || userData.name?.split(" ")[0] || "User",
+        lastName: userData.lastName || userData.name?.split(" ")[1] || "",
+        username: userData.email.split("@")[0],
+        role: "user" as const,
+        plan: "free",
+        isVerified: false,
+      }
+
+      // Add to mock users (in real app, this would be saved to database)
+      mockUsers.push({ ...newUser, password: userData.password })
+
+      // Don't automatically log in after signup
+      // Just redirect to thank you page
+      router.push("/thank-you")
+      return { success: true }
+    } catch (error) {
+      console.error("Signup error:", error)
+      return { success: false, error: "Registration failed" }
+    }
+  }
+
+  const logout = async () => {
+    try {
+      removeStoredUser()
+      setUser(null)
+      router.push("/")
+    } catch (error) {
+      console.error("Logout error:", error)
+    }
+  }
+
+  return {
+    user,
+    loading,
+    isAuthenticated: !!user,
+    login,
+    signup,
+    logout,
+  }
+}
 
 export function useAuth() {
   const context = useContext(AuthContext)
@@ -38,134 +164,29 @@ export function useAuth() {
   return context
 }
 
-// Mock users for demo
-const DEMO_USERS: User[] = [
-  {
-    id: "1",
-    email: "demo@coinwayfinder.com",
-    firstName: "Demo",
-    lastName: "User",
-    username: "demo",
-    role: "user",
-    isEmailVerified: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    email: "admin@coinwayfinder.com",
-    firstName: "Admin",
-    lastName: "User",
-    username: "admin",
-    role: "admin",
-    isEmailVerified: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-]
+// Local storage utility functions
+function storeUser(user: User) {
+  if (typeof window !== "undefined") {
+    localStorage.setItem("coinwayfinder-user", JSON.stringify(user))
+  }
+}
 
-export function useAuthLogic() {
-  const [user, setUser] = useState<User | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-
-  useEffect(() => {
-    // Check for stored user session
-    const storedUser = localStorage.getItem("coinwayfinder_user")
-    if (storedUser) {
+function getStoredUser(): User | null {
+  if (typeof window !== "undefined") {
+    const stored = localStorage.getItem("coinwayfinder-user")
+    if (stored) {
       try {
-        setUser(JSON.parse(storedUser))
-      } catch (error) {
-        console.error("Error parsing stored user:", error)
-        localStorage.removeItem("coinwayfinder_user")
+        return JSON.parse(stored)
+      } catch {
+        return null
       }
     }
-    setIsLoading(false)
-  }, [])
-
-  const login = async (email: string, password: string) => {
-    setIsLoading(true)
-
-    try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Check demo users
-      const demoUser = DEMO_USERS.find((u) => u.email === email)
-      if (demoUser && password === "password") {
-        setUser(demoUser)
-        localStorage.setItem("coinwayfinder_user", JSON.stringify(demoUser))
-        return { success: true }
-      }
-
-      // For other emails, create a new user
-      if (email && password) {
-        const newUser: User = {
-          id: Math.random().toString(36).substr(2, 9),
-          email,
-          firstName: email.split("@")[0],
-          role: "user",
-          isEmailVerified: false,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        }
-        setUser(newUser)
-        localStorage.setItem("coinwayfinder_user", JSON.stringify(newUser))
-        return { success: true }
-      }
-
-      return { success: false, error: "Invalid credentials" }
-    } catch (error) {
-      return { success: false, error: "Login failed" }
-    } finally {
-      setIsLoading(false)
-    }
   }
+  return null
+}
 
-  const signup = async (email: string, password: string, firstName?: string, lastName?: string) => {
-    setIsLoading(true)
-
-    try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Check if user already exists
-      const existingUser = DEMO_USERS.find((u) => u.email === email)
-      if (existingUser) {
-        return { success: false, error: "User already exists" }
-      }
-
-      // Create new user
-      const newUser: User = {
-        id: Math.random().toString(36).substr(2, 9),
-        email,
-        firstName: firstName || email.split("@")[0],
-        lastName,
-        role: "user",
-        isEmailVerified: false,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      }
-
-      // Don't auto-login after signup, just return success
-      return { success: true }
-    } catch (error) {
-      return { success: false, error: "Signup failed" }
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem("coinwayfinder_user")
-  }
-
-  return {
-    user,
-    isLoading,
-    isAuthenticated: !!user,
-    login,
-    signup,
-    logout,
+function removeStoredUser() {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("coinwayfinder-user")
   }
 }
