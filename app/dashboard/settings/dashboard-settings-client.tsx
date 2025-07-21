@@ -1,188 +1,153 @@
 "use client"
 
-import { useState } from "react"
+import { useAuth } from "@/hooks/use-auth"
+import { useRouter } from "next/navigation"
+import { useEffect } from "react"
+import { DashboardHeader } from "@/components/dashboard/dashboard-header"
+import { DashboardSidebar } from "@/components/dashboard/dashboard-sidebar"
+import { SecuritySettings } from "@/components/integrations/security-settings"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
-import { ArrowLeft, Save, User, Bell, Shield, Palette } from "lucide-react"
-import Link from "next/link"
+import { Separator } from "@/components/ui/separator"
 
 export default function DashboardSettingsClient() {
-  const [settings, setSettings] = useState({
-    email: "user@example.com",
-    notifications: true,
-    darkMode: true,
-    autoTrade: false,
-    riskLevel: "medium",
-  })
+  const { user, loading } = useAuth()
+  const router = useRouter()
 
-  const handleSave = () => {
-    // Mock save functionality
-    alert("Settings saved successfully!")
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push("/auth/login")
+    }
+  }, [user, loading, router])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+        <div className="text-white">Loading...</div>
+      </div>
+    )
+  }
+
+  if (!user) {
+    return null
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center gap-4 mb-8">
-          <Link href="/dashboard">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold text-white">Settings</h1>
-        </div>
+      <DashboardSidebar />
+      <div className="lg:pl-72">
+        <DashboardHeader />
+        <main className="py-10">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <div className="mb-8">
+              <h1 className="text-2xl font-bold text-white">Settings</h1>
+              <p className="mt-2 text-sm text-gray-300">Manage your account settings and preferences</p>
+            </div>
 
-        <div className="grid gap-8 max-w-4xl">
-          {/* Profile Settings */}
-          <Card className="bg-white/10 border-white/20 text-white">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Profile Settings
-              </CardTitle>
-              <CardDescription className="text-gray-300">Manage your account information</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="email" className="text-white">
-                    Email Address
-                  </Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={settings.email}
-                    onChange={(e) => setSettings({ ...settings, email: e.target.value })}
-                    className="bg-white/10 border-white/20 text-white"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="username" className="text-white">
-                    Username
-                  </Label>
-                  <Input
-                    id="username"
-                    type="text"
-                    placeholder="Enter username"
-                    className="bg-white/10 border-white/20 text-white"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            <div className="space-y-8">
+              {/* Profile Settings */}
+              <Card className="bg-slate-800/50 border-slate-700">
+                <CardHeader>
+                  <CardTitle className="text-white">Profile Information</CardTitle>
+                  <CardDescription className="text-gray-300">
+                    Update your personal information and contact details
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName" className="text-white">
+                        First Name
+                      </Label>
+                      <Input
+                        id="firstName"
+                        defaultValue={user.firstName}
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName" className="text-white">
+                        Last Name
+                      </Label>
+                      <Input
+                        id="lastName"
+                        defaultValue={user.lastName}
+                        className="bg-slate-700 border-slate-600 text-white"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-white">
+                      Email
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      defaultValue={user.email}
+                      className="bg-slate-700 border-slate-600 text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="username" className="text-white">
+                      Username
+                    </Label>
+                    <Input
+                      id="username"
+                      defaultValue={user.username}
+                      className="bg-slate-700 border-slate-600 text-white"
+                    />
+                  </div>
+                  <Button className="bg-blue-600 hover:bg-blue-700">Save Changes</Button>
+                </CardContent>
+              </Card>
 
-          {/* Notification Settings */}
-          <Card className="bg-white/10 border-white/20 text-white">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Bell className="h-5 w-5" />
-                Notifications
-              </CardTitle>
-              <CardDescription className="text-gray-300">Configure your notification preferences</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-white">Email Notifications</Label>
-                  <p className="text-sm text-gray-400">Receive trade alerts via email</p>
-                </div>
-                <Switch
-                  checked={settings.notifications}
-                  onCheckedChange={(checked) => setSettings({ ...settings, notifications: checked })}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-white">Push Notifications</Label>
-                  <p className="text-sm text-gray-400">Get real-time push notifications</p>
-                </div>
-                <Switch defaultChecked />
-              </div>
-            </CardContent>
-          </Card>
+              <Separator className="bg-slate-700" />
 
-          {/* Trading Settings */}
-          <Card className="bg-white/10 border-white/20 text-white">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                Trading Settings
-              </CardTitle>
-              <CardDescription className="text-gray-300">Configure your trading preferences</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-white">Auto Trading</Label>
-                  <p className="text-sm text-gray-400">Enable automatic trade execution</p>
-                </div>
-                <Switch
-                  checked={settings.autoTrade}
-                  onCheckedChange={(checked) => setSettings({ ...settings, autoTrade: checked })}
-                />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="maxRisk" className="text-white">
-                    Max Risk Per Trade (%)
-                  </Label>
-                  <Input
-                    id="maxRisk"
-                    type="number"
-                    placeholder="2"
-                    className="bg-white/10 border-white/20 text-white"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="stopLoss" className="text-white">
-                    Default Stop Loss (%)
-                  </Label>
-                  <Input
-                    id="stopLoss"
-                    type="number"
-                    placeholder="5"
-                    className="bg-white/10 border-white/20 text-white"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+              {/* Security Settings */}
+              <SecuritySettings />
 
-          {/* Appearance Settings */}
-          <Card className="bg-white/10 border-white/20 text-white">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5" />
-                Appearance
-              </CardTitle>
-              <CardDescription className="text-gray-300">Customize the look and feel</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label className="text-white">Dark Mode</Label>
-                  <p className="text-sm text-gray-400">Use dark theme</p>
-                </div>
-                <Switch
-                  checked={settings.darkMode}
-                  onCheckedChange={(checked) => setSettings({ ...settings, darkMode: checked })}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Save Button */}
-          <div className="flex justify-end">
-            <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
-              <Save className="h-4 w-4 mr-2" />
-              Save Settings
-            </Button>
+              {/* Account Settings */}
+              <Card className="bg-slate-800/50 border-slate-700">
+                <CardHeader>
+                  <CardTitle className="text-white">Account Settings</CardTitle>
+                  <CardDescription className="text-gray-300">
+                    Manage your account preferences and subscription
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-white font-medium">Current Plan</h3>
+                      <p className="text-gray-300 text-sm">You are currently on the {user.plan} plan</p>
+                    </div>
+                    <Button variant="outline" className="border-slate-600 text-white hover:bg-slate-700 bg-transparent">
+                      Upgrade Plan
+                    </Button>
+                  </div>
+                  <Separator className="bg-slate-700" />
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-white font-medium">Account Status</h3>
+                      <p className="text-gray-300 text-sm">
+                        Your account is {user.isVerified ? "verified" : "pending verification"}
+                      </p>
+                    </div>
+                    {!user.isVerified && (
+                      <Button
+                        variant="outline"
+                        className="border-slate-600 text-white hover:bg-slate-700 bg-transparent"
+                      >
+                        Verify Account
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
-        </div>
+        </main>
       </div>
     </div>
   )

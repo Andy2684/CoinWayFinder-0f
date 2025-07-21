@@ -1,5 +1,5 @@
-import DashboardSettingsWrapper from "./dashboard-settings-wrapper"
+import DashboardSettingsClient from "./dashboard-settings-client"
 
 export default function DashboardSettingsPage() {
-  return <DashboardSettingsWrapper />
+  return <DashboardSettingsClient />
 }

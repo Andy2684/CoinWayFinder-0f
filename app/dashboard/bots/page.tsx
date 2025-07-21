@@ -1,5 +1,5 @@
 import dynamic from "next/dynamic"
-import DashboardBotsPageClient from "./dashboard-bots-page-client"
+import DashboardBotsClient from "./dashboard-bots-client"
 
 const DashboardBotsWrapper = dynamic(() => import("./dashboard-bots-wrapper"), {
   ssr: false,
@@ -11,5 +11,5 @@ const DashboardBotsWrapper = dynamic(() => import("./dashboard-bots-wrapper"), {
 })
 
 export default function DashboardBotsPage() {
-  return <DashboardBotsPageClient />
+  return <DashboardBotsClient />
 }
