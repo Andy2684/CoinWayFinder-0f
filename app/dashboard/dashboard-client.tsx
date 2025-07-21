@@ -1,156 +1,196 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, TrendingUp, DollarSign, Activity, Users, BarChart3 } from "lucide-react"
+import { ArrowUpRight, ArrowDownRight, TrendingUp, Bot, DollarSign, Activity } from "lucide-react"
 import Link from "next/link"
 
 export default function DashboardClient() {
-  const [portfolioValue] = useState(125430.5)
-  const [dailyChange] = useState(2.34)
-  const [activeBots] = useState(12)
-  const [totalTrades] = useState(1847)
+  const [stats, setStats] = useState({
+    totalBalance: 0,
+    totalProfit: 0,
+    activeBots: 0,
+    totalTrades: 0,
+    winRate: 0,
+    monthlyReturn: 0,
+  })
+
+  const [recentTrades, setRecentTrades] = useState([
+    {
+      id: 1,
+      pair: "BTC/USDT",
+      type: "buy",
+      amount: 0.025,
+      price: 43250,
+      profit: 125.5,
+      time: "2 minutes ago",
+    },
+    {
+      id: 2,
+      pair: "ETH/USDT",
+      type: "sell",
+      amount: 1.5,
+      price: 2650,
+      profit: -45.2,
+      time: "5 minutes ago",
+    },
+    {
+      id: 3,
+      pair: "ADA/USDT",
+      type: "buy",
+      amount: 1000,
+      price: 0.45,
+      profit: 78.9,
+      time: "12 minutes ago",
+    },
+  ])
+
+  useEffect(() => {
+    // Simulate loading stats
+    const timer = setTimeout(() => {
+      setStats({
+        totalBalance: 25847.32,
+        totalProfit: 3247.89,
+        activeBots: 5,
+        totalTrades: 1247,
+        winRate: 78.5,
+        monthlyReturn: 12.4,
+      })
+    }, 1000)
+
+    return () => clearTimeout(timer)
+  }, [])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       <div className="container mx-auto px-4 py-8">
-        <div className="flex items-center gap-4 mb-8">
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Home
-            </Button>
-          </Link>
-          <h1 className="text-3xl font-bold text-white">Trading Dashboard</h1>
+        {/* Header */}
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">Trading Dashboard</h1>
+            <p className="text-gray-300">Welcome back! Here's your trading overview.</p>
+          </div>
+          <div className="flex gap-4">
+            <Link href="/dashboard/bots">
+              <Button className="bg-blue-600 hover:bg-blue-700">
+                <Bot className="h-4 w-4 mr-2" />
+                Manage Bots
+              </Button>
+            </Link>
+            <Link href="/dashboard/settings">
+              <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+                Settings
+              </Button>
+            </Link>
+          </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Card className="bg-white/10 border-white/20 text-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Portfolio Value</CardTitle>
-              <DollarSign className="h-4 w-4 text-green-400" />
+              <CardTitle className="text-sm font-medium">Total Balance</CardTitle>
+              <DollarSign className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">${portfolioValue.toLocaleString()}</div>
-              <p className="text-xs text-green-400 flex items-center">
-                <TrendingUp className="h-3 w-3 mr-1" />+{dailyChange}% from yesterday
-              </p>
+              <div className="text-2xl font-bold">${stats.totalBalance.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">+2.5% from last month</p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white/10 border-white/20 text-white">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Total Profit</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-400">+${stats.totalProfit.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">+{stats.monthlyReturn}% this month</p>
             </CardContent>
           </Card>
 
           <Card className="bg-white/10 border-white/20 text-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Bots</CardTitle>
-              <Activity className="h-4 w-4 text-blue-400" />
+              <Bot className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{activeBots}</div>
-              <p className="text-xs text-blue-400">3 new this week</p>
+              <div className="text-2xl font-bold">{stats.activeBots}</div>
+              <p className="text-xs text-muted-foreground">2 paused, 3 running</p>
             </CardContent>
           </Card>
 
           <Card className="bg-white/10 border-white/20 text-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Trades</CardTitle>
-              <BarChart3 className="h-4 w-4 text-purple-400" />
+              <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{totalTrades.toLocaleString()}</div>
-              <p className="text-xs text-purple-400">+12% from last month</p>
+              <div className="text-2xl font-bold">{stats.totalTrades.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">+45 today</p>
             </CardContent>
           </Card>
 
           <Card className="bg-white/10 border-white/20 text-white">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-              <Users className="h-4 w-4 text-yellow-400" />
+              <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">78.5%</div>
-              <p className="text-xs text-yellow-400">Above average</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <Card className="bg-white/10 border-white/20 text-white">
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
-              <CardDescription className="text-gray-300">Manage your trading activities</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <Link href="/dashboard/bots">
-                <Button className="w-full bg-blue-600 hover:bg-blue-700">Manage Bots</Button>
-              </Link>
-              <Link href="/signals">
-                <Button
-                  variant="outline"
-                  className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent"
-                >
-                  View Signals
-                </Button>
-              </Link>
-              <Link href="/portfolio">
-                <Button
-                  variant="outline"
-                  className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent"
-                >
-                  Portfolio Analysis
-                </Button>
-              </Link>
+              <div className="text-2xl font-bold text-blue-400">{stats.winRate}%</div>
+              <p className="text-xs text-muted-foreground">Above average</p>
             </CardContent>
           </Card>
 
           <Card className="bg-white/10 border-white/20 text-white">
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription className="text-gray-300">Latest trading activities</CardDescription>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Monthly Return</CardTitle>
+              <ArrowUpRight className="h-4 w-4 text-green-400" />
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">BTC/USDT Trade</p>
-                  <p className="text-sm text-gray-400">2 minutes ago</p>
-                </div>
-                <Badge className="bg-green-600">+$234.50</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">ETH/USDT Trade</p>
-                  <p className="text-sm text-gray-400">15 minutes ago</p>
-                </div>
-                <Badge className="bg-red-600">-$45.20</Badge>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">New Bot Created</p>
-                  <p className="text-sm text-gray-400">1 hour ago</p>
-                </div>
-                <Badge variant="outline" className="border-blue-400 text-blue-400">
-                  Active
-                </Badge>
-              </div>
+            <CardContent>
+              <div className="text-2xl font-bold text-green-400">+{stats.monthlyReturn}%</div>
+              <p className="text-xs text-muted-foreground">Excellent performance</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Navigation */}
-        <div className="flex gap-4">
-          <Link href="/dashboard/settings">
-            <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
-              Settings
-            </Button>
-          </Link>
-          <Link href="/integrations">
-            <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent">
-              Integrations
-            </Button>
-          </Link>
-        </div>
+        {/* Recent Trades */}
+        <Card className="bg-white/10 border-white/20 text-white">
+          <CardHeader>
+            <CardTitle>Recent Trades</CardTitle>
+            <CardDescription className="text-gray-300">Your latest trading activity</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {recentTrades.map((trade) => (
+                <div key={trade.id} className="flex items-center justify-between p-4 bg-white/5 rounded-lg">
+                  <div className="flex items-center gap-4">
+                    <div className={`p-2 rounded-full ${trade.type === "buy" ? "bg-green-600/20" : "bg-red-600/20"}`}>
+                      {trade.type === "buy" ? (
+                        <ArrowUpRight className="h-4 w-4 text-green-400" />
+                      ) : (
+                        <ArrowDownRight className="h-4 w-4 text-red-400" />
+                      )}
+                    </div>
+                    <div>
+                      <p className="font-medium">{trade.pair}</p>
+                      <p className="text-sm text-gray-400">
+                        {trade.type.toUpperCase()} {trade.amount} @ ${trade.price.toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-medium ${trade.profit >= 0 ? "text-green-400" : "text-red-400"}`}>
+                      {trade.profit >= 0 ? "+" : ""}${trade.profit.toFixed(2)}
+                    </p>
+                    <p className="text-sm text-gray-400">{trade.time}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
