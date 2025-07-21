@@ -1,5 +1,6 @@
+"use client"
+
 import dynamic from "next/dynamic"
-import DashboardPageClient from "./dashboard-page-client"
 
 const DashboardClient = dynamic(() => import("./dashboard-client"), {
   ssr: false,
@@ -10,6 +11,6 @@ const DashboardClient = dynamic(() => import("./dashboard-client"), {
   ),
 })
 
-export default function DashboardPage() {
-  return <DashboardPageClient />
+export default function DashboardPageClient() {
+  return <DashboardClient />
 }
