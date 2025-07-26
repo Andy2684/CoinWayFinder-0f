@@ -48,6 +48,300 @@ export async function getUserByUsername(username: string) {
   return user
 }
 
+// Trading bots functions
+export async function getTradingBots(userId: string) {
+  return await sql`
+    SELECT * FROM trading_bots 
+    WHERE created_by = ${userId}
+    ORDER BY created_at DESC
+  `
+}
+
+export async function getTradingBotsByUser(userId: string) {
+  return await sql`
+    SELECT * FROM trading_bots 
+    WHERE created_by = ${userId}
+    ORDER BY created_at DESC
+  `
+}
+
+export async function getTradingBotById(botId: string, userId: string) {
+  const [bot] = await sql`
+    SELECT * FROM trading_bots 
+    WHERE id = ${botId} AND created_by = ${userId}
+  `
+  return bot
+}
+
+export async function createTradingBot(botData: {
+  name: string
+  strategy: string
+  symbol: string
+  exchange: string
+  config: object
+  createdBy: string
+}) {
+  const [bot] = await sql`
+    INSERT INTO trading_bots (name, strategy, symbol, exchange, config, created_by)
+    VALUES (${botData.name}, ${botData.strategy}, ${botData.symbol}, 
+            ${botData.exchange}, ${JSON.stringify(botData.config)}, ${botData.createdBy})
+    RETURNING *
+  `
+  return bot
+}
+
+export async function updateTradingBot(
+  botId: string,
+  userId: string,
+  updates: {
+    name?: string
+    strategy?: string
+    config?: object
+    status?: string
+  },
+) {
+  const [bot] = await sql`
+    UPDATE trading_bots 
+    SET name = COALESCE(${updates.name}, name),
+        strategy = COALESCE(${updates.strategy}, strategy),
+        config = COALESCE(${updates.config ? JSON.stringify(updates.config) : null}, config),
+        status = COALESCE(${updates.status}, status),
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ${botId} AND created_by = ${userId}
+    RETURNING *
+  `
+  return bot
+}
+
+export async function deleteTradingBot(botId: string, userId: string): Promise<boolean> {
+  const result = await sql`
+    DELETE FROM trading_bots 
+    WHERE id = ${botId} AND created_by = ${userId}
+  `
+  return result.count > 0
+}
+
+export async function updateBotStatus(botId: string, status: string) {
+  const [bot] = await sql`
+    UPDATE trading_bots 
+    SET status = ${status}, updated_at = CURRENT_TIMESTAMP
+    WHERE id = ${botId}
+    RETURNING *
+  `
+  return bot
+}
+
+export async function updateBotMetrics(
+  botId: string,
+  metrics: {
+    totalTrades?: number
+    lastTradeTime?: Date
+    pnl?: number
+    winRate?: number
+  },
+) {
+  const [bot] = await sql`
+    UPDATE trading_bots 
+    SET trades_count = COALESCE(${metrics.totalTrades}, trades_count),
+        last_trade_at = COALESCE(${metrics.lastTradeTime}, last_trade_at),
+        pnl = COALESCE(${metrics.pnl}, pnl),
+        win_rate = COALESCE(${metrics.winRate}, win_rate),
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ${botId}
+    RETURNING *
+  `
+  return bot
+}
+
+// AI Bot functions
+export async function getAIBotsByUser(userId: string) {
+  return await sql`
+    SELECT * FROM trading_bots 
+    WHERE created_by = ${userId} AND strategy IN ('neural-network', 'deep-learning', 'reinforcement-learning', 'ensemble-ai')
+    ORDER BY created_at DESC
+  `
+}
+
+export async function createAIBot(botData: {
+  name: string
+  strategy: string
+  symbol: string
+  exchange: string
+  config: object
+  aiConfig: object
+  createdBy: string
+}) {
+  const [bot] = await sql`
+    INSERT INTO trading_bots (name, strategy, symbol, exchange, config, ai_config, created_by, status)
+    VALUES (${botData.name}, ${botData.strategy}, ${botData.symbol}, 
+            ${botData.exchange}, ${JSON.stringify(botData.config)}, 
+            ${JSON.stringify(botData.aiConfig)}, ${botData.createdBy}, 'training')
+    RETURNING *
+  `
+  return bot
+}
+
+export async function updateAIBotMetrics(
+  botId: string,
+  metrics: {
+    learningProgress?: number
+    confidence?: number
+    predictionAccuracy?: number
+    adaptationRate?: number
+  },
+) {
+  const [bot] = await sql`
+    UPDATE trading_bots 
+    SET learning_progress = COALESCE(${metrics.learningProgress}, learning_progress),
+        ai_confidence = COALESCE(${metrics.confidence}, ai_confidence),
+        prediction_accuracy = COALESCE(${metrics.predictionAccuracy}, prediction_accuracy),
+        adaptation_rate = COALESCE(${metrics.adaptationRate}, adaptation_rate),
+        updated_at = CURRENT_TIMESTAMP
+    WHERE id = ${botId}
+    RETURNING *
+  `
+  return bot
+}
+
+// Bot performance and analytics
+export async function getBotPerformanceMetrics(botId: string, userId: string, timeframe: string) {
+  const [metrics] = await sql`
+    SELECT 
+      b.*,
+      COALESCE(SUM(th.total_value * CASE WHEN th.type = 'sell' THEN 1 ELSE -1 END), 0) as total_pnl,
+      COUNT(th.id) as total_trades,
+      COALESCE(AVG(CASE WHEN th.pnl > 0 THEN 1.0 ELSE 0.0 END) * 100, 0) as win_rate,
+      COALESCE(AVG(th.pnl), 0) as avg_profit,
+      COALESCE(MIN(th.pnl), 0) as max_drawdown,
+      COALESCE(STDDEV(th.pnl) / NULLIF(AVG(th.pnl), 0), 0) as sharpe_ratio,
+      COALESCE(SUM(CASE WHEN th.pnl > 0 THEN th.pnl ELSE 0 END) / NULLIF(ABS(SUM(CASE WHEN th.pnl < 0 THEN th.pnl ELSE 0 END)), 0), 0) as profit_factor
+    FROM trading_bots b
+    LEFT JOIN trade_history th ON b.id = th.bot_id 
+      AND th.executed_at >= CURRENT_DATE - INTERVAL '${timeframe}'
+    WHERE b.id = ${botId} AND b.created_by = ${userId}
+    GROUP BY b.id
+  `
+  return metrics
+}
+
+export async function getBotTradeHistory(botId: string, userId: string, limit = 100) {
+  return await sql`
+    SELECT th.* 
+    FROM trade_history th
+    JOIN trading_bots b ON th.bot_id = b.id
+    WHERE th.bot_id = ${botId} AND b.created_by = ${userId}
+    ORDER BY th.executed_at DESC
+    LIMIT ${limit}
+  `
+}
+
+export async function getBotAnalytics(
+  userId: string,
+  options: {
+    timeframe?: string
+    botIds?: string[]
+  },
+) {
+  const timeframe = options.timeframe || "30d"
+  const botFilter = options.botIds ? sql`AND b.id = ANY(${options.botIds})` : sql``
+
+  const [analytics] = await sql`
+    SELECT 
+      COUNT(DISTINCT b.id) as totalBots,
+      COUNT(DISTINCT CASE WHEN b.status = 'active' THEN b.id END) as activeBots,
+      COALESCE(SUM(CAST(b.investment AS DECIMAL)), 0) as totalInvestment,
+      COALESCE(SUM(CAST(b.pnl AS DECIMAL)), 0) as totalPnl,
+      COALESCE(SUM(b.trades_count), 0) as totalTrades,
+      COALESCE(AVG(CAST(b.win_rate AS DECIMAL)), 0) as avgWinRate,
+      COALESCE(STDDEV(CAST(b.pnl AS DECIMAL)) / NULLIF(AVG(CAST(b.pnl AS DECIMAL)), 0), 0) as sharpeRatio,
+      COALESCE(MIN(CAST(b.pnl AS DECIMAL)), 0) as maxDrawdown,
+      COALESCE(STDDEV(CAST(b.pnl AS DECIMAL)), 0) as volatility,
+      0.8 as beta
+    FROM trading_bots b
+    WHERE b.created_by = ${userId} ${botFilter}
+  `
+
+  // Get best and worst performers
+  const performers = await sql`
+    SELECT 
+      b.id, b.name, b.strategy, CAST(b.pnl AS DECIMAL) as pnl
+    FROM trading_bots b
+    WHERE b.created_by = ${userId} ${botFilter}
+    ORDER BY CAST(b.pnl AS DECIMAL) DESC
+  `
+
+  // Get strategy distribution
+  const strategyDist = await sql`
+    SELECT 
+      b.strategy,
+      COUNT(*) as count,
+      COALESCE(AVG(CAST(b.pnl AS DECIMAL)), 0) as avgPnl
+    FROM trading_bots b
+    WHERE b.created_by = ${userId} ${botFilter}
+    GROUP BY b.strategy
+  `
+
+  return {
+    ...analytics,
+    bestPerformer: performers[0] || null,
+    worstPerformer: performers[performers.length - 1] || null,
+    strategyDistribution: strategyDist,
+    dailyPnl: [], // Would be calculated from trade history
+    monthlyPnl: [], // Would be calculated from trade history
+  }
+}
+
+export async function getPortfolioAnalytics(userId: string, timeframe: string) {
+  const [portfolio] = await sql`
+    SELECT 
+      COALESCE(SUM(p.total_value), 0) as totalValue,
+      COALESCE(SUM(p.pnl), 0) as totalPnl
+    FROM portfolios p
+    WHERE p.user_id = ${userId}
+  `
+
+  const allocation = await sql`
+    SELECT 
+      p.symbol,
+      p.total_value,
+      p.pnl,
+      p.pnl_percentage
+    FROM portfolios p
+    WHERE p.user_id = ${userId}
+    ORDER BY p.total_value DESC
+  `
+
+  return {
+    ...portfolio,
+    allocation,
+    performance: [], // Would be calculated from historical data
+  }
+}
+
+export async function getHistoricalMarketData(symbol: string, days: number) {
+  // This would typically fetch from a market data provider
+  // For now, return mock data structure
+  const data = []
+  const startDate = new Date()
+  startDate.setDate(startDate.getDate() - days)
+
+  for (let i = 0; i < days; i++) {
+    const date = new Date(startDate)
+    date.setDate(date.getDate() + i)
+
+    data.push({
+      timestamp: date,
+      open: 50000 + Math.random() * 10000,
+      high: 52000 + Math.random() * 10000,
+      low: 48000 + Math.random() * 10000,
+      close: 50000 + Math.random() * 10000,
+      volume: Math.random() * 1000000,
+    })
+  }
+
+  return data
+}
+
 // Trading signals functions
 export async function getTradingSignals(limit = 50, offset = 0) {
   return await sql`
@@ -84,50 +378,6 @@ export async function createTradingSignal(signalData: {
     RETURNING *
   `
   return signal
-}
-
-// Trading bots functions
-export async function getTradingBots(userId: string) {
-  return await sql`
-    SELECT * FROM trading_bots 
-    WHERE created_by = ${userId}
-    ORDER BY created_at DESC
-  `
-}
-
-export async function getTradingBotsByUser(userId: string) {
-  return await sql`
-    SELECT * FROM trading_bots 
-    WHERE created_by = ${userId}
-    ORDER BY created_at DESC
-  `
-}
-
-export async function createTradingBot(botData: {
-  name: string
-  strategy: string
-  symbol: string
-  exchange: string
-  config: object
-  createdBy: string
-}) {
-  const [bot] = await sql`
-    INSERT INTO trading_bots (name, strategy, symbol, exchange, config, created_by)
-    VALUES (${botData.name}, ${botData.strategy}, ${botData.symbol}, 
-            ${botData.exchange}, ${JSON.stringify(botData.config)}, ${botData.createdBy})
-    RETURNING *
-  `
-  return bot
-}
-
-export async function updateBotStatus(botId: string, status: string) {
-  const [bot] = await sql`
-    UPDATE trading_bots 
-    SET status = ${status}, updated_at = CURRENT_TIMESTAMP
-    WHERE id = ${botId}
-    RETURNING *
-  `
-  return bot
 }
 
 // Portfolio functions
