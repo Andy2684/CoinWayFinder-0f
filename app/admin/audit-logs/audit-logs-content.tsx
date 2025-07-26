@@ -7,10 +7,9 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Shield, AlertTriangle, Activity, Users, Globe, Clock, Filter } from "lucide-react"
-import { format } from "date-fns"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Shield, AlertTriangle, Activity, Users, RefreshCw } from "lucide-react"
 
 interface AuditLog {
   id: string
@@ -23,106 +22,111 @@ interface AuditLog {
   riskLevel: string
   success: boolean
   errorMessage?: string
+  metadata: any
   createdAt: string
   email?: string
   username?: string
   firstName?: string
   lastName?: string
-  metadata?: Record<string, any>
 }
 
 interface AuditStats {
-  totalEvents: number
-  failedEvents: number
-  highRiskEvents: number
-  criticalEvents: number
-  eventsLast24h: number
-  eventsLast7d: number
-  uniqueUsers: number
-  uniqueIps: number
-}
-
-interface TopEventType {
-  eventType: string
-  eventCategory: string
-  count: number
-  failedCount: number
+  total_events: number
+  failed_events: number
+  high_risk_events: number
+  critical_events: number
+  events_last_24h: number
+  events_last_7d: number
+  unique_users: number
+  unique_ips: number
 }
 
 export function AuditLogsContent() {
   const [logs, setLogs] = useState<AuditLog[]>([])
   const [stats, setStats] = useState<AuditStats | null>(null)
-  const [topEventTypes, setTopEventTypes] = useState<TopEventType[]>([])
+  const [topEventTypes, setTopEventTypes] = useState<any[]>([])
   const [securityAlerts, setSecurityAlerts] = useState<AuditLog[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [initialized, setInitialized] = useState(false)
 
-  // Filters
+  // Filter states
   const [filters, setFilters] = useState({
     eventCategory: "all",
-    eventType: "all",
     riskLevel: "all",
     success: "all",
-    userId: "",
-    ipAddress: "",
-    limit: 100,
-    offset: 0,
+    search: "",
   })
 
-  const fetchAuditLogs = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true)
-      const queryParams = new URLSearchParams()
+      setError(null)
 
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== "" && value !== null && value !== undefined) {
-          queryParams.append(key, value.toString())
-        }
-      })
-
-      const response = await fetch(`/api/admin/audit-logs?${queryParams}`, {
+      // Fetch stats first
+      const statsResponse = await fetch("/api/admin/audit-logs/stats", {
         credentials: "include",
       })
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch audit logs")
+      if (statsResponse.ok) {
+        const statsData = await statsResponse.json()
+        if (statsData.success) {
+          setStats(statsData.stats)
+          setTopEventTypes(statsData.topEventTypes)
+          setSecurityAlerts(statsData.securityAlerts)
+          setInitialized(true)
+        }
       }
 
-      const data = await response.json()
-      setLogs(data.logs)
+      // Fetch logs
+      const params = new URLSearchParams()
+      if (filters.eventCategory !== "all") params.append("eventCategory", filters.eventCategory)
+      if (filters.riskLevel !== "all") params.append("riskLevel", filters.riskLevel)
+      if (filters.success !== "all") params.append("success", filters.success)
+      params.append("limit", "50")
+
+      const logsResponse = await fetch(`/api/admin/audit-logs?${params}`, {
+        credentials: "include",
+      })
+
+      if (logsResponse.ok) {
+        const logsData = await logsResponse.json()
+        if (logsData.success) {
+          setLogs(logsData.logs)
+          setInitialized(true)
+        }
+      } else if (logsResponse.status === 401) {
+        setError("Unauthorized access")
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Unknown error")
+      console.error("Error fetching audit data:", err)
+      setError("Failed to fetch audit data")
     } finally {
       setLoading(false)
     }
   }
 
-  const fetchStats = async () => {
+  const initializeAuditSystem = async () => {
     try {
-      const response = await fetch("/api/admin/audit-logs/stats", {
+      const response = await fetch("/api/admin/audit-logs/initialize", {
+        method: "POST",
         credentials: "include",
       })
 
-      if (!response.ok) {
-        throw new Error("Failed to fetch stats")
+      if (response.ok) {
+        setInitialized(true)
+        fetchData()
+      } else {
+        setError("Failed to initialize audit system")
       }
-
-      const data = await response.json()
-      setStats(data.stats)
-      setTopEventTypes(data.topEventTypes)
-      setSecurityAlerts(data.securityAlerts)
     } catch (err) {
-      console.error("Error fetching stats:", err)
+      console.error("Error initializing audit system:", err)
+      setError("Failed to initialize audit system")
     }
   }
 
   useEffect(() => {
-    fetchAuditLogs()
-    fetchStats()
-  }, [])
-
-  useEffect(() => {
-    fetchAuditLogs()
+    fetchData()
   }, [filters])
 
   const getRiskLevelColor = (riskLevel: string) => {
@@ -140,43 +144,48 @@ export function AuditLogsContent() {
     }
   }
 
-  const getEventCategoryIcon = (category: string) => {
-    switch (category) {
-      case "authentication":
-        return <Shield className="h-4 w-4" />
-      case "security":
-        return <AlertTriangle className="h-4 w-4" />
-      case "system":
-        return <Activity className="h-4 w-4" />
-      case "user_management":
-        return <Users className="h-4 w-4" />
-      default:
-        return <Globe className="h-4 w-4" />
-    }
+  const getSuccessColor = (success: boolean) => {
+    return success ? "outline" : "destructive"
   }
 
-  if (error) {
+  if (loading && !initialized) {
     return (
-      <Alert variant="destructive">
+      <div className="flex items-center justify-center h-64">
+        <RefreshCw className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading audit logs...</span>
+      </div>
+    )
+  }
+
+  if (error && !initialized) {
+    return (
+      <Alert>
         <AlertTriangle className="h-4 w-4" />
-        <AlertDescription>{error}</AlertDescription>
+        <AlertDescription>
+          {error}
+          {error.includes("Failed to fetch") && (
+            <Button onClick={initializeAuditSystem} className="ml-4" size="sm">
+              Initialize Audit System
+            </Button>
+          )}
+        </AlertDescription>
       </Alert>
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* Statistics Cards */}
+      {/* Stats Overview */}
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Events</CardTitle>
               <Activity className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalEvents.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">{stats.eventsLast24h} in last 24h</p>
+              <div className="text-2xl font-bold">{stats.total_events.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">{stats.events_last_24h} in last 24h</p>
             </CardContent>
           </Card>
 
@@ -186,9 +195,10 @@ export function AuditLogsContent() {
               <AlertTriangle className="h-4 w-4 text-destructive" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-destructive">{stats.failedEvents.toLocaleString()}</div>
+              <div className="text-2xl font-bold text-destructive">{stats.failed_events.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
-                {((stats.failedEvents / stats.totalEvents) * 100).toFixed(1)}% failure rate
+                {stats.total_events > 0 ? ((stats.failed_events / stats.total_events) * 100).toFixed(1) : 0}% failure
+                rate
               </p>
             </CardContent>
           </Card>
@@ -199,8 +209,8 @@ export function AuditLogsContent() {
               <Shield className="h-4 w-4 text-orange-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-orange-500">{stats.highRiskEvents.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">{stats.criticalEvents} critical events</p>
+              <div className="text-2xl font-bold text-orange-500">{stats.high_risk_events.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">{stats.critical_events} critical events</p>
             </CardContent>
           </Card>
 
@@ -210,8 +220,8 @@ export function AuditLogsContent() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.uniqueUsers.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">{stats.uniqueIps} unique IPs</p>
+              <div className="text-2xl font-bold">{stats.unique_users.toLocaleString()}</div>
+              <p className="text-xs text-muted-foreground">{stats.unique_ips} unique IPs</p>
             </CardContent>
           </Card>
         </div>
@@ -219,7 +229,7 @@ export function AuditLogsContent() {
 
       <Tabs defaultValue="logs" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="logs">Audit Logs</TabsTrigger>
+          <TabsTrigger value="logs">Event Logs</TabsTrigger>
           <TabsTrigger value="alerts">Security Alerts</TabsTrigger>
           <TabsTrigger value="analytics">Analytics</TabsTrigger>
         </TabsList>
@@ -228,18 +238,24 @@ export function AuditLogsContent() {
           {/* Filters */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                Filters
-              </CardTitle>
+              <CardTitle className="text-lg">Filters</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+              <div className="flex gap-4 flex-wrap">
+                <div className="flex-1 min-w-[200px]">
+                  <Input
+                    placeholder="Search events..."
+                    value={filters.search}
+                    onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                    className="w-full"
+                  />
+                </div>
+
                 <Select
                   value={filters.eventCategory}
-                  onValueChange={(value) => setFilters((prev) => ({ ...prev, eventCategory: value }))}
+                  onValueChange={(value) => setFilters({ ...filters, eventCategory: value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -256,9 +272,9 @@ export function AuditLogsContent() {
 
                 <Select
                   value={filters.riskLevel}
-                  onValueChange={(value) => setFilters((prev) => ({ ...prev, riskLevel: value }))}
+                  onValueChange={(value) => setFilters({ ...filters, riskLevel: value })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="w-[140px]">
                     <SelectValue placeholder="Risk Level" />
                   </SelectTrigger>
                   <SelectContent>
@@ -270,11 +286,8 @@ export function AuditLogsContent() {
                   </SelectContent>
                 </Select>
 
-                <Select
-                  value={filters.success}
-                  onValueChange={(value) => setFilters((prev) => ({ ...prev, success: value }))}
-                >
-                  <SelectTrigger>
+                <Select value={filters.success} onValueChange={(value) => setFilters({ ...filters, success: value })}>
+                  <SelectTrigger className="w-[120px]">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -284,87 +297,56 @@ export function AuditLogsContent() {
                   </SelectContent>
                 </Select>
 
-                <Input
-                  placeholder="User ID"
-                  value={filters.userId}
-                  onChange={(e) => setFilters((prev) => ({ ...prev, userId: e.target.value }))}
-                />
-
-                <Input
-                  placeholder="IP Address"
-                  value={filters.ipAddress}
-                  onChange={(e) => setFilters((prev) => ({ ...prev, ipAddress: e.target.value }))}
-                />
-
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    setFilters({
-                      eventCategory: "all",
-                      eventType: "all",
-                      riskLevel: "all",
-                      success: "all",
-                      userId: "",
-                      ipAddress: "",
-                      limit: 100,
-                      offset: 0,
-                    })
-                  }
-                >
-                  Clear Filters
+                <Button onClick={fetchData} variant="outline" size="icon">
+                  <RefreshCw className="h-4 w-4" />
                 </Button>
               </div>
             </CardContent>
           </Card>
 
-          {/* Audit Logs Table */}
+          {/* Event Logs Table */}
           <Card>
             <CardHeader>
               <CardTitle>Recent Events</CardTitle>
-              <CardDescription>Showing {logs.length} events</CardDescription>
+              <CardDescription>Latest security and system events</CardDescription>
             </CardHeader>
             <CardContent>
-              {loading ? (
-                <div className="text-center py-8">Loading audit logs...</div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Timestamp</TableHead>
+                      <TableHead>Event</TableHead>
+                      <TableHead>User</TableHead>
+                      <TableHead>IP Address</TableHead>
+                      <TableHead>Risk Level</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {logs.length === 0 ? (
                       <TableRow>
-                        <TableHead>Timestamp</TableHead>
-                        <TableHead>Event</TableHead>
-                        <TableHead>User</TableHead>
-                        <TableHead>IP Address</TableHead>
-                        <TableHead>Risk Level</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Description</TableHead>
+                        <TableCell colSpan={6} className="text-center py-8">
+                          No audit logs found
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {logs.map((log) => (
+                    ) : (
+                      logs.map((log) => (
                         <TableRow key={log.id}>
                           <TableCell className="font-mono text-sm">
-                            <div className="flex items-center gap-2">
-                              <Clock className="h-3 w-3" />
-                              {format(new Date(log.createdAt), "MMM dd, HH:mm:ss")}
-                            </div>
+                            {new Date(log.createdAt).toLocaleString()}
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center gap-2">
-                              {getEventCategoryIcon(log.eventCategory)}
-                              <div>
-                                <div className="font-medium">{log.eventType}</div>
-                                <div className="text-xs text-muted-foreground">{log.eventCategory}</div>
-                              </div>
+                            <div>
+                              <div className="font-medium">{log.eventType}</div>
+                              <div className="text-sm text-muted-foreground">{log.eventDescription}</div>
                             </div>
                           </TableCell>
                           <TableCell>
                             {log.email ? (
                               <div>
-                                <div className="font-medium">
-                                  {log.firstName} {log.lastName}
-                                </div>
-                                <div className="text-xs text-muted-foreground">{log.email}</div>
+                                <div className="font-medium">{log.email}</div>
+                                {log.username && <div className="text-sm text-muted-foreground">@{log.username}</div>}
                               </div>
                             ) : (
                               <span className="text-muted-foreground">System</span>
@@ -375,24 +357,16 @@ export function AuditLogsContent() {
                             <Badge variant={getRiskLevelColor(log.riskLevel) as any}>{log.riskLevel}</Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={log.success ? "default" : "destructive"}>
+                            <Badge variant={getSuccessColor(log.success) as any}>
                               {log.success ? "Success" : "Failed"}
                             </Badge>
                           </TableCell>
-                          <TableCell className="max-w-md">
-                            <div className="truncate" title={log.eventDescription}>
-                              {log.eventDescription}
-                            </div>
-                            {log.errorMessage && (
-                              <div className="text-xs text-destructive mt-1">{log.errorMessage}</div>
-                            )}
-                          </TableCell>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -400,19 +374,20 @@ export function AuditLogsContent() {
         <TabsContent value="alerts" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-                Security Alerts (Last 24 Hours)
-              </CardTitle>
+              <CardTitle>Security Alerts (Last 24 Hours)</CardTitle>
               <CardDescription>High and critical risk events requiring attention</CardDescription>
             </CardHeader>
             <CardContent>
               {securityAlerts.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">No security alerts in the last 24 hours</div>
+                <div className="text-center py-8">
+                  <Shield className="h-12 w-12 text-green-500 mx-auto mb-4" />
+                  <p className="text-lg font-medium">No security alerts</p>
+                  <p className="text-muted-foreground">All systems operating normally</p>
+                </div>
               ) : (
                 <div className="space-y-4">
                   {securityAlerts.map((alert) => (
-                    <Alert key={alert.id} variant={alert.riskLevel === "critical" ? "destructive" : "default"}>
+                    <Alert key={alert.id} className="border-orange-200">
                       <AlertTriangle className="h-4 w-4" />
                       <AlertDescription>
                         <div className="flex justify-between items-start">
@@ -420,7 +395,7 @@ export function AuditLogsContent() {
                             <div className="font-medium">{alert.eventDescription}</div>
                             <div className="text-sm text-muted-foreground mt-1">
                               {alert.email && `User: ${alert.email} • `}
-                              IP: {alert.ipAddress} •{format(new Date(alert.createdAt), "MMM dd, HH:mm:ss")}
+                              IP: {alert.ipAddress} •{new Date(alert.createdAt).toLocaleString()}
                             </div>
                           </div>
                           <Badge variant={getRiskLevelColor(alert.riskLevel) as any}>{alert.riskLevel}</Badge>
@@ -435,71 +410,33 @@ export function AuditLogsContent() {
         </TabsContent>
 
         <TabsContent value="analytics" className="space-y-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Top Event Types (Last 7 Days)</CardTitle>
-              </CardHeader>
-              <CardContent>
+          <Card>
+            <CardHeader>
+              <CardTitle>Top Event Types (Last 7 Days)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {topEventTypes.length === 0 ? (
+                <p className="text-center py-8 text-muted-foreground">No data available</p>
+              ) : (
                 <div className="space-y-4">
                   {topEventTypes.map((eventType, index) => (
-                    <div
-                      key={`${eventType.eventType}-${eventType.eventCategory}`}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <div className="font-medium">{eventType.eventType}</div>
-                          <div className="text-xs text-muted-foreground">{eventType.eventCategory}</div>
-                        </div>
+                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <div className="font-medium">{eventType.event_type}</div>
+                        <div className="text-sm text-muted-foreground">{eventType.event_category}</div>
                       </div>
                       <div className="text-right">
-                        <div className="font-medium">{eventType.count.toLocaleString()}</div>
-                        {eventType.failedCount > 0 && (
-                          <div className="text-xs text-destructive">{eventType.failedCount} failed</div>
+                        <div className="font-bold">{eventType.count.toLocaleString()}</div>
+                        {eventType.failed_count > 0 && (
+                          <div className="text-sm text-destructive">{eventType.failed_count} failed</div>
                         )}
                       </div>
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Event Distribution</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span>Success Rate</span>
-                    <span className="font-medium">
-                      {stats ? ((1 - stats.failedEvents / stats.totalEvents) * 100).toFixed(1) : 0}%
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Events Last 24h</span>
-                    <span className="font-medium">{stats?.eventsLast24h.toLocaleString() || 0}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Events Last 7d</span>
-                    <span className="font-medium">{stats?.eventsLast7d.toLocaleString() || 0}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Unique Users</span>
-                    <span className="font-medium">{stats?.uniqueUsers.toLocaleString() || 0}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span>Unique IP Addresses</span>
-                    <span className="font-medium">{stats?.uniqueIps.toLocaleString() || 0}</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

@@ -47,7 +47,7 @@
     "clsx": "^2.1.1",
     "cmdk": "latest",
     "crypto": "latest",
-    "date-fns": "latest",
+    "date-fns": "^2.30.0",
     "embla-carousel-react": "latest",
     "input-otp": "latest",
     "jsonwebtoken": "latest",

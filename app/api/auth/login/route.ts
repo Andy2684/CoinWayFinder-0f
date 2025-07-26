@@ -1,12 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { authenticateUser, generateToken, getUserByEmail } from "@/lib/auth"
+import bcrypt from "bcryptjs"
+import { getUserByEmail } from "@/lib/database"
+import { generateToken } from "@/lib/auth"
 import { auditLogger } from "@/lib/audit-logger"
-import { z } from "zod"
-
-const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
-})
 
 function getClientIP(request: NextRequest): string {
   const forwarded = request.headers.get("x-forwarded-for")
@@ -30,46 +26,49 @@ export async function POST(request: NextRequest) {
   const userAgent = request.headers.get("user-agent") || "unknown"
 
   try {
-    const body = await request.json()
+    const { email, password } = await request.json()
 
-    // Validate input
-    const validationResult = loginSchema.safeParse(body)
-    if (!validationResult.success) {
+    if (!email || !password) {
       await auditLogger.logLoginAttempt(
         null,
-        body.email || "unknown",
+        email || "unknown",
         false,
         ipAddress,
         userAgent,
-        "Invalid input validation",
+        "Missing email or password",
       )
 
       return NextResponse.json(
         {
           success: false,
-          error: "Validation failed",
-          details: validationResult.error.errors,
+          error: "Missing credentials",
+          message: "Email and password are required",
         },
         { status: 400 },
       )
     }
 
-    const { email, password } = validationResult.data
+    // Get user from database
+    const user = await getUserByEmail(email)
 
-    // Check if user exists first (for logging purposes)
-    const existingUser = await getUserByEmail(email)
-
-    // Authenticate user
-    const user = await authenticateUser(email, password)
     if (!user) {
-      await auditLogger.logLoginAttempt(
-        existingUser?.id || null,
-        email,
-        false,
-        ipAddress,
-        userAgent,
-        "Invalid credentials",
+      await auditLogger.logLoginAttempt(null, email, false, ipAddress, userAgent, "User not found")
+
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid credentials",
+          message: "Invalid email or password",
+        },
+        { status: 401 },
       )
+    }
+
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password_hash)
+
+    if (!isValidPassword) {
+      await auditLogger.logLoginAttempt(user.id, email, false, ipAddress, userAgent, "Invalid password")
 
       return NextResponse.json(
         {
@@ -82,24 +81,35 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate JWT token
-    const token = generateToken(user.id)
+    const token = generateToken({ userId: user.id, email: user.email })
 
     // Log successful login
     await auditLogger.logLoginAttempt(user.id, email, true, ipAddress, userAgent)
 
-    // Create response with user data
+    // Create response with httpOnly cookie
     const response = NextResponse.json({
       success: true,
       message: "Login successful",
-      user,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        firstName: user.first_name,
+        lastName: user.last_name,
+        role: user.role,
+        subscriptionStatus: "free", // Default for now
+        isEmailVerified: user.is_email_verified,
+        createdAt: user.created_at,
+        updatedAt: user.created_at, // Using created_at as placeholder
+      },
     })
 
-    // Set secure HTTP-only cookie
+    // Set httpOnly cookie
     response.cookies.set("auth-token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
       path: "/",
     })
 
@@ -107,20 +117,22 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Login error:", error)
 
-    await auditLogger.logLoginAttempt(
-      null,
-      "unknown",
-      false,
+    await auditLogger.log({
+      eventType: "login_server_error",
+      eventCategory: "system",
+      eventDescription: "Server error during login attempt",
       ipAddress,
       userAgent,
-      `Server error: ${error instanceof Error ? error.message : "Unknown error"}`,
-    )
+      riskLevel: "high",
+      success: false,
+      errorMessage: error instanceof Error ? error.message : "Unknown error",
+    })
 
     return NextResponse.json(
       {
         success: false,
         error: "Internal server error",
-        message: "An error occurred during login. Please try again.",
+        message: "An error occurred during login",
       },
       { status: 500 },
     )

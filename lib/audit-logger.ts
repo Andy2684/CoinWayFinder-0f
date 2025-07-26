@@ -43,6 +43,8 @@ export interface AuditLogFilter {
 class AuditLogger {
   private static instance: AuditLogger
   private requestId = ""
+  private tableInitialized = false
+  private initializationPromise: Promise<void> | null = null
 
   private constructor() {}
 
@@ -57,8 +59,88 @@ class AuditLogger {
     this.requestId = requestId
   }
 
+  private async ensureTableExists(): Promise<void> {
+    if (this.tableInitialized) {
+      return
+    }
+
+    if (this.initializationPromise) {
+      return this.initializationPromise
+    }
+
+    this.initializationPromise = this.initializeTable()
+    return this.initializationPromise
+  }
+
+  private async initializeTable(): Promise<void> {
+    try {
+      // Check if table exists
+      const [tableExists] = await sql`
+        SELECT EXISTS (
+          SELECT FROM information_schema.tables 
+          WHERE table_schema = 'public' 
+          AND table_name = 'audit_logs'
+        )
+      `
+
+      if (!tableExists.exists) {
+        console.log("Creating audit_logs table...")
+
+        // Create the audit_logs table
+        await sql`
+          CREATE TABLE audit_logs (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id UUID,
+            event_type VARCHAR(50) NOT NULL,
+            event_category VARCHAR(30) NOT NULL,
+            event_description TEXT NOT NULL,
+            ip_address INET,
+            user_agent TEXT,
+            session_id VARCHAR(255),
+            request_id VARCHAR(255),
+            metadata JSONB DEFAULT '{}',
+            risk_level VARCHAR(20) DEFAULT 'low',
+            success BOOLEAN DEFAULT true,
+            error_message TEXT,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP + INTERVAL '2 years')
+          )
+        `
+
+        // Create indexes
+        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)`
+        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_event_type ON audit_logs(event_type)`
+        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_event_category ON audit_logs(event_category)`
+        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC)`
+        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_ip_address ON audit_logs(ip_address)`
+        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_risk_level ON audit_logs(risk_level)`
+        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_success ON audit_logs(success)`
+        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_expires_at ON audit_logs(expires_at)`
+
+        // Create composite indexes
+        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_user_category ON audit_logs(user_id, event_category)`
+        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_category_time ON audit_logs(event_category, created_at DESC)`
+
+        console.log("Audit logs table created successfully")
+      }
+
+      this.tableInitialized = true
+    } catch (error) {
+      console.error("Failed to initialize audit logs table:", error)
+      // Don't throw error to avoid breaking the application
+    }
+  }
+
   public async log(entry: AuditLogEntry): Promise<void> {
     try {
+      // Ensure table exists before logging
+      await this.ensureTableExists()
+
+      if (!this.tableInitialized) {
+        console.warn("Audit logs table not initialized, skipping log entry")
+        return
+      }
+
       await sql`
         INSERT INTO audit_logs (
           user_id, event_type, event_category, event_description,
@@ -297,132 +379,184 @@ class AuditLogger {
 // Export singleton instance
 export const auditLogger = AuditLogger.getInstance()
 
-// Database query functions
+// Database query functions with error handling
 export async function getAuditLogs(filter: AuditLogFilter = {}) {
-  const {
-    userId,
-    eventCategory,
-    eventType,
-    riskLevel,
-    success,
-    startDate,
-    endDate,
-    ipAddress,
-    limit = 100,
-    offset = 0,
-  } = filter
+  try {
+    const {
+      userId,
+      eventCategory,
+      eventType,
+      riskLevel,
+      success,
+      startDate,
+      endDate,
+      ipAddress,
+      limit = 100,
+      offset = 0,
+    } = filter
 
-  let query = sql`
-    SELECT 
-      al.*,
-      u.email,
-      u.username,
-      u.first_name as "firstName",
-      u.last_name as "lastName"
-    FROM audit_logs al
-    LEFT JOIN users u ON al.user_id = u.id
-    WHERE 1=1
-  `
+    // Check if table exists first
+    const [tableExists] = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'audit_logs'
+      )
+    `
 
-  const conditions = []
-  const params = []
+    if (!tableExists.exists) {
+      return []
+    }
 
-  if (userId) {
-    conditions.push(`al.user_id = $${params.length + 1}`)
-    params.push(userId)
+    const whereConditions = []
+
+    if (userId) whereConditions.push(sql`al.user_id = ${userId}`)
+    if (eventCategory) whereConditions.push(sql`al.event_category = ${eventCategory}`)
+    if (eventType) whereConditions.push(sql`al.event_type = ${eventType}`)
+    if (riskLevel) whereConditions.push(sql`al.risk_level = ${riskLevel}`)
+    if (success !== undefined) whereConditions.push(sql`al.success = ${success}`)
+    if (startDate) whereConditions.push(sql`al.created_at >= ${startDate}`)
+    if (endDate) whereConditions.push(sql`al.created_at <= ${endDate}`)
+    if (ipAddress) whereConditions.push(sql`al.ip_address = ${ipAddress}`)
+
+    const whereClause = whereConditions.length > 0 ? sql`WHERE ${sql.join(whereConditions, sql` AND `)}` : sql``
+
+    return await sql`
+      SELECT 
+        al.*,
+        u.email,
+        u.username,
+        u.first_name as "firstName",
+        u.last_name as "lastName"
+      FROM audit_logs al
+      LEFT JOIN users u ON al.user_id = u.id
+      ${whereClause}
+      ORDER BY al.created_at DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `
+  } catch (error) {
+    console.error("Error fetching audit logs:", error)
+    return []
   }
-
-  if (eventCategory) {
-    conditions.push(`al.event_category = $${params.length + 1}`)
-    params.push(eventCategory)
-  }
-
-  if (eventType) {
-    conditions.push(`al.event_type = $${params.length + 1}`)
-    params.push(eventType)
-  }
-
-  if (riskLevel) {
-    conditions.push(`al.risk_level = $${params.length + 1}`)
-    params.push(riskLevel)
-  }
-
-  if (success !== undefined) {
-    conditions.push(`al.success = $${params.length + 1}`)
-    params.push(success)
-  }
-
-  if (startDate) {
-    conditions.push(`al.created_at >= $${params.length + 1}`)
-    params.push(startDate)
-  }
-
-  if (endDate) {
-    conditions.push(`al.created_at <= $${params.length + 1}`)
-    params.push(endDate)
-  }
-
-  if (ipAddress) {
-    conditions.push(`al.ip_address = $${params.length + 1}`)
-    params.push(ipAddress)
-  }
-
-  if (conditions.length > 0) {
-    query = sql`${query} AND ${sql.raw(conditions.join(" AND "))}`
-  }
-
-  return await sql`
-    ${query}
-    ORDER BY al.created_at DESC
-    LIMIT ${limit}
-    OFFSET ${offset}
-  `
 }
 
 export async function getAuditLogStats() {
-  const [stats] = await sql`
-    SELECT 
-      COUNT(*) as total_events,
-      COUNT(CASE WHEN success = false THEN 1 END) as failed_events,
-      COUNT(CASE WHEN risk_level = 'high' THEN 1 END) as high_risk_events,
-      COUNT(CASE WHEN risk_level = 'critical' THEN 1 END) as critical_events,
-      COUNT(CASE WHEN created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours' THEN 1 END) as events_last_24h,
-      COUNT(CASE WHEN created_at >= CURRENT_TIMESTAMP - INTERVAL '7 days' THEN 1 END) as events_last_7d,
-      COUNT(DISTINCT user_id) as unique_users,
-      COUNT(DISTINCT ip_address) as unique_ips
-    FROM audit_logs
-    WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '30 days'
-  `
+  try {
+    // Check if table exists first
+    const [tableExists] = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'audit_logs'
+      )
+    `
 
-  return stats
+    if (!tableExists.exists) {
+      return {
+        total_events: 0,
+        failed_events: 0,
+        high_risk_events: 0,
+        critical_events: 0,
+        events_last_24h: 0,
+        events_last_7d: 0,
+        unique_users: 0,
+        unique_ips: 0,
+      }
+    }
+
+    const [stats] = await sql`
+      SELECT 
+        COUNT(*) as total_events,
+        COUNT(CASE WHEN success = false THEN 1 END) as failed_events,
+        COUNT(CASE WHEN risk_level = 'high' THEN 1 END) as high_risk_events,
+        COUNT(CASE WHEN risk_level = 'critical' THEN 1 END) as critical_events,
+        COUNT(CASE WHEN created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours' THEN 1 END) as events_last_24h,
+        COUNT(CASE WHEN created_at >= CURRENT_TIMESTAMP - INTERVAL '7 days' THEN 1 END) as events_last_7d,
+        COUNT(DISTINCT user_id) as unique_users,
+        COUNT(DISTINCT ip_address) as unique_ips
+      FROM audit_logs
+      WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '30 days'
+    `
+
+    return stats
+  } catch (error) {
+    console.error("Error fetching audit log stats:", error)
+    return {
+      total_events: 0,
+      failed_events: 0,
+      high_risk_events: 0,
+      critical_events: 0,
+      events_last_24h: 0,
+      events_last_7d: 0,
+      unique_users: 0,
+      unique_ips: 0,
+    }
+  }
 }
 
 export async function getTopEventTypes(limit = 10) {
-  return await sql`
-    SELECT 
-      event_type,
-      event_category,
-      COUNT(*) as count,
-      COUNT(CASE WHEN success = false THEN 1 END) as failed_count
-    FROM audit_logs
-    WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '7 days'
-    GROUP BY event_type, event_category
-    ORDER BY count DESC
-    LIMIT ${limit}
-  `
+  try {
+    // Check if table exists first
+    const [tableExists] = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'audit_logs'
+      )
+    `
+
+    if (!tableExists.exists) {
+      return []
+    }
+
+    return await sql`
+      SELECT 
+        event_type,
+        event_category,
+        COUNT(*) as count,
+        COUNT(CASE WHEN success = false THEN 1 END) as failed_count
+      FROM audit_logs
+      WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '7 days'
+      GROUP BY event_type, event_category
+      ORDER BY count DESC
+      LIMIT ${limit}
+    `
+  } catch (error) {
+    console.error("Error fetching top event types:", error)
+    return []
+  }
 }
 
 export async function getSecurityAlerts() {
-  return await sql`
-    SELECT 
-      al.*,
-      u.email,
-      u.username
-    FROM audit_logs al
-    LEFT JOIN users u ON al.user_id = u.id
-    WHERE al.risk_level IN ('high', 'critical')
-      AND al.created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
-    ORDER BY al.created_at DESC
-    LIMIT 50
-  `
+  try {
+    // Check if table exists first
+    const [tableExists] = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_schema = 'public' 
+        AND table_name = 'audit_logs'
+      )
+    `
+
+    if (!tableExists.exists) {
+      return []
+    }
+
+    return await sql`
+      SELECT 
+        al.*,
+        u.email,
+        u.username
+      FROM audit_logs al
+      LEFT JOIN users u ON al.user_id = u.id
+      WHERE al.risk_level IN ('high', 'critical')
+        AND al.created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
+      ORDER BY al.created_at DESC
+      LIMIT 50
+    `
+  } catch (error) {
+    console.error("Error fetching security alerts:", error)
+    return []
+  }
 }

@@ -1,15 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { createUser, emailExists, usernameExists } from "@/lib/auth"
+import bcrypt from "bcryptjs"
+import { createUser, getUserByEmail, getUserByUsername } from "@/lib/database"
 import { auditLogger } from "@/lib/audit-logger"
-import { z } from "zod"
-
-const signupSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  username: z.string().optional(),
-})
 
 function getClientIP(request: NextRequest): string {
   const forwarded = request.headers.get("x-forwarded-for")
@@ -33,49 +25,67 @@ export async function POST(request: NextRequest) {
   const userAgent = request.headers.get("user-agent") || "unknown"
 
   try {
-    const body = await request.json()
+    const { email, password, firstName, lastName, username, acceptTerms } = await request.json()
 
-    // Validate input
-    const validationResult = signupSchema.safeParse(body)
-    if (!validationResult.success) {
+    // Validation
+    if (!email || !password || !firstName || !lastName) {
       await auditLogger.log({
         eventType: "signup_validation_failed",
-        eventCategory: "authentication",
-        eventDescription: "User signup failed validation",
+        eventCategory: "user_management",
+        eventDescription: "Signup failed - missing required fields",
         ipAddress,
         userAgent,
         riskLevel: "low",
         success: false,
-        errorMessage: "Validation failed",
-        metadata: {
-          email: body.email || "unknown",
-          errors: validationResult.error.errors,
-        },
+        errorMessage: "Missing required fields",
+        metadata: { email, hasPassword: !!password, firstName, lastName },
       })
 
       return NextResponse.json(
         {
           success: false,
-          error: "Validation failed",
-          details: validationResult.error.errors,
+          error: "Missing required fields",
+          message: "Email, password, first name, and last name are required",
         },
         { status: 400 },
       )
     }
 
-    const { email, password, firstName, lastName, username } = validationResult.data
+    if (!acceptTerms) {
+      await auditLogger.log({
+        eventType: "signup_terms_not_accepted",
+        eventCategory: "user_management",
+        eventDescription: "Signup failed - terms not accepted",
+        ipAddress,
+        userAgent,
+        riskLevel: "low",
+        success: false,
+        errorMessage: "Terms and conditions not accepted",
+        metadata: { email },
+      })
 
-    // Check if email already exists
-    if (await emailExists(email)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Terms not accepted",
+          message: "You must accept the terms and conditions",
+        },
+        { status: 400 },
+      )
+    }
+
+    // Check if user already exists
+    const existingUser = await getUserByEmail(email)
+    if (existingUser) {
       await auditLogger.log({
         eventType: "signup_email_exists",
-        eventCategory: "authentication",
-        eventDescription: `Signup attempt with existing email: ${email}`,
+        eventCategory: "user_management",
+        eventDescription: `Signup failed - email already exists: ${email}`,
         ipAddress,
         userAgent,
         riskLevel: "medium",
         success: false,
-        errorMessage: "Email already exists",
+        errorMessage: "Email already registered",
         metadata: { email },
       })
 
@@ -90,51 +100,58 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if username already exists (if provided)
-    if (username && (await usernameExists(username))) {
-      await auditLogger.log({
-        eventType: "signup_username_exists",
-        eventCategory: "authentication",
-        eventDescription: `Signup attempt with existing username: ${username}`,
-        ipAddress,
-        userAgent,
-        riskLevel: "low",
-        success: false,
-        errorMessage: "Username already exists",
-        metadata: { email, username },
-      })
-
-      return NextResponse.json(
-        {
+    if (username) {
+      const existingUsername = await getUserByUsername(username)
+      if (existingUsername) {
+        await auditLogger.log({
+          eventType: "signup_username_exists",
+          eventCategory: "user_management",
+          eventDescription: `Signup failed - username already exists: ${username}`,
+          ipAddress,
+          userAgent,
+          riskLevel: "low",
           success: false,
-          error: "Username already exists",
-          message: "This username is already taken",
-        },
-        { status: 409 },
-      )
+          errorMessage: "Username already taken",
+          metadata: { email, username },
+        })
+
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Username already exists",
+            message: "This username is already taken",
+          },
+          { status: 409 },
+        )
+      }
     }
 
+    // Hash password
+    const saltRounds = 12
+    const passwordHash = await bcrypt.hash(password, saltRounds)
+
     // Create user
-    const user = await createUser({
+    const newUser = await createUser({
       email,
-      password,
+      username: username || email.split("@")[0], // Use email prefix if no username provided
+      passwordHash,
       firstName,
       lastName,
-      username,
     })
 
     // Log successful signup
-    await auditLogger.logSignup(user.id, email, ipAddress, userAgent)
+    await auditLogger.logSignup(newUser.id, email, ipAddress, userAgent)
 
-    // Return success without auto-login (as requested)
+    // Return success (don't auto-login as requested)
     return NextResponse.json({
       success: true,
-      message: "Account created successfully",
+      message: "Account created successfully! You can now log in.",
       user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        username: user.username,
+        id: newUser.id,
+        email: newUser.email,
+        username: newUser.username,
+        firstName: newUser.first_name,
+        lastName: newUser.last_name,
       },
     })
   } catch (error) {
@@ -149,14 +166,13 @@ export async function POST(request: NextRequest) {
       riskLevel: "high",
       success: false,
       errorMessage: error instanceof Error ? error.message : "Unknown error",
-      metadata: { email: "unknown" },
     })
 
     return NextResponse.json(
       {
         success: false,
         error: "Internal server error",
-        message: "An error occurred during account creation. Please try again.",
+        message: "An error occurred during account creation",
       },
       { status: 500 },
     )

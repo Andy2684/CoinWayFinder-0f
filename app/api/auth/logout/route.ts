@@ -24,19 +24,18 @@ export async function POST(request: NextRequest) {
   const userAgent = request.headers.get("user-agent") || "unknown"
 
   try {
-    // Get token from cookie to identify user for logging
+    // Get token from cookie
     const token = request.cookies.get("auth-token")?.value
-    let userId: string | undefined
 
     if (token) {
+      // Verify token to get user info for logging
       const decoded = verifyToken(token)
       if (decoded) {
-        userId = decoded.userId
-        // Log the logout event
-        await auditLogger.logLogout(userId, ipAddress, userAgent)
+        await auditLogger.logLogout(decoded.userId, ipAddress, userAgent)
       }
     }
 
+    // Create response and clear the auth cookie
     const response = NextResponse.json({
       success: true,
       message: "Logged out successfully",
@@ -46,7 +45,7 @@ export async function POST(request: NextRequest) {
     response.cookies.set("auth-token", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: "lax",
       maxAge: 0,
       path: "/",
     })
@@ -55,12 +54,16 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Logout error:", error)
 
-    // Log system error
-    await auditLogger.logSystemEvent(
-      "logout_error",
-      `Logout error: ${error instanceof Error ? error.message : "Unknown error"}`,
-      { ipAddress, userAgent },
-    )
+    await auditLogger.log({
+      eventType: "logout_server_error",
+      eventCategory: "system",
+      eventDescription: "Server error during logout",
+      ipAddress,
+      userAgent,
+      riskLevel: "medium",
+      success: false,
+      errorMessage: error instanceof Error ? error.message : "Unknown error",
+    })
 
     return NextResponse.json(
       {
