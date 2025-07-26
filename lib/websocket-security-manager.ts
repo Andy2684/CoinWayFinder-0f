@@ -1,252 +1,170 @@
+interface SecurityEvent {
+  id: string
+  type: string
+  category: string
+  description: string
+  riskLevel: "low" | "medium" | "high" | "critical"
+  timestamp: string
+  userId?: string
+  ipAddress?: string
+  success: boolean
+}
+
+interface SecurityStats {
+  totalEvents: number
+  failedEvents: number
+  highRiskEvents: number
+  criticalEvents: number
+  eventsLast24h: number
+  eventsLast7d: number
+  uniqueUsers: number
+  uniqueIps: number
+}
+
+interface SecurityData {
+  stats: SecurityStats
+  alerts: SecurityEvent[]
+  recentEvents: SecurityEvent[]
+  connectionStatus: "connected" | "disconnected" | "reconnecting"
+}
+
 export class WebSocketSecurityManager {
-  private connections: Map<string, any> = new Map()
-  private reconnectAttempts: Map<string, number> = new Map()
+  private static instance: WebSocketSecurityManager
+  private eventSource: EventSource | null = null
+  private listeners: Set<(data: SecurityData) => void> = new Set()
+  private reconnectAttempts = 0
   private maxReconnectAttempts = 5
   private reconnectDelay = 1000
-  private heartbeatInterval = 30000
+  private isConnected = false
 
-  connect(
-    token: string,
-    onMessage: (data: any) => void,
-    onError?: (error: Event) => void,
-    onConnect?: () => void,
-    onDisconnect?: () => void,
-  ): string {
-    const connectionId = `security_${Date.now()}`
+  private constructor() {}
 
-    try {
-      // For demo purposes, we'll simulate WebSocket connections
-      // In production, you would use: new WebSocket(`ws://localhost:3000/api/admin/security/websocket?token=${token}`)
-      const mockConnection = this.createMockSecurityWebSocket(onMessage, onConnect, onDisconnect)
-      this.connections.set(connectionId, mockConnection)
-
-      return connectionId
-    } catch (error) {
-      console.error("WebSocket connection failed:", error)
-      if (onError) onError(error as Event)
-      return ""
+  public static getInstance(): WebSocketSecurityManager {
+    if (!WebSocketSecurityManager.instance) {
+      WebSocketSecurityManager.instance = new WebSocketSecurityManager()
     }
+    return WebSocketSecurityManager.instance
   }
 
-  private createMockSecurityWebSocket(
-    onMessage: (data: any) => void,
-    onConnect?: () => void,
-    onDisconnect?: () => void,
-  ) {
-    const mockWs = {
-      readyState: 1, // OPEN
-      close: () => {
-        if (onDisconnect) onDisconnect()
-      },
-      send: () => {},
+  public connect(token: string): void {
+    if (this.eventSource) {
+      this.disconnect()
     }
 
-    // Simulate connection established
-    setTimeout(() => {
-      if (onConnect) onConnect()
-    }, 100)
+    const url = `/api/admin/security/websocket?token=${encodeURIComponent(token)}`
+    this.eventSource = new EventSource(url)
 
-    // Simulate real-time security events
-    this.simulateSecurityEvents(onMessage)
-
-    return mockWs
-  }
-
-  private simulateSecurityEvents(onMessage: (data: any) => void) {
-    // Simulate initial security data
-    setTimeout(() => {
-      onMessage({
-        type: "security_update",
-        data: {
-          stats: {
-            total_events: 1247,
-            failed_events: 23,
-            high_risk_events: 5,
-            critical_events: 1,
-            events_last_24h: 156,
-            events_last_7d: 892,
-            unique_users: 89,
-            unique_ips: 234,
-          },
-          securityAlerts: [
-            {
-              id: "1",
-              event_type: "suspicious_login",
-              event_description: "Multiple failed login attempts from suspicious IP",
-              risk_level: "high" as const,
-              created_at: new Date().toISOString(),
-              ip_address: "192.168.1.100",
-              email: "user@example.com",
-            },
-          ],
-          topEventTypes: [
-            {
-              event_type: "login_attempt",
-              event_category: "authentication",
-              count: 45,
-              failed_count: 3,
-            },
-            {
-              event_type: "api_request",
-              event_category: "api",
-              count: 234,
-              failed_count: 12,
-            },
-          ],
-          recentFailedLogins: [
-            {
-              ip_address: "192.168.1.100",
-              email: "user@example.com",
-              created_at: new Date().toISOString(),
-              attempt_count: 3,
-            },
-          ],
-          activeThreats: {
-            suspiciousIps: 2,
-            rateLimitViolations: 5,
-            unauthorizedAccess: 1,
-            highRiskEvents: 3,
-          },
-          systemHealth: {
-            status: "healthy" as const,
-            uptime: 99.8,
-            errorRate: 0.2,
-            responseTime: 145,
-          },
-        },
-        timestamp: new Date().toISOString(),
+    this.eventSource.onopen = () => {
+      console.log("Security WebSocket connected")
+      this.isConnected = true
+      this.reconnectAttempts = 0
+      this.notifyListeners({
+        stats: this.getEmptyStats(),
+        alerts: [],
+        recentEvents: [],
+        connectionStatus: "connected",
       })
-    }, 500)
+    }
 
-    // Simulate periodic updates with slight variations
-    setInterval(() => {
-      const randomEvent = this.generateRandomSecurityEvent()
-      onMessage({
-        type: "security_event",
-        data: randomEvent,
-        timestamp: new Date().toISOString(),
+    this.eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data)
+        if (data.type === "security_update") {
+          this.notifyListeners(data.data)
+        }
+      } catch (error) {
+        console.error("Error parsing security data:", error)
+      }
+    }
+
+    this.eventSource.onerror = () => {
+      console.error("Security WebSocket error")
+      this.isConnected = false
+      this.notifyListeners({
+        stats: this.getEmptyStats(),
+        alerts: [],
+        recentEvents: [],
+        connectionStatus: "disconnected",
       })
-    }, 10000) // New event every 10 seconds
+      this.handleReconnect(token)
+    }
 
-    // Simulate system health updates
-    setInterval(() => {
-      onMessage({
-        type: "health_update",
-        data: {
-          systemHealth: {
-            status: Math.random() > 0.9 ? "warning" : "healthy",
-            uptime: 99.5 + Math.random() * 0.5,
-            errorRate: Math.random() * 2,
-            responseTime: 100 + Math.random() * 100,
-          },
-        },
-        timestamp: new Date().toISOString(),
+    this.eventSource.onclose = () => {
+      console.log("Security WebSocket closed")
+      this.isConnected = false
+      this.notifyListeners({
+        stats: this.getEmptyStats(),
+        alerts: [],
+        recentEvents: [],
+        connectionStatus: "disconnected",
       })
-    }, 15000) // Health update every 15 seconds
-
-    // Simulate threat level changes
-    setInterval(() => {
-      onMessage({
-        type: "threat_update",
-        data: {
-          activeThreats: {
-            suspiciousIps: Math.floor(Math.random() * 5),
-            rateLimitViolations: Math.floor(Math.random() * 10),
-            unauthorizedAccess: Math.floor(Math.random() * 3),
-            highRiskEvents: Math.floor(Math.random() * 8),
-          },
-        },
-        timestamp: new Date().toISOString(),
-      })
-    }, 20000) // Threat update every 20 seconds
-  }
-
-  private generateRandomSecurityEvent() {
-    const eventTypes = [
-      "login_attempt",
-      "api_request",
-      "password_reset",
-      "account_locked",
-      "suspicious_activity",
-      "rate_limit_exceeded",
-    ]
-
-    const riskLevels = ["low", "medium", "high", "critical"]
-    const categories = ["authentication", "api", "security", "system"]
-
-    const eventType = eventTypes[Math.floor(Math.random() * eventTypes.length)]
-    const riskLevel = riskLevels[Math.floor(Math.random() * riskLevels.length)]
-    const category = categories[Math.floor(Math.random() * categories.length)]
-
-    return {
-      id: `event_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      event_type: eventType,
-      event_category: category,
-      event_description: this.getEventDescription(eventType),
-      risk_level: riskLevel,
-      created_at: new Date().toISOString(),
-      ip_address: this.generateRandomIP(),
-      email: `user${Math.floor(Math.random() * 100)}@example.com`,
-      success: Math.random() > 0.2, // 80% success rate
     }
   }
 
-  private getEventDescription(eventType: string): string {
-    const descriptions: Record<string, string> = {
-      login_attempt: "User login attempt detected",
-      api_request: "API endpoint accessed",
-      password_reset: "Password reset requested",
-      account_locked: "Account locked due to suspicious activity",
-      suspicious_activity: "Suspicious user behavior detected",
-      rate_limit_exceeded: "Rate limit exceeded for IP address",
+  public disconnect(): void {
+    if (this.eventSource) {
+      this.eventSource.close()
+      this.eventSource = null
     }
-
-    return descriptions[eventType] || "Security event detected"
+    this.isConnected = false
   }
 
-  private generateRandomIP(): string {
-    return `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`
-  }
-
-  disconnect(connectionId: string) {
-    const connection = this.connections.get(connectionId)
-    if (connection) {
-      connection.close()
-      this.connections.delete(connectionId)
-      this.reconnectAttempts.delete(connectionId)
+  public addListener(callback: (data: SecurityData) => void): () => void {
+    this.listeners.add(callback)
+    return () => {
+      this.listeners.delete(callback)
     }
   }
 
-  disconnectAll() {
-    this.connections.forEach((connection, id) => {
-      connection.close()
-    })
-    this.connections.clear()
-    this.reconnectAttempts.clear()
+  public getConnectionStatus(): boolean {
+    return this.isConnected
   }
 
-  private attemptReconnect(
-    connectionId: string,
-    token: string,
-    onMessage: (data: any) => void,
-    onError?: (error: Event) => void,
-    onConnect?: () => void,
-    onDisconnect?: () => void,
-  ) {
-    const attempts = this.reconnectAttempts.get(connectionId) || 0
-
-    if (attempts >= this.maxReconnectAttempts) {
-      console.error(`Max reconnection attempts reached for ${connectionId}`)
+  private handleReconnect(token: string): void {
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error("Max reconnection attempts reached")
       return
     }
 
-    this.reconnectAttempts.set(connectionId, attempts + 1)
+    this.reconnectAttempts++
+    const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1)
+
+    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`)
+
+    this.notifyListeners({
+      stats: this.getEmptyStats(),
+      alerts: [],
+      recentEvents: [],
+      connectionStatus: "reconnecting",
+    })
 
     setTimeout(() => {
-      console.log(`Attempting to reconnect ${connectionId} (attempt ${attempts + 1})`)
-      this.connect(token, onMessage, onError, onConnect, onDisconnect)
-    }, this.reconnectDelay * Math.pow(2, attempts)) // Exponential backoff
+      this.connect(token)
+    }, delay)
+  }
+
+  private notifyListeners(data: SecurityData): void {
+    this.listeners.forEach((callback) => {
+      try {
+        callback(data)
+      } catch (error) {
+        console.error("Error in security data listener:", error)
+      }
+    })
+  }
+
+  private getEmptyStats(): SecurityStats {
+    return {
+      totalEvents: 0,
+      failedEvents: 0,
+      highRiskEvents: 0,
+      criticalEvents: 0,
+      eventsLast24h: 0,
+      eventsLast7d: 0,
+      uniqueUsers: 0,
+      uniqueIps: 0,
+    }
   }
 }
 
-export const wsSecurityManager = new WebSocketSecurityManager()
+export const securityManager = WebSocketSecurityManager.getInstance()

@@ -1,20 +1,15 @@
 import type { NextRequest } from "next/server"
 import { verifyToken } from "@/lib/auth"
-import { getAuditLogStats, getSecurityAlerts, getTopEventTypes } from "@/lib/audit-logger"
+import { getAuditLogs, getAuditLogStats, getSecurityAlerts } from "@/lib/audit-logger"
 import { sql } from "@/lib/database"
 
 // Store active WebSocket connections
 const connections = new Set<WebSocket>()
 
 export async function GET(request: NextRequest) {
-  // Check if this is a WebSocket upgrade request
-  const upgrade = request.headers.get("upgrade")
-  if (upgrade !== "websocket") {
-    return new Response("Expected WebSocket", { status: 426 })
-  }
+  const { searchParams } = new URL(request.url)
+  const token = searchParams.get("token")
 
-  // Verify authentication
-  const token = request.nextUrl.searchParams.get("token")
   if (!token) {
     return new Response("Unauthorized", { status: 401 })
   }
@@ -24,12 +19,59 @@ export async function GET(request: NextRequest) {
     return new Response("Invalid token", { status: 401 })
   }
 
-  // For demo purposes, we'll simulate WebSocket upgrade
-  // In production, you would use a proper WebSocket library like ws
-  return new Response("WebSocket endpoint ready", {
-    status: 200,
+  // Check if user is admin (you might want to add this check to your auth system)
+  // For now, we'll assume the token is valid for admin access
+
+  const { readable, writable } = new TransformStream()
+  const writer = writable.getWriter()
+
+  // Send initial data
+  const sendSecurityData = async () => {
+    try {
+      const [stats, alerts, recentLogs] = await Promise.all([
+        getAuditLogStats(),
+        getSecurityAlerts(),
+        getAuditLogs({ limit: 10 }),
+      ])
+
+      const data = {
+        type: "security_update",
+        timestamp: new Date().toISOString(),
+        data: {
+          stats,
+          alerts,
+          recentEvents: recentLogs,
+          connectionStatus: "connected",
+        },
+      }
+
+      await writer.write(new TextEncoder().encode(`data: ${JSON.stringify(data)}\n\n`))
+    } catch (error) {
+      console.error("Error sending security data:", error)
+    }
+  }
+
+  // Send initial data
+  await sendSecurityData()
+
+  // Set up periodic updates
+  const interval = setInterval(async () => {
+    await sendSecurityData()
+  }, 5000) // Update every 5 seconds
+
+  // Clean up on connection close
+  request.signal.addEventListener("abort", () => {
+    clearInterval(interval)
+    writer.close()
+  })
+
+  return new Response(readable, {
     headers: {
-      "Content-Type": "text/plain",
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+      Connection: "keep-alive",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Headers": "Cache-Control",
     },
   })
 }
@@ -97,20 +139,17 @@ export class SecurityWebSocketManager {
   }
 
   private async getSecurityData() {
-    const [stats, securityAlerts, topEventTypes] = await Promise.all([
+    const [stats, securityAlerts, recentFailedLogins, activeThreats, systemHealth] = await Promise.all([
       getAuditLogStats(),
       getSecurityAlerts(),
-      getTopEventTypes(5),
+      this.getRecentFailedLogins(),
+      this.getActiveThreats(),
+      this.getSystemHealth(),
     ])
-
-    const recentFailedLogins = await this.getRecentFailedLogins()
-    const activeThreats = await this.getActiveThreats()
-    const systemHealth = await this.getSystemHealth()
 
     return {
       stats,
       securityAlerts,
-      topEventTypes,
       recentFailedLogins,
       activeThreats,
       systemHealth,

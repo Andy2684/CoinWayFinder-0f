@@ -2,13 +2,14 @@ import { type NextRequest, NextResponse } from "next/server"
 import { verifyToken, getUserById } from "@/lib/auth"
 import { auditLogger } from "@/lib/audit-logger"
 
-function getClientIP(request: NextRequest): string {
+function getClientIP(request: NextRequest): string | null {
   const forwarded = request.headers.get("x-forwarded-for")
   const realIP = request.headers.get("x-real-ip")
   const remoteAddr = request.headers.get("x-vercel-forwarded-for")
 
   if (forwarded) {
-    return forwarded.split(",")[0].trim()
+    const ip = forwarded.split(",")[0].trim()
+    return ip || null
   }
   if (realIP) {
     return realIP
@@ -16,7 +17,7 @@ function getClientIP(request: NextRequest): string {
   if (remoteAddr) {
     return remoteAddr
   }
-  return "unknown"
+  return null
 }
 
 export async function GET(request: NextRequest) {
