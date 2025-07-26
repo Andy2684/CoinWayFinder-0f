@@ -1,158 +1,228 @@
-import { emailService } from "./email-service"
-
 interface EmailJob {
   id: string
-  type: "profile_change" | "security_alert" | "password_change" | "2fa_change" | "api_key_change"
+  type: string
   data: any
+  status: "pending" | "processing" | "completed" | "failed"
   attempts: number
   maxAttempts: number
-  scheduledAt: Date
   createdAt: Date
-  status: "pending" | "processing" | "completed" | "failed"
+  processedAt?: Date
+  error?: string
+  delay?: number
 }
 
 class EmailQueue {
-  private queue: EmailJob[] = []
+  private jobs: Map<string, EmailJob> = new Map()
   private processing = false
-  private maxRetries = 3
-  private retryDelay = 5000 // 5 seconds
+  private maxConcurrent = 3
+  private currentProcessing = 0
 
-  async addJob(type: EmailJob["type"], data: any, delay = 0): Promise<string> {
+  addJob(type: string, data: any, options: { delay?: number; maxAttempts?: number } = {}): string {
+    const id = `email_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
     const job: EmailJob = {
-      id: this.generateId(),
+      id,
       type,
       data,
-      attempts: 0,
-      maxAttempts: this.maxRetries,
-      scheduledAt: new Date(Date.now() + delay),
-      createdAt: new Date(),
       status: "pending",
+      attempts: 0,
+      maxAttempts: options.maxAttempts || 3,
+      createdAt: new Date(),
+      delay: options.delay || 0,
     }
 
-    this.queue.push(job)
+    this.jobs.set(id, job)
 
+    // Start processing if not already running
     if (!this.processing) {
       this.processQueue()
     }
 
-    return job.id
+    return id
   }
 
-  private async processQueue() {
-    if (this.processing) return
+  async processQueue(): Promise<void> {
+    if (this.processing || this.currentProcessing >= this.maxConcurrent) {
+      return
+    }
 
     this.processing = true
 
-    while (this.queue.length > 0) {
-      const now = new Date()
-      const readyJobs = this.queue.filter((job) => job.status === "pending" && job.scheduledAt <= now)
+    while (this.currentProcessing < this.maxConcurrent) {
+      const job = this.getNextJob()
+      if (!job) break
 
-      if (readyJobs.length === 0) {
-        await this.sleep(1000) // Wait 1 second before checking again
-        continue
-      }
-
-      const job = readyJobs[0]
-      await this.processJob(job)
+      this.currentProcessing++
+      this.processJob(job).finally(() => {
+        this.currentProcessing--
+      })
     }
 
     this.processing = false
+
+    // Check if there are more jobs to process
+    if (this.hasJobsToProcess()) {
+      setTimeout(() => this.processQueue(), 1000)
+    }
   }
 
-  private async processJob(job: EmailJob) {
-    job.status = "processing"
-    job.attempts++
+  private getNextJob(): EmailJob | null {
+    const now = new Date()
 
+    for (const job of this.jobs.values()) {
+      if (job.status === "pending") {
+        const shouldProcess = !job.delay || now.getTime() - job.createdAt.getTime() >= job.delay
+
+        if (shouldProcess) {
+          return job
+        }
+      }
+    }
+
+    return null
+  }
+
+  private hasJobsToProcess(): boolean {
+    const now = new Date()
+
+    for (const job of this.jobs.values()) {
+      if (job.status === "pending") {
+        const shouldProcess = !job.delay || now.getTime() - job.createdAt.getTime() >= job.delay
+
+        if (shouldProcess) {
+          return true
+        }
+      }
+    }
+
+    return false
+  }
+
+  private async processJob(job: EmailJob): Promise<void> {
     try {
+      job.status = "processing"
+      job.attempts++
+      job.processedAt = new Date()
+
+      // Import emailService dynamically to avoid circular dependencies
+      const { emailService } = await import("./email-service")
+
       let success = false
 
       switch (job.type) {
-        case "profile_change":
+        case "profile-change":
           success = await emailService.sendProfileChangeNotification(job.data)
           break
-        case "security_alert":
+        case "security-alert":
           success = await emailService.sendSecurityAlert(job.data)
           break
-        case "password_change":
+        case "password-change":
           success = await emailService.sendPasswordChangeConfirmation(job.data)
           break
-        case "2fa_change":
+        case "two-factor-change":
           success = await emailService.sendTwoFactorStatusChange(job.data)
           break
-        case "api_key_change":
+        case "api-key-change":
           success = await emailService.sendApiKeyNotification(job.data)
           break
         default:
-          console.error("Unknown email job type:", job.type)
-          success = false
+          throw new Error(`Unknown job type: ${job.type}`)
       }
 
       if (success) {
         job.status = "completed"
-        this.removeJob(job.id)
         console.log(`Email job ${job.id} completed successfully`)
       } else {
         throw new Error("Email sending failed")
       }
     } catch (error) {
       console.error(`Email job ${job.id} failed:`, error)
+      job.error = error instanceof Error ? error.message : "Unknown error"
 
       if (job.attempts >= job.maxAttempts) {
         job.status = "failed"
-        this.removeJob(job.id)
         console.error(`Email job ${job.id} failed permanently after ${job.attempts} attempts`)
       } else {
         job.status = "pending"
-        job.scheduledAt = new Date(Date.now() + this.retryDelay * job.attempts)
-        console.log(`Email job ${job.id} will retry in ${this.retryDelay * job.attempts}ms`)
+        // Exponential backoff: 2^attempts * 1000ms
+        job.delay = Math.pow(2, job.attempts) * 1000
+        job.createdAt = new Date() // Reset created time for delay calculation
+        console.log(`Email job ${job.id} will retry in ${job.delay}ms (attempt ${job.attempts}/${job.maxAttempts})`)
       }
     }
   }
 
-  private removeJob(jobId: string) {
-    this.queue = this.queue.filter((job) => job.id !== jobId)
+  getJobStatus(id: string): EmailJob | null {
+    return this.jobs.get(id) || null
   }
 
-  private generateId(): string {
-    return Math.random().toString(36).substr(2, 9) + Date.now().toString(36)
-  }
-
-  private sleep(ms: number): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, ms))
-  }
-
-  // Public methods for monitoring
-  getQueueStatus() {
-    return {
-      total: this.queue.length,
-      pending: this.queue.filter((job) => job.status === "pending").length,
-      processing: this.queue.filter((job) => job.status === "processing").length,
-      failed: this.queue.filter((job) => job.status === "failed").length,
-      isProcessing: this.processing,
+  getQueueStats(): {
+    total: number
+    pending: number
+    processing: number
+    completed: number
+    failed: number
+  } {
+    const stats = {
+      total: this.jobs.size,
+      pending: 0,
+      processing: 0,
+      completed: 0,
+      failed: 0,
     }
+
+    for (const job of this.jobs.values()) {
+      stats[job.status]++
+    }
+
+    return stats
   }
 
-  getJobById(jobId: string): EmailJob | undefined {
-    return this.queue.find((job) => job.id === jobId)
-  }
+  retryFailedJobs(): number {
+    let retriedCount = 0
 
-  clearFailedJobs() {
-    this.queue = this.queue.filter((job) => job.status !== "failed")
-  }
+    for (const job of this.jobs.values()) {
+      if (job.status === "failed" && job.attempts < job.maxAttempts) {
+        job.status = "pending"
+        job.attempts = 0
+        job.error = undefined
+        job.delay = 0
+        job.createdAt = new Date()
+        retriedCount++
+      }
+    }
 
-  retryFailedJobs() {
-    const failedJobs = this.queue.filter((job) => job.status === "failed")
-    failedJobs.forEach((job) => {
-      job.status = "pending"
-      job.attempts = 0
-      job.scheduledAt = new Date()
-    })
-
-    if (failedJobs.length > 0 && !this.processing) {
+    if (retriedCount > 0 && !this.processing) {
       this.processQueue()
     }
 
-    return failedJobs.length
+    return retriedCount
+  }
+
+  clearCompletedJobs(): number {
+    let clearedCount = 0
+    const completedJobs = []
+
+    for (const [id, job] of this.jobs.entries()) {
+      if (job.status === "completed") {
+        completedJobs.push(id)
+      }
+    }
+
+    for (const id of completedJobs) {
+      this.jobs.delete(id)
+      clearedCount++
+    }
+
+    return clearedCount
+  }
+
+  getFailedJobs(): EmailJob[] {
+    return Array.from(this.jobs.values()).filter((job) => job.status === "failed")
+  }
+
+  removeJob(id: string): boolean {
+    return this.jobs.delete(id)
   }
 }
 

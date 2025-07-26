@@ -1,153 +1,174 @@
 interface NotificationOptions {
-  userEmail: string
-  userName: string
   delay?: number
+  maxAttempts?: number
 }
 
 class NotificationHelper {
-  private async sendNotification(type: string, data: any, options: NotificationOptions) {
-    try {
-      const response = await fetch("/api/notifications/send", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-        body: JSON.stringify({
-          type,
-          data: {
-            ...data,
-            userEmail: options.userEmail,
-            userName: options.userName,
-          },
-          delay: options.delay || 0,
-        }),
-      })
+  private baseUrl: string
+  private authToken: string | null = null
 
-      if (!response.ok) {
-        throw new Error(`Failed to send notification: ${response.statusText}`)
-      }
-
-      const result = await response.json()
-      return result.jobId
-    } catch (error) {
-      console.error("Failed to send notification:", error)
-      throw error
-    }
+  constructor() {
+    this.baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
   }
 
-  async notifyProfileChange(changeType: string, changeDetails: string, options: NotificationOptions) {
-    return await this.sendNotification(
-      "profile_change",
-      {
-        changeType,
-        changeDetails,
+  setAuthToken(token: string) {
+    this.authToken = token
+  }
+
+  private async makeRequest(endpoint: string, data?: any, method = "POST") {
+    if (!this.authToken) {
+      throw new Error("Authentication token not set")
+    }
+
+    const response = await fetch(`${this.baseUrl}/api/notifications/${endpoint}`, {
+      method,
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.authToken}`,
       },
-      options,
-    )
-  }
+      body: data ? JSON.stringify(data) : undefined,
+    })
 
-  async notifySecurityAlert(alertType: string, details: string, options: NotificationOptions & { location?: string }) {
-    return await this.sendNotification(
-      "security_alert",
-      {
-        alertType,
-        details,
-        location: options.location,
-      },
-      options,
-    )
-  }
-
-  async notifyPasswordChange(options: NotificationOptions) {
-    return await this.sendNotification("password_change", {}, options)
-  }
-
-  async notifyTwoFactorChange(enabled: boolean, options: NotificationOptions) {
-    return await this.sendNotification(
-      "2fa_change",
-      {
-        enabled,
-      },
-      options,
-    )
-  }
-
-  async notifyApiKeyChange(action: "created" | "deleted" | "updated", keyName: string, options: NotificationOptions) {
-    return await this.sendNotification(
-      "api_key_change",
-      {
-        action,
-        keyName,
-      },
-      options,
-    )
-  }
-
-  private getAuthToken(): string {
-    // In a real app, this would get the token from localStorage, cookies, or context
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("authToken") || ""
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || "Request failed")
     }
-    return ""
+
+    return response.json()
   }
 
-  async getNotificationStatus(jobId: string) {
-    try {
-      const response = await fetch(`/api/notifications/status?jobId=${jobId}`, {
-        headers: {
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to get notification status: ${response.statusText}`)
-      }
-
-      return await response.json()
-    } catch (error) {
-      console.error("Failed to get notification status:", error)
-      throw error
+  async sendProfileChangeNotification(
+    userEmail: string,
+    userName: string,
+    changeType: string,
+    changeDetails: string,
+    ipAddress?: string,
+    options?: NotificationOptions,
+  ): Promise<string> {
+    const data = {
+      userEmail,
+      userName,
+      changeType,
+      changeDetails,
+      timestamp: new Date().toISOString(),
+      ipAddress,
     }
+
+    const result = await this.makeRequest("send", {
+      type: "profile-change",
+      data,
+      options,
+    })
+
+    return result.jobId
   }
 
-  async getQueueStatus() {
-    try {
-      const response = await fetch("/api/notifications/status", {
-        headers: {
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to get queue status: ${response.statusText}`)
-      }
-
-      return await response.json()
-    } catch (error) {
-      console.error("Failed to get queue status:", error)
-      throw error
+  async sendSecurityAlert(
+    userEmail: string,
+    userName: string,
+    alertType: string,
+    details: string,
+    ipAddress?: string,
+    location?: string,
+    options?: NotificationOptions,
+  ): Promise<string> {
+    const data = {
+      userEmail,
+      userName,
+      alertType,
+      details,
+      timestamp: new Date().toISOString(),
+      ipAddress,
+      location,
     }
+
+    const result = await this.makeRequest("send", {
+      type: "security-alert",
+      data,
+      options,
+    })
+
+    return result.jobId
   }
 
-  async retryFailedNotifications() {
-    try {
-      const response = await fetch("/api/notifications/retry", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.getAuthToken()}`,
-        },
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to retry notifications: ${response.statusText}`)
-      }
-
-      return await response.json()
-    } catch (error) {
-      console.error("Failed to retry notifications:", error)
-      throw error
+  async sendPasswordChangeNotification(
+    userEmail: string,
+    userName: string,
+    ipAddress?: string,
+    options?: NotificationOptions,
+  ): Promise<string> {
+    const data = {
+      userEmail,
+      userName,
+      timestamp: new Date().toISOString(),
+      ipAddress,
     }
+
+    const result = await this.makeRequest("send", {
+      type: "password-change",
+      data,
+      options,
+    })
+
+    return result.jobId
+  }
+
+  async sendTwoFactorStatusChange(
+    userEmail: string,
+    userName: string,
+    enabled: boolean,
+    options?: NotificationOptions,
+  ): Promise<string> {
+    const data = {
+      userEmail,
+      userName,
+      enabled,
+      timestamp: new Date().toISOString(),
+    }
+
+    const result = await this.makeRequest("send", {
+      type: "two-factor-change",
+      data,
+      options,
+    })
+
+    return result.jobId
+  }
+
+  async sendApiKeyNotification(
+    userEmail: string,
+    userName: string,
+    action: "created" | "deleted" | "updated",
+    keyName: string,
+    options?: NotificationOptions,
+  ): Promise<string> {
+    const data = {
+      userEmail,
+      userName,
+      action,
+      keyName,
+      timestamp: new Date().toISOString(),
+    }
+
+    const result = await this.makeRequest("send", {
+      type: "api-key-change",
+      data,
+      options,
+    })
+
+    return result.jobId
+  }
+
+  async getJobStatus(jobId: string) {
+    return this.makeRequest(`status?jobId=${jobId}`, undefined, "GET")
+  }
+
+  async getQueueStats() {
+    return this.makeRequest("status", undefined, "GET")
+  }
+
+  async retryFailedJobs() {
+    return this.makeRequest("retry")
   }
 }
 

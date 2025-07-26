@@ -3,433 +3,294 @@
 import type React from "react"
 
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useToast } from "@/hooks/use-toast"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { toast } from "sonner"
+import { Camera, Mail, User, Calendar, MapPin, Phone, Globe } from "lucide-react"
 import { notificationHelper } from "@/lib/notification-helper"
-import { User, Mail, Phone, MapPin, Calendar, Camera, Save, Loader2 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
-export function PersonalInfo() {
-  const { toast } = useToast()
-  const [loading, setLoading] = useState(false)
-  const [uploadingAvatar, setUploadingAvatar] = useState(false)
+interface PersonalInfoProps {
+  user: {
+    id: string
+    email: string
+    name: string
+    avatar?: string
+    phone?: string
+    location?: string
+    website?: string
+    bio?: string
+    joinedAt: string
+    emailVerified: boolean
+  }
+}
 
+export function PersonalInfo({ user }: PersonalInfoProps) {
+  const { token } = useAuth()
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setSaving] = useState(false)
   const [formData, setFormData] = useState({
-    firstName: "Demo",
-    lastName: "User",
-    email: "demo@coinwayfinder.com",
-    phone: "+1 (555) 123-4567",
-    dateOfBirth: "1990-01-01",
-    country: "United States",
-    timezone: "America/New_York",
-    language: "en",
-    bio: "Cryptocurrency trader and blockchain enthusiast with 5+ years of experience in DeFi and automated trading strategies.",
-    website: "https://example.com",
-    twitter: "@demouser",
-    linkedin: "linkedin.com/in/demouser",
+    name: user.name || "",
+    phone: user.phone || "",
+    location: user.location || "",
+    website: user.website || "",
+    bio: user.bio || "",
   })
-
-  const [originalData, setOriginalData] = useState(formData)
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+
+    try {
+      // Get client IP for logging
+      const ipResponse = await fetch("https://api.ipify.org?format=json")
+      const { ip } = await ipResponse.json()
+
+      // Update profile
+      const response = await fetch("/api/auth/update", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      })
+
+      if (!response.ok) {
+        throw new Error("Failed to update profile")
+      }
+
+      // Send email notification
+      if (token) {
+        notificationHelper.setAuthToken(token)
+
+        const changes = []
+        if (formData.name !== user.name) changes.push(`Name: ${user.name} → ${formData.name}`)
+        if (formData.phone !== user.phone)
+          changes.push(`Phone: ${user.phone || "Not set"} → ${formData.phone || "Not set"}`)
+        if (formData.location !== user.location)
+          changes.push(`Location: ${user.location || "Not set"} → ${formData.location || "Not set"}`)
+        if (formData.website !== user.website)
+          changes.push(`Website: ${user.website || "Not set"} → ${formData.website || "Not set"}`)
+        if (formData.bio !== user.bio) changes.push(`Bio updated`)
+
+        if (changes.length > 0) {
+          await notificationHelper.sendProfileChangeNotification(
+            user.email,
+            formData.name || user.name,
+            "Personal Information Update",
+            changes.join(", "),
+            ip,
+          )
+        }
+      }
+
+      toast.success("Profile updated successfully")
+      setIsEditing(false)
+    } catch (error) {
+      console.error("Error updating profile:", error)
+      toast.error("Failed to update profile")
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: "Please select an image smaller than 5MB.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setUploadingAvatar(true)
     try {
-      // Simulate upload
-      await new Promise((resolve) => setTimeout(resolve, 2000))
+      // Get client IP for logging
+      const ipResponse = await fetch("https://api.ipify.org?format=json")
+      const { ip } = await ipResponse.json()
 
-      // Send notification
-      await notificationHelper.notifyProfileChange(
-        "Profile Picture Updated",
-        "Your profile picture has been successfully updated.",
-        {
-          userEmail: formData.email,
-          userName: `${formData.firstName} ${formData.lastName}`,
+      const formData = new FormData()
+      formData.append("avatar", file)
+
+      const response = await fetch("/api/auth/upload-avatar", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
         },
-      )
-
-      toast({
-        title: "Avatar Updated",
-        description: "Your profile picture has been updated successfully.",
-      })
-    } catch (error) {
-      toast({
-        title: "Upload Failed",
-        description: "Failed to update profile picture. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setUploadingAvatar(false)
-    }
-  }
-
-  const handleSave = async () => {
-    setLoading(true)
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Check what changed
-      const changes: string[] = []
-      Object.keys(formData).forEach((key) => {
-        if (formData[key as keyof typeof formData] !== originalData[key as keyof typeof originalData]) {
-          changes.push(key)
-        }
+        body: formData,
       })
 
-      if (changes.length > 0) {
-        // Send notification for profile changes
-        const changeDetails = changes
-          .map((change) => {
-            const fieldNames: Record<string, string> = {
-              firstName: "First Name",
-              lastName: "Last Name",
-              email: "Email Address",
-              phone: "Phone Number",
-              dateOfBirth: "Date of Birth",
-              country: "Country",
-              timezone: "Timezone",
-              language: "Language",
-              bio: "Bio",
-              website: "Website",
-              twitter: "Twitter",
-              linkedin: "LinkedIn",
-            }
-            return fieldNames[change] || change
-          })
-          .join(", ")
+      if (!response.ok) {
+        throw new Error("Failed to upload avatar")
+      }
 
-        await notificationHelper.notifyProfileChange(
-          "Personal Information Updated",
-          `The following fields were updated: ${changeDetails}`,
-          {
-            userEmail: formData.email,
-            userName: `${formData.firstName} ${formData.lastName}`,
-          },
+      // Send email notification
+      if (token) {
+        notificationHelper.setAuthToken(token)
+        await notificationHelper.sendProfileChangeNotification(
+          user.email,
+          user.name,
+          "Profile Picture Update",
+          "Profile picture has been updated",
+          ip,
         )
       }
 
-      setOriginalData(formData)
-
-      toast({
-        title: "Profile Updated",
-        description: "Your personal information has been saved successfully.",
-      })
+      toast.success("Avatar updated successfully")
     } catch (error) {
-      toast({
-        title: "Update Failed",
-        description: "Failed to update profile. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
+      console.error("Error uploading avatar:", error)
+      toast.error("Failed to upload avatar")
     }
   }
 
-  const hasChanges = JSON.stringify(formData) !== JSON.stringify(originalData)
-
   return (
-    <div className="space-y-6">
-      {/* Profile Picture */}
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Profile Picture
-          </CardTitle>
-          <CardDescription>Update your profile picture</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center gap-6">
-            <div className="relative">
-              <Avatar className="h-24 w-24">
-                <AvatarImage src="/placeholder-user.jpg" alt="Profile" />
-                <AvatarFallback className="text-2xl">
-                  {formData.firstName[0]}
-                  {formData.lastName[0]}
-                </AvatarFallback>
-              </Avatar>
-              {uploadingAvatar && (
-                <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                  <Loader2 className="h-6 w-6 text-white animate-spin" />
-                </div>
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <User className="h-5 w-5" />
+          Personal Information
+        </CardTitle>
+        <CardDescription>Manage your personal details and profile information</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Avatar Section */}
+        <div className="flex items-center gap-4">
+          <div className="relative">
+            <Avatar className="h-20 w-20">
+              <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+              <AvatarFallback className="text-lg">{user.name?.charAt(0)?.toUpperCase() || "U"}</AvatarFallback>
+            </Avatar>
+            <label
+              htmlFor="avatar-upload"
+              className="absolute -bottom-1 -right-1 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground hover:bg-primary/90"
+            >
+              <Camera className="h-4 w-4" />
+            </label>
+            <input id="avatar-upload" type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
+          </div>
+          <div>
+            <h3 className="font-semibold">{user.name}</h3>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Mail className="h-4 w-4" />
+              {user.email}
+              {user.emailVerified && (
+                <Badge variant="secondary" className="text-xs">
+                  Verified
+                </Badge>
               )}
             </div>
-            <div className="space-y-2">
-              <p className="text-white font-medium">Change Profile Picture</p>
-              <p className="text-sm text-gray-400">JPG, PNG or GIF. Max size 5MB.</p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={uploadingAvatar}
-                  onClick={() => document.getElementById("avatar-upload")?.click()}
-                >
-                  <Camera className="h-4 w-4 mr-2" />
-                  {uploadingAvatar ? "Uploading..." : "Upload New"}
-                </Button>
-                <input
-                  id="avatar-upload"
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleAvatarUpload}
-                />
-              </div>
+            <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+              <Calendar className="h-4 w-4" />
+              Joined {new Date(user.joinedAt).toLocaleDateString()}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Basic Information */}
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
-        <CardHeader>
-          <CardTitle className="text-white">Basic Information</CardTitle>
-          <CardDescription>Update your basic profile information</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="firstName" className="text-white">
-                First Name
-              </Label>
-              <Input
-                id="firstName"
-                value={formData.firstName}
-                onChange={(e) => handleInputChange("firstName", e.target.value)}
-                className="bg-slate-700 border-slate-600 text-white"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="lastName" className="text-white">
-                Last Name
-              </Label>
-              <Input
-                id="lastName"
-                value={formData.lastName}
-                onChange={(e) => handleInputChange("lastName", e.target.value)}
-                className="bg-slate-700 border-slate-600 text-white"
-              />
-            </div>
-          </div>
+        <Separator />
 
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-white flex items-center gap-2">
-              <Mail className="h-4 w-4" />
-              Email Address
-            </Label>
+        {/* Form Fields */}
+        <div className="grid gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="name">Full Name</Label>
             <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleInputChange("email", e.target.value)}
-              className="bg-slate-700 border-slate-600 text-white"
+              id="name"
+              value={formData.name}
+              onChange={(e) => handleInputChange("name", e.target.value)}
+              disabled={!isEditing}
+              placeholder="Enter your full name"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone" className="text-white flex items-center gap-2">
-              <Phone className="h-4 w-4" />
-              Phone Number
-            </Label>
-            <Input
-              id="phone"
-              value={formData.phone}
-              onChange={(e) => handleInputChange("phone", e.target.value)}
-              className="bg-slate-700 border-slate-600 text-white"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="dateOfBirth" className="text-white flex items-center gap-2">
-                <Calendar className="h-4 w-4" />
-                Date of Birth
-              </Label>
+          <div className="grid gap-2">
+            <Label htmlFor="phone">Phone Number</Label>
+            <div className="relative">
+              <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
-                id="dateOfBirth"
-                type="date"
-                value={formData.dateOfBirth}
-                onChange={(e) => handleInputChange("dateOfBirth", e.target.value)}
-                className="bg-slate-700 border-slate-600 text-white"
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => handleInputChange("phone", e.target.value)}
+                disabled={!isEditing}
+                placeholder="Enter your phone number"
+                className="pl-10"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="country" className="text-white flex items-center gap-2">
-                <MapPin className="h-4 w-4" />
-                Country
-              </Label>
-              <Select value={formData.country} onValueChange={(value) => handleInputChange("country", value)}>
-                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="United States">United States</SelectItem>
-                  <SelectItem value="Canada">Canada</SelectItem>
-                  <SelectItem value="United Kingdom">United Kingdom</SelectItem>
-                  <SelectItem value="Germany">Germany</SelectItem>
-                  <SelectItem value="France">France</SelectItem>
-                  <SelectItem value="Japan">Japan</SelectItem>
-                  <SelectItem value="Australia">Australia</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Preferences */}
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
-        <CardHeader>
-          <CardTitle className="text-white">Preferences</CardTitle>
-          <CardDescription>Configure your account preferences</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="timezone" className="text-white">
-                Timezone
-              </Label>
-              <Select value={formData.timezone} onValueChange={(value) => handleInputChange("timezone", value)}>
-                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="America/New_York">Eastern Time</SelectItem>
-                  <SelectItem value="America/Chicago">Central Time</SelectItem>
-                  <SelectItem value="America/Denver">Mountain Time</SelectItem>
-                  <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
-                  <SelectItem value="UTC">UTC</SelectItem>
-                  <SelectItem value="Europe/London">London</SelectItem>
-                  <SelectItem value="Europe/Paris">Paris</SelectItem>
-                  <SelectItem value="Asia/Tokyo">Tokyo</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="language" className="text-white">
-                Language
-              </Label>
-              <Select value={formData.language} onValueChange={(value) => handleInputChange("language", value)}>
-                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="en">English</SelectItem>
-                  <SelectItem value="es">Spanish</SelectItem>
-                  <SelectItem value="fr">French</SelectItem>
-                  <SelectItem value="de">German</SelectItem>
-                  <SelectItem value="ja">Japanese</SelectItem>
-                  <SelectItem value="zh">Chinese</SelectItem>
-                </SelectContent>
-              </Select>
+          <div className="grid gap-2">
+            <Label htmlFor="location">Location</Label>
+            <div className="relative">
+              <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="location"
+                value={formData.location}
+                onChange={(e) => handleInputChange("location", e.target.value)}
+                disabled={!isEditing}
+                placeholder="Enter your location"
+                className="pl-10"
+              />
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="bio" className="text-white">
-              Bio
-            </Label>
-            <Textarea
+          <div className="grid gap-2">
+            <Label htmlFor="website">Website</Label>
+            <div className="relative">
+              <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="website"
+                value={formData.website}
+                onChange={(e) => handleInputChange("website", e.target.value)}
+                disabled={!isEditing}
+                placeholder="Enter your website URL"
+                className="pl-10"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="bio">Bio</Label>
+            <textarea
               id="bio"
               value={formData.bio}
               onChange={(e) => handleInputChange("bio", e.target.value)}
-              className="bg-slate-700 border-slate-600 text-white min-h-[100px]"
-              placeholder="Tell us about yourself..."
+              disabled={!isEditing}
+              placeholder="Tell us about yourself"
+              className="min-h-[100px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             />
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Social Links */}
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
-        <CardHeader>
-          <CardTitle className="text-white">Social Links</CardTitle>
-          <CardDescription>Connect your social media profiles</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="website" className="text-white">
-              Website
-            </Label>
-            <Input
-              id="website"
-              type="url"
-              value={formData.website}
-              onChange={(e) => handleInputChange("website", e.target.value)}
-              className="bg-slate-700 border-slate-600 text-white"
-              placeholder="https://example.com"
-            />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="twitter" className="text-white">
-                Twitter
-              </Label>
-              <Input
-                id="twitter"
-                value={formData.twitter}
-                onChange={(e) => handleInputChange("twitter", e.target.value)}
-                className="bg-slate-700 border-slate-600 text-white"
-                placeholder="@username"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="linkedin" className="text-white">
-                LinkedIn
-              </Label>
-              <Input
-                id="linkedin"
-                value={formData.linkedin}
-                onChange={(e) => handleInputChange("linkedin", e.target.value)}
-                className="bg-slate-700 border-slate-600 text-white"
-                placeholder="linkedin.com/in/username"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <Button
-          onClick={handleSave}
-          disabled={loading || !hasChanges}
-          className="bg-blue-600 hover:bg-blue-700 text-white"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Saving...
-            </>
+        {/* Action Buttons */}
+        <div className="flex gap-2">
+          {!isEditing ? (
+            <Button onClick={() => setIsEditing(true)}>Edit Profile</Button>
           ) : (
             <>
-              <Save className="h-4 w-4 mr-2" />
-              Save Changes
+              <Button onClick={handleSave} disabled={isSaving}>
+                {isSaving ? "Saving..." : "Save Changes"}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsEditing(false)
+                  setFormData({
+                    name: user.name || "",
+                    phone: user.phone || "",
+                    location: user.location || "",
+                    website: user.website || "",
+                    bio: user.bio || "",
+                  })
+                }}
+                disabled={isSaving}
+              >
+                Cancel
+              </Button>
             </>
           )}
-        </Button>
-      </div>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

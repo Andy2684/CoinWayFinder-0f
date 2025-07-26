@@ -18,12 +18,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Invalid token" }, { status: 401 })
     }
 
-    const url = new URL(request.url)
-    const jobId = url.searchParams.get("jobId")
+    const { searchParams } = new URL(request.url)
+    const jobId = searchParams.get("jobId")
 
     if (jobId) {
       // Get specific job status
-      const job = emailQueue.getJobById(jobId)
+      const job = emailQueue.getJobStatus(jobId)
       if (!job) {
         return NextResponse.json({ error: "Job not found" }, { status: 404 })
       }
@@ -36,20 +36,31 @@ export async function GET(request: NextRequest) {
           status: job.status,
           attempts: job.attempts,
           maxAttempts: job.maxAttempts,
-          scheduledAt: job.scheduledAt,
           createdAt: job.createdAt,
+          processedAt: job.processedAt,
+          error: job.error,
         },
       })
     } else {
-      // Get queue status
-      const status = emailQueue.getQueueStatus()
+      // Get queue statistics
+      const stats = emailQueue.getQueueStats()
+      const failedJobs = emailQueue.getFailedJobs().map((job) => ({
+        id: job.id,
+        type: job.type,
+        attempts: job.attempts,
+        maxAttempts: job.maxAttempts,
+        error: job.error,
+        createdAt: job.createdAt,
+      }))
+
       return NextResponse.json({
         success: true,
-        queue: status,
+        stats,
+        failedJobs,
       })
     }
   } catch (error) {
-    console.error("Get notification status error:", error)
+    console.error("Status check error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
