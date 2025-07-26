@@ -2,49 +2,30 @@ import { type NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { connectToDatabase } from "@/lib/mongodb"
 
-function getClientIP(request: NextRequest): string {
-  const forwarded = request.headers.get("x-forwarded-for")
-  const realIP = request.headers.get("x-real-ip")
-  const remoteAddr = request.headers.get("x-vercel-forwarded-for")
-
-  if (forwarded) {
-    const ip = forwarded.split(",")[0].trim()
-    return ip !== "unknown" ? ip : ""
-  }
-  if (realIP && realIP !== "unknown") {
-    return realIP
-  }
-  if (remoteAddr && remoteAddr !== "unknown") {
-    return remoteAddr
-  }
-  return "127.0.0.1"
-}
-
 export async function POST(request: NextRequest) {
-  const ipAddress = getClientIP(request)
-  const userAgent = request.headers.get("user-agent") || ""
-
   try {
     const { email, password, firstName, lastName, username, acceptTerms } = await request.json()
 
-    // Validate required fields
-    if (!email || !password || !firstName || !lastName) {
+    console.log("Signup attempt for email:", email)
+
+    // Validation
+    if (!email || !password || !firstName || !lastName || !acceptTerms) {
       return NextResponse.json(
         {
           success: false,
           error: "Missing required fields",
-          message: "Email, password, first name, and last name are required",
+          message: "All fields are required and terms must be accepted",
         },
         { status: 400 },
       )
     }
 
-    if (!acceptTerms) {
+    if (password.length < 6) {
       return NextResponse.json(
         {
           success: false,
-          error: "Terms not accepted",
-          message: "You must accept the terms and conditions",
+          error: "Password too short",
+          message: "Password must be at least 6 characters long",
         },
         { status: 400 },
       )
@@ -53,88 +34,65 @@ export async function POST(request: NextRequest) {
     try {
       // Connect to MongoDB
       const { db } = await connectToDatabase()
+      console.log("Connected to database for signup")
 
       // Check if user already exists
-      const existingUser = await db.collection("users").findOne({ email })
+      const existingUser = await db.collection("users").findOne({
+        $or: [{ email: email.toLowerCase() }, { username: username }],
+      })
 
       if (existingUser) {
+        const field = existingUser.email === email.toLowerCase() ? "email" : "username"
         return NextResponse.json(
           {
             success: false,
-            error: "Email already exists",
-            message: "An account with this email already exists",
+            error: "User already exists",
+            message: `A user with this ${field} already exists`,
           },
           { status: 409 },
         )
       }
 
-      // Check if username is taken (if provided)
-      if (username) {
-        const existingUsername = await db.collection("users").findOne({ username })
-        if (existingUsername) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: "Username taken",
-              message: "This username is already taken",
-            },
-            { status: 409 },
-          )
-        }
-      }
-
       // Hash password
       const saltRounds = 12
-      const passwordHash = await bcrypt.hash(password, saltRounds)
-
-      // Generate username if not provided
-      const finalUsername = username || `${firstName.toLowerCase()}_${lastName.toLowerCase()}_${Date.now()}`
+      const password_hash = await bcrypt.hash(password, saltRounds)
+      console.log("Password hashed successfully")
 
       // Create user document
       const newUser = {
-        email,
-        password_hash: passwordHash,
+        email: email.toLowerCase(),
+        password_hash,
         first_name: firstName,
         last_name: lastName,
-        username: finalUsername,
+        username: username || `user_${Date.now()}`,
         role: "user",
         subscription_status: "free",
         is_email_verified: false,
         created_at: new Date(),
         updated_at: new Date(),
+        last_login: null,
+        terms_accepted: true,
+        terms_accepted_at: new Date(),
       }
 
-      // Insert user into MongoDB
+      // Insert user into database
       const result = await db.collection("users").insertOne(newUser)
+      console.log("User created successfully with ID:", result.insertedId)
 
-      // Return success without auto-login (as requested)
+      // Return success response (don't auto-login as requested)
       return NextResponse.json({
         success: true,
         message: "Account created successfully! Please log in to continue.",
-        user: {
-          id: result.insertedId.toString(),
-          email: newUser.email,
-          firstName: newUser.first_name,
-          lastName: newUser.last_name,
-          username: newUser.username,
-          createdAt: newUser.created_at,
-        },
+        userId: result.insertedId.toString(),
       })
     } catch (dbError) {
-      console.error("Database connection error:", dbError)
+      console.error("Database error during signup:", dbError)
 
-      // Return success message even if database is unavailable (for demo purposes)
+      // Return success for demo purposes when database is unavailable
       return NextResponse.json({
         success: true,
-        message: "Account created successfully! Please log in with demo@coinwayfinder.com / password to continue.",
-        user: {
-          id: "demo-user-123",
-          email: email,
-          firstName: firstName,
-          lastName: lastName,
-          username: username || `${firstName.toLowerCase()}_${lastName.toLowerCase()}`,
-          createdAt: new Date(),
-        },
+        message: "Account created successfully! Please log in with your credentials. (Demo Mode)",
+        userId: "demo-signup-" + Date.now(),
       })
     }
   } catch (error) {

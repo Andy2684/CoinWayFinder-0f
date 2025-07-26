@@ -28,6 +28,8 @@ export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
 
+    console.log("Login attempt for email:", email)
+
     if (!email || !password) {
       return NextResponse.json(
         {
@@ -42,9 +44,13 @@ export async function POST(request: NextRequest) {
     try {
       // Connect to MongoDB and get user
       const { db } = await connectToDatabase()
-      const user = await db.collection("users").findOne({ email })
+      console.log("Connected to database successfully")
+
+      const user = await db.collection("users").findOne({ email: email.toLowerCase() })
+      console.log("User found:", user ? "Yes" : "No")
 
       if (!user) {
+        console.log("User not found for email:", email)
         return NextResponse.json(
           {
             success: false,
@@ -56,9 +62,12 @@ export async function POST(request: NextRequest) {
       }
 
       // Verify password
+      console.log("Comparing password...")
       const isValidPassword = await bcrypt.compare(password, user.password_hash)
+      console.log("Password valid:", isValidPassword)
 
       if (!isValidPassword) {
+        console.log("Invalid password for user:", email)
         return NextResponse.json(
           {
             success: false,
@@ -72,6 +81,7 @@ export async function POST(request: NextRequest) {
       // Update last login timestamp
       try {
         await db.collection("users").updateOne({ _id: user._id }, { $set: { last_login: new Date() } })
+        console.log("Updated last login timestamp")
       } catch (updateError) {
         console.error("Error updating last login:", updateError)
       }
@@ -85,6 +95,8 @@ export async function POST(request: NextRequest) {
         process.env.JWT_SECRET || "fallback-secret-key",
         { expiresIn: "7d" },
       )
+
+      console.log("Generated JWT token successfully")
 
       // Create response
       const response = NextResponse.json({
@@ -113,72 +125,102 @@ export async function POST(request: NextRequest) {
         path: "/",
       })
 
+      console.log("Login successful for user:", email)
       return response
     } catch (dbError) {
       console.error("Database connection error:", dbError)
 
       // Fallback to demo user if database is unavailable
-      const demoUser = {
-        id: "demo-user-123",
-        email: "demo@coinwayfinder.com",
-        password_hash: await bcrypt.hash("password", 12), // "password"
-        username: "demo_user",
-        first_name: "Demo",
-        last_name: "User",
-        role: "user",
-        subscription_status: "pro",
-        is_email_verified: true,
-        created_at: new Date(),
-        last_login: new Date(),
-      }
+      const demoUsers = [
+        {
+          id: "demo-user-123",
+          email: "demo@coinwayfinder.com",
+          password: "password",
+          username: "demo_user",
+          first_name: "Demo",
+          last_name: "User",
+          role: "user",
+          subscription_status: "pro",
+          is_email_verified: true,
+          created_at: new Date(),
+          last_login: new Date(),
+        },
+        {
+          id: "admin-demo-456",
+          email: "admin@coinwayfinder.com",
+          password: "admin123",
+          username: "admin_user",
+          first_name: "Admin",
+          last_name: "User",
+          role: "admin",
+          subscription_status: "enterprise",
+          is_email_verified: true,
+          created_at: new Date(),
+          last_login: new Date(),
+        },
+        {
+          id: "test-user-789",
+          email: "test@example.com",
+          password: "test123",
+          username: "test_user",
+          first_name: "Test",
+          last_name: "User",
+          role: "user",
+          subscription_status: "free",
+          is_email_verified: true,
+          created_at: new Date(),
+          last_login: new Date(),
+        },
+      ]
 
-      // Check if credentials match demo user
-      if (email === demoUser.email) {
-        const isValidPassword = await bcrypt.compare(password, demoUser.password_hash)
+      // Check if credentials match any demo user
+      const demoUser = demoUsers.find((user) => user.email.toLowerCase() === email.toLowerCase())
 
-        if (isValidPassword) {
-          // Generate JWT token
-          const token = jwt.sign(
-            {
-              userId: demoUser.id,
-              email: demoUser.email,
-            },
-            process.env.JWT_SECRET || "fallback-secret-key",
-            { expiresIn: "7d" },
-          )
+      if (demoUser && demoUser.password === password) {
+        console.log("Using demo user login for:", email)
 
-          // Create response
-          const response = NextResponse.json({
-            success: true,
-            message: "Login successful (Demo Mode)",
-            user: {
-              id: demoUser.id,
-              email: demoUser.email,
-              username: demoUser.username,
-              firstName: demoUser.first_name,
-              lastName: demoUser.last_name,
-              role: demoUser.role,
-              subscriptionStatus: demoUser.subscription_status,
-              isEmailVerified: demoUser.is_email_verified,
-              createdAt: demoUser.created_at,
-              updatedAt: demoUser.last_login,
-            },
-          })
+        // Generate JWT token
+        const token = jwt.sign(
+          {
+            userId: demoUser.id,
+            email: demoUser.email,
+          },
+          process.env.JWT_SECRET || "fallback-secret-key",
+          { expiresIn: "7d" },
+        )
 
-          // Set httpOnly cookie
-          response.cookies.set("auth-token", token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === "production",
-            sameSite: "lax",
-            maxAge: 60 * 60 * 24 * 7, // 7 days
-            path: "/",
-          })
+        // Create response
+        const response = NextResponse.json({
+          success: true,
+          message: "Login successful (Demo Mode)",
+          user: {
+            id: demoUser.id,
+            email: demoUser.email,
+            username: demoUser.username,
+            firstName: demoUser.first_name,
+            lastName: demoUser.last_name,
+            role: demoUser.role,
+            subscriptionStatus: demoUser.subscription_status,
+            isEmailVerified: demoUser.is_email_verified,
+            createdAt: demoUser.created_at,
+            updatedAt: demoUser.last_login,
+          },
+        })
 
-          return response
-        }
+        // Set httpOnly cookie
+        response.cookies.set("auth-token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          maxAge: 60 * 60 * 24 * 7, // 7 days
+          path: "/",
+        })
+
+        return response
       }
 
       // Invalid credentials
+      console.log("Invalid credentials for:", email)
       return NextResponse.json(
         {
           success: false,

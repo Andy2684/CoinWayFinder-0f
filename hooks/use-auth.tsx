@@ -69,25 +69,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = async (email: string, password: string) => {
     try {
+      console.log("Attempting login for:", email)
+
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email: email.trim(), password }),
       })
 
       const data = await response.json()
+      console.log("Login response:", data)
 
       if (data.success && data.user) {
         setUser(data.user)
         return { success: true, message: data.message }
       } else {
+        console.error("Login failed:", data)
         return { success: false, error: data.error, message: data.message }
       }
     } catch (error) {
-      console.error("Login error:", error)
+      console.error("Login network error:", error)
       return { success: false, error: "Network error occurred" }
     }
   }
