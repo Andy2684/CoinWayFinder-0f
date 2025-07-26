@@ -1,119 +1,113 @@
 "use client"
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-
-interface User {
-  id: string
-  email: string
-  firstName: string
-  lastName: string
-  username: string
-  role: string
-  plan: string
-  isVerified: boolean
-}
+import type { User } from "@/lib/auth"
 
 interface AuthContextType {
   user: User | null
-  login: (email: string, password: string) => Promise<boolean>
+  isAuthenticated: boolean
+  isLoading: boolean
+  login: (user: User, token: string) => void
   logout: () => void
-  signup: (userData: any) => Promise<{ success: boolean; message?: string }>
-  loading: boolean
+  updateUser: (user: User) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
-  const [loading, setLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
+
+  const isAuthenticated = !!user
 
   useEffect(() => {
-    // Check if user is logged in on mount
-    const token = localStorage.getItem("auth_token")
-    if (token) {
+    const initAuth = async () => {
       try {
-        const userData = localStorage.getItem("user_data")
-        if (userData) {
-          setUser(JSON.parse(userData))
+        // Check for stored token
+        const token = localStorage.getItem("auth-token")
+        if (!token) {
+          setIsLoading(false)
+          return
+        }
+
+        // Verify token with server
+        const response = await fetch("/api/auth/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          if (data.success && data.user) {
+            setUser(data.user)
+            localStorage.setItem("user", JSON.stringify(data.user))
+          } else {
+            // Invalid token
+            localStorage.removeItem("auth-token")
+            localStorage.removeItem("user")
+          }
+        } else {
+          // Token expired or invalid
+          localStorage.removeItem("auth-token")
+          localStorage.removeItem("user")
         }
       } catch (error) {
-        localStorage.removeItem("auth_token")
-        localStorage.removeItem("user_data")
+        console.error("Auth initialization error:", error)
+        localStorage.removeItem("auth-token")
+        localStorage.removeItem("user")
+      } finally {
+        setIsLoading(false)
       }
     }
-    setLoading(false)
+
+    initAuth()
   }, [])
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = (userData: User, token: string) => {
+    setUser(userData)
+    localStorage.setItem("auth-token", token)
+    localStorage.setItem("user", JSON.stringify(userData))
+  }
+
+  const logout = async () => {
     try {
-      setLoading(true)
-
-      // Mock login - in real app, this would be an API call
-      if (email === "demo@coinwayfinder.com" && password === "password") {
-        const mockUser: User = {
-          id: "1",
-          email: "demo@coinwayfinder.com",
-          firstName: "Demo",
-          lastName: "User",
-          username: "demo_user",
-          role: "user",
-          plan: "pro",
-          isVerified: true,
-        }
-
-        localStorage.setItem("auth_token", "mock_token_123")
-        localStorage.setItem("user_data", JSON.stringify(mockUser))
-        setUser(mockUser)
-        return true
-      }
-
-      return false
+      // Call logout endpoint to clear server-side session
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("auth-token")}`,
+        },
+      })
     } catch (error) {
-      console.error("Login error:", error)
-      return false
+      console.error("Logout error:", error)
     } finally {
-      setLoading(false)
+      // Clear client-side data regardless of server response
+      setUser(null)
+      localStorage.removeItem("auth-token")
+      localStorage.removeItem("user")
     }
   }
 
-  const signup = async (userData: any): Promise<{ success: boolean; message?: string }> => {
-    try {
-      setLoading(true)
-
-      // Mock signup - in real app, this would be an API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Don't automatically log in after signup
-      return {
-        success: true,
-        message: "Account created successfully! Please check your email to verify your account.",
-      }
-    } catch (error) {
-      console.error("Signup error:", error)
-      return {
-        success: false,
-        message: "Failed to create account. Please try again.",
-      }
-    } finally {
-      setLoading(false)
-    }
+  const updateUser = (userData: User) => {
+    setUser(userData)
+    localStorage.setItem("user", JSON.stringify(userData))
   }
 
-  const logout = () => {
-    localStorage.removeItem("auth_token")
-    localStorage.removeItem("user_data")
-    setUser(null)
-  }
-
-  const contextValue: AuthContextType = {
-    user,
-    login,
-    logout,
-    signup,
-    loading,
-  }
-
-  return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        isAuthenticated,
+        isLoading,
+        login,
+        logout,
+        updateUser,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  )
 }
 
 export function useAuth() {

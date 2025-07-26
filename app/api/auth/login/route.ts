@@ -1,87 +1,65 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { authenticateUser, generateToken } from "@/lib/auth"
+import { z } from "zod"
 
-// Mock database - in production, use a real database
-const users: any[] = [
-  {
-    id: "1",
-    email: "demo@coinwayfinder.com",
-    password: "password", // Plain text for demo - in production use hashed passwords
-    firstName: "Demo",
-    lastName: "User",
-    username: "demo_user",
-    role: "user",
-    plan: "free",
-    isVerified: true,
-  },
-  {
-    id: "2",
-    email: "admin@coinwayfinder.com",
-    password: "AdminPass123!", // Plain text for demo
-    firstName: "Admin",
-    lastName: "User",
-    username: "admin_user",
-    role: "admin",
-    plan: "enterprise",
-    isVerified: true,
-  },
-]
+const loginSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required"),
+})
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password } = body
 
-    console.log("Login attempt:", { email, password })
-
-    // Validation
-    if (!email || !password) {
+    // Validate input
+    const validationResult = loginSchema.safeParse(body)
+    if (!validationResult.success) {
       return NextResponse.json(
         {
           success: false,
-          error: "Email and password are required",
-          message: "Email and password are required",
+          error: "Validation failed",
+          details: validationResult.error.errors,
         },
         { status: 400 },
       )
     }
 
-    // Find user
-    const user = users.find((u) => u.email === email)
+    const { email, password } = validationResult.data
+
+    // Authenticate user
+    const user = await authenticateUser(email, password)
     if (!user) {
       return NextResponse.json(
         {
           success: false,
-          error: "Invalid email or password",
+          error: "Invalid credentials",
           message: "Invalid email or password",
         },
         { status: 401 },
       )
     }
 
-    // Check password (plain text comparison for demo)
-    if (user.password !== password) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Invalid email or password",
-          message: "Invalid email or password",
-        },
-        { status: 401 },
-      )
-    }
+    // Generate JWT token
+    const token = generateToken(user.id)
 
-    // Generate simple token (in production, use proper JWT)
-    const token = `token_${user.id}_${Date.now()}`
-
-    // Return user data without password
-    const { password: _, ...userWithoutPassword } = user
-
-    return NextResponse.json({
+    // Create response with user data
+    const response = NextResponse.json({
       success: true,
-      token,
-      user: userWithoutPassword,
       message: "Login successful",
+      user,
+      token,
     })
+
+    // Set HTTP-only cookie for additional security
+    response.cookies.set("auth-token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60, // 7 days
+      path: "/",
+    })
+
+    return response
   } catch (error) {
     console.error("Login error:", error)
     return NextResponse.json(

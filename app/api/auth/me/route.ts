@@ -1,39 +1,21 @@
 import { type NextRequest, NextResponse } from "next/server"
-
-export const dynamic = "force-dynamic"
-export const runtime = "nodejs"
-
-// Mock database - in production, use a real database
-const users: any[] = [
-  {
-    id: "1",
-    email: "demo@coinwayfinder.com",
-    password: "password",
-    firstName: "Demo",
-    lastName: "User",
-    username: "demo_user",
-    role: "user",
-    plan: "free",
-    isVerified: true,
-  },
-  {
-    id: "2",
-    email: "admin@coinwayfinder.com",
-    password: "AdminPass123!",
-    firstName: "Admin",
-    lastName: "User",
-    username: "admin_user",
-    role: "admin",
-    plan: "enterprise",
-    isVerified: true,
-  },
-]
+import { verifyToken, getUserById } from "@/lib/auth"
 
 export async function GET(request: NextRequest) {
   try {
+    // Get token from Authorization header or cookie
     const authHeader = request.headers.get("authorization")
+    const cookieToken = request.cookies.get("auth-token")?.value
 
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    let token: string | null = null
+
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7)
+    } else if (cookieToken) {
+      token = cookieToken
+    }
+
+    if (!token) {
       return NextResponse.json(
         {
           success: false,
@@ -44,24 +26,21 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const token = authHeader.substring(7) // Remove "Bearer " prefix
-
-    // Simple token validation (in production, use proper JWT verification)
-    if (!token.startsWith("token_")) {
+    // Verify token
+    const decoded = verifyToken(token)
+    if (!decoded) {
       return NextResponse.json(
         {
           success: false,
           error: "Invalid token",
-          message: "Invalid authentication token",
+          message: "Invalid or expired token",
         },
         { status: 401 },
       )
     }
 
-    // Extract user ID from token
-    const userId = token.split("_")[1]
-    const user = users.find((u) => u.id === userId)
-
+    // Get user data
+    const user = await getUserById(decoded.userId)
     if (!user) {
       return NextResponse.json(
         {
@@ -73,12 +52,9 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Return user data without password
-    const { password: _, ...userWithoutPassword } = user
-
     return NextResponse.json({
       success: true,
-      user: userWithoutPassword,
+      user,
     })
   } catch (error) {
     console.error("Auth check error:", error)

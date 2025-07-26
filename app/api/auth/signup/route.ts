@@ -1,84 +1,77 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { createUser, emailExists, usernameExists } from "@/lib/auth"
+import { z } from "zod"
 
-// Mock database - in production, use a real database
-const users: any[] = [
-  {
-    id: "1",
-    email: "demo@coinwayfinder.com",
-    password: "password",
-    firstName: "Demo",
-    lastName: "User",
-    username: "demo_user",
-    role: "user",
-    plan: "free",
-    isVerified: true,
-  },
-  {
-    id: "2",
-    email: "admin@coinwayfinder.com",
-    password: "AdminPass123!",
-    firstName: "Admin",
-    lastName: "User",
-    username: "admin_user",
-    role: "admin",
-    plan: "enterprise",
-    isVerified: true,
-  },
-]
+const signupSchema = z.object({
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
+  username: z.string().optional(),
+})
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, firstName, lastName } = body
 
-    console.log("Signup attempt:", { email, firstName, lastName })
-
-    // Validation
-    if (!email || !password || !firstName || !lastName) {
+    // Validate input
+    const validationResult = signupSchema.safeParse(body)
+    if (!validationResult.success) {
       return NextResponse.json(
         {
           success: false,
-          error: "All fields are required",
-          message: "Please fill in all required fields",
+          error: "Validation failed",
+          details: validationResult.error.errors,
         },
         { status: 400 },
       )
     }
 
-    // Check if user already exists
-    const existingUser = users.find((u) => u.email === email)
-    if (existingUser) {
+    const { email, password, firstName, lastName, username } = validationResult.data
+
+    // Check if email already exists
+    if (await emailExists(email)) {
       return NextResponse.json(
         {
           success: false,
-          error: "User already exists",
+          error: "Email already exists",
           message: "An account with this email already exists",
         },
         { status: 409 },
       )
     }
 
-    // Create new user
-    const newUser = {
-      id: (users.length + 1).toString(),
-      email,
-      password, // In production, hash this password
-      firstName,
-      lastName,
-      username: `${firstName.toLowerCase()}_${lastName.toLowerCase()}`,
-      role: "user",
-      plan: "free",
-      isVerified: false,
-      createdAt: new Date().toISOString(),
+    // Check if username already exists (if provided)
+    if (username && (await usernameExists(username))) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Username already exists",
+          message: "This username is already taken",
+        },
+        { status: 409 },
+      )
     }
 
-    // Add to mock database
-    users.push(newUser)
+    // Create user
+    const user = await createUser({
+      email,
+      password,
+      firstName,
+      lastName,
+      username,
+    })
 
-    // Return success without auto-login
     return NextResponse.json({
       success: true,
       message: "Account created successfully! You can now sign in.",
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        username: user.username,
+      },
     })
   } catch (error) {
     console.error("Signup error:", error)
