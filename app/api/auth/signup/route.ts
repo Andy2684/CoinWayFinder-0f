@@ -9,42 +9,57 @@ function getClientIP(request: NextRequest): string {
   const remoteAddr = request.headers.get("x-vercel-forwarded-for")
 
   if (forwarded) {
-    return forwarded.split(",")[0].trim()
+    const ip = forwarded.split(",")[0].trim()
+    return ip !== "unknown" ? ip : ""
   }
-  if (realIP) {
+  if (realIP && realIP !== "unknown") {
     return realIP
   }
-  if (remoteAddr) {
+  if (remoteAddr && remoteAddr !== "unknown") {
     return remoteAddr
   }
-  return "unknown"
+  return ""
 }
 
 export async function POST(request: NextRequest) {
   const ipAddress = getClientIP(request)
-  const userAgent = request.headers.get("user-agent") || "unknown"
+  const userAgent = request.headers.get("user-agent") || ""
 
   try {
-    const { email, password, firstName, lastName, username, acceptTerms } = await request.json()
+    const { email, password, firstName, lastName, username } = await request.json()
 
-    // Validation
-    if (!email || !password || !firstName || !lastName) {
+    // Validate required fields
+    if (!email || !password) {
       return NextResponse.json(
         {
           success: false,
           error: "Missing required fields",
-          message: "Email, password, first name, and last name are required",
+          message: "Email and password are required",
         },
         { status: 400 },
       )
     }
 
-    if (!acceptTerms) {
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
       return NextResponse.json(
         {
           success: false,
-          error: "Terms not accepted",
-          message: "You must accept the terms and conditions",
+          error: "Invalid email format",
+          message: "Please provide a valid email address",
+        },
+        { status: 400 },
+      )
+    }
+
+    // Validate password strength
+    if (password.length < 8) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Weak password",
+          message: "Password must be at least 8 characters long",
         },
         { status: 400 },
       )
@@ -52,19 +67,20 @@ export async function POST(request: NextRequest) {
 
     // Check if user already exists
     const [existingUser] = await sql`
-      SELECT id FROM users WHERE email = ${email}
+      SELECT id, email FROM users WHERE email = ${email}
     `
 
     if (existingUser) {
       try {
         await auditLogger.log({
-          eventType: "signup_attempt_duplicate_email",
-          eventCategory: "auth",
+          eventType: "signup_attempt_duplicate",
+          eventCategory: "authentication",
           eventDescription: `Signup attempt with existing email: ${email}`,
           ipAddress,
           userAgent,
-          riskLevel: "medium",
+          riskLevel: "low",
           success: false,
+          metadata: { email, reason: "email_exists" },
         })
       } catch (auditError) {
         console.error("Audit logging error:", auditError)
@@ -73,24 +89,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "Email already exists",
+          error: "User already exists",
           message: "An account with this email already exists",
         },
         { status: 409 },
       )
     }
 
-    // Check if username already exists (if provided)
+    // Check if username is taken (if provided)
     if (username) {
       const [existingUsername] = await sql`
-        SELECT id FROM users WHERE username = ${username}
+        SELECT id, username FROM users WHERE username = ${username}
       `
 
       if (existingUsername) {
         return NextResponse.json(
           {
             success: false,
-            error: "Username already exists",
+            error: "Username taken",
             message: "This username is already taken",
           },
           { status: 409 },
@@ -102,10 +118,7 @@ export async function POST(request: NextRequest) {
     const saltRounds = 12
     const passwordHash = await bcrypt.hash(password, saltRounds)
 
-    // Generate username if not provided
-    const finalUsername = username || `${firstName.toLowerCase()}_${lastName.toLowerCase()}_${Date.now()}`
-
-    // Create user with explicit column values
+    // Create user
     const [newUser] = await sql`
       INSERT INTO users (
         email, 
@@ -116,55 +129,40 @@ export async function POST(request: NextRequest) {
         role,
         subscription_status,
         is_email_verified
-      )
-      VALUES (
+      ) VALUES (
         ${email}, 
         ${passwordHash}, 
-        ${firstName}, 
-        ${lastName}, 
-        ${finalUsername},
+        ${firstName || null}, 
+        ${lastName || null}, 
+        ${username || null},
         'user',
         'free',
         false
       )
-      RETURNING 
-        id, 
-        email, 
-        first_name, 
-        last_name, 
-        username, 
-        role, 
-        subscription_status,
-        is_email_verified,
-        created_at
+      RETURNING id, email, first_name, last_name, username, role, subscription_status, is_email_verified, created_at
     `
 
     // Log successful signup
     try {
-      await auditLogger.log({
-        userId: newUser.id,
-        eventType: "user_signup",
-        eventCategory: "auth",
-        eventDescription: `New user registered: ${email}`,
-        ipAddress,
-        userAgent,
-        riskLevel: "low",
-        success: true,
-      })
+      await auditLogger.logSignup(newUser.id, email, ipAddress, userAgent)
     } catch (auditError) {
       console.error("Audit logging error:", auditError)
     }
 
-    // Return success without auto-login (as requested in work items)
+    // Return success response WITHOUT auto-login (as requested)
     return NextResponse.json({
       success: true,
-      message: "Account created successfully! You can now log in.",
+      message: "Account created successfully! Please log in to continue.",
       user: {
         id: newUser.id,
         email: newUser.email,
         firstName: newUser.first_name,
         lastName: newUser.last_name,
         username: newUser.username,
+        role: newUser.role,
+        subscriptionStatus: newUser.subscription_status,
+        isEmailVerified: newUser.is_email_verified,
+        createdAt: newUser.created_at,
       },
     })
   } catch (error) {
@@ -189,7 +187,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: "Internal server error",
-        message: "An error occurred during registration",
+        message: "An error occurred during account creation",
       },
       { status: 500 },
     )

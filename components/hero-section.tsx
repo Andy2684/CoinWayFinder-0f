@@ -1,84 +1,90 @@
-"use client"
-
 import { Button } from "@/components/ui/button"
 import { ArrowRight, TrendingUp, Shield, Zap } from "lucide-react"
 import Link from "next/link"
 
 export function HeroSection() {
   return (
-    <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-6 py-24 sm:py-32 lg:px-8">
-      {/* Background decoration */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute inset-0 bg-[radial-gradient(45rem_50rem_at_top,theme(colors.indigo.100),transparent)] opacity-20" />
-        <div className="absolute inset-y-0 right-1/2 -z-10 mr-16 w-[200%] origin-bottom-left skew-x-[-30deg] bg-white shadow-xl shadow-indigo-600/10 ring-1 ring-indigo-50 sm:mr-28 lg:mr-0 xl:mr-16 xl:origin-center" />
+    <section className="relative overflow-hidden py-20 sm:py-32">
+      {/* Background gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-transparent to-blue-500/10" />
+
+      {/* Animated background elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute -top-40 -right-32 h-80 w-80 rounded-full bg-purple-500/20 blur-3xl animate-pulse" />
+        <div className="absolute -bottom-40 -left-32 h-80 w-80 rounded-full bg-blue-500/20 blur-3xl animate-pulse delay-1000" />
       </div>
 
-      <div className="mx-auto max-w-7xl">
-        <div className="mx-auto max-w-2xl text-center">
-          <div className="mb-8 flex justify-center">
-            <div className="relative rounded-full px-3 py-1 text-sm leading-6 text-gray-300 ring-1 ring-white/10 hover:ring-white/20">
-              Advanced AI-powered trading platform.{" "}
-              <Link href="/features" className="font-semibold text-indigo-400">
-                <span className="absolute inset-0" aria-hidden="true" />
-                Learn more <ArrowRight className="inline h-4 w-4" />
-              </Link>
-            </div>
+      <div className="relative mx-auto max-w-7xl px-6 lg:px-8">
+        <div className="mx-auto max-w-4xl text-center">
+          {/* Badge */}
+          <div className="mb-8 inline-flex items-center rounded-full bg-purple-500/10 px-4 py-2 text-sm font-medium text-purple-300 ring-1 ring-purple-500/20">
+            <Zap className="mr-2 h-4 w-4" />
+            AI-Powered Trading Revolution
           </div>
 
-          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-6xl">
-            Smart Trading with{" "}
-            <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
-              AI-Powered Bots
+          {/* Main heading */}
+          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl">
+            Master Crypto Trading with{" "}
+            <span className="bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
+              AI Intelligence
             </span>
           </h1>
 
-          <p className="mt-6 text-lg leading-8 text-gray-300">
-            Maximize your crypto trading potential with our advanced AI bots, real-time market analysis, and
-            comprehensive portfolio management tools. Trade smarter, not harder.
+          {/* Subheading */}
+          <p className="mt-6 text-lg leading-8 text-gray-300 sm:text-xl">
+            Unlock the power of automated trading with our advanced AI bots, real-time market analysis, and
+            professional-grade tools. Join thousands of traders maximizing their crypto profits.
           </p>
 
-          <div className="mt-10 flex items-center justify-center gap-x-6">
-            <Link href="/auth/signup">
-              <Button size="lg" className="bg-indigo-600 hover:bg-indigo-500">
-                Get Started Free
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-            <Link href="/features">
-              <Button
-                variant="outline"
-                size="lg"
-                className="border-white/20 text-white hover:bg-white/10 bg-transparent"
-              >
-                View Features
-              </Button>
-            </Link>
+          {/* Feature highlights */}
+          <div className="mt-8 flex flex-wrap justify-center gap-6 text-sm text-gray-400">
+            <div className="flex items-center">
+              <TrendingUp className="mr-2 h-4 w-4 text-green-400" />
+              95% Success Rate
+            </div>
+            <div className="flex items-center">
+              <Shield className="mr-2 h-4 w-4 text-blue-400" />
+              Bank-Grade Security
+            </div>
+            <div className="flex items-center">
+              <Zap className="mr-2 h-4 w-4 text-purple-400" />
+              Lightning Fast Execution
+            </div>
           </div>
 
-          {/* Feature highlights */}
-          <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-3">
-            <div className="flex flex-col items-center text-center">
-              <div className="rounded-lg bg-indigo-600/10 p-3 ring-1 ring-indigo-600/20">
-                <TrendingUp className="h-6 w-6 text-indigo-400" />
-              </div>
-              <h3 className="mt-4 text-sm font-semibold text-white">AI Trading Bots</h3>
-              <p className="mt-2 text-sm text-gray-400">Automated trading strategies powered by machine learning</p>
-            </div>
+          {/* CTA buttons */}
+          <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
+            <Button
+              asChild
+              size="lg"
+              className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-8 py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              <Link href="/auth/signup">
+                Start Trading Now
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Link>
+            </Button>
 
-            <div className="flex flex-col items-center text-center">
-              <div className="rounded-lg bg-purple-600/10 p-3 ring-1 ring-purple-600/20">
-                <Shield className="h-6 w-6 text-purple-400" />
-              </div>
-              <h3 className="mt-4 text-sm font-semibold text-white">Secure & Reliable</h3>
-              <p className="mt-2 text-sm text-gray-400">Bank-grade security with 99.9% uptime guarantee</p>
-            </div>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white px-8 py-3 text-lg font-semibold bg-transparent"
+            >
+              <Link href="/features">Explore Features</Link>
+            </Button>
+          </div>
 
-            <div className="flex flex-col items-center text-center">
-              <div className="rounded-lg bg-emerald-600/10 p-3 ring-1 ring-emerald-600/20">
-                <Zap className="h-6 w-6 text-emerald-400" />
-              </div>
-              <h3 className="mt-4 text-sm font-semibold text-white">Real-time Analytics</h3>
-              <p className="mt-2 text-sm text-gray-400">Live market data and performance tracking</p>
+          {/* Trust indicators */}
+          <div className="mt-16 text-center">
+            <p className="text-sm text-gray-500 mb-4">Trusted by 50,000+ traders worldwide</p>
+            <div className="flex justify-center items-center space-x-8 opacity-60">
+              <div className="text-2xl font-bold text-gray-400">$2.5B+</div>
+              <div className="text-sm text-gray-500">Trading Volume</div>
+              <div className="text-2xl font-bold text-gray-400">99.9%</div>
+              <div className="text-sm text-gray-500">Uptime</div>
+              <div className="text-2xl font-bold text-gray-400">24/7</div>
+              <div className="text-sm text-gray-500">Support</div>
             </div>
           </div>
         </div>

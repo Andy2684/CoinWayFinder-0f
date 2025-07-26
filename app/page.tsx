@@ -10,6 +10,15 @@ import { Footer } from "@/components/footer"
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+      <Navigation />
+      <main>
+        <HeroSection />
+        <FeaturesSection />
+        <PricingSection />
+        <CTASection />
+      </main>
+      <Footer />
+
       {/* New Animated Background */}
       <div className="absolute inset-0 overflow-hidden">
         {/* Floating Elements */}
@@ -39,18 +48,6 @@ export default function HomePage() {
             />
           ))}
         </div>
-      </div>
-
-      {/* Content */}
-      <div className="relative z-10">
-        <Navigation />
-        <main>
-          <HeroSection />
-          <FeaturesSection />
-          <PricingSection />
-          <CTASection />
-        </main>
-        <Footer />
       </div>
 
       <style jsx>{`

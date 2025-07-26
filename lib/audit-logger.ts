@@ -40,6 +40,18 @@ export interface AuditLogFilter {
   offset?: number
 }
 
+function isValidIPAddress(ip: string): boolean {
+  if (!ip || ip === "unknown") return false
+
+  // IPv4 regex
+  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
+
+  // IPv6 regex (simplified)
+  const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/
+
+  return ipv4Regex.test(ip) || ipv6Regex.test(ip)
+}
+
 class AuditLogger {
   private static instance: AuditLogger
   private requestId = ""
@@ -94,7 +106,7 @@ class AuditLogger {
             event_type VARCHAR(50) NOT NULL,
             event_category VARCHAR(30) NOT NULL,
             event_description TEXT NOT NULL,
-            ip_address INET,
+            ip_address VARCHAR(45),
             user_agent TEXT,
             session_id VARCHAR(255),
             request_id VARCHAR(255),
@@ -141,6 +153,9 @@ class AuditLogger {
         return
       }
 
+      // Validate and sanitize IP address
+      const validIpAddress = entry.ipAddress && isValidIPAddress(entry.ipAddress) ? entry.ipAddress : null
+
       await sql`
         INSERT INTO audit_logs (
           user_id, event_type, event_category, event_description,
@@ -151,7 +166,7 @@ class AuditLogger {
           ${entry.eventType},
           ${entry.eventCategory},
           ${entry.eventDescription},
-          ${entry.ipAddress || null},
+          ${validIpAddress},
           ${entry.userAgent || null},
           ${entry.sessionId || null},
           ${this.requestId || entry.requestId || null},

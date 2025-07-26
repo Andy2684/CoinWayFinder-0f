@@ -10,20 +10,21 @@ function getClientIP(request: NextRequest): string {
   const remoteAddr = request.headers.get("x-vercel-forwarded-for")
 
   if (forwarded) {
-    return forwarded.split(",")[0].trim()
+    const ip = forwarded.split(",")[0].trim()
+    return ip !== "unknown" ? ip : ""
   }
-  if (realIP) {
+  if (realIP && realIP !== "unknown") {
     return realIP
   }
-  if (remoteAddr) {
+  if (remoteAddr && remoteAddr !== "unknown") {
     return remoteAddr
   }
-  return "unknown"
+  return ""
 }
 
 export async function POST(request: NextRequest) {
   const ipAddress = getClientIP(request)
-  const userAgent = request.headers.get("user-agent") || "unknown"
+  const userAgent = request.headers.get("user-agent") || ""
 
   try {
     const { email, password } = await request.json()
