@@ -3,90 +3,42 @@
 import type React from "react"
 
 import { useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Loader2, Mail, Lock } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 import Link from "next/link"
 
-interface LoginFormData {
-  email: string
-  password: string
-}
-
 export function LoginForm() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const redirectTo = searchParams.get("redirect") || "/dashboard"
-
-  const [formData, setFormData] = useState<LoginFormData>({
-    email: "",
-    password: "",
-  })
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-    setError("")
-  }
-
-  const handleDemoLogin = (type: "user" | "admin") => {
-    if (type === "user") {
-      setFormData({
-        email: "demo@coinwayfinder.com",
-        password: "password",
-      })
-    } else {
-      setFormData({
-        email: "admin@coinwayfinder.com",
-        password: "AdminPass123!",
-      })
-    }
-    setError("")
-  }
+  const { login } = useAuth()
+  const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    if (!formData.email || !formData.password) {
-      setError("Please fill in all fields")
-      return
-    }
-
     setIsLoading(true)
     setError("")
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      })
+      const result = await login(email, password)
 
-      const data = await response.json()
-
-      if (data.success) {
-        // Store token in localStorage for client-side access
-        localStorage.setItem("auth-token", data.token)
-        localStorage.setItem("user", JSON.stringify(data.user))
-
-        // Redirect to intended page
-        router.push(redirectTo)
-        router.refresh()
+      if (result.success) {
+        // Redirect to dashboard after successful login
+        router.push("/dashboard")
       } else {
-        setError(data.message || "Login failed")
+        setError(result.message || "Login failed")
       }
     } catch (error) {
-      console.error("Login error:", error)
-      setError("An error occurred during login. Please try again.")
+      setError("An unexpected error occurred")
     } finally {
       setIsLoading(false)
     }
@@ -94,38 +46,35 @@ export function LoginForm() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
-      <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+      <Card className="w-full max-w-md shadow-xl border-0 bg-white/80 backdrop-blur-sm">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Welcome Back
           </CardTitle>
           <CardDescription className="text-gray-600">Sign in to your CoinWayFinder account</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
             {error && (
-              <Alert className="border-red-200 bg-red-50">
-                <AlertDescription className="text-red-700">{error}</AlertDescription>
+              <Alert variant="destructive" className="border-red-200 bg-red-50">
+                <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                Email Address
+                Email
               </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                  placeholder="john@example.com"
-                  required
-                />
-              </div>
+              <Input
+                id="email"
+                type="email"
+                placeholder="Enter your email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+              />
             </div>
 
             <div className="space-y-2">
@@ -133,88 +82,50 @@ export function LoginForm() {
                 Password
               </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   id="password"
-                  name="password"
                   type={showPassword ? "text" : "password"}
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  className="pl-10 pr-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
+                  className="h-11 pr-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
+          </CardContent>
 
-            <div className="flex items-center justify-between">
-              <div className="text-sm">
-                <Link href="/auth/forgot-password" className="text-blue-600 hover:underline">
-                  Forgot password?
-                </Link>
-              </div>
-            </div>
-
+          <CardFooter className="flex flex-col space-y-4">
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-2.5"
               disabled={isLoading}
+              className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium"
             >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing In...
+                  Signing in...
                 </>
               ) : (
                 "Sign In"
               )}
             </Button>
 
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t border-gray-200" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-white px-2 text-gray-500">Demo Accounts</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleDemoLogin("user")}
-                className="text-sm"
-                disabled={isLoading}
-              >
-                Demo User
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleDemoLogin("admin")}
-                className="text-sm"
-                disabled={isLoading}
-              >
-                Demo Admin
-              </Button>
-            </div>
-
             <div className="text-center text-sm text-gray-600">
               Don't have an account?{" "}
-              <Link href="/auth/signup" className="text-blue-600 hover:underline font-medium">
+              <Link href="/auth/signup" className="text-blue-600 hover:text-blue-700 font-medium">
                 Sign up
               </Link>
             </div>
-          </form>
-        </CardContent>
+          </CardFooter>
+        </form>
       </Card>
     </div>
   )

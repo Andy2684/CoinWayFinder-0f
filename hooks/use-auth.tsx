@@ -35,37 +35,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const isAuthenticated = !!user
 
-  // Check authentication status on mount
+  // Check authentication status on mount and after page reload
   useEffect(() => {
     checkAuth()
   }, [])
 
   const checkAuth = async () => {
     try {
-      const token = localStorage.getItem("auth-token")
-      if (!token) {
-        setIsLoading(false)
-        return
-      }
-
+      // Check authentication using httpOnly cookie
       const response = await fetch("/api/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        method: "GET",
+        credentials: "include", // Include cookies in request
       })
 
       if (response.ok) {
         const data = await response.json()
-        setUser(data.user)
-      } else {
-        // Invalid token, clear it
-        localStorage.removeItem("auth-token")
-        localStorage.removeItem("user")
+        if (data.success && data.user) {
+          setUser(data.user)
+        }
       }
     } catch (error) {
       console.error("Auth check error:", error)
-      localStorage.removeItem("auth-token")
-      localStorage.removeItem("user")
     } finally {
       setIsLoading(false)
     }
@@ -78,14 +68,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include", // Include cookies in request
         body: JSON.stringify({ email, password }),
       })
 
       const data = await response.json()
 
       if (data.success) {
-        localStorage.setItem("auth-token", data.token)
-        localStorage.setItem("user", JSON.stringify(data.user))
         setUser(data.user)
         return { success: true }
       } else {
@@ -101,12 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await fetch("/api/auth/logout", {
         method: "POST",
+        credentials: "include", // Include cookies in request
       })
     } catch (error) {
       console.error("Logout error:", error)
     } finally {
-      localStorage.removeItem("auth-token")
-      localStorage.removeItem("user")
       setUser(null)
       router.push("/")
     }
@@ -114,19 +102,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = async () => {
     try {
-      const token = localStorage.getItem("auth-token")
-      if (!token) return
-
       const response = await fetch("/api/auth/me", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        method: "GET",
+        credentials: "include", // Include cookies in request
       })
 
       if (response.ok) {
         const data = await response.json()
-        setUser(data.user)
-        localStorage.setItem("user", JSON.stringify(data.user))
+        if (data.success && data.user) {
+          setUser(data.user)
+        }
       }
     } catch (error) {
       console.error("Refresh user error:", error)

@@ -7,86 +7,45 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Checkbox } from "@/components/ui/checkbox"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Loader2, User, Mail, Lock, UserCheck } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import Link from "next/link"
 
-interface SignupFormData {
-  email: string
-  password: string
-  confirmPassword: string
-  firstName: string
-  lastName: string
-  username: string
-  acceptTerms: boolean
-}
-
 export function SignupForm() {
-  const router = useRouter()
-  const [formData, setFormData] = useState<SignupFormData>({
-    email: "",
-    password: "",
-    confirmPassword: "",
+  const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
+    email: "",
     username: "",
-    acceptTerms: false,
+    password: "",
+    confirmPassword: "",
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-    setError("")
-  }
+  const router = useRouter()
 
-  const handleCheckboxChange = (checked: boolean) => {
-    setFormData((prev) => ({ ...prev, acceptTerms: checked }))
-    setError("")
-  }
-
-  const validateForm = (): string | null => {
-    if (!formData.email || !formData.password || !formData.firstName || !formData.lastName) {
-      return "Please fill in all required fields"
-    }
-
-    if (formData.password !== formData.confirmPassword) {
-      return "Passwords do not match"
-    }
-
-    if (formData.password.length < 8) {
-      return "Password must be at least 8 characters long"
-    }
-
-    if (!formData.acceptTerms) {
-      return "You must accept the terms and conditions"
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(formData.email)) {
-      return "Please enter a valid email address"
-    }
-
-    return null
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({
+      ...prev,
+      [e.target.name]: e.target.value,
+    }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    const validationError = validateForm()
-    if (validationError) {
-      setError(validationError)
-      return
-    }
-
     setIsLoading(true)
     setError("")
+
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match")
+      setIsLoading(false)
+      return
+    }
 
     try {
       const response = await fetch("/api/auth/signup", {
@@ -94,29 +53,26 @@ export function SignupForm() {
         headers: {
           "Content-Type": "application/json",
         },
+        credentials: "include",
         body: JSON.stringify({
-          email: formData.email,
-          password: formData.password,
           firstName: formData.firstName,
           lastName: formData.lastName,
+          email: formData.email,
           username: formData.username || undefined,
-          acceptTerms: formData.acceptTerms,
+          password: formData.password,
         }),
       })
 
       const data = await response.json()
 
       if (data.success) {
-        setSuccess("Account created successfully! Redirecting to thank you page...")
-        setTimeout(() => {
-          router.push("/thank-you")
-        }, 2000)
+        // Redirect to thank you page (no auto-login as requested)
+        router.push("/thank-you")
       } else {
-        setError(data.message || "Registration failed")
+        setError(data.message || "Signup failed")
       }
     } catch (error) {
-      console.error("Signup error:", error)
-      setError("An error occurred during registration. Please try again.")
+      setError("An unexpected error occurred")
     } finally {
       setIsLoading(false)
     }
@@ -124,179 +80,149 @@ export function SignupForm() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
-      <Card className="w-full max-w-md bg-white/80 backdrop-blur-sm border-0 shadow-xl">
+      <Card className="w-full max-w-md shadow-xl border-0 bg-white/80 backdrop-blur-sm">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
             Create Account
           </CardTitle>
-          <CardDescription className="text-gray-600">Join CoinWayFinder and start your trading journey</CardDescription>
+          <CardDescription className="text-gray-600">Join CoinWayFinder and start trading smarter</CardDescription>
         </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <Alert className="border-red-200 bg-red-50">
-                <AlertDescription className="text-red-700">{error}</AlertDescription>
-              </Alert>
-            )}
 
-            {success && (
-              <Alert className="border-green-200 bg-green-50">
-                <AlertDescription className="text-green-700">{success}</AlertDescription>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-4">
+            {error && (
+              <Alert variant="destructive" className="border-red-200 bg-red-50">
+                <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName" className="text-sm font-medium text-gray-700">
-                  First Name *
+                  First Name
                 </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    value={formData.firstName}
-                    onChange={handleInputChange}
-                    className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="John"
-                    required
-                  />
-                </div>
+                <Input
+                  id="firstName"
+                  name="firstName"
+                  type="text"
+                  placeholder="John"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  required
+                  className="h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="lastName" className="text-sm font-medium text-gray-700">
-                  Last Name *
+                  Last Name
                 </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    value={formData.lastName}
-                    onChange={handleInputChange}
-                    className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                    placeholder="Doe"
-                    required
-                  />
-                </div>
+                <Input
+                  id="lastName"
+                  name="lastName"
+                  type="text"
+                  placeholder="Doe"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  required
+                  className="h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                />
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                Email Address *
+                Email
               </Label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                  placeholder="john@example.com"
-                  required
-                />
-              </div>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="john@example.com"
+                value={formData.email}
+                onChange={handleChange}
+                required
+                className="h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="username" className="text-sm font-medium text-gray-700">
-                Username (Optional)
+                Username <span className="text-gray-400">(optional)</span>
               </Label>
-              <div className="relative">
-                <UserCheck className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  id="username"
-                  name="username"
-                  type="text"
-                  value={formData.username}
-                  onChange={handleInputChange}
-                  className="pl-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                  placeholder="john_doe"
-                />
-              </div>
+              <Input
+                id="username"
+                name="username"
+                type="text"
+                placeholder="johndoe"
+                value={formData.username}
+                onChange={handleChange}
+                className="h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+              />
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                Password *
+                Password
               </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
+                  placeholder="Create a strong password"
                   value={formData.password}
-                  onChange={handleInputChange}
-                  className="pl-10 pr-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                  placeholder="••••••••"
+                  onChange={handleChange}
                   required
+                  minLength={8}
+                  className="h-11 pr-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700">
-                Confirm Password *
+                Confirm Password
               </Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   id="confirmPassword"
                   name="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
+                  placeholder="Confirm your password"
                   value={formData.confirmPassword}
-                  onChange={handleInputChange}
-                  className="pl-10 pr-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                  placeholder="••••••••"
+                  onChange={handleChange}
                   required
+                  className="h-11 pr-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
-                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
+          </CardContent>
 
-            <div className="flex items-center space-x-2">
-              <Checkbox id="acceptTerms" checked={formData.acceptTerms} onCheckedChange={handleCheckboxChange} />
-              <Label htmlFor="acceptTerms" className="text-sm text-gray-600">
-                I accept the{" "}
-                <Link href="/terms" className="text-blue-600 hover:underline">
-                  Terms of Service
-                </Link>{" "}
-                and{" "}
-                <Link href="/privacy" className="text-blue-600 hover:underline">
-                  Privacy Policy
-                </Link>
-              </Label>
-            </div>
-
+          <CardFooter className="flex flex-col space-y-4">
             <Button
               type="submit"
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-2.5"
               disabled={isLoading}
+              className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium"
             >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating Account...
+                  Creating account...
                 </>
               ) : (
                 "Create Account"
@@ -305,12 +231,12 @@ export function SignupForm() {
 
             <div className="text-center text-sm text-gray-600">
               Already have an account?{" "}
-              <Link href="/auth/login" className="text-blue-600 hover:underline font-medium">
+              <Link href="/auth/login" className="text-blue-600 hover:text-blue-700 font-medium">
                 Sign in
               </Link>
             </div>
-          </form>
-        </CardContent>
+          </CardFooter>
+        </form>
       </Card>
     </div>
   )

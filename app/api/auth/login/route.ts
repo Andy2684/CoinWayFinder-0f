@@ -42,15 +42,14 @@ export async function POST(request: NextRequest) {
     // Generate JWT token
     const token = generateToken(user.id)
 
-    // Create response with user data
+    // Create response with user data (no token in response body for security)
     const response = NextResponse.json({
       success: true,
       message: "Login successful",
       user,
-      token,
     })
 
-    // Set HTTP-only cookie for additional security
+    // Set secure HTTP-only cookie
     response.cookies.set("auth-token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

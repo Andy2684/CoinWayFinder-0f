@@ -3,17 +3,8 @@ import { verifyToken, getUserById } from "@/lib/auth"
 
 export async function GET(request: NextRequest) {
   try {
-    // Get token from Authorization header or cookie
-    const authHeader = request.headers.get("authorization")
-    const cookieToken = request.cookies.get("auth-token")?.value
-
-    let token: string | null = null
-
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      token = authHeader.substring(7)
-    } else if (cookieToken) {
-      token = cookieToken
-    }
+    // Get token from cookie
+    const token = request.cookies.get("auth-token")?.value
 
     if (!token) {
       return NextResponse.json(
@@ -33,7 +24,7 @@ export async function GET(request: NextRequest) {
         {
           success: false,
           error: "Invalid token",
-          message: "Invalid or expired token",
+          message: "Token is invalid or expired",
         },
         { status: 401 },
       )
@@ -46,7 +37,7 @@ export async function GET(request: NextRequest) {
         {
           success: false,
           error: "User not found",
-          message: "User not found",
+          message: "User account no longer exists",
         },
         { status: 404 },
       )
@@ -57,12 +48,12 @@ export async function GET(request: NextRequest) {
       user,
     })
   } catch (error) {
-    console.error("Auth check error:", error)
+    console.error("Auth verification error:", error)
     return NextResponse.json(
       {
         success: false,
         error: "Internal server error",
-        message: "An error occurred during authentication check",
+        message: "An error occurred during authentication verification",
       },
       { status: 500 },
     )
