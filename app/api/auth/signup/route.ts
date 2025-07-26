@@ -26,40 +26,37 @@ export async function POST(request: NextRequest) {
   const userAgent = request.headers.get("user-agent") || ""
 
   try {
-    const { email, password, firstName, lastName, username } = await request.json()
+    const { email, password, firstName, lastName, username, acceptTerms } = await request.json()
 
     // Validate required fields
-    if (!email || !password) {
+    if (!email || !password || !firstName || !lastName) {
+      await auditLogger.logSignupAttempt(
+        null,
+        email || "unknown",
+        false,
+        ipAddress,
+        userAgent,
+        "Missing required fields",
+      )
+
       return NextResponse.json(
         {
           success: false,
           error: "Missing required fields",
-          message: "Email and password are required",
+          message: "Email, password, first name, and last name are required",
         },
         { status: 400 },
       )
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Invalid email format",
-          message: "Please provide a valid email address",
-        },
-        { status: 400 },
-      )
-    }
+    if (!acceptTerms) {
+      await auditLogger.logSignupAttempt(null, email, false, ipAddress, userAgent, "Terms not accepted")
 
-    // Validate password strength
-    if (password.length < 8) {
       return NextResponse.json(
         {
           success: false,
-          error: "Weak password",
-          message: "Password must be at least 8 characters long",
+          error: "Terms not accepted",
+          message: "You must accept the terms and conditions",
         },
         { status: 400 },
       )
@@ -67,56 +64,28 @@ export async function POST(request: NextRequest) {
 
     // Check if user already exists
     const [existingUser] = await sql`
-      SELECT id, email FROM users WHERE email = ${email}
+      SELECT id FROM users WHERE email = ${email}
     `
 
     if (existingUser) {
-      try {
-        await auditLogger.log({
-          eventType: "signup_attempt_duplicate",
-          eventCategory: "authentication",
-          eventDescription: `Signup attempt with existing email: ${email}`,
-          ipAddress,
-          userAgent,
-          riskLevel: "low",
-          success: false,
-          metadata: { email, reason: "email_exists" },
-        })
-      } catch (auditError) {
-        console.error("Audit logging error:", auditError)
-      }
+      await auditLogger.logSignupAttempt(null, email, false, ipAddress, userAgent, "Email already exists")
 
       return NextResponse.json(
         {
           success: false,
-          error: "User already exists",
+          error: "Email already exists",
           message: "An account with this email already exists",
         },
         { status: 409 },
       )
     }
 
-    // Check if username is taken (if provided)
-    if (username) {
-      const [existingUsername] = await sql`
-        SELECT id, username FROM users WHERE username = ${username}
-      `
-
-      if (existingUsername) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Username taken",
-            message: "This username is already taken",
-          },
-          { status: 409 },
-        )
-      }
-    }
-
     // Hash password
     const saltRounds = 12
     const passwordHash = await bcrypt.hash(password, saltRounds)
+
+    // Generate username if not provided
+    const finalUsername = username || `${firstName.toLowerCase()}_${lastName.toLowerCase()}_${Date.now()}`
 
     // Create user
     const [newUser] = await sql`
@@ -129,27 +98,30 @@ export async function POST(request: NextRequest) {
         role,
         subscription_status,
         is_email_verified
-      ) VALUES (
+      )
+      VALUES (
         ${email}, 
         ${passwordHash}, 
-        ${firstName || null}, 
-        ${lastName || null}, 
-        ${username || null},
+        ${firstName}, 
+        ${lastName}, 
+        ${finalUsername},
         'user',
         'free',
         false
       )
-      RETURNING id, email, first_name, last_name, username, role, subscription_status, is_email_verified, created_at
+      RETURNING 
+        id, 
+        email, 
+        first_name, 
+        last_name, 
+        username,
+        created_at
     `
 
     // Log successful signup
-    try {
-      await auditLogger.logSignup(newUser.id, email, ipAddress, userAgent)
-    } catch (auditError) {
-      console.error("Audit logging error:", auditError)
-    }
+    await auditLogger.logSignupAttempt(newUser.id, email, true, ipAddress, userAgent)
 
-    // Return success response WITHOUT auto-login (as requested)
+    // Return success without auto-login (as requested)
     return NextResponse.json({
       success: true,
       message: "Account created successfully! Please log in to continue.",
@@ -159,35 +131,28 @@ export async function POST(request: NextRequest) {
         firstName: newUser.first_name,
         lastName: newUser.last_name,
         username: newUser.username,
-        role: newUser.role,
-        subscriptionStatus: newUser.subscription_status,
-        isEmailVerified: newUser.is_email_verified,
         createdAt: newUser.created_at,
       },
     })
   } catch (error) {
     console.error("Signup error:", error)
 
-    try {
-      await auditLogger.log({
-        eventType: "signup_server_error",
-        eventCategory: "system",
-        eventDescription: "Server error during signup attempt",
-        ipAddress,
-        userAgent,
-        riskLevel: "high",
-        success: false,
-        errorMessage: error instanceof Error ? error.message : "Unknown error",
-      })
-    } catch (auditError) {
-      console.error("Audit logging error:", auditError)
-    }
+    await auditLogger.log({
+      eventType: "signup_server_error",
+      eventCategory: "system",
+      eventDescription: "Server error during signup attempt",
+      ipAddress,
+      userAgent,
+      riskLevel: "high",
+      success: false,
+      errorMessage: error instanceof Error ? error.message : "Unknown error",
+    })
 
     return NextResponse.json(
       {
         success: false,
         error: "Internal server error",
-        message: "An error occurred during account creation",
+        message: "An error occurred during signup",
       },
       { status: 500 },
     )

@@ -30,18 +30,14 @@ export async function POST(request: NextRequest) {
     const { email, password } = await request.json()
 
     if (!email || !password) {
-      try {
-        await auditLogger.logLoginAttempt(
-          null,
-          email || "unknown",
-          false,
-          ipAddress,
-          userAgent,
-          "Missing email or password",
-        )
-      } catch (auditError) {
-        console.error("Audit logging error:", auditError)
-      }
+      await auditLogger.logLoginAttempt(
+        null,
+        email || "unknown",
+        false,
+        ipAddress,
+        userAgent,
+        "Missing email or password",
+      )
 
       return NextResponse.json(
         {
@@ -53,7 +49,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get user from database with safe column access
+    // Get user from database - handle missing columns gracefully
     const [user] = await sql`
       SELECT 
         id, 
@@ -73,11 +69,7 @@ export async function POST(request: NextRequest) {
     `
 
     if (!user) {
-      try {
-        await auditLogger.logLoginAttempt(null, email, false, ipAddress, userAgent, "User not found")
-      } catch (auditError) {
-        console.error("Audit logging error:", auditError)
-      }
+      await auditLogger.logLoginAttempt(null, email, false, ipAddress, userAgent, "User not found")
 
       return NextResponse.json(
         {
@@ -93,11 +85,7 @@ export async function POST(request: NextRequest) {
     const isValidPassword = await bcrypt.compare(password, user.password_hash)
 
     if (!isValidPassword) {
-      try {
-        await auditLogger.logLoginAttempt(user.id, email, false, ipAddress, userAgent, "Invalid password")
-      } catch (auditError) {
-        console.error("Audit logging error:", auditError)
-      }
+      await auditLogger.logLoginAttempt(user.id, email, false, ipAddress, userAgent, "Invalid password")
 
       return NextResponse.json(
         {
@@ -109,7 +97,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update last login timestamp
+    // Update last login timestamp if column exists
     try {
       await sql`
         UPDATE users 
@@ -118,17 +106,14 @@ export async function POST(request: NextRequest) {
       `
     } catch (updateError) {
       console.error("Error updating last login:", updateError)
+      // Continue even if update fails
     }
 
     // Generate JWT token
     const token = generateToken({ userId: user.id, email: user.email })
 
     // Log successful login
-    try {
-      await auditLogger.logLoginAttempt(user.id, email, true, ipAddress, userAgent)
-    } catch (auditError) {
-      console.error("Audit logging error:", auditError)
-    }
+    await auditLogger.logLoginAttempt(user.id, email, true, ipAddress, userAgent)
 
     // Create response with httpOnly cookie
     const response = NextResponse.json({
@@ -161,20 +146,16 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Login error:", error)
 
-    try {
-      await auditLogger.log({
-        eventType: "login_server_error",
-        eventCategory: "system",
-        eventDescription: "Server error during login attempt",
-        ipAddress,
-        userAgent,
-        riskLevel: "high",
-        success: false,
-        errorMessage: error instanceof Error ? error.message : "Unknown error",
-      })
-    } catch (auditError) {
-      console.error("Audit logging error:", auditError)
-    }
+    await auditLogger.log({
+      eventType: "login_server_error",
+      eventCategory: "system",
+      eventDescription: "Server error during login attempt",
+      ipAddress,
+      userAgent,
+      riskLevel: "high",
+      success: false,
+      errorMessage: error instanceof Error ? error.message : "Unknown error",
+    })
 
     return NextResponse.json(
       {

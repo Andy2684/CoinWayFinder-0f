@@ -13,18 +13,16 @@ export type EventCategory =
 export type RiskLevel = "low" | "medium" | "high" | "critical"
 
 export interface AuditLogEntry {
-  userId?: string
+  userId?: string | null
   eventType: string
-  eventCategory: EventCategory
+  eventCategory: string
   eventDescription: string
   ipAddress?: string
   userAgent?: string
-  sessionId?: string
-  requestId?: string
-  metadata?: Record<string, any>
-  riskLevel?: RiskLevel
+  riskLevel?: "low" | "medium" | "high"
   success?: boolean
   errorMessage?: string
+  metadata?: Record<string, any>
 }
 
 export interface AuditLogFilter {
@@ -53,19 +51,11 @@ function isValidIPAddress(ip: string): boolean {
 }
 
 class AuditLogger {
-  private static instance: AuditLogger
   private requestId = ""
   private tableInitialized = false
   private initializationPromise: Promise<void> | null = null
 
   private constructor() {}
-
-  public static getInstance(): AuditLogger {
-    if (!AuditLogger.instance) {
-      AuditLogger.instance = new AuditLogger()
-    }
-    return AuditLogger.instance
-  }
 
   public setRequestId(requestId: string) {
     this.requestId = requestId
@@ -193,7 +183,7 @@ class AuditLogger {
   ) {
     await this.log({
       userId,
-      eventType: "login_attempt",
+      eventType: success ? "login_success" : "login_failure",
       eventCategory: "authentication",
       eventDescription: success ? `Successful login for ${email}` : `Failed login attempt for ${email}`,
       ipAddress,
@@ -201,20 +191,43 @@ class AuditLogger {
       riskLevel: success ? "low" : "medium",
       success,
       errorMessage,
-      metadata: { email, loginMethod: "email_password" },
+      metadata: { email },
     })
   }
 
-  public async logLogout(userId: string, ipAddress?: string, userAgent?: string) {
+  public async logSignupAttempt(
+    userId: string | null,
+    email: string,
+    success: boolean,
+    ipAddress?: string,
+    userAgent?: string,
+    errorMessage?: string,
+  ): Promise<void> {
+    await this.log({
+      userId,
+      eventType: success ? "signup_success" : "signup_failure",
+      eventCategory: "authentication",
+      eventDescription: success ? `Successful signup for ${email}` : `Failed signup attempt for ${email}`,
+      ipAddress,
+      userAgent,
+      riskLevel: "low",
+      success,
+      errorMessage,
+      metadata: { email },
+    })
+  }
+
+  public async logLogout(userId: string, email: string, ipAddress?: string, userAgent?: string): Promise<void> {
     await this.log({
       userId,
       eventType: "logout",
       eventCategory: "authentication",
-      eventDescription: "User logged out",
+      eventDescription: `User logout for ${email}`,
       ipAddress,
       userAgent,
       riskLevel: "low",
       success: true,
+      metadata: { email },
     })
   }
 
@@ -392,7 +405,7 @@ class AuditLogger {
 }
 
 // Export singleton instance
-export const auditLogger = AuditLogger.getInstance()
+export const auditLogger = new AuditLogger()
 
 // Database query functions with error handling
 export async function getAuditLogs(filter: AuditLogFilter = {}) {
