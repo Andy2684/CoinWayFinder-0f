@@ -1,23 +1,23 @@
 "use client"
 
+import { Suspense } from "react"
 import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { LiveNewsFeed } from "@/components/live-news-feed"
-import { NewsWidget } from "@/components/news-widget"
-import { BackToDashboard, FloatingDashboardButton } from "@/components/back-to-dashboard"
+import { FloatingDashboardButton } from "@/components/back-to-dashboard"
 import { NewsAnalytics } from "@/components/news/news-analytics"
 import { TrendingTopics } from "@/components/news/trending-topics"
 import { MarketSentiment } from "@/components/news/market-sentiment"
 import { NewsAlerts } from "@/components/news/news-alerts"
 import { SocialSentiment } from "@/components/news/social-sentiment"
 import { PriceImpactAnalysis } from "@/components/news/price-impact-analysis"
+import { PersonalizedFeed } from "@/components/news/personalized-feed"
 import { NewsBookmarks } from "@/components/news/news-bookmarks"
-import { Search, RefreshCw, TrendingUp, Clock, Globe, Settings, Eye, MessageSquare } from "lucide-react"
+import { Search, Filter, Bell, Bookmark, TrendingUp, Globe, Twitter, MessageSquare } from "lucide-react"
 
 export default function NewsPage() {
   const [searchTerm, setSearchTerm] = useState("")
@@ -71,35 +71,41 @@ export default function NewsPage() {
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-black pt-20">
-      <div className="container mx-auto px-4 py-8 space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 pt-20">
+      <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <BackToDashboard />
-            <div>
-              <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-[#30D5C8] to-blue-400 bg-clip-text text-transparent">
-                📰 Crypto News Hub
-              </h1>
-              <p className="text-gray-300 mt-2">
-                Real-time cryptocurrency news, analysis, and market insights powered by AI
-              </p>
-            </div>
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+            Crypto News & Analysis
+          </h1>
+          <p className="text-gray-600 text-lg">
+            Stay ahead of the market with real-time news, sentiment analysis, and AI-powered insights
+          </p>
+        </div>
+
+        {/* Search and Filters */}
+        <div className="mb-8 flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Input
+              placeholder="Search news, coins, or topics..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-12 border-gray-200 focus:border-blue-500"
+            />
           </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing}>
-              <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? "animate-spin" : ""}`} />
-              {isRefreshing ? "Refreshing..." : "Refresh"}
-            </Button>
-            <Button variant="outline" size="sm">
-              <Settings className="h-4 w-4 mr-2" />
-              Settings
-            </Button>
-          </div>
+          <Button variant="outline" className="h-12 px-6 bg-transparent">
+            <Filter className="mr-2 h-4 w-4" />
+            Filters
+          </Button>
+          <Button variant="outline" className="h-12 px-6 bg-transparent">
+            <Bell className="mr-2 h-4 w-4" />
+            Alerts
+          </Button>
         </div>
 
         {/* News Stats Dashboard */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
           <Card className="bg-gray-900/50 border-gray-800 hover:border-[#30D5C8]/50 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-300">Today's Articles</CardTitle>
@@ -142,7 +148,7 @@ export default function NewsPage() {
           <Card className="bg-gray-900/50 border-gray-800 hover:border-[#30D5C8]/50 transition-colors">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-300">Total Engagement</CardTitle>
-              <Eye className="h-4 w-4 text-purple-400" />
+              <MessageSquare className="h-4 w-4 text-purple-400" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-white">{newsStats.totalViews}</div>
@@ -154,7 +160,7 @@ export default function NewsPage() {
         </div>
 
         {/* Advanced Search and Filters */}
-        <Card className="bg-gray-900/50 border-gray-800">
+        <Card className="bg-gray-900/50 border-gray-800 mb-8">
           <CardHeader>
             <CardTitle className="text-white flex items-center">
               <Search className="h-5 w-5 mr-2 text-[#30D5C8]" />
@@ -234,252 +240,84 @@ export default function NewsPage() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue="feed" className="space-y-6">
-          <TabsList className="bg-gray-900/50 border border-gray-800">
-            <TabsTrigger value="feed" className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-black">
-              📰 News Feed
+          <TabsList className="grid w-full grid-cols-4 lg:grid-cols-8 bg-white/80 backdrop-blur-sm">
+            <TabsTrigger value="feed" className="flex items-center gap-2">
+              <Globe className="h-4 w-4" />
+              <span className="hidden sm:inline">Feed</span>
             </TabsTrigger>
-            <TabsTrigger value="trending" className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-black">
-              🔥 Trending
+            <TabsTrigger value="trending" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              <span className="hidden sm:inline">Trending</span>
             </TabsTrigger>
-            <TabsTrigger value="analytics" className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-black">
-              📊 Analytics
+            <TabsTrigger value="sentiment" className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4" />
+              <span className="hidden sm:inline">Sentiment</span>
             </TabsTrigger>
-            <TabsTrigger value="alerts" className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-black">
-              🔔 Alerts
+            <TabsTrigger value="social" className="flex items-center gap-2">
+              <Twitter className="h-4 w-4" />
+              <span className="hidden sm:inline">Social</span>
             </TabsTrigger>
-            <TabsTrigger value="social" className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-black">
-              👥 Social
+            <TabsTrigger value="analytics" className="flex items-center gap-2">
+              <span className="hidden sm:inline">Analytics</span>
             </TabsTrigger>
-            <TabsTrigger value="saved" className="data-[state=active]:bg-[#30D5C8] data-[state=active]:text-black">
-              💾 Saved
+            <TabsTrigger value="alerts" className="flex items-center gap-2">
+              <span className="hidden sm:inline">Alerts</span>
+            </TabsTrigger>
+            <TabsTrigger value="impact" className="flex items-center gap-2">
+              <span className="hidden sm:inline">Impact</span>
+            </TabsTrigger>
+            <TabsTrigger value="bookmarks" className="flex items-center gap-2">
+              <Bookmark className="h-4 w-4" />
+              <span className="hidden sm:inline">Saved</span>
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="feed">
-            <div className="grid gap-6 lg:grid-cols-4">
-              <div className="lg:col-span-3">
-                <LiveNewsFeed variant="full" />
-              </div>
-              <div className="space-y-6">
-                <NewsWidget />
-                <TrendingTopics />
-                <MarketSentiment />
-              </div>
-            </div>
+          <TabsContent value="feed" className="space-y-6">
+            <Suspense fallback={<div>Loading personalized feed...</div>}>
+              <PersonalizedFeed />
+            </Suspense>
           </TabsContent>
 
-          <TabsContent value="trending">
-            <div className="grid gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-2">
-                <Card className="bg-gray-900/50 border-gray-800">
-                  <CardHeader>
-                    <CardTitle className="text-white flex items-center">
-                      <TrendingUp className="h-5 w-5 mr-2 text-orange-400" />
-                      Trending Stories
-                    </CardTitle>
-                    <CardDescription className="text-gray-400">
-                      Most popular crypto news in the last 24 hours
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {[
-                        {
-                          rank: 1,
-                          title: "Bitcoin Reaches New All-Time High Above $75,000",
-                          source: "CoinDesk",
-                          time: "2 hours ago",
-                          sentiment: "bullish",
-                          engagement: "12.4K",
-                          impact: "high",
-                          priceChange: "+8.5%",
-                        },
-                        {
-                          rank: 2,
-                          title: "Ethereum 2.0 Staking Rewards Hit Record Levels",
-                          source: "CryptoNews",
-                          time: "4 hours ago",
-                          sentiment: "bullish",
-                          engagement: "8.7K",
-                          impact: "medium",
-                          priceChange: "+5.2%",
-                        },
-                        {
-                          rank: 3,
-                          title: "Major Exchange Announces New DeFi Integration",
-                          source: "BlockNews",
-                          time: "6 hours ago",
-                          sentiment: "neutral",
-                          engagement: "6.1K",
-                          impact: "medium",
-                          priceChange: "+1.8%",
-                        },
-                        {
-                          rank: 4,
-                          title: "SEC Approves Three More Bitcoin ETF Applications",
-                          source: "Reuters",
-                          time: "8 hours ago",
-                          sentiment: "bullish",
-                          engagement: "15.2K",
-                          impact: "high",
-                          priceChange: "+12.3%",
-                        },
-                        {
-                          rank: 5,
-                          title: "Altcoin Season Indicators Flash Strong Buy Signals",
-                          source: "CryptoPanic",
-                          time: "10 hours ago",
-                          sentiment: "bullish",
-                          engagement: "9.8K",
-                          impact: "medium",
-                          priceChange: "+7.1%",
-                        },
-                      ].map((article, index) => (
-                        <div
-                          key={index}
-                          className="p-4 border border-gray-800 rounded-lg hover:border-[#30D5C8]/50 transition-colors group cursor-pointer"
-                        >
-                          <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center space-x-3">
-                              <div className="flex items-center justify-center w-8 h-8 rounded-full bg-[#30D5C8]/20 text-[#30D5C8] font-bold text-sm">
-                                #{article.rank}
-                              </div>
-                              <Badge
-                                variant={
-                                  article.impact === "high"
-                                    ? "destructive"
-                                    : article.impact === "medium"
-                                      ? "default"
-                                      : "outline"
-                                }
-                                className="text-xs"
-                              >
-                                {article.impact.toUpperCase()} IMPACT
-                              </Badge>
-                            </div>
-                            <div className="text-right">
-                              <div
-                                className={`text-sm font-medium ${article.priceChange.startsWith("+") ? "text-green-400" : "text-red-400"}`}
-                              >
-                                {article.priceChange}
-                              </div>
-                            </div>
-                          </div>
-
-                          <h3 className="font-semibold text-white mb-2 group-hover:text-[#30D5C8] transition-colors">
-                            {article.title}
-                          </h3>
-
-                          <div className="flex items-center justify-between text-sm text-gray-400">
-                            <div className="flex items-center space-x-4">
-                              <span className="font-medium">{article.source}</span>
-                              <div className="flex items-center space-x-1">
-                                <Clock className="w-3 h-3" />
-                                <span>{article.time}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center space-x-3">
-                              <div className="flex items-center space-x-1">
-                                <Eye className="w-3 h-3" />
-                                <span>{article.engagement}</span>
-                              </div>
-                              <Badge
-                                variant={article.sentiment === "bullish" ? "default" : "outline"}
-                                className="text-xs"
-                              >
-                                {article.sentiment === "bullish" ? "🟢" : article.sentiment === "bearish" ? "🔴" : "⚪"}{" "}
-                                {article.sentiment}
-                              </Badge>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-              <div className="space-y-6">
-                <PriceImpactAnalysis />
-                <SocialSentiment />
-              </div>
-            </div>
+          <TabsContent value="trending" className="space-y-6">
+            <Suspense fallback={<div>Loading trending topics...</div>}>
+              <TrendingTopics />
+            </Suspense>
           </TabsContent>
 
-          <TabsContent value="analytics">
-            <NewsAnalytics />
+          <TabsContent value="sentiment" className="space-y-6">
+            <Suspense fallback={<div>Loading market sentiment...</div>}>
+              <MarketSentiment />
+            </Suspense>
           </TabsContent>
 
-          <TabsContent value="alerts">
-            <NewsAlerts />
-          </TabsContent>
-
-          <TabsContent value="social">
-            <div className="grid gap-6 lg:grid-cols-2">
+          <TabsContent value="social" className="space-y-6">
+            <Suspense fallback={<div>Loading social sentiment...</div>}>
               <SocialSentiment />
-              <Card className="bg-gray-900/50 border-gray-800">
-                <CardHeader>
-                  <CardTitle className="text-white flex items-center">
-                    <MessageSquare className="h-5 w-5 mr-2 text-blue-400" />
-                    Community Discussions
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {[
-                      {
-                        platform: "Reddit",
-                        topic: "Bitcoin ETF Approval Impact",
-                        comments: 1247,
-                        sentiment: "bullish",
-                        engagement: "high",
-                      },
-                      {
-                        platform: "Twitter",
-                        topic: "#EthereumMerge Success",
-                        comments: 892,
-                        sentiment: "bullish",
-                        engagement: "medium",
-                      },
-                      {
-                        platform: "Discord",
-                        topic: "DeFi Protocol Updates",
-                        comments: 456,
-                        sentiment: "neutral",
-                        engagement: "medium",
-                      },
-                    ].map((discussion, index) => (
-                      <div key={index} className="p-3 border border-gray-800 rounded-lg">
-                        <div className="flex items-center justify-between mb-2">
-                          <Badge variant="outline" className="text-xs">
-                            {discussion.platform}
-                          </Badge>
-                          <Badge variant={discussion.engagement === "high" ? "default" : "outline"} className="text-xs">
-                            {discussion.engagement} engagement
-                          </Badge>
-                        </div>
-                        <h4 className="text-white font-medium mb-1">{discussion.topic}</h4>
-                        <div className="flex items-center space-x-3 text-sm text-gray-400">
-                          <div className="flex items-center space-x-1">
-                            <MessageSquare className="w-3 h-3" />
-                            <span>{discussion.comments} comments</span>
-                          </div>
-                          <Badge
-                            variant={discussion.sentiment === "bullish" ? "default" : "outline"}
-                            className="text-xs"
-                          >
-                            {discussion.sentiment}
-                          </Badge>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+            </Suspense>
           </TabsContent>
 
-          <TabsContent value="saved">
-            <NewsBookmarks />
+          <TabsContent value="analytics" className="space-y-6">
+            <Suspense fallback={<div>Loading news analytics...</div>}>
+              <NewsAnalytics />
+            </Suspense>
+          </TabsContent>
+
+          <TabsContent value="alerts" className="space-y-6">
+            <Suspense fallback={<div>Loading news alerts...</div>}>
+              <NewsAlerts />
+            </Suspense>
+          </TabsContent>
+
+          <TabsContent value="impact" className="space-y-6">
+            <Suspense fallback={<div>Loading price impact analysis...</div>}>
+              <PriceImpactAnalysis />
+            </Suspense>
+          </TabsContent>
+
+          <TabsContent value="bookmarks" className="space-y-6">
+            <Suspense fallback={<div>Loading bookmarks...</div>}>
+              <NewsBookmarks />
+            </Suspense>
           </TabsContent>
         </Tabs>
 

@@ -1,44 +1,53 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getCurrentUser } from "@/lib/auth"
-import { connectToDatabase } from "@/lib/mongodb"
-import { ObjectId } from "mongodb"
+import jwt from "jsonwebtoken"
 
 export async function GET(request: NextRequest) {
   try {
-    const user = await getCurrentUser()
+    const token = request.cookies.get("auth-token")?.value
 
-    if (!user) {
-      return NextResponse.json({ success: false, error: "Not authenticated" }, { status: 401 })
+    if (!token) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "No token provided",
+          message: "Authentication required",
+        },
+        { status: 401 },
+      )
     }
 
-    // Get full user data from MongoDB
-    const { db } = await connectToDatabase()
-    const userData = await db.collection("users").findOne(
-      { _id: new ObjectId(user.userId) },
-      { projection: { password_hash: 0 } }, // Exclude password hash
-    )
+    // Verify JWT token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret-key") as any
 
-    if (!userData) {
-      return NextResponse.json({ success: false, error: "User not found" }, { status: 404 })
+    // For demo purposes, return demo user data
+    // In production, this would fetch from your database
+    const demoUser = {
+      id: decoded.userId,
+      email: decoded.email,
+      username: "demo_user",
+      firstName: "Demo",
+      lastName: "User",
+      role: "user",
+      subscriptionStatus: "pro",
+      isEmailVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
     }
 
     return NextResponse.json({
       success: true,
-      user: {
-        id: userData._id.toString(),
-        email: userData.email,
-        username: userData.username,
-        firstName: userData.first_name,
-        lastName: userData.last_name,
-        role: userData.role || "user",
-        subscriptionStatus: userData.subscription_status || "free",
-        isEmailVerified: userData.is_email_verified || false,
-        createdAt: userData.created_at,
-        updatedAt: userData.updated_at,
-      },
+      user: demoUser,
     })
   } catch (error) {
-    console.error("Get user error:", error)
-    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
+    console.error("Auth verification error:", error)
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Invalid token",
+        message: "Authentication failed",
+      },
+      { status: 401 },
+    )
   }
 }
