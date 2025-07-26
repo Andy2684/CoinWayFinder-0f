@@ -1,33 +1,67 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { createUser, emailExists, usernameExists } from "@/lib/auth"
-import { z } from "zod"
 
-const signupSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().min(1, "Last name is required"),
-  username: z.string().optional(),
-})
+interface SignupRequest {
+  email: string
+  password: string
+  firstName: string
+  lastName: string
+  username?: string
+  acceptTerms: boolean
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
+    const body: SignupRequest = await request.json()
+    const { email, password, firstName, lastName, username, acceptTerms } = body
 
-    // Validate input
-    const validationResult = signupSchema.safeParse(body)
-    if (!validationResult.success) {
+    // Validation
+    if (!email || !password || !firstName || !lastName) {
       return NextResponse.json(
         {
           success: false,
-          error: "Validation failed",
-          details: validationResult.error.errors,
+          error: "Missing required fields",
+          message: "Email, password, first name, and last name are required",
         },
         { status: 400 },
       )
     }
 
-    const { email, password, firstName, lastName, username } = validationResult.data
+    if (!acceptTerms) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Terms not accepted",
+          message: "You must accept the terms and conditions",
+        },
+        { status: 400 },
+      )
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid email",
+          message: "Please enter a valid email address",
+        },
+        { status: 400 },
+      )
+    }
+
+    // Password validation
+    if (password.length < 8) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Password too short",
+          message: "Password must be at least 8 characters long",
+        },
+        { status: 400 },
+      )
+    }
 
     // Check if email already exists
     if (await emailExists(email)) {
@@ -64,7 +98,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Account created successfully! You can now sign in.",
+      message: "Account created successfully! Please log in to continue.",
       user: {
         id: user.id,
         email: user.email,
@@ -79,7 +113,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: "Internal server error",
-        message: "An error occurred during signup. Please try again.",
+        message: "An error occurred during registration. Please try again.",
       },
       { status: 500 },
     )

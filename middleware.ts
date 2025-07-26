@@ -1,17 +1,39 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
-import { verifyToken } from "@/lib/auth"
 
 // Define protected routes
 const protectedRoutes = ["/dashboard", "/admin", "/profile", "/bots", "/signals", "/portfolio", "/integrations"]
 const adminRoutes = ["/admin"]
 const authRoutes = ["/auth/login", "/auth/signup"]
 
+// Simple token verification (matching our auth.ts implementation)
+function verifyToken(token: string): { userId: string } | null {
+  try {
+    const [encodedHeader, encodedPayload, signature] = token.split(".")
+
+    if (!encodedHeader || !encodedPayload || !signature) {
+      return null
+    }
+
+    // Decode payload without verification for middleware (full verification in API routes)
+    const payload = JSON.parse(Buffer.from(encodedPayload.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString())
+
+    // Check expiration
+    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+      return null
+    }
+
+    return { userId: payload.userId }
+  } catch (error) {
+    return null
+  }
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Get token from cookie or Authorization header
-  const token = request.cookies.get("auth-token")?.value || request.headers.get("authorization")?.replace("Bearer ", "")
+  // Get token from cookie
+  const token = request.cookies.get("auth-token")?.value
 
   // Check if the route is protected
   const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route))
@@ -36,29 +58,8 @@ export async function middleware(request: NextRequest) {
       return response
     }
 
-    // For admin routes, we need to check user role
-    if (isAdminRoute) {
-      try {
-        // Make a request to get user data
-        const userResponse = await fetch(new URL("/api/auth/me", request.url), {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-
-        if (userResponse.ok) {
-          const userData = await userResponse.json()
-          if (userData.user?.role !== "admin") {
-            return NextResponse.redirect(new URL("/dashboard", request.url))
-          }
-        } else {
-          return NextResponse.redirect(new URL("/auth/login", request.url))
-        }
-      } catch (error) {
-        console.error("Admin check error:", error)
-        return NextResponse.redirect(new URL("/auth/login", request.url))
-      }
-    }
+    // For admin routes, we'll check role in the API route instead
+    // to avoid making additional requests in middleware
 
     // If authenticated user tries to access auth pages, redirect to dashboard
     if (isAuthRoute) {
