@@ -1,4 +1,4 @@
-import { sql } from "./database"
+import { sql } from "@/lib/database"
 
 export type EventCategory =
   | "authentication"
@@ -13,7 +13,7 @@ export type EventCategory =
 export type RiskLevel = "low" | "medium" | "high" | "critical"
 
 export interface AuditLogEntry {
-  userId?: string | null
+  userId?: number | null
   eventType: string
   eventCategory: string
   eventDescription: string
@@ -26,7 +26,7 @@ export interface AuditLogEntry {
 }
 
 export interface AuditLogFilter {
-  userId?: string
+  userId?: number
   eventCategory?: EventCategory
   eventType?: string
   riskLevel?: RiskLevel
@@ -36,18 +36,6 @@ export interface AuditLogFilter {
   ipAddress?: string
   limit?: number
   offset?: number
-}
-
-function isValidIPAddress(ip: string): boolean {
-  if (!ip || ip === "unknown") return false
-
-  // IPv4 regex
-  const ipv4Regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/
-
-  // IPv6 regex (simplified)
-  const ipv6Regex = /^(?:[0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$|^::1$|^::$/
-
-  return ipv4Regex.test(ip) || ipv6Regex.test(ip)
 }
 
 class AuditLogger {
@@ -92,7 +80,7 @@ class AuditLogger {
         await sql`
           CREATE TABLE audit_logs (
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            user_id UUID,
+            user_id INT,
             event_type VARCHAR(50) NOT NULL,
             event_category VARCHAR(30) NOT NULL,
             event_description TEXT NOT NULL,
@@ -144,7 +132,7 @@ class AuditLogger {
       }
 
       // Validate and sanitize IP address
-      const validIpAddress = entry.ipAddress && isValidIPAddress(entry.ipAddress) ? entry.ipAddress : null
+      const validIpAddress = entry.ipAddress && this.validateIpAddress(entry.ipAddress) ? entry.ipAddress : null
 
       await sql`
         INSERT INTO audit_logs (
@@ -157,10 +145,10 @@ class AuditLogger {
           ${entry.eventCategory},
           ${entry.eventDescription},
           ${validIpAddress},
-          ${entry.userAgent || null},
+          ${entry.userAgent || ""},
           ${entry.sessionId || null},
           ${this.requestId || entry.requestId || null},
-          ${JSON.stringify(entry.metadata || {})},
+          ${entry.metadata ? JSON.stringify(entry.metadata) : null},
           ${entry.riskLevel || "low"},
           ${entry.success !== false},
           ${entry.errorMessage || null}
@@ -174,13 +162,13 @@ class AuditLogger {
 
   // Authentication Events
   public async logLoginAttempt(
-    userId: string | null,
+    userId: number | null,
     email: string,
     success: boolean,
-    ipAddress?: string,
-    userAgent?: string,
+    ipAddress: string,
+    userAgent: string,
     errorMessage?: string,
-  ) {
+  ): Promise<void> {
     await this.log({
       userId,
       eventType: success ? "login_success" : "login_failure",
@@ -196,17 +184,17 @@ class AuditLogger {
   }
 
   public async logSignupAttempt(
-    userId: string | null,
+    userId: number | null,
     email: string,
     success: boolean,
-    ipAddress?: string,
-    userAgent?: string,
+    ipAddress: string,
+    userAgent: string,
     errorMessage?: string,
   ): Promise<void> {
     await this.log({
       userId,
       eventType: success ? "signup_success" : "signup_failure",
-      eventCategory: "authentication",
+      eventCategory: "user_management",
       eventDescription: success ? `Successful signup for ${email}` : `Failed signup attempt for ${email}`,
       ipAddress,
       userAgent,
@@ -217,7 +205,7 @@ class AuditLogger {
     })
   }
 
-  public async logLogout(userId: string, email: string, ipAddress?: string, userAgent?: string): Promise<void> {
+  public async logLogout(userId: number, email: string, ipAddress?: string, userAgent?: string): Promise<void> {
     await this.log({
       userId,
       eventType: "logout",
@@ -231,21 +219,11 @@ class AuditLogger {
     })
   }
 
-  public async logSignup(userId: string, email: string, ipAddress?: string, userAgent?: string) {
-    await this.log({
-      userId,
-      eventType: "user_signup",
-      eventCategory: "user_management",
-      eventDescription: `New user account created: ${email}`,
-      ipAddress,
-      userAgent,
-      riskLevel: "low",
-      success: true,
-      metadata: { email, registrationMethod: "email" },
-    })
+  public async logSignup(userId: number, email: string, ipAddress: string, userAgent: string): Promise<void> {
+    await this.logSignupAttempt(userId, email, true, ipAddress, userAgent)
   }
 
-  public async logPasswordChange(userId: string, ipAddress?: string, userAgent?: string) {
+  public async logPasswordChange(userId: number, ipAddress?: string, userAgent?: string): Promise<void> {
     await this.log({
       userId,
       eventType: "password_change",
@@ -258,7 +236,7 @@ class AuditLogger {
     })
   }
 
-  public async logTokenRefresh(userId: string, ipAddress?: string, userAgent?: string) {
+  public async logTokenRefresh(userId: number, ipAddress?: string, userAgent?: string): Promise<void> {
     await this.log({
       userId,
       eventType: "token_refresh",
@@ -273,13 +251,13 @@ class AuditLogger {
 
   // Security Events
   public async logSuspiciousActivity(
-    userId: string | null,
+    userId: number | null,
     activityType: string,
     description: string,
     ipAddress?: string,
     userAgent?: string,
     metadata?: Record<string, any>,
-  ) {
+  ): Promise<void> {
     await this.log({
       userId,
       eventType: "suspicious_activity",
@@ -293,7 +271,12 @@ class AuditLogger {
     })
   }
 
-  public async logUnauthorizedAccess(userId: string | null, resource: string, ipAddress?: string, userAgent?: string) {
+  public async logUnauthorizedAccess(
+    userId: number | null,
+    resource: string,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<void> {
     await this.log({
       userId,
       eventType: "unauthorized_access",
@@ -307,7 +290,7 @@ class AuditLogger {
     })
   }
 
-  public async logRateLimitExceeded(ipAddress: string, endpoint: string, userAgent?: string) {
+  public async logRateLimitExceeded(ipAddress: string, endpoint: string, userAgent?: string): Promise<void> {
     await this.log({
       eventType: "rate_limit_exceeded",
       eventCategory: "security",
@@ -322,13 +305,13 @@ class AuditLogger {
 
   // Data Access Events
   public async logDataAccess(
-    userId: string,
+    userId: number,
     dataType: string,
     action: string,
     recordId?: string,
     ipAddress?: string,
     userAgent?: string,
-  ) {
+  ): Promise<void> {
     await this.log({
       userId,
       eventType: "data_access",
@@ -344,14 +327,14 @@ class AuditLogger {
 
   // Trading Events
   public async logTradingAction(
-    userId: string,
+    userId: number,
     action: string,
     symbol: string,
     amount?: number,
     price?: number,
     ipAddress?: string,
     userAgent?: string,
-  ) {
+  ): Promise<void> {
     await this.log({
       userId,
       eventType: "trading_action",
@@ -366,7 +349,7 @@ class AuditLogger {
   }
 
   // System Events
-  public async logSystemEvent(eventType: string, description: string, metadata?: Record<string, any>) {
+  public async logSystemEvent(eventType: string, description: string, metadata?: Record<string, any>): Promise<void> {
     await this.log({
       eventType,
       eventCategory: "system",
@@ -379,14 +362,14 @@ class AuditLogger {
 
   // API Events
   public async logApiCall(
-    userId: string | null,
+    userId: number | null,
     endpoint: string,
     method: string,
     statusCode: number,
     ipAddress?: string,
     userAgent?: string,
     responseTime?: number,
-  ) {
+  ): Promise<void> {
     const success = statusCode >= 200 && statusCode < 400
     const riskLevel: RiskLevel = statusCode >= 500 ? "high" : statusCode >= 400 ? "medium" : "low"
 
@@ -401,6 +384,22 @@ class AuditLogger {
       success,
       metadata: { endpoint, method, statusCode, responseTime },
     })
+  }
+
+  private validateIpAddress(ip?: string): string | null {
+    if (!ip || ip === "unknown" || ip === "") {
+      return null
+    }
+
+    // Basic IP validation
+    const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}$/
+    const ipv6Regex = /^([0-9a-fA-F]{1,4}:){7}[0-9a-fA-F]{1,4}$/
+
+    if (ipv4Regex.test(ip) || ipv6Regex.test(ip)) {
+      return ip
+    }
+
+    return null
   }
 }
 

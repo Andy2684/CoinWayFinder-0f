@@ -6,12 +6,12 @@ DO $$
 BEGIN
     -- Add role column
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'role') THEN
-        ALTER TABLE users ADD COLUMN role VARCHAR(20) DEFAULT 'user';
+        ALTER TABLE users ADD COLUMN role VARCHAR(50) DEFAULT 'user';
     END IF;
     
     -- Add subscription_status column
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'subscription_status') THEN
-        ALTER TABLE users ADD COLUMN subscription_status VARCHAR(20) DEFAULT 'free';
+        ALTER TABLE users ADD COLUMN subscription_status VARCHAR(50) DEFAULT 'free';
     END IF;
     
     -- Add is_email_verified column
@@ -43,13 +43,15 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'updated_at') THEN
         ALTER TABLE users ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     END IF;
+    
+    -- Update existing users to have default values
+    UPDATE users SET 
+        role = COALESCE(role, 'user'),
+        subscription_status = COALESCE(subscription_status, 'free'),
+        is_email_verified = COALESCE(is_email_verified, FALSE),
+        updated_at = COALESCE(updated_at, created_at)
+    WHERE role IS NULL OR subscription_status IS NULL OR is_email_verified IS NULL OR updated_at IS NULL;
 END $$;
-
--- Update existing users to have default values
-UPDATE users SET role = 'user' WHERE role IS NULL;
-UPDATE users SET subscription_status = 'free' WHERE subscription_status IS NULL;
-UPDATE users SET is_email_verified = FALSE WHERE is_email_verified IS NULL;
-UPDATE users SET updated_at = created_at WHERE updated_at IS NULL;
 
 -- Add constraints if they don't exist
 DO $$ 
