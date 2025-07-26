@@ -9,12 +9,23 @@ export async function POST(request: NextRequest) {
     console.log("Signup attempt for email:", email)
 
     // Validation
-    if (!email || !password || !firstName || !lastName || !acceptTerms) {
+    if (!email || !password || !firstName || !lastName) {
       return NextResponse.json(
         {
           success: false,
           error: "Missing required fields",
-          message: "All fields are required and terms must be accepted",
+          message: "Email, password, first name, and last name are required",
+        },
+        { status: 400 },
+      )
+    }
+
+    if (!acceptTerms) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Terms not accepted",
+          message: "You must accept the terms and conditions",
         },
         { status: 400 },
       )
@@ -31,6 +42,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const normalizedEmail = email.toLowerCase().trim()
+    const finalUsername = username?.trim() || `user_${Date.now()}`
+
     try {
       // Connect to MongoDB
       const { db } = await connectToDatabase()
@@ -38,11 +52,12 @@ export async function POST(request: NextRequest) {
 
       // Check if user already exists
       const existingUser = await db.collection("users").findOne({
-        $or: [{ email: email.toLowerCase() }, { username: username }],
+        $or: [{ email: normalizedEmail }, { username: finalUsername }],
       })
 
       if (existingUser) {
-        const field = existingUser.email === email.toLowerCase() ? "email" : "username"
+        const field = existingUser.email === normalizedEmail ? "email" : "username"
+        console.log(`User already exists with ${field}:`, existingUser[field])
         return NextResponse.json(
           {
             success: false,
@@ -60,11 +75,11 @@ export async function POST(request: NextRequest) {
 
       // Create user document
       const newUser = {
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         password_hash,
-        first_name: firstName,
-        last_name: lastName,
-        username: username || `user_${Date.now()}`,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        username: finalUsername,
         role: "user",
         subscription_status: "free",
         is_email_verified: false,
@@ -79,20 +94,45 @@ export async function POST(request: NextRequest) {
       const result = await db.collection("users").insertOne(newUser)
       console.log("User created successfully with ID:", result.insertedId)
 
+      // Verify the user was created by fetching it back
+      const createdUser = await db.collection("users").findOne({ _id: result.insertedId })
+      console.log("Verified user creation:", createdUser ? "Success" : "Failed")
+
       // Return success response (don't auto-login as requested)
       return NextResponse.json({
         success: true,
-        message: "Account created successfully! Please log in to continue.",
+        message: "Account created successfully! You can now log in with your credentials.",
         userId: result.insertedId.toString(),
       })
     } catch (dbError) {
       console.error("Database error during signup:", dbError)
 
-      // Return success for demo purposes when database is unavailable
+      // Store user in memory for demo purposes when database is unavailable
+      const demoUser = {
+        id: `demo-${Date.now()}`,
+        email: normalizedEmail,
+        password_hash: await bcrypt.hash(password, 12),
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        username: finalUsername,
+        role: "user",
+        subscription_status: "free",
+        is_email_verified: false,
+        created_at: new Date(),
+      }
+
+      // Store in global memory (this is just for demo - in production you'd use a proper database)
+      if (!global.demoUsers) {
+        global.demoUsers = []
+      }
+      global.demoUsers.push(demoUser)
+
+      console.log("Created demo user:", demoUser.email)
+
       return NextResponse.json({
         success: true,
-        message: "Account created successfully! Please log in with your credentials. (Demo Mode)",
-        userId: "demo-signup-" + Date.now(),
+        message: "Account created successfully! You can now log in with your credentials. (Demo Mode)",
+        userId: demoUser.id,
       })
     }
   } catch (error) {
