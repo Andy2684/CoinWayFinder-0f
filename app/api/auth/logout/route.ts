@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server"
+import { type NextRequest, NextResponse } from "next/server"
 
-export async function POST() {
+export async function POST(request: NextRequest) {
   try {
+    // Create response
     const response = NextResponse.json({
       success: true,
       message: "Logged out successfully",
@@ -12,7 +13,7 @@ export async function POST() {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 0,
+      maxAge: 0, // Expire immediately
       path: "/",
     })
 
@@ -23,7 +24,7 @@ export async function POST() {
     return NextResponse.json(
       {
         success: false,
-        error: "Logout failed",
+        error: "Internal server error",
         message: "An error occurred during logout",
       },
       { status: 500 },

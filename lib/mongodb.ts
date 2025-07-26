@@ -1,6 +1,10 @@
 import { MongoClient, type Db } from "mongodb"
 
-const uri = process.env.MONGODB_URI!
+if (!process.env.MONGODB_URI) {
+  throw new Error('Invalid/Missing environment variable: "MONGODB_URI"')
+}
+
+const uri = process.env.MONGODB_URI
 const options = {}
 
 let client: MongoClient
@@ -24,10 +28,12 @@ if (process.env.NODE_ENV === "development") {
   clientPromise = client.connect()
 }
 
+// Export a module-scoped MongoClient promise. By doing this in a
+// separate module, the client can be shared across functions.
+export default clientPromise
+
 export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db }> {
   const client = await clientPromise
-  const db = client.db("coinwayfinder")
+  const db = client.db("coinwayfinder") // Use your database name
   return { client, db }
 }
-
-export default clientPromise

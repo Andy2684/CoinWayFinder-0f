@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import jwt from "jsonwebtoken"
+import { connectToDatabase } from "@/lib/mongodb"
 
 function getClientIP(request: NextRequest): string {
   const forwarded = request.headers.get("x-forwarded-for")
@@ -38,77 +39,155 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // For demo purposes, use hardcoded credentials
-    // In production, this would connect to your actual database
-    const demoUser = {
-      id: "demo-user-123",
-      email: "demo@coinwayfinder.com",
-      password_hash: await bcrypt.hash("password", 12), // "password"
-      username: "demo_user",
-      first_name: "Demo",
-      last_name: "User",
-      role: "user",
-      subscription_status: "pro",
-      is_email_verified: true,
-      created_at: new Date(),
-      last_login: new Date(),
-    }
+    try {
+      // Connect to MongoDB and get user
+      const { db } = await connectToDatabase()
+      const user = await db.collection("users").findOne({ email })
 
-    // Check if credentials match demo user
-    if (email === demoUser.email) {
-      const isValidPassword = await bcrypt.compare(password, demoUser.password_hash)
-
-      if (isValidPassword) {
-        // Generate JWT token
-        const token = jwt.sign(
+      if (!user) {
+        return NextResponse.json(
           {
-            userId: demoUser.id,
-            email: demoUser.email,
+            success: false,
+            error: "Invalid credentials",
+            message: "Invalid email or password",
           },
-          process.env.JWT_SECRET || "fallback-secret-key",
-          { expiresIn: "7d" },
+          { status: 401 },
         )
-
-        // Create response
-        const response = NextResponse.json({
-          success: true,
-          message: "Login successful",
-          user: {
-            id: demoUser.id,
-            email: demoUser.email,
-            username: demoUser.username,
-            firstName: demoUser.first_name,
-            lastName: demoUser.last_name,
-            role: demoUser.role,
-            subscriptionStatus: demoUser.subscription_status,
-            isEmailVerified: demoUser.is_email_verified,
-            createdAt: demoUser.created_at,
-            updatedAt: demoUser.last_login,
-          },
-        })
-
-        // Set httpOnly cookie
-        response.cookies.set("auth-token", token, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
-          sameSite: "lax",
-          maxAge: 60 * 60 * 24 * 7, // 7 days
-          path: "/",
-        })
-
-        return response
       }
-    }
 
-    // Invalid credentials
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Invalid credentials",
-        message: "Invalid email or password",
-      },
-      { status: 401 },
-    )
+      // Verify password
+      const isValidPassword = await bcrypt.compare(password, user.password_hash)
+
+      if (!isValidPassword) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Invalid credentials",
+            message: "Invalid email or password",
+          },
+          { status: 401 },
+        )
+      }
+
+      // Update last login timestamp
+      try {
+        await db.collection("users").updateOne({ _id: user._id }, { $set: { last_login: new Date() } })
+      } catch (updateError) {
+        console.error("Error updating last login:", updateError)
+      }
+
+      // Generate JWT token
+      const token = jwt.sign(
+        {
+          userId: user._id.toString(),
+          email: user.email,
+        },
+        process.env.JWT_SECRET || "fallback-secret-key",
+        { expiresIn: "7d" },
+      )
+
+      // Create response
+      const response = NextResponse.json({
+        success: true,
+        message: "Login successful",
+        user: {
+          id: user._id.toString(),
+          email: user.email,
+          username: user.username,
+          firstName: user.first_name,
+          lastName: user.last_name,
+          role: user.role || "user",
+          subscriptionStatus: user.subscription_status || "free",
+          isEmailVerified: user.is_email_verified || false,
+          createdAt: user.created_at,
+          updatedAt: user.updated_at || user.created_at,
+        },
+      })
+
+      // Set httpOnly cookie
+      response.cookies.set("auth-token", token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "lax",
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        path: "/",
+      })
+
+      return response
+    } catch (dbError) {
+      console.error("Database connection error:", dbError)
+
+      // Fallback to demo user if database is unavailable
+      const demoUser = {
+        id: "demo-user-123",
+        email: "demo@coinwayfinder.com",
+        password_hash: await bcrypt.hash("password", 12), // "password"
+        username: "demo_user",
+        first_name: "Demo",
+        last_name: "User",
+        role: "user",
+        subscription_status: "pro",
+        is_email_verified: true,
+        created_at: new Date(),
+        last_login: new Date(),
+      }
+
+      // Check if credentials match demo user
+      if (email === demoUser.email) {
+        const isValidPassword = await bcrypt.compare(password, demoUser.password_hash)
+
+        if (isValidPassword) {
+          // Generate JWT token
+          const token = jwt.sign(
+            {
+              userId: demoUser.id,
+              email: demoUser.email,
+            },
+            process.env.JWT_SECRET || "fallback-secret-key",
+            { expiresIn: "7d" },
+          )
+
+          // Create response
+          const response = NextResponse.json({
+            success: true,
+            message: "Login successful (Demo Mode)",
+            user: {
+              id: demoUser.id,
+              email: demoUser.email,
+              username: demoUser.username,
+              firstName: demoUser.first_name,
+              lastName: demoUser.last_name,
+              role: demoUser.role,
+              subscriptionStatus: demoUser.subscription_status,
+              isEmailVerified: demoUser.is_email_verified,
+              createdAt: demoUser.created_at,
+              updatedAt: demoUser.last_login,
+            },
+          })
+
+          // Set httpOnly cookie
+          response.cookies.set("auth-token", token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            sameSite: "lax",
+            maxAge: 60 * 60 * 24 * 7, // 7 days
+            path: "/",
+          })
+
+          return response
+        }
+      }
+
+      // Invalid credentials
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Invalid credentials",
+          message: "Invalid email or password",
+        },
+        { status: 401 },
+      )
+    }
   } catch (error) {
     console.error("Login error:", error)
 
