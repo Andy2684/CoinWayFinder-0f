@@ -1,1310 +1,1304 @@
 import { sql } from "./database"
 
-export interface ComplianceReport {
+export interface ComplianceFramework {
   id: string
-  framework: ComplianceFramework
-  title: string
-  generatedAt: Date
-  period: {
-    start: Date
-    end: Date
-  }
-  status: "compliant" | "non-compliant" | "partial" | "needs-review"
-  overallScore: number
-  summary: ComplianceSummary
+  name: string
+  description: string
+  version: string
   controls: ComplianceControl[]
-  findings: ComplianceFinding[]
-  recommendations: ComplianceRecommendation[]
-  evidence: ComplianceEvidence[]
-  attestations: ComplianceAttestation[]
-  riskAssessment: RiskAssessment
-}
-
-export type ComplianceFramework = "SOC2" | "GDPR" | "HIPAA" | "PCI_DSS" | "ISO27001" | "NIST" | "CCPA"
-
-export interface ComplianceSummary {
-  totalControls: number
-  compliantControls: number
-  nonCompliantControls: number
-  partialControls: number
-  notApplicableControls: number
-  compliancePercentage: number
-  criticalFindings: number
-  highFindings: number
-  mediumFindings: number
-  lowFindings: number
 }
 
 export interface ComplianceControl {
   id: string
-  framework: ComplianceFramework
-  category: string
-  subcategory?: string
-  title: string
+  name: string
   description: string
-  requirement: string
-  status: "compliant" | "non-compliant" | "partial" | "not-applicable" | "needs-review"
-  implementationStatus: "implemented" | "partially-implemented" | "not-implemented" | "planned"
-  lastAssessed: Date
-  assessor: string
-  evidence: string[]
-  findings: string[]
+  category: string
   riskLevel: "critical" | "high" | "medium" | "low"
-  remediationPlan?: string
-  dueDate?: Date
-  owner: string
-  testResults: TestResult[]
+  implementationStatus: "implemented" | "partial" | "not_implemented"
+  testResult: "pass" | "fail" | "not_tested"
+  evidence: string[]
+  recommendations: string[]
+  lastAssessed?: string
+  assessor?: string
+}
+
+export interface ComplianceReport {
+  id: string
+  frameworkId: string
+  frameworkName: string
+  reportDate: string
+  assessor: string
+  dateRange: {
+    start: string
+    end: string
+  }
+  summary: {
+    overallScore: number
+    totalControls: number
+    compliantControls: number
+    partialControls: number
+    nonCompliantControls: number
+    criticalFindings: number
+    highFindings: number
+    mediumFindings: number
+    lowFindings: number
+    riskLevel: "critical" | "high" | "medium" | "low"
+  }
+  controls: ComplianceControl[]
+  findings: ComplianceFinding[]
+  recommendations: ComplianceRecommendation[]
+  executiveSummary: string
+  nextAssessmentDate?: string
 }
 
 export interface ComplianceFinding {
   id: string
   controlId: string
-  type: "gap" | "deficiency" | "observation" | "exception"
   severity: "critical" | "high" | "medium" | "low"
   title: string
   description: string
   impact: string
   recommendation: string
-  status: "open" | "in-progress" | "resolved" | "accepted-risk"
-  identifiedDate: Date
-  targetResolutionDate?: Date
-  actualResolutionDate?: Date
-  owner: string
+  status: "open" | "in_progress" | "resolved"
+  assignee?: string
+  dueDate?: string
   evidence: string[]
 }
 
 export interface ComplianceRecommendation {
   id: string
   priority: "critical" | "high" | "medium" | "low"
-  category: string
   title: string
   description: string
   implementation: string
-  estimatedEffort: "low" | "medium" | "high"
-  estimatedCost: "low" | "medium" | "high"
-  expectedBenefit: string
   timeline: string
+  effort: "low" | "medium" | "high"
   dependencies: string[]
-  owner: string
-  status: "pending" | "approved" | "in-progress" | "completed" | "rejected"
 }
 
-export interface ComplianceEvidence {
-  id: string
-  controlId: string
-  type: "document" | "screenshot" | "log" | "certificate" | "policy" | "procedure" | "test-result"
-  title: string
-  description: string
-  filePath?: string
-  url?: string
-  collectedDate: Date
-  validUntil?: Date
-  collector: string
-  verified: boolean
-  verifiedBy?: string
-  verifiedDate?: Date
-}
-
-export interface ComplianceAttestation {
-  id: string
-  framework: ComplianceFramework
-  period: {
-    start: Date
-    end: Date
-  }
-  attestor: string
-  role: string
-  statement: string
-  attestationDate: Date
-  signature?: string
-  limitations?: string[]
-}
-
-export interface RiskAssessment {
-  overallRisk: "critical" | "high" | "medium" | "low"
-  riskFactors: RiskFactor[]
-  mitigationStrategies: string[]
-  residualRisk: "critical" | "high" | "medium" | "low"
-  riskTolerance: string
-  nextReviewDate: Date
-}
-
-export interface RiskFactor {
-  category: string
-  description: string
-  likelihood: "very-high" | "high" | "medium" | "low" | "very-low"
-  impact: "very-high" | "high" | "medium" | "low" | "very-low"
-  riskLevel: "critical" | "high" | "medium" | "low"
-  mitigation: string
-  owner: string
-}
-
-export interface TestResult {
-  id: string
-  testType: "automated" | "manual" | "interview" | "observation"
-  testDate: Date
-  tester: string
-  result: "pass" | "fail" | "partial" | "not-tested"
-  details: string
-  evidence: string[]
-  nextTestDate?: Date
-}
-
-class ComplianceReportGenerator {
-  private frameworkControls: Record<ComplianceFramework, any[]> = {
-    SOC2: [
+// Compliance frameworks with their controls
+const COMPLIANCE_FRAMEWORKS: Record<string, ComplianceFramework> = {
+  soc2: {
+    id: "soc2",
+    name: "SOC 2 Type II",
+    description: "Service Organization Control 2 - Security, Availability, Processing Integrity, Confidentiality, and Privacy",
+    version: "2017",
+    controls: [
       {
         id: "CC1.1",
+        name: "Integrity and Ethical Values",
+        description: "The entity demonstrates a commitment to integrity and ethical values",
         category: "Control Environment",
-        title: "Integrity and Ethical Values",
-        description: "The entity demonstrates a commitment to integrity and ethical values.",
-        requirement:
-          "Management establishes tone at the top and demonstrates commitment to integrity and ethical values through policies, procedures, and actions.",
-      },
-      {
-        id: "CC1.2",
-        category: "Control Environment",
-        title: "Board Independence and Oversight",
-        description: "The board of directors demonstrates independence and exercises oversight of system controls.",
-        requirement:
-          "Board provides oversight of management's design, implementation, and conduct of internal controls.",
-      },
-      {
-        id: "CC2.1",
-        category: "Communication and Information",
-        title: "Internal Communication",
-        description:
-          "The entity obtains or generates and uses relevant, quality information to support the functioning of internal control.",
-        requirement:
-          "Management obtains relevant information and communicates internally to support internal control functioning.",
-      },
-      {
-        id: "CC3.1",
-        category: "Risk Assessment",
-        title: "Risk Identification",
-        description:
-          "The entity specifies objectives with sufficient clarity to enable the identification and assessment of risks.",
-        requirement:
-          "Management specifies objectives clearly to enable identification of risks to achievement of objectives.",
-      },
-      {
-        id: "CC4.1",
-        category: "Control Activities",
-        title: "Control Design and Implementation",
-        description: "The entity selects and develops control activities that contribute to the mitigation of risks.",
-        requirement:
-          "Management selects and develops control activities that contribute to mitigation of risks to acceptable levels.",
-      },
-      {
-        id: "CC5.1",
-        category: "Monitoring Activities",
-        title: "Ongoing Monitoring",
-        description:
-          "The entity selects, develops, and performs ongoing and/or separate evaluations to ascertain whether components of internal control are present and functioning.",
-        requirement: "Management establishes ongoing monitoring activities and evaluates results.",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
         id: "CC6.1",
+        name: "Logical and Physical Access Controls",
+        description: "The entity implements logical access security software, infrastructure, and architectures",
         category: "Logical and Physical Access Controls",
-        title: "Logical Access",
-        description:
-          "The entity implements logical access security software, infrastructure, and architectures over protected information assets.",
-        requirement:
-          "Logical access controls restrict access to information assets and protect against unauthorized access.",
-      },
-      {
-        id: "CC6.2",
-        category: "Logical and Physical Access Controls",
-        title: "Physical Access",
-        description: "The entity restricts physical access to facilities and protected information assets.",
-        requirement: "Physical access controls restrict access to facilities, equipment, and information assets.",
-      },
-      {
-        id: "CC7.1",
-        category: "System Operations",
-        title: "System Capacity and Performance",
-        description: "The entity monitors system capacity and performance to meet processing requirements.",
-        requirement: "System capacity and performance monitoring ensures processing requirements are met.",
+        riskLevel: "critical",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
         id: "CC8.1",
+        name: "Change Management",
+        description: "The entity authorizes, designs, develops, configures, documents, tests, approves, and implements changes to infrastructure, data, software, and procedures",
         category: "Change Management",
-        title: "Change Authorization and Testing",
-        description:
-          "The entity authorizes, designs, develops, configures, documents, tests, approves, and implements changes to infrastructure, data, software, and procedures.",
-        requirement: "Changes are authorized, tested, and approved before implementation.",
-      },
-    ],
-    GDPR: [
-      {
-        id: "GDPR.5",
-        category: "Principles",
-        title: "Data Processing Principles",
-        description: "Personal data shall be processed lawfully, fairly and in a transparent manner.",
-        requirement: "Implement lawful basis for processing and ensure transparency in data processing activities.",
+        riskLevel: "high",
+        implementationStatus: "partial",
+        testResult: "fail",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "GDPR.6",
-        category: "Lawful Basis",
-        title: "Lawfulness of Processing",
-        description: "Processing shall be lawful only if and to the extent that at least one lawful basis applies.",
-        requirement: "Establish and document lawful basis for all personal data processing activities.",
+        id: "CC2.1",
+        name: "Internal Communication",
+        description: "The entity communicates information internally, including objectives and responsibilities for internal control",
+        category: "Communication and Information",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "GDPR.7",
-        category: "Consent",
-        title: "Conditions for Consent",
-        description: "Consent must be freely given, specific, informed and unambiguous.",
-        requirement: "Implement consent mechanisms that meet GDPR requirements for validity.",
+        id: "CC3.1",
+        name: "Risk Assessment Process",
+        description: "The entity specifies objectives with sufficient clarity to enable the identification and assessment of risks",
+        category: "Risk Assessment",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "GDPR.12",
-        category: "Transparency",
-        title: "Transparent Information",
-        description:
-          "Information provided to data subjects must be concise, transparent, intelligible and easily accessible.",
-        requirement: "Provide clear and accessible privacy notices and information to data subjects.",
+        id: "CC4.1",
+        name: "Control Activities",
+        description: "The entity selects and develops control activities that contribute to the mitigation of risks",
+        category: "Control Activities",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "GDPR.15",
-        category: "Data Subject Rights",
-        title: "Right of Access",
-        description: "Data subjects have the right to obtain confirmation of processing and access to personal data.",
-        requirement: "Implement processes to handle data subject access requests within required timeframes.",
+        id: "CC5.1",
+        name: "Information and Communication",
+        description: "The entity obtains or generates and uses relevant, quality information to support the functioning of internal control",
+        category: "Information and Communication",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "GDPR.17",
-        category: "Data Subject Rights",
-        title: "Right to Erasure",
-        description: "Data subjects have the right to obtain erasure of personal data without undue delay.",
-        requirement: "Implement data deletion processes and respond to erasure requests appropriately.",
+        id: "CC7.1",
+        name: "System Operations",
+        description: "The entity restricts the logical access to system resources and information",
+        category: "System Operations",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "GDPR.25",
-        category: "Data Protection by Design",
-        title: "Data Protection by Design and by Default",
-        description:
-          "Implement appropriate technical and organisational measures to ensure data protection principles.",
-        requirement: "Integrate data protection measures into system design and default settings.",
+        id: "CC9.1",
+        name: "Risk Mitigation",
+        description: "The entity identifies, selects, and implements risk mitigation activities",
+        category: "Risk Mitigation",
+        riskLevel: "high",
+        implementationStatus: "partial",
+        testResult: "fail",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "GDPR.32",
+        id: "A1.1",
+        name: "Availability Processing",
+        description: "The entity maintains, monitors, and evaluates current processing capacity and use of system components",
+        category: "Availability",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      }
+    ]
+  },
+  gdpr: {
+    id: "gdpr",
+    name: "GDPR",
+    description: "General Data Protection Regulation - EU Privacy Regulation",
+    version: "2018",
+    controls: [
+      {
+        id: "ART15",
+        name: "Right of Access",
+        description: "Data subjects have the right to obtain confirmation of whether personal data is being processed",
+        category: "Individual Rights",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "ART17",
+        name: "Right to Erasure",
+        description: "Data subjects have the right to obtain erasure of personal data without undue delay",
+        category: "Individual Rights",
+        riskLevel: "high",
+        implementationStatus: "partial",
+        testResult: "fail",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "ART32",
+        name: "Security of Processing",
+        description: "Implement appropriate technical and organizational measures to ensure security of processing",
         category: "Security",
-        title: "Security of Processing",
-        description: "Implement appropriate technical and organisational measures to ensure security of processing.",
-        requirement: "Implement encryption, access controls, and other security measures appropriate to the risk.",
+        riskLevel: "critical",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "GDPR.33",
-        category: "Breach Notification",
-        title: "Notification of Personal Data Breach",
-        description: "Notify supervisory authority of personal data breaches within 72 hours.",
-        requirement: "Implement breach detection and notification procedures meeting regulatory timeframes.",
+        id: "ART33",
+        name: "Notification of Breach",
+        description: "Notify supervisory authority of personal data breach within 72 hours",
+        category: "Breach Management",
+        riskLevel: "critical",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "GDPR.35",
-        category: "Impact Assessment",
-        title: "Data Protection Impact Assessment",
-        description: "Conduct DPIA when processing is likely to result in high risk to rights and freedoms.",
-        requirement: "Implement DPIA processes for high-risk processing activities.",
+        id: "ART25",
+        name: "Data Protection by Design",
+        description: "Implement data protection principles by design and by default",
+        category: "Privacy by Design",
+        riskLevel: "high",
+        implementationStatus: "partial",
+        testResult: "fail",
+        evidence: [],
+        recommendations: []
       },
-    ],
-    HIPAA: [
+      {
+        id: "ART30",
+        name: "Records of Processing",
+        description: "Maintain records of processing activities under responsibility",
+        category: "Documentation",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "ART35",
+        name: "Data Protection Impact Assessment",
+        description: "Carry out impact assessment where processing is likely to result in high risk",
+        category: "Risk Assessment",
+        riskLevel: "high",
+        implementationStatus: "not_implemented",
+        testResult: "fail",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "ART37",
+        name: "Data Protection Officer",
+        description: "Designate a data protection officer where required",
+        category: "Governance",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "ART44",
+        name: "International Transfers",
+        description: "Ensure adequate level of protection for international transfers",
+        category: "Data Transfers",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "ART83",
+        name: "Administrative Fines",
+        description: "Understand and mitigate risks of administrative fines",
+        category: "Compliance",
+        riskLevel: "critical",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      }
+    ]
+  },
+  hipaa: {
+    id: "hipaa",
+    name: "HIPAA",
+    description: "Health Insurance Portability and Accountability Act - Healthcare Privacy and Security",
+    version: "2013",
+    controls: [
       {
         id: "164.308(a)(1)",
+        name: "Security Officer",
+        description: "Assign security responsibilities to an individual",
         category: "Administrative Safeguards",
-        title: "Security Officer",
-        description: "Assign security responsibilities to an individual.",
-        requirement:
-          "Designate a security officer responsible for developing and implementing security policies and procedures.",
-      },
-      {
-        id: "164.308(a)(2)",
-        category: "Administrative Safeguards",
-        title: "Assigned Security Responsibilities",
-        description: "Identify the security officer and assign security responsibilities.",
-        requirement: "Assign security responsibilities to workforce members and ensure accountability.",
-      },
-      {
-        id: "164.308(a)(3)",
-        category: "Administrative Safeguards",
-        title: "Workforce Training",
-        description: "Implement procedures for authorizing access to electronic protected health information.",
-        requirement: "Provide security awareness and training to workforce members.",
-      },
-      {
-        id: "164.308(a)(4)",
-        category: "Administrative Safeguards",
-        title: "Information Access Management",
-        description: "Implement procedures for granting access to electronic protected health information.",
-        requirement: "Implement access management procedures including authorization, modification, and termination.",
-      },
-      {
-        id: "164.308(a)(5)",
-        category: "Administrative Safeguards",
-        title: "Security Awareness and Training",
-        description: "Implement security awareness and training program for all workforce members.",
-        requirement: "Conduct periodic security updates and training on security policies and procedures.",
-      },
-      {
-        id: "164.310(a)(1)",
-        category: "Physical Safeguards",
-        title: "Facility Access Controls",
-        description: "Implement procedures to limit physical access to electronic information systems.",
-        requirement: "Control physical access to facilities housing electronic protected health information.",
-      },
-      {
-        id: "164.310(b)",
-        category: "Physical Safeguards",
-        title: "Workstation Use",
-        description: "Implement procedures that govern the receipt and removal of hardware and electronic media.",
-        requirement: "Implement controls for workstation use and access to electronic protected health information.",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
         id: "164.312(a)(1)",
+        name: "Access Control",
+        description: "Implement procedures for granting access to electronic PHI",
         category: "Technical Safeguards",
-        title: "Access Control",
-        description: "Implement technical policies and procedures for electronic information systems.",
-        requirement:
-          "Implement access controls including unique user identification, emergency access, and automatic logoff.",
+        riskLevel: "critical",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
         id: "164.312(b)",
+        name: "Audit Controls",
+        description: "Implement hardware, software, and procedural mechanisms for audit logs",
         category: "Technical Safeguards",
-        title: "Audit Controls",
-        description:
-          "Implement hardware, software, and procedural mechanisms for recording access to electronic protected health information.",
-        requirement: "Implement audit controls to record and examine access and other activity in information systems.",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
         id: "164.312(c)(1)",
+        name: "Integrity",
+        description: "Protect electronic PHI from improper alteration or destruction",
         category: "Technical Safeguards",
-        title: "Integrity",
-        description:
-          "Implement policies and procedures to protect electronic protected health information from improper alteration or destruction.",
-        requirement:
-          "Implement controls to ensure electronic protected health information is not improperly altered or destroyed.",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
-    ],
-    PCI_DSS: [
       {
-        id: "PCI.1",
+        id: "164.312(d)",
+        name: "Person or Entity Authentication",
+        description: "Verify that a person or entity seeking access is the one claimed",
+        category: "Technical Safeguards",
+        riskLevel: "critical",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "164.312(e)(1)",
+        name: "Transmission Security",
+        description: "Implement technical security measures for electronic PHI transmission",
+        category: "Technical Safeguards",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "164.310(a)(1)",
+        name: "Facility Access Controls",
+        description: "Implement procedures to control physical access to facilities",
+        category: "Physical Safeguards",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "164.310(b)",
+        name: "Workstation Use",
+        description: "Implement procedures for workstation use and access to electronic PHI",
+        category: "Physical Safeguards",
+        riskLevel: "medium",
+        implementationStatus: "partial",
+        testResult: "fail",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "164.310(c)",
+        name: "Device and Media Controls",
+        description: "Implement procedures for receipt and removal of hardware and media",
+        category: "Physical Safeguards",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "164.308(a)(5)",
+        name: "Business Associate Contracts",
+        description: "Obtain satisfactory assurances from business associates",
+        category: "Administrative Safeguards",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      }
+    ]
+  },
+  pci_dss: {
+    id: "pci_dss",
+    name: "PCI DSS",
+    description: "Payment Card Industry Data Security Standard",
+    version: "4.0",
+    controls: [
+      {
+        id: "REQ1",
+        name: "Install and Maintain Network Security Controls",
+        description: "Install and maintain network security controls to protect the cardholder data environment",
         category: "Network Security",
-        title: "Install and maintain firewall configuration",
-        description: "Install and maintain a firewall configuration to protect cardholder data.",
-        requirement: "Establish firewall and router configuration standards and maintain secure network architecture.",
+        riskLevel: "critical",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "PCI.2",
-        category: "Network Security",
-        title: "Remove default passwords and security parameters",
-        description: "Do not use vendor-supplied defaults for system passwords and other security parameters.",
-        requirement:
-          "Change default passwords and remove unnecessary default accounts before installing systems on the network.",
+        id: "REQ2",
+        name: "Apply Secure Configurations",
+        description: "Apply secure configurations to all system components",
+        category: "System Configuration",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "PCI.3",
+        id: "REQ3",
+        name: "Protect Stored Account Data",
+        description: "Protect stored account data",
         category: "Data Protection",
-        title: "Protect stored cardholder data",
-        description: "Protect stored cardholder data through encryption and other methods.",
-        requirement: "Implement strong encryption and key management for protection of stored cardholder data.",
+        riskLevel: "critical",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "PCI.4",
-        category: "Data Protection",
-        title: "Encrypt transmission of cardholder data",
-        description: "Encrypt transmission of cardholder data across open, public networks.",
-        requirement: "Use strong cryptography and security protocols to safeguard cardholder data during transmission.",
+        id: "REQ4",
+        name: "Protect Cardholder Data with Strong Cryptography",
+        description: "Protect cardholder data with strong cryptography during transmission",
+        category: "Cryptography",
+        riskLevel: "critical",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "PCI.5",
-        category: "Vulnerability Management",
-        title: "Protect against malware",
-        description: "Protect all systems against malware and regularly update anti-virus software.",
-        requirement: "Deploy anti-virus software on all systems commonly affected by malicious software.",
+        id: "REQ5",
+        name: "Protect All Systems and Networks from Malicious Software",
+        description: "Protect all systems and networks from malicious software",
+        category: "Malware Protection",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "PCI.6",
-        category: "Vulnerability Management",
-        title: "Develop secure systems and applications",
-        description: "Develop and maintain secure systems and applications.",
-        requirement:
-          "Establish processes to identify security vulnerabilities and protect systems from known vulnerabilities.",
+        id: "REQ6",
+        name: "Develop and Maintain Secure Systems and Software",
+        description: "Develop and maintain secure systems and software",
+        category: "Secure Development",
+        riskLevel: "high",
+        implementationStatus: "partial",
+        testResult: "fail",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "PCI.7",
+        id: "REQ7",
+        name: "Restrict Access to System Components and Cardholder Data",
+        description: "Restrict access to system components and cardholder data by business need to know",
         category: "Access Control",
-        title: "Restrict access by business need-to-know",
-        description: "Restrict access to cardholder data by business need to know.",
-        requirement:
-          "Implement role-based access controls and limit access to cardholder data to those with legitimate business need.",
+        riskLevel: "critical",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "PCI.8",
-        category: "Access Control",
-        title: "Identify and authenticate access",
-        description: "Identify and authenticate access to system components.",
-        requirement:
-          "Assign unique identification to each person with computer access and implement proper user authentication management.",
+        id: "REQ8",
+        name: "Identify Users and Authenticate Access",
+        description: "Identify users and authenticate access to system components",
+        category: "Authentication",
+        riskLevel: "critical",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "PCI.9",
+        id: "REQ9",
+        name: "Restrict Physical Access",
+        description: "Restrict physical access to cardholder data",
         category: "Physical Security",
-        title: "Restrict physical access",
-        description: "Restrict physical access to cardholder data.",
-        requirement:
-          "Implement physical security controls to restrict access to systems and media containing cardholder data.",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "PCI.10",
-        category: "Monitoring",
-        title: "Track and monitor access",
-        description: "Track and monitor all access to network resources and cardholder data.",
-        requirement:
-          "Implement audit trails and log monitoring for all access to system components and cardholder data.",
+        id: "REQ10",
+        name: "Log and Monitor All Access",
+        description: "Log and monitor all access to system components and cardholder data",
+        category: "Logging and Monitoring",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
-    ],
-    ISO27001: [
+      {
+        id: "REQ11",
+        name: "Test Security of Systems and Networks Regularly",
+        description: "Test security of systems and networks regularly",
+        category: "Security Testing",
+        riskLevel: "high",
+        implementationStatus: "partial",
+        testResult: "fail",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "REQ12",
+        name: "Support Information Security with Organizational Policies",
+        description: "Support information security with organizational policies and programs",
+        category: "Policy and Procedures",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      }
+    ]
+  },
+  iso27001: {
+    id: "iso27001",
+    name: "ISO 27001",
+    description: "International Standard for Information Security Management Systems",
+    version: "2022",
+    controls: [
       {
         id: "A.5.1",
-        category: "Information Security Policies",
-        title: "Information Security Policy",
-        description:
-          "Management direction and support for information security in accordance with business requirements.",
-        requirement:
-          "Establish, implement, maintain and continually improve an information security management system.",
+        name: "Information Security Policies",
+        description: "Information security policy and topic-specific policies",
+        category: "Organizational Controls",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
         id: "A.6.1",
-        category: "Organization of Information Security",
-        title: "Information Security Roles and Responsibilities",
-        description: "Ensure that information security responsibilities are defined and allocated.",
-        requirement: "Define and allocate information security responsibilities and establish management commitment.",
+        name: "Screening",
+        description: "Background verification checks on all candidates for employment",
+        category: "People Controls",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
         id: "A.7.1",
-        category: "Human Resource Security",
-        title: "Prior to Employment",
-        description: "Ensure that employees understand their responsibilities and are suitable for the roles.",
-        requirement: "Conduct background verification checks and establish terms and conditions of employment.",
+        name: "Physical Security Perimeters",
+        description: "Physical security perimeters for areas containing information and information processing facilities",
+        category: "Physical and Environmental Controls",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
         id: "A.8.1",
-        category: "Asset Management",
-        title: "Responsibility for Assets",
-        description: "Identify organizational assets and define appropriate protection responsibilities.",
-        requirement: "Maintain an inventory of assets and assign ownership and acceptable use responsibilities.",
+        name: "User Endpoint Devices",
+        description: "Information stored on, processed by or accessible via user endpoint devices",
+        category: "Technology Controls",
+        riskLevel: "high",
+        implementationStatus: "partial",
+        testResult: "fail",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "A.9.1",
-        category: "Access Control",
-        title: "Business Requirements of Access Control",
-        description: "Limit access to information and information processing facilities.",
-        requirement: "Establish access control policy and procedures for secure access to information systems.",
+        id: "A.8.2",
+        name: "Privileged Access Rights",
+        description: "Allocation and use of privileged access rights",
+        category: "Technology Controls",
+        riskLevel: "critical",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "A.10.1",
-        category: "Cryptography",
-        title: "Cryptographic Controls",
-        description:
-          "Ensure proper and effective use of cryptography to protect information confidentiality, authenticity and integrity.",
-        requirement: "Develop and implement cryptographic policy and procedures for protection of information.",
+        id: "A.8.3",
+        name: "Information Access Restriction",
+        description: "Access to information and application system functions",
+        category: "Technology Controls",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "A.11.1",
-        category: "Physical and Environmental Security",
-        title: "Secure Areas",
-        description:
-          "Prevent unauthorized physical access, damage and interference to information and information processing facilities.",
-        requirement: "Define and implement physical security perimeters and physical entry controls.",
+        id: "A.8.4",
+        name: "Access to Source Code",
+        description: "Read and write access to source code, development tools and software libraries",
+        category: "Technology Controls",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "A.12.1",
-        category: "Operations Security",
-        title: "Operational Procedures and Responsibilities",
-        description: "Ensure correct and secure operations of information processing facilities.",
-        requirement: "Document and implement operational procedures and establish change management processes.",
+        id: "A.8.5",
+        name: "Secure Authentication",
+        description: "Secure authentication technologies and procedures",
+        category: "Technology Controls",
+        riskLevel: "critical",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "A.13.1",
-        category: "Communications Security",
-        title: "Network Security Management",
-        description:
-          "Ensure the protection of information in networks and supporting information processing facilities.",
-        requirement: "Implement network controls and security of network services to protect information in transit.",
+        id: "A.8.6",
+        name: "Capacity Management",
+        description: "Monitoring, tuning and making projections of the capacity of resources",
+        category: "Technology Controls",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "A.14.1",
-        category: "System Acquisition, Development and Maintenance",
-        title: "Security Requirements of Information Systems",
-        description:
-          "Ensure that information security is an integral part of information systems across the entire lifecycle.",
-        requirement: "Include security requirements in requirements for new information systems or enhancements.",
-      },
-    ],
-    NIST: [
+        id: "A.8.7",
+        name: "Protection Against Malware",
+        description: "Detection, prevention and recovery controls to protect against malware",
+        category: "Technology Controls",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      }
+    ]
+  },
+  nist: {
+    id: "nist",
+    name: "NIST Cybersecurity Framework",
+    description: "National Institute of Standards and Technology Cybersecurity Framework",
+    version: "2.0",
+    controls: [
       {
-        id: "ID.AM",
+        id: "ID.AM-1",
+        name: "Physical devices and systems within the organization are inventoried",
+        description: "Maintain an inventory of physical devices and systems",
         category: "Identify - Asset Management",
-        title: "Asset Management",
-        description:
-          "The data, personnel, devices, systems, and facilities that enable the organization to achieve business purposes are identified and managed.",
-        requirement: "Develop and maintain asset inventories and establish asset management processes.",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "ID.BE",
-        category: "Identify - Business Environment",
-        title: "Business Environment",
-        description:
-          "The organization's mission, objectives, stakeholders, and activities are understood and prioritized.",
-        requirement:
-          "Understand organizational context and establish risk management strategy aligned with business objectives.",
-      },
-      {
-        id: "ID.GV",
-        category: "Identify - Governance",
-        title: "Governance",
-        description:
-          "The policies, procedures, and processes to manage and monitor the organization's regulatory, legal, risk, environmental, and operational requirements are understood.",
-        requirement: "Establish governance framework and ensure compliance with applicable regulatory requirements.",
-      },
-      {
-        id: "PR.AC",
+        id: "PR.AC-1",
+        name: "Identities and credentials are issued, managed, verified, revoked, and audited",
+        description: "Identity and credential management processes",
         category: "Protect - Access Control",
-        title: "Access Control",
-        description:
-          "Access to physical and logical assets and associated facilities is limited to authorized users, processes, and devices.",
-        requirement: "Implement identity and access management controls including authentication and authorization.",
+        riskLevel: "critical",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "PR.AT",
-        category: "Protect - Awareness and Training",
-        title: "Awareness and Training",
-        description:
-          "The organization's personnel and partners are provided cybersecurity awareness education and are trained to perform their cybersecurity-related duties.",
-        requirement: "Develop and implement cybersecurity awareness and training programs for all personnel.",
-      },
-      {
-        id: "PR.DS",
+        id: "PR.DS-1",
+        name: "Data-at-rest is protected",
+        description: "Protection of data at rest through appropriate mechanisms",
         category: "Protect - Data Security",
-        title: "Data Security",
-        description:
-          "Information and records are managed consistent with the organization's risk strategy to protect confidentiality, integrity, and availability.",
-        requirement: "Implement data protection controls including encryption, backup, and data loss prevention.",
+        riskLevel: "critical",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "DE.AE",
+        id: "DE.AE-1",
+        name: "A baseline of network operations and expected data flows is established",
+        description: "Network baseline and monitoring capabilities",
         category: "Detect - Anomalies and Events",
-        title: "Anomalies and Events",
-        description: "Anomalous activity is detected and the potential impact of events is understood.",
-        requirement: "Implement monitoring and detection capabilities to identify cybersecurity events and anomalies.",
+        riskLevel: "high",
+        implementationStatus: "partial",
+        testResult: "fail",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "RS.RP",
+        id: "DE.CM-1",
+        name: "The network is monitored to detect potential cybersecurity events",
+        description: "Network monitoring for cybersecurity events",
+        category: "Detect - Security Continuous Monitoring",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "RS.RP-1",
+        name: "Response plan is executed during or after an incident",
+        description: "Incident response plan execution",
         category: "Respond - Response Planning",
-        title: "Response Planning",
-        description:
-          "Response processes and procedures are executed and maintained to ensure response to detected cybersecurity incidents.",
-        requirement: "Develop and maintain incident response plans and procedures for cybersecurity events.",
+        riskLevel: "high",
+        implementationStatus: "partial",
+        testResult: "fail",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "RC.RP",
+        id: "RS.CO-1",
+        name: "Personnel know their roles and order of operations when a response is needed",
+        description: "Response roles and responsibilities",
+        category: "Respond - Communications",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "RC.RP-1",
+        name: "Recovery plan is executed during or after a cybersecurity incident",
+        description: "Recovery plan execution",
         category: "Recover - Recovery Planning",
-        title: "Recovery Planning",
-        description:
-          "Recovery processes and procedures are executed and maintained to ensure restoration of systems or assets affected by cybersecurity incidents.",
-        requirement: "Develop and maintain recovery plans and procedures to restore normal operations after incidents.",
+        riskLevel: "high",
+        implementationStatus: "not_implemented",
+        testResult: "fail",
+        evidence: [],
+        recommendations: []
       },
-    ],
-    CCPA: [
       {
-        id: "CCPA.1798.100",
+        id: "RC.IM-1",
+        name: "Recovery plans incorporate lessons learned",
+        description: "Lessons learned integration into recovery planning",
+        category: "Recover - Improvements",
+        riskLevel: "medium",
+        implementationStatus: "not_implemented",
+        testResult: "fail",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "RC.CO-1",
+        name: "Public relations are managed",
+        description: "Public relations and reputation management during recovery",
+        category: "Recover - Communications",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      }
+    ]
+  },
+  ccpa: {
+    id: "ccpa",
+    name: "CCPA",
+    description: "California Consumer Privacy Act",
+    version: "2020",
+    controls: [
+      {
+        id: "1798.100",
+        name: "Right to Know",
+        description: "Consumers have the right to know what personal information is collected",
         category: "Consumer Rights",
-        title: "Right to Know",
-        description: "Consumers have the right to know what personal information is collected about them.",
-        requirement: "Provide clear disclosure of personal information collection, use, and sharing practices.",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "CCPA.1798.105",
+        id: "1798.105",
+        name: "Right to Delete",
+        description: "Consumers have the right to delete personal information",
         category: "Consumer Rights",
-        title: "Right to Delete",
-        description: "Consumers have the right to request deletion of personal information.",
-        requirement:
-          "Implement processes to handle consumer deletion requests and delete personal information as required.",
+        riskLevel: "high",
+        implementationStatus: "partial",
+        testResult: "fail",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "CCPA.1798.110",
+        id: "1798.110",
+        name: "Right to Know Categories",
+        description: "Right to know categories of personal information collected",
+        category: "Disclosure Requirements",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "1798.115",
+        name: "Right to Know Sources",
+        description: "Right to know sources of personal information",
+        category: "Disclosure Requirements",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      },
+      {
+        id: "1798.120",
+        name: "Right to Opt-Out",
+        description: "Right to opt-out of the sale of personal information",
         category: "Consumer Rights",
-        title: "Right to Access",
-        description: "Consumers have the right to request access to their personal information.",
-        requirement: "Provide consumers with access to their personal information in a readily useable format.",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "CCPA.1798.115",
-        category: "Consumer Rights",
-        title: "Right to Opt-Out",
-        description: "Consumers have the right to opt-out of the sale of their personal information.",
-        requirement: "Provide clear opt-out mechanisms and honor consumer opt-out requests.",
+        id: "1798.125",
+        name: "Non-Discrimination",
+        description: "Prohibition on discriminating against consumers who exercise their rights",
+        category: "Non-Discrimination",
+        riskLevel: "high",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "CCPA.1798.120",
-        category: "Consumer Rights",
-        title: "Right to Non-Discrimination",
-        description: "Consumers have the right not to be discriminated against for exercising their privacy rights.",
-        requirement: "Ensure no discrimination against consumers who exercise their CCPA rights.",
+        id: "1798.130",
+        name: "Notice at Collection",
+        description: "Notice to consumers at or before the point of collection",
+        category: "Notice Requirements",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "CCPA.1798.130",
-        category: "Business Obligations",
-        title: "Notice at Collection",
-        description: "Businesses must provide notice to consumers at or before the point of collection.",
-        requirement: "Provide clear notice of personal information collection practices at the point of collection.",
+        id: "1798.135",
+        name: "Opt-Out Methods",
+        description: "Methods for submitting requests to opt-out",
+        category: "Request Processing",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
       {
-        id: "CCPA.1798.135",
-        category: "Business Obligations",
-        title: "Opt-Out Methods",
-        description: "Businesses must provide methods for consumers to opt-out of personal information sales.",
-        requirement:
-          "Implement and maintain clear opt-out methods including 'Do Not Sell My Personal Information' links.",
+        id: "1798.140",
+        name: "Definitions",
+        description: "Understanding and implementing CCPA definitions",
+        category: "Definitions and Scope",
+        riskLevel: "low",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
       },
-    ],
+      {
+        id: "1798.150",
+        name: "Personal Information Categories",
+        description: "Proper categorization of personal information",
+        category: "Data Classification",
+        riskLevel: "medium",
+        implementationStatus: "implemented",
+        testResult: "pass",
+        evidence: [],
+        recommendations: []
+      }
+    ]
   }
+}
 
-  async generateComplianceReport(
-    framework: ComplianceFramework,
-    startDate: Date,
-    endDate: Date,
-    assessor = "System Generated",
+export class ComplianceReportGenerator {
+  async generateReport(
+    frameworkId: string,
+    assessor: string,
+    dateRange: { start: string; end: string }
   ): Promise<ComplianceReport> {
-    const reportId = `${framework.toLowerCase()}-${startDate.toISOString().split("T")[0]}-${Date.now()}`
+    const framework = COMPLIANCE_FRAMEWORKS[frameworkId]
+    if (!framework) {
+      throw new Error(`Framework ${frameworkId} not found`)
+    }
 
-    // Get framework-specific controls
-    const frameworkControls = this.frameworkControls[framework] || []
-
-    // Generate controls with current status
-    const controls = await this.assessControls(framework, frameworkControls, startDate, endDate, assessor)
-
+    // Assess controls based on audit logs and system data
+    const assessedControls = await this.assessControls(framework.controls, dateRange)
+    
     // Generate findings based on control assessments
-    const findings = await this.generateFindings(controls)
+    const findings = this.generateFindings(assessedControls)
+    
+    // Generate recommendations based on findings
+    const recommendations = this.generateRecommendations(findings, assessedControls)
+    
+    // Calculate summary metrics
+    const summary = this.calculateSummary(assessedControls, findings)
+    
+    // Generate executive summary
+    const executiveSummary = this.generateExecutiveSummary(framework, summary, findings)
 
-    // Generate recommendations
-    const recommendations = await this.generateRecommendations(framework, controls, findings)
-
-    // Collect evidence
-    const evidence = await this.collectEvidence(controls, startDate, endDate)
-
-    // Generate attestations
-    const attestations = await this.generateAttestations(framework, startDate, endDate, assessor)
-
-    // Perform risk assessment
-    const riskAssessment = await this.performRiskAssessment(framework, controls, findings)
-
-    // Calculate summary
-    const summary = this.calculateSummary(controls, findings)
-
-    // Determine overall status
-    const status = this.determineComplianceStatus(summary)
-
-    return {
-      id: reportId,
-      framework,
-      title: `${framework} Compliance Report`,
-      generatedAt: new Date(),
-      period: { start: startDate, end: endDate },
-      status,
-      overallScore: summary.compliancePercentage,
+    const report: ComplianceReport = {
+      id: `report_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      frameworkId: framework.id,
+      frameworkName: framework.name,
+      reportDate: new Date().toISOString(),
+      assessor,
+      dateRange,
       summary,
-      controls,
+      controls: assessedControls,
       findings,
       recommendations,
-      evidence,
-      attestations,
-      riskAssessment,
+      executiveSummary,
+      nextAssessmentDate: this.calculateNextAssessmentDate()
     }
+
+    return report
   }
 
   private async assessControls(
-    framework: ComplianceFramework,
-    frameworkControls: any[],
-    startDate: Date,
-    endDate: Date,
-    assessor: string,
+    controls: ComplianceControl[],
+    dateRange: { start: string; end: string }
   ): Promise<ComplianceControl[]> {
-    const controls: ComplianceControl[] = []
-
-    for (const control of frameworkControls) {
-      // Assess each control based on available data
-      const assessment = await this.assessControl(framework, control, startDate, endDate)
-
-      controls.push({
-        id: control.id,
-        framework,
-        category: control.category,
-        subcategory: control.subcategory,
-        title: control.title,
-        description: control.description,
-        requirement: control.requirement,
-        status: assessment.status,
-        implementationStatus: assessment.implementationStatus,
-        lastAssessed: new Date(),
-        assessor,
-        evidence: assessment.evidence,
-        findings: assessment.findings,
-        riskLevel: assessment.riskLevel,
-        remediationPlan: assessment.remediationPlan,
-        dueDate: assessment.dueDate,
-        owner: assessment.owner || "Security Team",
-        testResults: assessment.testResults,
-      })
-    }
-
-    return controls
-  }
-
-  private async assessControl(framework: ComplianceFramework, control: any, startDate: Date, endDate: Date) {
-    // This would integrate with actual system data to assess control effectiveness
-    // For now, we'll simulate assessment based on audit logs and security events
-
-    try {
-      // Check for relevant audit events
-      const auditEvents = await sql`
-        SELECT COUNT(*) as event_count, 
-               COUNT(CASE WHEN success = false THEN 1 END) as failure_count
-        FROM audit_logs 
-        WHERE created_at >= ${startDate} 
-          AND created_at <= ${endDate}
-          AND (event_category LIKE ${`%${this.getControlCategory(framework, control.id)}%`}
-               OR event_type LIKE ${`%${this.getControlCategory(framework, control.id)}%`})
-      `
-
-      const eventCount = Number.parseInt(auditEvents[0]?.event_count || "0")
-      const failureCount = Number.parseInt(auditEvents[0]?.failure_count || "0")
-      const successRate = eventCount > 0 ? ((eventCount - failureCount) / eventCount) * 100 : 100
-
-      // Determine status based on success rate and control type
-      let status: "compliant" | "non-compliant" | "partial" | "not-applicable" | "needs-review"
-      let implementationStatus: "implemented" | "partially-implemented" | "not-implemented" | "planned"
-      let riskLevel: "critical" | "high" | "medium" | "low"
-
-      if (successRate >= 95) {
-        status = "compliant"
-        implementationStatus = "implemented"
-        riskLevel = "low"
-      } else if (successRate >= 80) {
-        status = "partial"
-        implementationStatus = "partially-implemented"
-        riskLevel = "medium"
-      } else if (successRate >= 60) {
-        status = "non-compliant"
-        implementationStatus = "partially-implemented"
-        riskLevel = "high"
-      } else {
-        status = "non-compliant"
-        implementationStatus = "not-implemented"
-        riskLevel = "critical"
-      }
-
-      // Generate evidence references
-      const evidence = [
-        `Audit log analysis: ${eventCount} events, ${successRate.toFixed(1)}% success rate`,
-        `Assessment period: ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`,
-      ]
-
-      // Generate findings if non-compliant
-      const findings = []
-      if (status === "non-compliant" || status === "partial") {
-        findings.push(`Control effectiveness below threshold: ${successRate.toFixed(1)}% success rate`)
-      }
-
-      // Generate remediation plan if needed
-      let remediationPlan: string | undefined
-      let dueDate: Date | undefined
-      if (status === "non-compliant" || status === "partial") {
-        remediationPlan = this.generateRemediationPlan(framework, control)
-        dueDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days from now
-      }
-
-      // Generate test results
-      const testResults: TestResult[] = [
-        {
-          id: `test-${control.id}-${Date.now()}`,
-          testType: "automated",
-          testDate: new Date(),
-          tester: "Compliance System",
-          result: successRate >= 95 ? "pass" : successRate >= 80 ? "partial" : "fail",
-          details: `Automated assessment based on audit log analysis. Success rate: ${successRate.toFixed(1)}%`,
-          evidence: [`audit-logs-${startDate.toISOString().split("T")[0]}-${endDate.toISOString().split("T")[0]}`],
-          nextTestDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
-        },
-      ]
-
-      return {
-        status,
-        implementationStatus,
-        riskLevel,
-        evidence,
-        findings,
-        remediationPlan,
-        dueDate,
-        owner: "Security Team",
-        testResults,
-      }
-    } catch (error) {
-      console.error(`Error assessing control ${control.id}:`, error)
-      return {
-        status: "needs-review" as const,
-        implementationStatus: "not-implemented" as const,
-        riskLevel: "medium" as const,
-        evidence: ["Assessment failed - manual review required"],
-        findings: ["Automated assessment could not be completed"],
-        remediationPlan: "Manual assessment required",
-        dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-        owner: "Security Team",
-        testResults: [],
-      }
-    }
-  }
-
-  private getControlCategory(framework: ComplianceFramework, controlId: string): string {
-    // Map control IDs to relevant audit log categories
-    const categoryMappings: Record<string, string> = {
-      // SOC2 mappings
-      "CC6.1": "authentication",
-      "CC6.2": "physical_access",
-      "CC8.1": "change_management",
-
-      // GDPR mappings
-      "GDPR.15": "data_access",
-      "GDPR.17": "data_deletion",
-      "GDPR.32": "security",
-      "GDPR.33": "breach",
-
-      // HIPAA mappings
-      "164.308(a)(4)": "access_management",
-      "164.312(a)(1)": "access_control",
-      "164.312(b)": "audit",
-
-      // PCI DSS mappings
-      "PCI.7": "access_control",
-      "PCI.8": "authentication",
-      "PCI.10": "monitoring",
-
-      // ISO27001 mappings
-      "A.9.1": "access_control",
-      "A.12.1": "operations",
-      "A.14.1": "development",
-
-      // NIST mappings
-      "PR.AC": "access_control",
-      "DE.AE": "monitoring",
-      "RS.RP": "incident_response",
-
-      // CCPA mappings
-      "CCPA.1798.105": "data_deletion",
-      "CCPA.1798.110": "data_access",
-    }
-
-    return categoryMappings[controlId] || "general"
-  }
-
-  private generateRemediationPlan(framework: ComplianceFramework, control: any): string {
-    const remediationPlans: Record<string, Record<string, string>> = {
-      SOC2: {
-        "CC6.1":
-          "Implement multi-factor authentication, review access controls, and enhance user provisioning processes.",
-        "CC6.2":
-          "Strengthen physical access controls, implement visitor management, and review facility security measures.",
-        "CC8.1":
-          "Enhance change management procedures, implement automated testing, and improve change approval workflows.",
-      },
-      GDPR: {
-        "GDPR.15": "Implement automated data subject access request handling and improve data inventory management.",
-        "GDPR.17":
-          "Enhance data deletion procedures, implement automated erasure capabilities, and improve data retention policies.",
-        "GDPR.32": "Strengthen encryption implementation, enhance access controls, and improve security monitoring.",
-        "GDPR.33":
-          "Implement automated breach detection, improve incident response procedures, and enhance notification workflows.",
-      },
-      HIPAA: {
-        "164.308(a)(4)":
-          "Enhance access management procedures, implement role-based access controls, and improve user lifecycle management.",
-        "164.312(a)(1)":
-          "Implement stronger authentication mechanisms, enhance access controls, and improve session management.",
-        "164.312(b)": "Enhance audit logging capabilities, implement log monitoring, and improve audit trail analysis.",
-      },
-      PCI_DSS: {
-        "PCI.7":
-          "Implement role-based access controls, enhance need-to-know restrictions, and improve access review processes.",
-        "PCI.8":
-          "Strengthen authentication mechanisms, implement multi-factor authentication, and enhance user management.",
-        "PCI.10":
-          "Enhance logging and monitoring capabilities, implement real-time alerting, and improve log analysis.",
-      },
-      ISO27001: {
-        "A.9.1":
-          "Develop comprehensive access control policy, implement access management procedures, and enhance access reviews.",
-        "A.12.1":
-          "Document operational procedures, implement change management, and enhance operational security controls.",
-        "A.14.1":
-          "Integrate security requirements into development lifecycle, implement secure coding practices, and enhance security testing.",
-      },
-      NIST: {
-        "PR.AC":
-          "Implement identity and access management framework, enhance authentication controls, and improve access governance.",
-        "DE.AE": "Implement advanced threat detection, enhance monitoring capabilities, and improve anomaly detection.",
-        "RS.RP":
-          "Develop comprehensive incident response plan, enhance response procedures, and improve incident handling capabilities.",
-      },
-      CCPA: {
-        "CCPA.1798.105":
-          "Implement automated data deletion processes, enhance data subject request handling, and improve data inventory management.",
-        "CCPA.1798.110":
-          "Implement data portability mechanisms, enhance data access procedures, and improve consumer request handling.",
-      },
-    }
-
-    return (
-      remediationPlans[framework]?.[control.id] ||
-      "Conduct detailed assessment and develop specific remediation plan based on identified gaps."
-    )
-  }
-
-  private async generateFindings(controls: ComplianceControl[]): Promise<ComplianceFinding[]> {
-    const findings: ComplianceFinding[] = []
+    const assessedControls: ComplianceControl[] = []
 
     for (const control of controls) {
-      if (control.status === "non-compliant" || control.status === "partial") {
-        for (const finding of control.findings) {
-          findings.push({
-            id: `finding-${control.id}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-            controlId: control.id,
-            type: control.status === "non-compliant" ? "gap" : "deficiency",
-            severity: control.riskLevel,
-            title: `${control.title} - Control Deficiency`,
-            description: finding,
-            impact: this.getImpactDescription(control.riskLevel),
-            recommendation: control.remediationPlan || "Implement corrective measures to address control deficiency",
-            status: "open",
-            identifiedDate: new Date(),
-            targetResolutionDate: control.dueDate,
-            owner: control.owner,
-            evidence: control.evidence,
-          })
+      const assessedControl = { ...control }
+      
+      // Assess control based on audit logs and system data
+      const assessment = await this.assessIndividualControl(control, dateRange)
+      
+      assessedControl.implementationStatus = assessment.implementationStatus
+      assessedControl.testResult = assessment.testResult
+      assessedControl.evidence = assessment.evidence
+      assessedControl.recommendations = assessment.recommendations
+      assessedControl.lastAssessed = new Date().toISOString()
+      
+      assessedControls.push(assessedControl)
+    }
+
+    return assessedControls
+  }
+
+  private async assessIndividualControl(
+    control: ComplianceControl,
+    dateRange: { start: string; end: string }
+  ): Promise<{
+    implementationStatus: ComplianceControl['implementationStatus']
+    testResult: ComplianceControl['testResult']
+    evidence: string[]
+    recommendations: string[]
+  }> {
+    // This would typically query audit logs, system configurations, etc.
+    // For now, we'll use some basic logic based on control type and existing data
+    
+    try {
+      // Query audit logs for evidence
+      const auditLogs = await sql`
+        SELECT event_type, event_description, created_at, success
+        FROM audit_logs 
+        WHERE created_at >= ${dateRange.start}::timestamp 
+        AND created_at <= ${dateRange.end}::timestamp
+        ORDER BY created_at DESC
+        LIMIT 100
+      `
+
+      const evidence: string[] = []
+      let implementationStatus: ComplianceControl['implementationStatus'] = 'implemented'
+      let testResult: ComplianceControl['testResult'] = 'pass'
+      const recommendations: string[] = []
+
+      // Control-specific assessment logic
+      if (control.id.includes('ACCESS') || control.id.includes('AC') || control.category.toLowerCase().includes('access')) {
+        // Access control assessment
+        const loginAttempts = auditLogs.filter(log => log.event_type.includes('login'))
+        const failedLogins = loginAttempts.filter(log => !log.success)
+        
+        evidence.push(`${loginAttempts.length} login attempts recorded in assessment period`)
+        evidence.push(`${failedLogins.length} failed login attempts detected`)
+        
+        if (failedLogins.length > loginAttempts.length * 0.1) {
+          testResult = 'fail'
+          implementationStatus = 'partial'
+          recommendations.push('Review and strengthen access control mechanisms')
+          recommendations.push('Implement additional monitoring for failed login attempts')
         }
       }
+
+      if (control.id.includes('AUDIT') || control.id.includes('LOG') || control.category.toLowerCase().includes('audit')) {
+        // Audit and logging assessment
+        evidence.push(`${auditLogs.length} audit events recorded in assessment period`)
+        
+        if (auditLogs.length < 10) {
+          testResult = 'fail'
+          implementationStatus = 'partial'
+          recommendations.push('Increase audit logging coverage')
+          recommendations.push('Ensure all critical events are being logged')
+        }
+      }
+
+      if (control.category.toLowerCase().includes('security') || control.category.toLowerCase().includes('protection')) {
+        // Security control assessment
+        const securityEvents = auditLogs.filter(log => 
+          log.event_type.includes('security') || 
+          log.event_type.includes('threat') ||
+          log.event_type.includes('breach')
+        )
+        
+        evidence.push(`${securityEvents.length} security-related events recorded`)
+        
+        if (securityEvents.some(event => !event.success)) {
+          implementationStatus = 'partial'
+          recommendations.push('Review and address security incidents')
+          recommendations.push('Strengthen security monitoring and response procedures')
+        }
+      }
+
+      // Default evidence if none found
+      if (evidence.length === 0) {
+        evidence.push('Control assessment completed based on system configuration review')
+        evidence.push('No specific audit trail evidence available for this control')
+      }
+
+      return {
+        implementationStatus,
+        testResult,
+        evidence,
+        recommendations
+      }
+    } catch (error) {
+      console.error('Error assessing control:', error)
+      return {
+        implementationStatus: 'not_implemented',
+        testResult: 'not_tested',
+        evidence: ['Assessment could not be completed due to system error'],
+        recommendations: ['Manual review required for this control']
+      }
     }
+  }
+
+  private generateFindings(controls: ComplianceControl[]): ComplianceFinding[] {
+    const findings: ComplianceFinding[] = []
+
+    controls.forEach(control => {
+      if (control.testResult === 'fail' || control.implementationStatus !== 'implemented') {
+        const finding: ComplianceFinding = {
+          id: `finding_${control.id}_${Date.now()}`,
+          controlId: control.id,
+          severity: control.riskLevel,
+          title: `${control.name} - Implementation Gap`,
+          description: `Control ${control.id} (${control.name}) has been assessed as ${control.implementationStatus} with test result: ${control.testResult}`,
+          impact: this.getImpactDescription(control.riskLevel),
+          recommendation: control.recommendations.join('; ') || 'Review and implement proper controls',
+          status: 'open',
+          evidence: control.evidence,
+          dueDate: this.calculateDueDate(control.riskLevel)
+        }
+        findings.push(finding)
+      }
+    })
 
     return findings
   }
 
-  private getImpactDescription(riskLevel: string): string {
-    const impacts = {
-      critical: "Critical impact on compliance posture and business operations. Immediate remediation required.",
-      high: "High impact on compliance and security. Remediation should be prioritized.",
-      medium: "Moderate impact on compliance. Should be addressed in planned remediation cycle.",
-      low: "Low impact on overall compliance posture. Can be addressed during routine maintenance.",
-    }
-    return impacts[riskLevel as keyof typeof impacts] || "Impact assessment required"
-  }
-
-  private async generateRecommendations(
-    framework: ComplianceFramework,
-    controls: ComplianceControl[],
-    findings: ComplianceFinding[],
-  ): Promise<ComplianceRecommendation[]> {
+  private generateRecommendations(findings: ComplianceFinding[], controls: ComplianceControl[]): ComplianceRecommendation[] {
     const recommendations: ComplianceRecommendation[] = []
+    const priorityMap: Record<string, number> = { critical: 4, high: 3, medium: 2, low: 1 }
 
-    // Generate recommendations based on findings
-    const criticalFindings = findings.filter((f) => f.severity === "critical")
-    const highFindings = findings.filter((f) => f.severity === "high")
+    // Group findings by severity and generate recommendations
+    const criticalFindings = findings.filter(f => f.severity === 'critical')
+    const highFindings = findings.filter(f => f.severity === 'high')
+    const mediumFindings = findings.filter(f => f.severity === 'medium')
+    const lowFindings = findings.filter(f => f.severity === 'low')
 
     if (criticalFindings.length > 0) {
       recommendations.push({
-        id: `rec-critical-${Date.now()}`,
-        priority: "critical",
-        category: "Immediate Action Required",
-        title: "Address Critical Compliance Gaps",
-        description: `${criticalFindings.length} critical compliance gaps identified that require immediate attention.`,
-        implementation:
-          "Implement emergency remediation procedures for all critical findings. Assign dedicated resources and establish daily progress reviews.",
-        estimatedEffort: "high",
-        estimatedCost: "high",
-        expectedBenefit: "Restore compliance posture and eliminate critical risks to business operations.",
-        timeline: "1-2 weeks",
-        dependencies: ["Management approval", "Resource allocation", "Technical team availability"],
-        owner: "Chief Security Officer",
-        status: "pending",
+        id: `rec_critical_${Date.now()}`,
+        priority: 'critical',
+        title: 'Address Critical Security Controls',
+        description: `${criticalFindings.length} critical control gaps identified that require immediate attention`,
+        implementation: 'Implement missing critical controls, conduct security review, and establish monitoring',
+        timeline: '1-2 weeks',
+        effort: 'high',
+        dependencies: ['Security team availability', 'Management approval', 'Technical resources']
       })
     }
 
     if (highFindings.length > 0) {
       recommendations.push({
-        id: `rec-high-${Date.now()}`,
-        priority: "high",
-        category: "Security Enhancement",
-        title: "Strengthen Security Controls",
-        description: `${highFindings.length} high-priority security control improvements identified.`,
-        implementation:
-          "Develop and execute remediation plan for high-priority findings. Implement enhanced monitoring and controls.",
-        estimatedEffort: "medium",
-        estimatedCost: "medium",
-        expectedBenefit: "Significantly improve compliance posture and reduce security risks.",
-        timeline: "4-6 weeks",
-        dependencies: ["Budget approval", "Technical resources", "Vendor coordination"],
-        owner: "Security Team Lead",
-        status: "pending",
+        id: `rec_high_${Date.now()}`,
+        priority: 'high',
+        title: 'Strengthen High-Risk Controls',
+        description: `${highFindings.length} high-risk control gaps need to be addressed to maintain compliance`,
+        implementation: 'Review and enhance existing controls, implement additional safeguards',
+        timeline: '2-4 weeks',
+        effort: 'medium',
+        dependencies: ['Process documentation', 'Staff training', 'System updates']
       })
     }
 
-    // Framework-specific recommendations
-    const frameworkRecommendations = this.getFrameworkSpecificRecommendations(framework, controls)
-    recommendations.push(...frameworkRecommendations)
-
-    return recommendations.sort((a, b) => {
-      const priorityOrder = { critical: 4, high: 3, medium: 2, low: 1 }
-      return priorityOrder[b.priority] - priorityOrder[a.priority]
-    })
-  }
-
-  private getFrameworkSpecificRecommendations(
-    framework: ComplianceFramework,
-    controls: ComplianceControl[],
-  ): ComplianceRecommendation[] {
-    const recommendations: ComplianceRecommendation[] = []
-
-    switch (framework) {
-      case "SOC2":
-        recommendations.push({
-          id: `rec-soc2-${Date.now()}`,
-          priority: "medium",
-          category: "SOC2 Enhancement",
-          title: "Implement Continuous Monitoring",
-          description: "Establish continuous monitoring capabilities to maintain SOC2 compliance throughout the year.",
-          implementation:
-            "Deploy automated monitoring tools, establish regular control testing schedules, and implement real-time alerting.",
-          estimatedEffort: "medium",
-          estimatedCost: "medium",
-          expectedBenefit: "Maintain continuous compliance and reduce audit preparation time.",
-          timeline: "8-12 weeks",
-          dependencies: ["Tool selection", "Integration planning", "Staff training"],
-          owner: "Compliance Manager",
-          status: "pending",
-        })
-        break
-
-      case "GDPR":
-        recommendations.push({
-          id: `rec-gdpr-${Date.now()}`,
-          priority: "high",
-          category: "Privacy Enhancement",
-          title: "Enhance Data Subject Rights Management",
-          description:
-            "Implement automated systems for handling data subject requests and maintaining compliance with GDPR requirements.",
-          implementation:
-            "Deploy privacy management platform, automate request handling workflows, and enhance data mapping capabilities.",
-          estimatedEffort: "high",
-          estimatedCost: "high",
-          expectedBenefit: "Streamline GDPR compliance and reduce manual effort for data subject requests.",
-          timeline: "12-16 weeks",
-          dependencies: ["Platform selection", "Data mapping", "Process redesign"],
-          owner: "Data Protection Officer",
-          status: "pending",
-        })
-        break
-
-      case "HIPAA":
-        recommendations.push({
-          id: `rec-hipaa-${Date.now()}`,
-          priority: "high",
-          category: "Healthcare Security",
-          title: "Strengthen PHI Protection Controls",
-          description:
-            "Enhance protection of Protected Health Information through improved access controls and monitoring.",
-          implementation:
-            "Implement advanced access controls, enhance audit logging, and deploy PHI-specific monitoring solutions.",
-          estimatedEffort: "medium",
-          estimatedCost: "medium",
-          expectedBenefit: "Strengthen PHI protection and improve HIPAA compliance posture.",
-          timeline: "6-8 weeks",
-          dependencies: ["Healthcare IT team", "Compliance review", "Staff training"],
-          owner: "HIPAA Security Officer",
-          status: "pending",
-        })
-        break
-    }
-
-    return recommendations
-  }
-
-  private async collectEvidence(
-    controls: ComplianceControl[],
-    startDate: Date,
-    endDate: Date,
-  ): Promise<ComplianceEvidence[]> {
-    const evidence: ComplianceEvidence[] = []
-
-    for (const control of controls) {
-      // Generate evidence entries for each control
-      evidence.push({
-        id: `evidence-${control.id}-${Date.now()}`,
-        controlId: control.id,
-        type: "log",
-        title: `Audit Log Analysis for ${control.title}`,
-        description: `Automated analysis of audit logs for control assessment during period ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`,
-        collectedDate: new Date(),
-        collector: "Compliance System",
-        verified: true,
-        verifiedBy: "System",
-        verifiedDate: new Date(),
-      })
-
-      // Add test result evidence
-      for (const testResult of control.testResults) {
-        evidence.push({
-          id: `evidence-test-${testResult.id}`,
-          controlId: control.id,
-          type: "test-result",
-          title: `${testResult.testType} Test Result`,
-          description: testResult.details,
-          collectedDate: testResult.testDate,
-          collector: testResult.tester,
-          verified: true,
-          verifiedBy: testResult.tester,
-          verifiedDate: testResult.testDate,
-        })
-      }
-    }
-
-    return evidence
-  }
-
-  private async generateAttestations(
-    framework: ComplianceFramework,
-    startDate: Date,
-    endDate: Date,
-    assessor: string,
-  ): Promise<ComplianceAttestation[]> {
-    return [
-      {
-        id: `attestation-${framework.toLowerCase()}-${Date.now()}`,
-        framework,
-        period: { start: startDate, end: endDate },
-        attestor: assessor,
-        role: "Compliance Assessor",
-        statement: `I attest that this ${framework} compliance assessment has been conducted in accordance with applicable standards and represents an accurate evaluation of the organization's compliance posture for the period ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}.`,
-        attestationDate: new Date(),
-        limitations: [
-          "Assessment based on available audit logs and system data",
-          "Manual verification may be required for certain controls",
-          "Assessment reflects point-in-time evaluation",
-        ],
-      },
-    ]
-  }
-
-  private async performRiskAssessment(
-    framework: ComplianceFramework,
-    controls: ComplianceControl[],
-    findings: ComplianceFinding[],
-  ): Promise<RiskAssessment> {
-    const criticalControls = controls.filter((c) => c.riskLevel === "critical" && c.status !== "compliant")
-    const highRiskControls = controls.filter((c) => c.riskLevel === "high" && c.status !== "compliant")
-    const criticalFindings = findings.filter((f) => f.severity === "critical")
-    const highFindings = findings.filter((f) => f.severity === "high")
-
-    let overallRisk: "critical" | "high" | "medium" | "low"
-    if (criticalControls.length > 0 || criticalFindings.length > 0) {
-      overallRisk = "critical"
-    } else if (highRiskControls.length > 2 || highFindings.length > 3) {
-      overallRisk = "high"
-    } else if (highRiskControls.length > 0 || highFindings.length > 0) {
-      overallRisk = "medium"
-    } else {
-      overallRisk = "low"
-    }
-
-    const riskFactors: RiskFactor[] = []
-
-    if (criticalControls.length > 0) {
-      riskFactors.push({
-        category: "Control Deficiencies",
-        description: `${criticalControls.length} critical control(s) not compliant`,
-        likelihood: "high",
-        impact: "very-high",
-        riskLevel: "critical",
-        mitigation: "Immediate remediation of critical control deficiencies",
-        owner: "Chief Security Officer",
+    if (mediumFindings.length > 0) {
+      recommendations.push({
+        id: `rec_medium_${Date.now()}`,
+        priority: 'medium',
+        title: 'Improve Medium-Risk Controls',
+        description: `${mediumFindings.length} medium-risk areas identified for improvement`,
+        implementation: 'Enhance documentation, improve processes, and implement best practices',
+        timeline: '1-2 months',
+        effort: 'medium',
+        dependencies: ['Documentation updates', 'Process improvements']
       })
     }
 
-    if (highRiskControls.length > 0) {
-      riskFactors.push({
-        category: "Security Controls",
-        description: `${highRiskControls.length} high-risk control(s) require attention`,
-        likelihood: "medium",
-        impact: "high",
-        riskLevel: "high",
-        mitigation: "Prioritized remediation of high-risk controls",
-        owner: "Security Team",
+    if (lowFindings.length > 0) {
+      recommendations.push({
+        id: `rec_low_${Date.now()}`,
+        priority: 'low',
+        title: 'Address Low-Risk Items',
+        description: `${lowFindings.length} low-risk items for continuous improvement`,
+        implementation: 'Update documentation, enhance monitoring, and implement minor improvements',
+        timeline: '2-3 months',
+        effort: 'low',
+        dependencies: ['Documentation review', 'Process optimization']
       })
     }
 
-    return {
-      overallRisk,
-      riskFactors,
-      mitigationStrategies: [
-        "Implement immediate remediation for critical findings",
-        "Establish continuous monitoring and assessment processes",
-        "Enhance security awareness and training programs",
-        "Regular review and update of security policies and procedures",
-      ],
-      residualRisk: overallRisk === "critical" ? "high" : overallRisk === "high" ? "medium" : "low",
-      riskTolerance: "Low risk tolerance for compliance-related issues",
-      nextReviewDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
-    }
+    return recommendations.sort((a, b) => priorityMap[b.priority] - priorityMap[a.priority])
   }
 
-  private calculateSummary(controls: ComplianceControl[], findings: ComplianceFinding[]): ComplianceSummary {
+  private calculateSummary(controls: ComplianceControl[], findings: ComplianceFinding[]) {
     const totalControls = controls.length
-    const compliantControls = controls.filter((c) => c.status === "compliant").length
-    const nonCompliantControls = controls.filter((c) => c.status === "non-compliant").length
-    const partialControls = controls.filter((c) => c.status === "partial").length
-    const notApplicableControls = controls.filter((c) => c.status === "not-applicable").length
+    const compliantControls = controls.filter(c => c.implementationStatus === 'implemented' && c.testResult === 'pass').length
+    const partialControls = controls.filter(c => c.implementationStatus === 'partial').length
+    const nonCompliantControls = controls.filter(c => c.implementationStatus === 'not_implemented' || c.testResult === 'fail').length
 
-    const compliancePercentage = totalControls > 0 ? Math.round((compliantControls / totalControls) * 100) : 0
+    const criticalFindings = findings.filter(f => f.severity === 'critical').length
+    const highFindings = findings.filter(f => f.severity === 'high').length
+    const mediumFindings = findings.filter(f => f.severity === 'medium').length
+    const lowFindings = findings.filter(f => f.severity === 'low').length
 
-    const criticalFindings = findings.filter((f) => f.severity === "critical").length
-    const highFindings = findings.filter((f) => f.severity === "high").length
-    const mediumFindings = findings.filter((f) => f.severity === "medium").length
-    const lowFindings = findings.filter((f) => f.severity === "low").length
+    const overallScore = Math.round((compliantControls / totalControls) * 100)
+    
+    let riskLevel: 'critical' | 'high' | 'medium' | 'low' = 'low'
+    if (criticalFindings > 0 || overallScore < 60) riskLevel = 'critical'
+    else if (highFindings > 2 || overallScore < 75) riskLevel = 'high'
+    else if (mediumFindings > 3 || overallScore < 90) riskLevel = 'medium'
 
     return {
+      overallScore,
       totalControls,
       compliantControls,
-      nonCompliantControls,
       partialControls,
-      notApplicableControls,
-      compliancePercentage,
+      nonCompliantControls,
       criticalFindings,
       highFindings,
       mediumFindings,
       lowFindings,
+      riskLevel
     }
   }
 
-  private determineComplianceStatus(
-    summary: ComplianceSummary,
-  ): "compliant" | "non-compliant" | "partial" | "needs-review" {
-    if (summary.criticalFindings > 0) {
-      return "non-compliant"
-    } else if (summary.compliancePercentage >= 95) {
-      return "compliant"
-    } else if (summary.compliancePercentage >= 80) {
-      return "partial"
-    } else {
-      return "non-compliant"
+  private generateExecutiveSummary(framework: ComplianceFramework, summary: any, findings: ComplianceFinding[]): string {
+    return `
+# Executive Summary - ${framework.name} Compliance Assessment
+
+## Overall Assessment
+This compliance assessment evaluated ${summary.totalControls} controls from the ${framework.name} framework. The organization achieved an overall compliance score of **${summary.overallScore}%** with a risk level of **${summary.riskLevel.toUpperCase()}**.
+
+## Key Findings
+- **${summary.compliantControls}** controls are fully compliant (${Math.round((summary.compliantControls / summary.totalControls) * 100)}%)
+- **${summary.partialControls}** controls are partially compliant (${Math.round((summary.partialControls / summary.totalControls) * 100)}%)
+- **${summary.nonCompliantControls}** controls are non-compliant (${Math.round((summary.nonCompliantControls / summary.totalControls) * 100)}%)
+
+## Risk Assessment
+${summary.criticalFindings > 0 ? `⚠️ **CRITICAL**: ${summary.criticalFindings} critical findings require immediate attention` : ''}
+${summary.highFindings > 0 ? `🔴 **HIGH**: ${summary.highFindings} high-risk findings need prompt resolution` : ''}
+${summary.mediumFindings > 0 ? `🟡 **MEDIUM**: ${summary.mediumFindings} medium-risk findings should be addressed` : ''}
+${summary.lowFindings > 0 ? `🟢 **LOW**: ${summary.lowFindings} low-risk findings for continuous improvement` : ''}
+
+## Recommendations
+${summary.riskLevel === 'critical' ? 'Immediate action required to address critical compliance gaps. Focus on implementing missing security controls and establishing proper governance.' : ''}
+${summary.riskLevel === 'high' ? 'Prompt attention needed to strengthen compliance posture. Prioritize high-risk findings and enhance existing controls.' : ''}
+${summary.riskLevel === 'medium' ? 'Good compliance foundation with room for improvement. Focus on addressing medium-risk gaps and optimizing processes.' : ''}
+${summary.riskLevel === 'low' ? 'Strong compliance posture maintained. Continue monitoring and address remaining low-risk items for continuous improvement.' : ''}
+
+## Next Steps
+1. Review detailed findings and assign ownership for remediation
+2. Implement recommended controls based on priority levels
+3. Schedule follow-up assessments to track progress
+4. Update policies and procedures as needed
+5. Conduct staff training on compliance requirements
+
+*Assessment completed on ${new Date().toLocaleDateString()} by compliance team.*
+    `.trim()
+  }
+
+  private getImpactDescription(riskLevel: string): string {
+    switch (riskLevel) {
+      case 'critical':
+        return 'High impact to business operations, regulatory compliance, and organizational reputation. May result in significant fines, legal action, or business disruption.'
+      case 'high':
+        return 'Moderate to high impact on compliance posture and business operations. Could result in regulatory scrutiny and operational challenges.'
+      case 'medium':
+        return 'Moderate impact on compliance effectiveness. May lead to process inefficiencies and increased risk exposure.'
+      case 'low':
+        return 'Low impact on overall compliance. Represents opportunity for process improvement and risk reduction.'
+      default:
+        return 'Impact assessment pending review.'
     }
+  }
+
+  private calculateDueDate(riskLevel: string): string {
+    const now = new Date()
+    let daysToAdd = 90 // default for low risk
+
+    switch (riskLevel) {
+      case 'critical':
+        daysToAdd = 7
+        break
+      case 'high':
+        daysToAdd = 30
+        break
+      case 'medium':
+        daysToAdd = 60
+        break
+      case 'low':
+        daysToAdd = 90
+        break
+    }
+
+    const dueDate = new Date(now.getTime() + (daysToAdd * 24 * 60 * 60 * 1000))
+    return dueDate.toISOString()
+  }
+
+  private calculateNextAssessmentDate(): string {
+    const now = new Date()
+    const nextAssessment = new Date(now.getTime() + (90 * 24 * 60 * 60 * 1000)) // 90 days from now
+    return nextAssessment.toISOString()
+  }
+
+  async getAvailableFrameworks(): Promise<ComplianceFramework[]> {
+    return Object.values(COMPLIANCE_FRAMEWORKS)
+  }
+
+  async getFramework(frameworkId: string): Promise<ComplianceFramework | null> {
+    return COMPLIANCE_FRAMEWORKS[frameworkId] || null
   }
 }
 

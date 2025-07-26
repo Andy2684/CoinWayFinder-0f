@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import { createUser, getUserByEmail, getUserByUsername } from "@/lib/database"
+import { sql } from "@/lib/database"
 import { auditLogger } from "@/lib/audit-logger"
 
 function getClientIP(request: NextRequest): string {
@@ -29,18 +29,6 @@ export async function POST(request: NextRequest) {
 
     // Validation
     if (!email || !password || !firstName || !lastName) {
-      await auditLogger.log({
-        eventType: "signup_validation_failed",
-        eventCategory: "user_management",
-        eventDescription: "Signup failed - missing required fields",
-        ipAddress,
-        userAgent,
-        riskLevel: "low",
-        success: false,
-        errorMessage: "Missing required fields",
-        metadata: { email, hasPassword: !!password, firstName, lastName },
-      })
-
       return NextResponse.json(
         {
           success: false,
@@ -52,18 +40,6 @@ export async function POST(request: NextRequest) {
     }
 
     if (!acceptTerms) {
-      await auditLogger.log({
-        eventType: "signup_terms_not_accepted",
-        eventCategory: "user_management",
-        eventDescription: "Signup failed - terms not accepted",
-        ipAddress,
-        userAgent,
-        riskLevel: "low",
-        success: false,
-        errorMessage: "Terms and conditions not accepted",
-        metadata: { email },
-      })
-
       return NextResponse.json(
         {
           success: false,
@@ -75,18 +51,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const existingUser = await getUserByEmail(email)
+    const [existingUser] = await sql`
+      SELECT id FROM users WHERE email = ${email}
+    `
+
     if (existingUser) {
       await auditLogger.log({
-        eventType: "signup_email_exists",
-        eventCategory: "user_management",
-        eventDescription: `Signup failed - email already exists: ${email}`,
+        eventType: "signup_attempt_duplicate_email",
+        eventCategory: "auth",
+        eventDescription: `Signup attempt with existing email: ${email}`,
         ipAddress,
         userAgent,
         riskLevel: "medium",
         success: false,
-        errorMessage: "Email already registered",
-        metadata: { email },
       })
 
       return NextResponse.json(
@@ -101,20 +78,11 @@ export async function POST(request: NextRequest) {
 
     // Check if username already exists (if provided)
     if (username) {
-      const existingUsername = await getUserByUsername(username)
-      if (existingUsername) {
-        await auditLogger.log({
-          eventType: "signup_username_exists",
-          eventCategory: "user_management",
-          eventDescription: `Signup failed - username already exists: ${username}`,
-          ipAddress,
-          userAgent,
-          riskLevel: "low",
-          success: false,
-          errorMessage: "Username already taken",
-          metadata: { email, username },
-        })
+      const [existingUsername] = await sql`
+        SELECT id FROM users WHERE username = ${username}
+      `
 
+      if (existingUsername) {
         return NextResponse.json(
           {
             success: false,
@@ -130,28 +98,65 @@ export async function POST(request: NextRequest) {
     const saltRounds = 12
     const passwordHash = await bcrypt.hash(password, saltRounds)
 
+    // Generate username if not provided
+    const finalUsername = username || `${firstName.toLowerCase()}_${lastName.toLowerCase()}_${Date.now()}`
+
     // Create user
-    const newUser = await createUser({
-      email,
-      username: username || email.split("@")[0], // Use email prefix if no username provided
-      passwordHash,
-      firstName,
-      lastName,
-    })
+    const [newUser] = await sql`
+      INSERT INTO users (
+        email, 
+        password_hash, 
+        first_name, 
+        last_name, 
+        username,
+        role,
+        subscription_status,
+        is_email_verified
+      )
+      VALUES (
+        ${email}, 
+        ${passwordHash}, 
+        ${firstName}, 
+        ${lastName}, 
+        ${finalUsername},
+        'user',
+        'free',
+        false
+      )
+      RETURNING 
+        id, 
+        email, 
+        first_name, 
+        last_name, 
+        username, 
+        role, 
+        subscription_status,
+        is_email_verified,
+        created_at
+    `
 
     // Log successful signup
-    await auditLogger.logSignup(newUser.id, email, ipAddress, userAgent)
+    await auditLogger.log({
+      userId: newUser.id,
+      eventType: "user_signup",
+      eventCategory: "auth",
+      eventDescription: `New user registered: ${email}`,
+      ipAddress,
+      userAgent,
+      riskLevel: "low",
+      success: true,
+    })
 
-    // Return success (don't auto-login as requested)
+    // Return success without auto-login (as requested)
     return NextResponse.json({
       success: true,
       message: "Account created successfully! You can now log in.",
       user: {
         id: newUser.id,
         email: newUser.email,
-        username: newUser.username,
         firstName: newUser.first_name,
         lastName: newUser.last_name,
+        username: newUser.username,
       },
     })
   } catch (error) {
@@ -160,7 +165,7 @@ export async function POST(request: NextRequest) {
     await auditLogger.log({
       eventType: "signup_server_error",
       eventCategory: "system",
-      eventDescription: "Server error during user signup",
+      eventDescription: "Server error during signup attempt",
       ipAddress,
       userAgent,
       riskLevel: "high",
@@ -172,7 +177,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: "Internal server error",
-        message: "An error occurred during account creation",
+        message: "An error occurred during registration",
       },
       { status: 500 },
     )

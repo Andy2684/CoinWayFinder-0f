@@ -1,53 +1,64 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { complianceReportGenerator } from "@/lib/compliance-report-generator"
 import { verifyToken } from "@/lib/auth"
-import { complianceReportGenerator, type ComplianceFramework } from "@/lib/compliance-report-generator"
+import { sql } from "@/lib/database"
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
+    // Verify authentication
     const token = request.cookies.get("auth-token")?.value
     if (!token) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+      return NextResponse.json(
+        { success: false, error: "Authentication required" },
+        { status: 401 }
+      )
     }
 
     const decoded = verifyToken(token)
     if (!decoded) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 })
+      return NextResponse.json(
+        { success: false, error: "Invalid token" },
+        { status: 401 }
+      )
     }
 
-    const body = await request.json()
-    const { framework, startDate, endDate, assessor } = body
+    // Verify admin role
+    const [user] = await sql`
+      SELECT role FROM users WHERE id = ${decoded.userId}
+    `
 
-    const validFrameworks: ComplianceFramework[] = ["SOC2", "GDPR", "HIPAA", "PCI_DSS", "ISO27001", "NIST", "CCPA"]
-
-    if (!framework || !validFrameworks.includes(framework)) {
-      return NextResponse.json({ error: "Invalid compliance framework" }, { status: 400 })
+    if (!user || user.role !== 'admin') {
+      return NextResponse.json(
+        { success: false, error: "Admin access required" },
+        { status: 403 }
+      )
     }
 
-    if (!startDate || !endDate) {
-      return NextResponse.json({ error: "Start date and end date are required" }, { status: 400 })
+    const { frameworkId, assessor, dateRange } = await request.json()
+
+    if (!frameworkId || !assessor || !dateRange) {
+      return NextResponse.json(
+        { success: false, error: "Missing required fields" },
+        { status: 400 }
+      )
     }
 
-    const start = new Date(startDate)
-    const end = new Date(endDate)
-
-    if (start >= end) {
-      return NextResponse.json({ error: "Start date must be before end date" }, { status: 400 })
-    }
-
-    const report = await complianceReportGenerator.generateComplianceReport(
-      framework,
-      start,
-      end,
-      assessor || decoded.email || "System Generated",
+    // Generate compliance report
+    const report = await complianceReportGenerator.generateReport(
+      frameworkId,
+      assessor,
+      dateRange
     )
 
     return NextResponse.json({
       success: true,
-      report,
+      report
     })
   } catch (error) {
-    console.error("Error generating compliance report:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("Compliance report generation error:", error)
+    return NextResponse.json(
+      { success: false, error: "Failed to generate compliance report" },
+      { status: 500 }
+    )
   }
 }

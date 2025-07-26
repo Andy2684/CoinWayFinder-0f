@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import { getUserByEmail } from "@/lib/database"
+import { sql } from "@/lib/database"
 import { generateToken } from "@/lib/auth"
 import { auditLogger } from "@/lib/audit-logger"
 
@@ -48,8 +48,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get user from database
-    const user = await getUserByEmail(email)
+    // Get user from database with all necessary fields
+    const [user] = await sql`
+      SELECT 
+        id, 
+        email, 
+        password_hash,
+        first_name, 
+        last_name, 
+        username, 
+        role, 
+        subscription_status,
+        COALESCE(is_email_verified, false) as is_email_verified,
+        last_login,
+        created_at, 
+        updated_at
+      FROM users 
+      WHERE email = ${email}
+    `
 
     if (!user) {
       await auditLogger.logLoginAttempt(null, email, false, ipAddress, userAgent, "User not found")
@@ -80,6 +96,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Update last login timestamp
+    await sql`
+      UPDATE users 
+      SET last_login = CURRENT_TIMESTAMP 
+      WHERE id = ${user.id}
+    `
+
     // Generate JWT token
     const token = generateToken({ userId: user.id, email: user.email })
 
@@ -96,11 +119,11 @@ export async function POST(request: NextRequest) {
         username: user.username,
         firstName: user.first_name,
         lastName: user.last_name,
-        role: user.role,
-        subscriptionStatus: "free", // Default for now
-        isEmailVerified: user.is_email_verified,
+        role: user.role || 'user',
+        subscriptionStatus: user.subscription_status || 'free',
+        isEmailVerified: user.is_email_verified || false,
         createdAt: user.created_at,
-        updatedAt: user.created_at, // Using created_at as placeholder
+        updatedAt: user.updated_at || user.created_at,
       },
     })
 
