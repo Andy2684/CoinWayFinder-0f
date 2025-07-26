@@ -4,80 +4,40 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Mail, Users, AlertTriangle, TrendingUp, Activity, Shield, Globe, RefreshCw } from "lucide-react"
-import { SecurityAlertsWidget } from "@/components/admin/security-alerts-widget"
-import { RealtimeStatsWidget } from "@/components/admin/realtime-stats-widget"
-import { ThreatDetectionWidget } from "@/components/admin/threat-detection-widget"
-import { ActiveSessionsWidget } from "@/components/admin/active-sessions-widget"
-import { SecurityTrendsWidget } from "@/components/admin/security-trends-widget"
-import { RecentEventsWidget } from "@/components/admin/recent-events-widget"
-
-interface AdminStats {
-  totalUsers: number
-  activeUsers: number
-  emailsSentToday: number
-  emailsFailedToday: number
-  systemHealth: "healthy" | "warning" | "critical"
-  securityScore: number
-  activeThreats: number
-  blockedIPs: number
-}
+import { ThreatMonitor } from "@/components/admin/security-widgets/threat-monitor"
+import { FailedLogins } from "@/components/admin/security-widgets/failed-logins"
+import { SystemHealth } from "@/components/admin/security-widgets/system-health"
+import { SecurityAlerts } from "@/components/admin/security-widgets/security-alerts"
+import { LiveActivity } from "@/components/admin/security-widgets/live-activity"
+import { useSecurityData } from "@/hooks/use-security-data"
+import { Users, AlertTriangle, CheckCircle, Activity, RefreshCw, Shield } from "lucide-react"
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<AdminStats>({
-    totalUsers: 0,
-    activeUsers: 0,
-    emailsSentToday: 0,
-    emailsFailedToday: 0,
-    systemHealth: "healthy",
-    securityScore: 95,
-    activeThreats: 0,
-    blockedIPs: 0,
-  })
-  const [loading, setLoading] = useState(true)
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date())
-
-  const fetchAdminStats = async () => {
-    try {
-      const response = await fetch("/api/admin/dashboard/stats")
-      if (response.ok) {
-        const data = await response.json()
-        setStats(data.stats)
-        setLastUpdated(new Date())
-      }
-    } catch (error) {
-      console.error("Error fetching admin stats:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const { data: securityData, loading, error, refetch } = useSecurityData(30000) // 30 second refresh
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date())
 
   useEffect(() => {
-    fetchAdminStats()
+    if (securityData) {
+      setLastRefresh(new Date(securityData.timestamp))
+    }
+  }, [securityData])
 
-    // Set up polling for real-time updates
-    const interval = setInterval(fetchAdminStats, 30000) // Update every 30 seconds
-
-    return () => clearInterval(interval)
-  }, [])
-
-  const getHealthBadge = (health: string) => {
-    switch (health) {
+  const getHealthBadge = (status: string) => {
+    switch (status) {
       case "healthy":
-        return <Badge className="bg-green-100 text-green-800 border-green-200">Healthy</Badge>
+        return <Badge className="bg-green-100 text-green-800">Healthy</Badge>
       case "warning":
-        return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200">Warning</Badge>
+        return <Badge className="bg-yellow-100 text-yellow-800">Warning</Badge>
       case "critical":
-        return <Badge className="bg-red-100 text-red-800 border-red-200">Critical</Badge>
+        return <Badge className="bg-red-100 text-red-800">Critical</Badge>
       default:
-        return <Badge variant="secondary">Unknown</Badge>
+        return <Badge>Unknown</Badge>
     }
   }
 
-  const getSecurityScoreColor = (score: number) => {
-    if (score >= 90) return "text-green-600"
-    if (score >= 70) return "text-yellow-600"
-    return "text-red-600"
+  const handleRefresh = () => {
+    refetch()
+    setLastRefresh(new Date())
   }
 
   return (
@@ -86,21 +46,31 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="text-muted-foreground">
-            System overview and security monitoring
-            <span className="ml-2 text-sm">Last updated: {lastUpdated.toLocaleTimeString()}</span>
-          </p>
+          <p className="text-muted-foreground">System overview and security monitoring</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" onClick={fetchAdminStats} disabled={loading}>
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-muted-foreground">Last updated: {lastRefresh.toLocaleTimeString()}</div>
+          <Button onClick={handleRefresh} disabled={loading} variant="outline" size="sm">
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
             Refresh
           </Button>
-          {getHealthBadge(stats.systemHealth)}
+          {securityData && getHealthBadge(securityData.systemHealth.status)}
         </div>
       </div>
 
-      {/* Quick Stats Grid */}
+      {/* Error State */}
+      {error && (
+        <Card className="border-red-200 bg-red-50">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-2 text-red-800">
+              <AlertTriangle className="h-5 w-5" />
+              <span>Error loading dashboard data: {error}</span>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -108,163 +78,130 @@ export default function AdminDashboard() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground">
-              <span className="text-green-600">{stats.activeUsers}</span> active today
-            </p>
+            <div className="text-2xl font-bold">{securityData?.stats.unique_users || 0}</div>
+            <p className="text-xs text-muted-foreground">Active in last 30 days</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Security Score</CardTitle>
+            <CardTitle className="text-sm font-medium">Security Events</CardTitle>
             <Shield className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${getSecurityScoreColor(stats.securityScore)}`}>
-              {stats.securityScore}%
+            <div className="text-2xl font-bold text-blue-600">{securityData?.stats.events_last_24h || 0}</div>
+            <p className="text-xs text-muted-foreground">Last 24 hours</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Failed Events</CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{securityData?.stats.failed_events || 0}</div>
+            <p className="text-xs text-muted-foreground">
+              {securityData?.stats.total_events
+                ? `${Math.round((securityData.stats.failed_events / securityData.stats.total_events) * 100)}% failure rate`
+                : "0% failure rate"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">System Status</CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-6 w-6 text-green-600" />
+              <span className="text-lg font-semibold">
+                {securityData?.systemHealth.status === "healthy" ? "Operational" : "Issues"}
+              </span>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {stats.activeThreats > 0 ? (
-                <span className="text-red-600">{stats.activeThreats} active threats</span>
-              ) : (
-                <span className="text-green-600">No active threats</span>
-              )}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Email Status</CardTitle>
-            <Mail className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.emailsSentToday}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.emailsFailedToday > 0 ? (
-                <span className="text-red-600">{stats.emailsFailedToday} failed</span>
-              ) : (
-                <span className="text-green-600">All delivered</span>
-              )}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Blocked IPs</CardTitle>
-            <Globe className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.blockedIPs}</div>
-            <p className="text-xs text-muted-foreground">Automatically blocked today</p>
+            <p className="text-xs text-muted-foreground">{securityData?.systemHealth.uptime || 100}% uptime</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Security Widgets Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <ThreatMonitor
+          data={
+            securityData?.activeThreats || {
+              suspiciousIps: 0,
+              rateLimitViolations: 0,
+              unauthorizedAccess: 0,
+              highRiskEvents: 0,
+            }
+          }
+          loading={loading}
+        />
+
+        <SystemHealth
+          data={
+            securityData?.systemHealth || {
+              status: "healthy",
+              uptime: 100,
+              errorRate: 0,
+              responseTime: 0,
+            }
+          }
+          loading={loading}
+        />
+
+        <LiveActivity data={securityData?.topEventTypes || []} loading={loading} />
+      </div>
+
+      {/* Security Alerts and Failed Logins */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <SecurityAlertsWidget />
-        <RealtimeStatsWidget />
+        <SecurityAlerts data={securityData?.securityAlerts || []} loading={loading} />
+
+        <FailedLogins data={securityData?.recentFailedLogins || []} loading={loading} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <ThreatDetectionWidget />
-        <ActiveSessionsWidget />
-        <SecurityTrendsWidget />
-      </div>
-
-      {/* Recent Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RecentEventsWidget />
-
-        <Card>
-          <CardHeader>
-            <CardTitle>System Status</CardTitle>
-            <CardDescription>Current system health and performance</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Activity className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium">Database</span>
-                </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  Operational
-                </Badge>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Mail className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium">Email Service</span>
-                </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  Operational
-                </Badge>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <Shield className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium">Security System</span>
-                </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  Operational
-                </Badge>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
-                  <span className="text-sm font-medium">Trading Engine</span>
-                </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-800">
-                  Operational
-                </Badge>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Actions */}
+      {/* System Overview */}
       <Card>
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>Common administrative tasks</CardDescription>
+          <CardTitle>System Overview</CardTitle>
+          <CardDescription>Real-time system metrics and performance indicators</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Button variant="outline" className="h-20 flex-col bg-transparent" asChild>
-              <a href="/admin/audit-logs">
-                <Shield className="h-6 w-6 mb-2 text-blue-600" />
-                <span className="font-medium">Audit Logs</span>
-              </a>
-            </Button>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Total Events</span>
+                <span className="text-2xl font-bold">{securityData?.stats.total_events || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Last 7 days</span>
+                <span className="text-sm font-medium">{securityData?.stats.events_last_7d || 0}</span>
+              </div>
+            </div>
 
-            <Button variant="outline" className="h-20 flex-col bg-transparent" asChild>
-              <a href="/admin/users">
-                <Users className="h-6 w-6 mb-2 text-green-600" />
-                <span className="font-medium">Manage Users</span>
-              </a>
-            </Button>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">High Risk Events</span>
+                <span className="text-2xl font-bold text-orange-600">{securityData?.stats.high_risk_events || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Critical Events</span>
+                <span className="text-sm font-medium text-red-600">{securityData?.stats.critical_events || 0}</span>
+              </div>
+            </div>
 
-            <Button variant="outline" className="h-20 flex-col bg-transparent" asChild>
-              <a href="/admin/email-queue">
-                <Mail className="h-6 w-6 mb-2 text-purple-600" />
-                <span className="font-medium">Email Queue</span>
-              </a>
-            </Button>
-
-            <Button variant="outline" className="h-20 flex-col bg-transparent" asChild>
-              <a href="/admin/security">
-                <AlertTriangle className="h-6 w-6 mb-2 text-red-600" />
-                <span className="font-medium">Security Alerts</span>
-              </a>
-            </Button>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-medium">Unique IPs</span>
+                <span className="text-2xl font-bold">{securityData?.stats.unique_ips || 0}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Active Users</span>
+                <span className="text-sm font-medium">{securityData?.stats.unique_users || 0}</span>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
