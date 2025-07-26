@@ -7,65 +7,91 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
+import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { Settings, TrendingUp, Shield, AlertTriangle, Save } from "lucide-react"
+import { Shield, TrendingUp, Bot, Target, Save } from "lucide-react"
 
 export function TradingPreferences() {
   const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const [riskSettings, setRiskSettings] = useState({
-    maxDrawdown: [15],
-    positionSizeLimit: [5],
-    dailyLossLimit: [1000],
+    maxDailyLoss: [500],
+    maxPositionSize: [25],
+    stopLossPercentage: [5],
+    takeProfitPercentage: [15],
     maxOpenPositions: [10],
-    stopLossEnabled: true,
-    takeProfitEnabled: true,
-    riskLevel: "moderate",
+    riskPerTrade: [2],
   })
 
   const [tradingSettings, setTradingSettings] = useState({
-    defaultExchange: "binance",
-    preferredPairs: ["BTC/USDT", "ETH/USDT", "ADA/USDT"],
-    autoTradingEnabled: false,
-    paperTradingMode: false,
-    slippageTolerance: [0.5],
+    preferredExchanges: ["binance", "coinbase"],
+    defaultSlippage: "0.5",
     tradingHours: "24/7",
-    minimumTradeAmount: [100],
+    autoRebalance: true,
+    compoundProfits: true,
+    paperTrading: false,
+    advancedOrders: true,
   })
 
   const [botSettings, setBotSettings] = useState({
+    autoStart: false,
     maxActiveBots: [5],
-    botRebalanceFrequency: "daily",
-    emergencyStopEnabled: true,
-    profitTakingStrategy: "trailing",
-    lossLimitPerBot: [500],
+    defaultStrategy: "dca",
+    riskLevel: "medium",
+    profitTarget: [20],
+    stopLoss: [10],
   })
 
   const [alertSettings, setAlertSettings] = useState({
     priceAlerts: true,
-    volumeAlerts: false,
-    technicalIndicatorAlerts: true,
-    newsBasedAlerts: true,
-    customAlertThreshold: [5],
+    profitAlerts: true,
+    lossAlerts: true,
+    botStatusAlerts: true,
+    marketVolatilityAlerts: false,
+    newsAlerts: true,
   })
 
+  const exchanges = [
+    { id: "binance", name: "Binance", status: "connected" },
+    { id: "coinbase", name: "Coinbase Pro", status: "connected" },
+    { id: "kraken", name: "Kraken", status: "disconnected" },
+    { id: "bybit", name: "Bybit", status: "disconnected" },
+  ]
+
+  const handleRiskSettingChange = (key: string, value: number[]) => {
+    setRiskSettings((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleTradingSettingChange = (key: string, value: any) => {
+    setTradingSettings((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleBotSettingChange = (key: string, value: any) => {
+    setBotSettings((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const handleAlertSettingChange = (key: string, value: boolean) => {
+    setAlertSettings((prev) => ({ ...prev, [key]: value }))
+  }
+
   const handleSave = async () => {
-    setIsLoading(true)
+    setLoading(true)
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000))
+
       toast({
-        title: "Trading Preferences Saved",
-        description: "Your trading settings have been updated successfully.",
+        title: "Settings Saved",
+        description: "Your trading preferences have been updated successfully.",
       })
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to save trading preferences. Please try again.",
+        description: "Failed to save settings. Please try again.",
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
@@ -78,127 +104,87 @@ export function TradingPreferences() {
             <Shield className="h-5 w-5" />
             Risk Management
           </CardTitle>
-          <CardDescription className="text-gray-400">Configure your risk tolerance and safety limits</CardDescription>
+          <CardDescription>Set your risk limits and protection parameters</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label className="text-white">Maximum Drawdown (%)</Label>
-              <div className="px-3">
-                <Slider
-                  value={riskSettings.maxDrawdown}
-                  onValueChange={(value) => setRiskSettings((prev) => ({ ...prev, maxDrawdown: value }))}
-                  max={50}
-                  min={5}
-                  step={1}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-sm text-gray-400 mt-1">
-                  <span>5%</span>
-                  <span className="text-white font-medium">{riskSettings.maxDrawdown[0]}%</span>
-                  <span>50%</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-white">Position Size Limit (%)</Label>
-              <div className="px-3">
-                <Slider
-                  value={riskSettings.positionSizeLimit}
-                  onValueChange={(value) => setRiskSettings((prev) => ({ ...prev, positionSizeLimit: value }))}
-                  max={25}
-                  min={1}
-                  step={0.5}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-sm text-gray-400 mt-1">
-                  <span>1%</span>
-                  <span className="text-white font-medium">{riskSettings.positionSizeLimit[0]}%</span>
-                  <span>25%</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-white">Daily Loss Limit ($)</Label>
-              <div className="px-3">
-                <Slider
-                  value={riskSettings.dailyLossLimit}
-                  onValueChange={(value) => setRiskSettings((prev) => ({ ...prev, dailyLossLimit: value }))}
-                  max={5000}
-                  min={100}
-                  step={100}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-sm text-gray-400 mt-1">
-                  <span>$100</span>
-                  <span className="text-white font-medium">${riskSettings.dailyLossLimit[0]}</span>
-                  <span>$5,000</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-white">Maximum Open Positions</Label>
-              <div className="px-3">
-                <Slider
-                  value={riskSettings.maxOpenPositions}
-                  onValueChange={(value) => setRiskSettings((prev) => ({ ...prev, maxOpenPositions: value }))}
-                  max={50}
-                  min={1}
-                  step={1}
-                  className="w-full"
-                />
-                <div className="flex justify-between text-sm text-gray-400 mt-1">
-                  <span>1</span>
-                  <span className="text-white font-medium">{riskSettings.maxOpenPositions[0]}</span>
-                  <span>50</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-white font-medium">Stop Loss</p>
-                <p className="text-sm text-gray-400">Automatically close losing positions</p>
-              </div>
-              <Switch
-                checked={riskSettings.stopLossEnabled}
-                onCheckedChange={(checked) => setRiskSettings((prev) => ({ ...prev, stopLossEnabled: checked }))}
+            <div className="space-y-3">
+              <Label className="text-white">Max Daily Loss: ${riskSettings.maxDailyLoss[0]}</Label>
+              <Slider
+                value={riskSettings.maxDailyLoss}
+                onValueChange={(value) => handleRiskSettingChange("maxDailyLoss", value)}
+                max={2000}
+                min={100}
+                step={50}
+                className="w-full"
               />
+              <p className="text-xs text-gray-400">Maximum amount you're willing to lose per day</p>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-white font-medium">Take Profit</p>
-                <p className="text-sm text-gray-400">Automatically close profitable positions</p>
-              </div>
-              <Switch
-                checked={riskSettings.takeProfitEnabled}
-                onCheckedChange={(checked) => setRiskSettings((prev) => ({ ...prev, takeProfitEnabled: checked }))}
+            <div className="space-y-3">
+              <Label className="text-white">Max Position Size: {riskSettings.maxPositionSize[0]}%</Label>
+              <Slider
+                value={riskSettings.maxPositionSize}
+                onValueChange={(value) => handleRiskSettingChange("maxPositionSize", value)}
+                max={50}
+                min={5}
+                step={5}
+                className="w-full"
               />
+              <p className="text-xs text-gray-400">Maximum percentage of portfolio per position</p>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label className="text-white">Risk Level</Label>
-            <Select
-              value={riskSettings.riskLevel}
-              onValueChange={(value) => setRiskSettings((prev) => ({ ...prev, riskLevel: value }))}
-            >
-              <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-slate-800 border-slate-700">
-                <SelectItem value="conservative">Conservative</SelectItem>
-                <SelectItem value="moderate">Moderate</SelectItem>
-                <SelectItem value="aggressive">Aggressive</SelectItem>
-                <SelectItem value="custom">Custom</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-3">
+              <Label className="text-white">Stop Loss: {riskSettings.stopLossPercentage[0]}%</Label>
+              <Slider
+                value={riskSettings.stopLossPercentage}
+                onValueChange={(value) => handleRiskSettingChange("stopLossPercentage", value)}
+                max={20}
+                min={1}
+                step={1}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-400">Default stop loss percentage</p>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-white">Take Profit: {riskSettings.takeProfitPercentage[0]}%</Label>
+              <Slider
+                value={riskSettings.takeProfitPercentage}
+                onValueChange={(value) => handleRiskSettingChange("takeProfitPercentage", value)}
+                max={50}
+                min={5}
+                step={5}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-400">Default take profit percentage</p>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-white">Max Open Positions: {riskSettings.maxOpenPositions[0]}</Label>
+              <Slider
+                value={riskSettings.maxOpenPositions}
+                onValueChange={(value) => handleRiskSettingChange("maxOpenPositions", value)}
+                max={20}
+                min={1}
+                step={1}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-400">Maximum number of concurrent positions</p>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-white">Risk Per Trade: {riskSettings.riskPerTrade[0]}%</Label>
+              <Slider
+                value={riskSettings.riskPerTrade}
+                onValueChange={(value) => handleRiskSettingChange("riskPerTrade", value)}
+                max={10}
+                min={0.5}
+                step={0.5}
+                className="w-full"
+              />
+              <p className="text-xs text-gray-400">Percentage of portfolio to risk per trade</p>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -210,206 +196,238 @@ export function TradingPreferences() {
             <TrendingUp className="h-5 w-5" />
             Trading Settings
           </CardTitle>
-          <CardDescription className="text-gray-400">Configure your default trading parameters</CardDescription>
+          <CardDescription>Configure your trading preferences and behavior</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CardContent className="space-y-4">
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-white">Default Exchange</Label>
-              <Select
-                value={tradingSettings.defaultExchange}
-                onValueChange={(value) => setTradingSettings((prev) => ({ ...prev, defaultExchange: value }))}
-              >
-                <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700">
-                  <SelectItem value="binance">Binance</SelectItem>
-                  <SelectItem value="coinbase">Coinbase Pro</SelectItem>
-                  <SelectItem value="kraken">Kraken</SelectItem>
-                  <SelectItem value="kucoin">KuCoin</SelectItem>
-                  <SelectItem value="bybit">Bybit</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-white">Trading Hours</Label>
-              <Select
-                value={tradingSettings.tradingHours}
-                onValueChange={(value) => setTradingSettings((prev) => ({ ...prev, tradingHours: value }))}
-              >
-                <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700">
-                  <SelectItem value="24/7">24/7</SelectItem>
-                  <SelectItem value="market-hours">Market Hours Only</SelectItem>
-                  <SelectItem value="custom">Custom Hours</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-white">Slippage Tolerance (%)</Label>
-            <div className="px-3">
-              <Slider
-                value={tradingSettings.slippageTolerance}
-                onValueChange={(value) => setTradingSettings((prev) => ({ ...prev, slippageTolerance: value }))}
-                max={5}
-                min={0.1}
-                step={0.1}
-                className="w-full"
-              />
-              <div className="flex justify-between text-sm text-gray-400 mt-1">
-                <span>0.1%</span>
-                <span className="text-white font-medium">{tradingSettings.slippageTolerance[0]}%</span>
-                <span>5%</span>
+              <Label className="text-white">Preferred Exchanges</Label>
+              <div className="grid grid-cols-2 gap-2">
+                {exchanges.map((exchange) => (
+                  <div
+                    key={exchange.id}
+                    className={`flex items-center justify-between p-3 rounded-lg border ${
+                      tradingSettings.preferredExchanges.includes(exchange.id)
+                        ? "bg-blue-500/10 border-blue-500/20"
+                        : "bg-slate-700/50 border-slate-600"
+                    }`}
+                  >
+                    <span className="text-white text-sm">{exchange.name}</span>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={exchange.status === "connected" ? "default" : "secondary"} className="text-xs">
+                        {exchange.status}
+                      </Badge>
+                      <Switch
+                        checked={tradingSettings.preferredExchanges.includes(exchange.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            handleTradingSettingChange("preferredExchanges", [
+                              ...tradingSettings.preferredExchanges,
+                              exchange.id,
+                            ])
+                          } else {
+                            handleTradingSettingChange(
+                              "preferredExchanges",
+                              tradingSettings.preferredExchanges.filter((id) => id !== exchange.id),
+                            )
+                          }
+                        }}
+                        disabled={exchange.status === "disconnected"}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label className="text-white">Minimum Trade Amount ($)</Label>
-            <div className="px-3">
-              <Slider
-                value={tradingSettings.minimumTradeAmount}
-                onValueChange={(value) => setTradingSettings((prev) => ({ ...prev, minimumTradeAmount: value }))}
-                max={1000}
-                min={10}
-                step={10}
-                className="w-full"
-              />
-              <div className="flex justify-between text-sm text-gray-400 mt-1">
-                <span>$10</span>
-                <span className="text-white font-medium">${tradingSettings.minimumTradeAmount[0]}</span>
-                <span>$1,000</span>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="slippage" className="text-white">
+                  Default Slippage (%)
+                </Label>
+                <Select
+                  value={tradingSettings.defaultSlippage}
+                  onValueChange={(value) => handleTradingSettingChange("defaultSlippage", value)}
+                >
+                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0.1">0.1%</SelectItem>
+                    <SelectItem value="0.5">0.5%</SelectItem>
+                    <SelectItem value="1.0">1.0%</SelectItem>
+                    <SelectItem value="2.0">2.0%</SelectItem>
+                    <SelectItem value="5.0">5.0%</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="tradingHours" className="text-white">
+                  Trading Hours
+                </Label>
+                <Select
+                  value={tradingSettings.tradingHours}
+                  onValueChange={(value) => handleTradingSettingChange("tradingHours", value)}
+                >
+                  <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="24/7">24/7</SelectItem>
+                    <SelectItem value="market-hours">Market Hours Only</SelectItem>
+                    <SelectItem value="custom">Custom Hours</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-white font-medium">Auto Trading</p>
-                <p className="text-sm text-gray-400">Enable automated trading execution</p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-white font-medium">Auto Rebalance</p>
+                  <p className="text-sm text-gray-400">Automatically rebalance portfolio based on target allocations</p>
+                </div>
+                <Switch
+                  checked={tradingSettings.autoRebalance}
+                  onCheckedChange={(value) => handleTradingSettingChange("autoRebalance", value)}
+                />
               </div>
-              <Switch
-                checked={tradingSettings.autoTradingEnabled}
-                onCheckedChange={(checked) => setTradingSettings((prev) => ({ ...prev, autoTradingEnabled: checked }))}
-              />
-            </div>
 
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-white font-medium">Paper Trading Mode</p>
-                <p className="text-sm text-gray-400">Practice with virtual money</p>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-white font-medium">Compound Profits</p>
+                  <p className="text-sm text-gray-400">Reinvest profits to increase position sizes</p>
+                </div>
+                <Switch
+                  checked={tradingSettings.compoundProfits}
+                  onCheckedChange={(value) => handleTradingSettingChange("compoundProfits", value)}
+                />
               </div>
-              <Switch
-                checked={tradingSettings.paperTradingMode}
-                onCheckedChange={(checked) => setTradingSettings((prev) => ({ ...prev, paperTradingMode: checked }))}
-              />
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-white font-medium">Paper Trading Mode</p>
+                  <p className="text-sm text-gray-400">Test strategies without real money</p>
+                </div>
+                <Switch
+                  checked={tradingSettings.paperTrading}
+                  onCheckedChange={(value) => handleTradingSettingChange("paperTrading", value)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-white font-medium">Advanced Orders</p>
+                  <p className="text-sm text-gray-400">Enable advanced order types (OCO, trailing stops, etc.)</p>
+                </div>
+                <Switch
+                  checked={tradingSettings.advancedOrders}
+                  onCheckedChange={(value) => handleTradingSettingChange("advancedOrders", value)}
+                />
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Bot Settings */}
+      {/* Bot Configuration */}
       <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            Bot Settings
+            <Bot className="h-5 w-5" />
+            Bot Configuration
           </CardTitle>
-          <CardDescription className="text-gray-400">Configure your trading bot preferences</CardDescription>
+          <CardDescription>Default settings for your trading bots</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label className="text-white">Maximum Active Bots</Label>
-            <div className="px-3">
-              <Slider
-                value={botSettings.maxActiveBots}
-                onValueChange={(value) => setBotSettings((prev) => ({ ...prev, maxActiveBots: value }))}
-                max={20}
-                min={1}
-                step={1}
-                className="w-full"
-              />
-              <div className="flex justify-between text-sm text-gray-400 mt-1">
-                <span>1</span>
-                <span className="text-white font-medium">{botSettings.maxActiveBots[0]}</span>
-                <span>20</span>
-              </div>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-white font-medium">Auto Start New Bots</p>
+              <p className="text-sm text-gray-400">Automatically start bots after creation</p>
             </div>
+            <Switch
+              checked={botSettings.autoStart}
+              onCheckedChange={(value) => handleBotSettingChange("autoStart", value)}
+            />
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-white">Loss Limit Per Bot ($)</Label>
-            <div className="px-3">
-              <Slider
-                value={botSettings.lossLimitPerBot}
-                onValueChange={(value) => setBotSettings((prev) => ({ ...prev, lossLimitPerBot: value }))}
-                max={2000}
-                min={50}
-                step={50}
-                className="w-full"
-              />
-              <div className="flex justify-between text-sm text-gray-400 mt-1">
-                <span>$50</span>
-                <span className="text-white font-medium">${botSettings.lossLimitPerBot[0]}</span>
-                <span>$2,000</span>
-              </div>
+          <div className="space-y-3">
+            <Label className="text-white">Max Active Bots: {botSettings.maxActiveBots[0]}</Label>
+            <Slider
+              value={botSettings.maxActiveBots}
+              onValueChange={(value) => handleBotSettingChange("maxActiveBots", value)}
+              max={20}
+              min={1}
+              step={1}
+              className="w-full"
+            />
+            <p className="text-xs text-gray-400">Maximum number of bots that can run simultaneously</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-white">Default Strategy</Label>
+              <Select
+                value={botSettings.defaultStrategy}
+                onValueChange={(value) => handleBotSettingChange("defaultStrategy", value)}
+              >
+                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dca">Dollar Cost Averaging</SelectItem>
+                  <SelectItem value="grid">Grid Trading</SelectItem>
+                  <SelectItem value="momentum">Momentum Trading</SelectItem>
+                  <SelectItem value="arbitrage">Arbitrage</SelectItem>
+                  <SelectItem value="scalping">Scalping</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-white">Risk Level</Label>
+              <Select
+                value={botSettings.riskLevel}
+                onValueChange={(value) => handleBotSettingChange("riskLevel", value)}
+              >
+                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low Risk</SelectItem>
+                  <SelectItem value="medium">Medium Risk</SelectItem>
+                  <SelectItem value="high">High Risk</SelectItem>
+                  <SelectItem value="aggressive">Aggressive</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <Label className="text-white">Rebalance Frequency</Label>
-              <Select
-                value={botSettings.botRebalanceFrequency}
-                onValueChange={(value) => setBotSettings((prev) => ({ ...prev, botRebalanceFrequency: value }))}
-              >
-                <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700">
-                  <SelectItem value="hourly">Hourly</SelectItem>
-                  <SelectItem value="daily">Daily</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-3">
+              <Label className="text-white">Default Profit Target: {botSettings.profitTarget[0]}%</Label>
+              <Slider
+                value={botSettings.profitTarget}
+                onValueChange={(value) => handleBotSettingChange("profitTarget", value)}
+                max={100}
+                min={5}
+                step={5}
+                className="w-full"
+              />
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-white">Profit Taking Strategy</Label>
-              <Select
-                value={botSettings.profitTakingStrategy}
-                onValueChange={(value) => setBotSettings((prev) => ({ ...prev, profitTakingStrategy: value }))}
-              >
-                <SelectTrigger className="bg-slate-700/50 border-slate-600 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-800 border-slate-700">
-                  <SelectItem value="fixed">Fixed Percentage</SelectItem>
-                  <SelectItem value="trailing">Trailing Stop</SelectItem>
-                  <SelectItem value="dynamic">Dynamic</SelectItem>
-                  <SelectItem value="manual">Manual</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="space-y-3">
+              <Label className="text-white">Default Stop Loss: {botSettings.stopLoss[0]}%</Label>
+              <Slider
+                value={botSettings.stopLoss}
+                onValueChange={(value) => handleBotSettingChange("stopLoss", value)}
+                max={50}
+                min={1}
+                step={1}
+                className="w-full"
+              />
             </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <p className="text-white font-medium">Emergency Stop</p>
-              <p className="text-sm text-gray-400">Automatically stop all bots during market crashes</p>
-            </div>
-            <Switch
-              checked={botSettings.emergencyStopEnabled}
-              onCheckedChange={(checked) => setBotSettings((prev) => ({ ...prev, emergencyStopEnabled: checked }))}
-            />
           </div>
         </CardContent>
       </Card>
@@ -418,13 +436,13 @@ export function TradingPreferences() {
       <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
+            <Target className="h-5 w-5" />
             Alert Settings
           </CardTitle>
-          <CardDescription className="text-gray-400">Configure your trading alerts and notifications</CardDescription>
+          <CardDescription>Configure when you want to receive trading alerts</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex items-center justify-between">
               <div className="space-y-1">
                 <p className="text-white font-medium">Price Alerts</p>
@@ -432,62 +450,63 @@ export function TradingPreferences() {
               </div>
               <Switch
                 checked={alertSettings.priceAlerts}
-                onCheckedChange={(checked) => setAlertSettings((prev) => ({ ...prev, priceAlerts: checked }))}
+                onCheckedChange={(value) => handleAlertSettingChange("priceAlerts", value)}
               />
             </div>
 
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-white font-medium">Volume Alerts</p>
-                <p className="text-sm text-gray-400">Unusual trading volume</p>
+                <p className="text-white font-medium">Profit Alerts</p>
+                <p className="text-sm text-gray-400">When positions reach profit targets</p>
               </div>
               <Switch
-                checked={alertSettings.volumeAlerts}
-                onCheckedChange={(checked) => setAlertSettings((prev) => ({ ...prev, volumeAlerts: checked }))}
+                checked={alertSettings.profitAlerts}
+                onCheckedChange={(value) => handleAlertSettingChange("profitAlerts", value)}
               />
             </div>
 
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-white font-medium">Technical Indicator Alerts</p>
-                <p className="text-sm text-gray-400">RSI, MACD, and other indicators</p>
+                <p className="text-white font-medium">Loss Alerts</p>
+                <p className="text-sm text-gray-400">When positions hit stop losses</p>
               </div>
               <Switch
-                checked={alertSettings.technicalIndicatorAlerts}
-                onCheckedChange={(checked) =>
-                  setAlertSettings((prev) => ({ ...prev, technicalIndicatorAlerts: checked }))
-                }
+                checked={alertSettings.lossAlerts}
+                onCheckedChange={(value) => handleAlertSettingChange("lossAlerts", value)}
               />
             </div>
 
             <div className="flex items-center justify-between">
               <div className="space-y-1">
-                <p className="text-white font-medium">News-Based Alerts</p>
-                <p className="text-sm text-gray-400">Market-moving news events</p>
+                <p className="text-white font-medium">Bot Status Alerts</p>
+                <p className="text-sm text-gray-400">Bot start, stop, and error notifications</p>
               </div>
               <Switch
-                checked={alertSettings.newsBasedAlerts}
-                onCheckedChange={(checked) => setAlertSettings((prev) => ({ ...prev, newsBasedAlerts: checked }))}
+                checked={alertSettings.botStatusAlerts}
+                onCheckedChange={(value) => handleAlertSettingChange("botStatusAlerts", value)}
               />
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label className="text-white">Custom Alert Threshold (%)</Label>
-            <div className="px-3">
-              <Slider
-                value={alertSettings.customAlertThreshold}
-                onValueChange={(value) => setAlertSettings((prev) => ({ ...prev, customAlertThreshold: value }))}
-                max={20}
-                min={1}
-                step={0.5}
-                className="w-full"
-              />
-              <div className="flex justify-between text-sm text-gray-400 mt-1">
-                <span>1%</span>
-                <span className="text-white font-medium">{alertSettings.customAlertThreshold[0]}%</span>
-                <span>20%</span>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-white font-medium">Market Volatility</p>
+                <p className="text-sm text-gray-400">High volatility warnings</p>
               </div>
+              <Switch
+                checked={alertSettings.marketVolatilityAlerts}
+                onCheckedChange={(value) => handleAlertSettingChange("marketVolatilityAlerts", value)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-white font-medium">News Alerts</p>
+                <p className="text-sm text-gray-400">Important market news</p>
+              </div>
+              <Switch
+                checked={alertSettings.newsAlerts}
+                onCheckedChange={(value) => handleAlertSettingChange("newsAlerts", value)}
+              />
             </div>
           </div>
         </CardContent>
@@ -495,13 +514,9 @@ export function TradingPreferences() {
 
       {/* Save Button */}
       <div className="flex justify-end">
-        <Button
-          onClick={handleSave}
-          disabled={isLoading}
-          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-        >
+        <Button onClick={handleSave} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">
           <Save className="h-4 w-4 mr-2" />
-          {isLoading ? "Saving..." : "Save Trading Preferences"}
+          {loading ? "Saving..." : "Save Preferences"}
         </Button>
       </div>
     </div>

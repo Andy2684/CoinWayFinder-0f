@@ -6,11 +6,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
-import { CreditCard, Download, Receipt, Crown, Clock, CheckCircle, Plus } from "lucide-react"
+import { CreditCard, Download, Calendar, DollarSign, TrendingUp, Crown, CheckCircle, AlertCircle } from "lucide-react"
 
 export function BillingSubscription() {
   const { toast } = useToast()
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const currentPlan = {
     name: "Pro",
@@ -21,61 +21,44 @@ export function BillingSubscription() {
   }
 
   const usage = {
-    apiCalls: { used: 8500, limit: 10000 },
-    bots: { used: 3, limit: 5 },
-    signals: { used: 45, limit: 100 },
-    storage: { used: 2.3, limit: 5 },
+    bots: { current: 8, limit: 15, percentage: 53 },
+    apiCalls: { current: 45000, limit: 100000, percentage: 45 },
+    signals: { current: 25, limit: 50, percentage: 50 },
+    storage: { current: 2.3, limit: 10, percentage: 23 },
   }
 
   const plans = [
     {
-      name: "Free",
-      price: 0,
-      billing: "forever",
-      features: ["1 Trading Bot", "10 Signals/month", "Basic Analytics", "Community Support"],
-      limits: {
-        bots: 1,
-        signals: 10,
-        apiCalls: 1000,
-      },
+      name: "Starter",
+      price: 19,
+      features: ["5 Trading Bots", "Basic Analytics", "Email Support", "50,000 API Calls/month", "10 Custom Signals"],
       current: false,
     },
     {
       name: "Pro",
       price: 49,
-      billing: "monthly",
       features: [
-        "5 Trading Bots",
-        "100 Signals/month",
+        "15 Trading Bots",
         "Advanced Analytics",
         "Priority Support",
-        "API Access",
-        "Custom Strategies",
+        "100,000 API Calls/month",
+        "50 Custom Signals",
+        "Portfolio Insights",
       ],
-      limits: {
-        bots: 5,
-        signals: 100,
-        apiCalls: 10000,
-      },
       current: true,
     },
     {
       name: "Enterprise",
-      price: 199,
-      billing: "monthly",
+      price: 149,
       features: [
         "Unlimited Bots",
+        "Custom Analytics",
+        "24/7 Phone Support",
+        "Unlimited API Calls",
         "Unlimited Signals",
-        "White-label Solution",
-        "Dedicated Support",
-        "Custom Integrations",
-        "Advanced Risk Management",
+        "White-label Options",
+        "Dedicated Account Manager",
       ],
-      limits: {
-        bots: "Unlimited",
-        signals: "Unlimited",
-        apiCalls: "Unlimited",
-      },
       current: false,
     },
   ]
@@ -102,12 +85,41 @@ export function BillingSubscription() {
       status: "paid",
       description: "Pro Plan - Monthly",
     },
+    {
+      id: "INV-2023-010",
+      date: "2023-10-15",
+      amount: 49,
+      status: "paid",
+      description: "Pro Plan - Monthly",
+    },
+  ]
+
+  const paymentMethods = [
+    {
+      id: "1",
+      type: "card",
+      last4: "4242",
+      brand: "Visa",
+      expiryMonth: 12,
+      expiryYear: 2025,
+      isDefault: true,
+    },
+    {
+      id: "2",
+      type: "card",
+      last4: "5555",
+      brand: "Mastercard",
+      expiryMonth: 8,
+      expiryYear: 2026,
+      isDefault: false,
+    },
   ]
 
   const handleUpgrade = async (planName: string) => {
-    setIsLoading(true)
+    setLoading(true)
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000))
+
       toast({
         title: "Plan Updated",
         description: `Successfully upgraded to ${planName} plan.`,
@@ -119,7 +131,7 @@ export function BillingSubscription() {
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
@@ -132,72 +144,95 @@ export function BillingSubscription() {
 
   return (
     <div className="space-y-6">
-      {/* Current Plan */}
+      {/* Current Plan Overview */}
+      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Crown className="h-5 w-5 text-yellow-500" />
+                Current Plan: {currentPlan.name}
+              </CardTitle>
+              <CardDescription>
+                ${currentPlan.price}/{currentPlan.billing} • Next billing: {currentPlan.nextBilling}
+              </CardDescription>
+            </div>
+            <Badge variant="default" className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              {currentPlan.status}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-white">${currentPlan.price}</p>
+              <p className="text-sm text-gray-400">Monthly</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-400">Active</p>
+              <p className="text-sm text-gray-400">Status</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-blue-400">15</p>
+              <p className="text-sm text-gray-400">Bot Limit</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-purple-400">100K</p>
+              <p className="text-sm text-gray-400">API Calls</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Usage Overview */}
       <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
-            <Crown className="h-5 w-5 text-yellow-400" />
-            Current Plan
+            <TrendingUp className="h-5 w-5" />
+            Usage Overview
           </CardTitle>
-          <CardDescription className="text-gray-400">Your active subscription and usage details</CardDescription>
+          <CardDescription>Your current usage across all features</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-2xl font-bold text-white">{currentPlan.name} Plan</h3>
-              <p className="text-gray-400">
-                ${currentPlan.price}/{currentPlan.billing}
-              </p>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-white">Trading Bots</span>
+              <span className="text-gray-400">
+                {usage.bots.current} / {usage.bots.limit}
+              </span>
             </div>
-            <div className="text-right">
-              <Badge variant="secondary" className="bg-green-600/20 text-green-400 mb-2">
-                <CheckCircle className="h-3 w-3 mr-1" />
-                Active
-              </Badge>
-              <p className="text-sm text-gray-400">Next billing: {currentPlan.nextBilling}</p>
-            </div>
+            <Progress value={usage.bots.percentage} className="h-2" />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-400">API Calls</span>
-                <span className="text-sm text-white">
-                  {usage.apiCalls.used.toLocaleString()}/{usage.apiCalls.limit.toLocaleString()}
-                </span>
-              </div>
-              <Progress value={(usage.apiCalls.used / usage.apiCalls.limit) * 100} className="h-2" />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-white">API Calls</span>
+              <span className="text-gray-400">
+                {usage.apiCalls.current.toLocaleString()} / {usage.apiCalls.limit.toLocaleString()}
+              </span>
             </div>
+            <Progress value={usage.apiCalls.percentage} className="h-2" />
+          </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-400">Trading Bots</span>
-                <span className="text-sm text-white">
-                  {usage.bots.used}/{usage.bots.limit}
-                </span>
-              </div>
-              <Progress value={(usage.bots.used / usage.bots.limit) * 100} className="h-2" />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-white">Custom Signals</span>
+              <span className="text-gray-400">
+                {usage.signals.current} / {usage.signals.limit}
+              </span>
             </div>
+            <Progress value={usage.signals.percentage} className="h-2" />
+          </div>
 
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-400">Signals</span>
-                <span className="text-sm text-white">
-                  {usage.signals.used}/{usage.signals.limit}
-                </span>
-              </div>
-              <Progress value={(usage.signals.used / usage.signals.limit) * 100} className="h-2" />
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-white">Storage</span>
+              <span className="text-gray-400">
+                {usage.storage.current}GB / {usage.storage.limit}GB
+              </span>
             </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-400">Storage (GB)</span>
-                <span className="text-sm text-white">
-                  {usage.storage.used}/{usage.storage.limit}
-                </span>
-              </div>
-              <Progress value={(usage.storage.used / usage.storage.limit) * 100} className="h-2" />
-            </div>
+            <Progress value={usage.storage.percentage} className="h-2" />
           </div>
         </CardContent>
       </Card>
@@ -206,49 +241,41 @@ export function BillingSubscription() {
       <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
         <CardHeader>
           <CardTitle className="text-white">Available Plans</CardTitle>
-          <CardDescription className="text-gray-400">Choose the plan that best fits your trading needs</CardDescription>
+          <CardDescription>Choose the plan that best fits your trading needs</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {plans.map((plan) => (
               <div
                 key={plan.name}
                 className={`p-6 rounded-lg border ${
-                  plan.current ? "border-blue-500 bg-blue-600/10" : "border-slate-600 bg-slate-700/30"
+                  plan.current ? "bg-blue-500/10 border-blue-500/20" : "bg-slate-700/50 border-slate-600"
                 }`}
               >
-                <div className="text-center mb-6">
-                  <h3 className="text-xl font-bold text-white mb-2">{plan.name}</h3>
-                  <div className="mb-4">
+                <div className="text-center mb-4">
+                  <h3 className="text-xl font-bold text-white">{plan.name}</h3>
+                  <div className="mt-2">
                     <span className="text-3xl font-bold text-white">${plan.price}</span>
-                    <span className="text-gray-400">/{plan.billing}</span>
+                    <span className="text-gray-400">/month</span>
                   </div>
-                  {plan.current && (
-                    <Badge variant="secondary" className="bg-blue-600/20 text-blue-400">
-                      Current Plan
-                    </Badge>
-                  )}
                 </div>
 
-                <ul className="space-y-3 mb-6">
+                <ul className="space-y-2 mb-6">
                   {plan.features.map((feature, index) => (
                     <li key={index} className="flex items-center gap-2 text-sm text-gray-300">
-                      <CheckCircle className="h-4 w-4 text-green-400 flex-shrink-0" />
+                      <CheckCircle className="h-4 w-4 text-green-400" />
                       {feature}
                     </li>
                   ))}
                 </ul>
 
                 <Button
+                  className="w-full"
+                  variant={plan.current ? "secondary" : "default"}
+                  disabled={plan.current || loading}
                   onClick={() => handleUpgrade(plan.name)}
-                  disabled={plan.current || isLoading}
-                  className={`w-full ${
-                    plan.current
-                      ? "bg-gray-600 cursor-not-allowed"
-                      : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-                  }`}
                 >
-                  {plan.current ? "Current Plan" : `Upgrade to ${plan.name}`}
+                  {plan.current ? "Current Plan" : "Upgrade"}
                 </Button>
               </div>
             ))}
@@ -256,45 +283,46 @@ export function BillingSubscription() {
         </CardContent>
       </Card>
 
-      {/* Payment Method */}
+      {/* Payment Methods */}
       <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <CreditCard className="h-5 w-5" />
-            Payment Method
+            Payment Methods
           </CardTitle>
-          <CardDescription className="text-gray-400">Manage your payment information</CardDescription>
+          <CardDescription>Manage your payment methods</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg border border-slate-600">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-slate-600/50 rounded">
-                <CreditCard className="h-5 w-5 text-gray-400" />
+          {paymentMethods.map((method) => (
+            <div
+              key={method.id}
+              className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg border border-slate-600"
+            >
+              <div className="flex items-center gap-3">
+                <CreditCard className="h-8 w-8 text-gray-400" />
+                <div>
+                  <p className="text-white font-medium">
+                    {method.brand} •••• {method.last4}
+                  </p>
+                  <p className="text-sm text-gray-400">
+                    Expires {method.expiryMonth}/{method.expiryYear}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-white font-medium">•••• •••• •••• 4242</p>
-                <p className="text-sm text-gray-400">Expires 12/25</p>
+              <div className="flex items-center gap-2">
+                {method.isDefault && (
+                  <Badge variant="default" className="text-xs">
+                    Default
+                  </Badge>
+                )}
+                <Button variant="outline" size="sm">
+                  Edit
+                </Button>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-slate-600 text-white hover:bg-slate-700 bg-transparent"
-              >
-                Edit
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-slate-600 text-white hover:bg-slate-700 bg-transparent"
-              >
-                Remove
-              </Button>
-            </div>
-          </div>
-          <Button variant="outline" className="border-slate-600 text-white hover:bg-slate-700 bg-transparent">
-            <Plus className="h-4 w-4 mr-2" />
+          ))}
+          <Button variant="outline" className="w-full bg-transparent">
+            <CreditCard className="h-4 w-4 mr-2" />
             Add Payment Method
           </Button>
         </CardContent>
@@ -304,56 +332,75 @@ export function BillingSubscription() {
       <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
-            <Receipt className="h-5 w-5" />
+            <Calendar className="h-5 w-5" />
             Billing History
           </CardTitle>
-          <CardDescription className="text-gray-400">View and download your past invoices</CardDescription>
+          <CardDescription>Your recent invoices and payments</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {invoices.map((invoice) => (
-              <div
-                key={invoice.id}
-                className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg border border-slate-600"
-              >
+              <div key={invoice.id} className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-600/50 rounded">
-                    <Receipt className="h-4 w-4 text-gray-400" />
-                  </div>
+                  <DollarSign className="h-5 w-5 text-green-400" />
                   <div>
-                    <p className="text-white font-medium">{invoice.id}</p>
-                    <p className="text-sm text-gray-400">{invoice.description}</p>
+                    <p className="text-white font-medium">{invoice.description}</p>
+                    <p className="text-sm text-gray-400">
+                      {invoice.date} • {invoice.id}
+                    </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   <div className="text-right">
                     <p className="text-white font-medium">${invoice.amount}</p>
-                    <p className="text-sm text-gray-400">{invoice.date}</p>
+                    <Badge variant={invoice.status === "paid" ? "default" : "secondary"} className="text-xs">
+                      {invoice.status}
+                    </Badge>
                   </div>
-                  <Badge
-                    variant="secondary"
-                    className={
-                      invoice.status === "paid" ? "bg-green-600/20 text-green-400" : "bg-yellow-600/20 text-yellow-400"
-                    }
-                  >
-                    {invoice.status === "paid" ? (
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                    ) : (
-                      <Clock className="h-3 w-3 mr-1" />
-                    )}
-                    {invoice.status}
-                  </Badge>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDownloadInvoice(invoice.id)}
-                    className="border-slate-600 text-white hover:bg-slate-700"
-                  >
+                  <Button variant="outline" size="sm" onClick={() => handleDownloadInvoice(invoice.id)}>
                     <Download className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Billing Settings */}
+      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
+        <CardHeader>
+          <CardTitle className="text-white">Billing Settings</CardTitle>
+          <CardDescription>Manage your billing preferences</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-white font-medium">Auto-renewal</p>
+              <p className="text-sm text-gray-400">Automatically renew your subscription</p>
+            </div>
+            <Badge variant="default" className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              Enabled
+            </Badge>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-white font-medium">Billing notifications</p>
+              <p className="text-sm text-gray-400">Get notified about billing events</p>
+            </div>
+            <Badge variant="default" className="flex items-center gap-1">
+              <CheckCircle className="h-3 w-3" />
+              Enabled
+            </Badge>
+          </div>
+
+          <div className="pt-4 border-t border-slate-600">
+            <Button variant="outline" className="text-red-400 hover:text-red-300 hover:bg-red-500/10 bg-transparent">
+              <AlertCircle className="h-4 w-4 mr-2" />
+              Cancel Subscription
+            </Button>
           </div>
         </CardContent>
       </Card>

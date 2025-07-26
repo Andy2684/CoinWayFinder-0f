@@ -4,77 +4,126 @@ import { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
+import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useToast } from "@/hooks/use-toast"
-import {
-  Database,
-  Download,
-  Upload,
-  Trash2,
-  FileText,
-  Shield,
-  Clock,
-  HardDrive,
-  Archive,
-  RefreshCw,
-  AlertTriangle,
-  CheckCircle,
-} from "lucide-react"
+import { Download, Upload, Trash2, HardDrive, Archive, Shield, Clock, CheckCircle } from "lucide-react"
 
 export function DataManagement() {
   const { toast } = useToast()
-  const [isExporting, setIsExporting] = useState(false)
-  const [isImporting, setIsImporting] = useState(false)
-  const [isClearing, setIsClearing] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([])
+
+  const storageUsage = {
+    total: 10, // GB
+    used: 2.3, // GB
+    percentage: 23,
+  }
 
   const dataCategories = [
     {
+      id: "trades",
       name: "Trading Data",
-      description: "All your trades, orders, and transaction history",
-      size: "2.3 GB",
-      records: "15,247",
+      description: "All your trade history, orders, and execution data",
+      size: "850 MB",
+      records: "12,450 trades",
       lastBackup: "2024-01-14",
-      icon: <Database className="h-5 w-5" />,
     },
     {
+      id: "bots",
       name: "Bot Configurations",
-      description: "Trading bot settings, strategies, and parameters",
-      size: "45 MB",
-      records: "23",
+      description: "Trading bot settings, strategies, and performance data",
+      size: "125 MB",
+      records: "15 bots",
       lastBackup: "2024-01-14",
-      icon: <Shield className="h-5 w-5" />,
     },
     {
+      id: "signals",
+      name: "Signal Data",
+      description: "Custom signals, alerts, and notification history",
+      size: "95 MB",
+      records: "89 signals",
+      lastBackup: "2024-01-13",
+    },
+    {
+      id: "portfolio",
       name: "Portfolio Data",
-      description: "Portfolio history, performance metrics, and analytics",
-      size: "156 MB",
-      records: "8,934",
+      description: "Portfolio history, allocations, and performance metrics",
+      size: "180 MB",
+      records: "Daily snapshots",
       lastBackup: "2024-01-14",
-      icon: <FileText className="h-5 w-5" />,
     },
     {
-      name: "User Preferences",
-      description: "Settings, notifications, and customization data",
-      size: "12 MB",
-      records: "156",
-      lastBackup: "2024-01-14",
-      icon: <Clock className="h-5 w-5" />,
+      id: "analytics",
+      name: "Analytics Data",
+      description: "Market analysis, reports, and custom dashboards",
+      size: "320 MB",
+      records: "Various reports",
+      lastBackup: "2024-01-12",
+    },
+    {
+      id: "settings",
+      name: "Account Settings",
+      description: "Profile information, preferences, and configurations",
+      size: "5 MB",
+      records: "User data",
+      lastBackup: "2024-01-15",
     },
   ]
 
-  const storageUsage = {
-    used: 2.5,
-    total: 5.0,
-    percentage: 50,
+  const retentionPolicies = [
+    {
+      category: "Trading Data",
+      period: "7 years",
+      reason: "Regulatory compliance",
+      canModify: false,
+    },
+    {
+      category: "Bot Performance",
+      period: "2 years",
+      reason: "Performance analysis",
+      canModify: true,
+    },
+    {
+      category: "Activity Logs",
+      period: "1 year",
+      reason: "Security auditing",
+      canModify: true,
+    },
+    {
+      category: "Analytics Data",
+      period: "6 months",
+      reason: "Storage optimization",
+      canModify: true,
+    },
+  ]
+
+  const handleCategoryToggle = (categoryId: string) => {
+    setSelectedCategories((prev) =>
+      prev.includes(categoryId) ? prev.filter((id) => id !== categoryId) : [...prev, categoryId],
+    )
   }
 
-  const handleExportData = async (category?: string) => {
-    setIsExporting(true)
+  const handleExportData = async () => {
+    if (selectedCategories.length === 0) {
+      toast({
+        title: "No Categories Selected",
+        description: "Please select at least one data category to export.",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setLoading(true)
     try {
       await new Promise((resolve) => setTimeout(resolve, 2000))
+
       toast({
         title: "Export Started",
-        description: `Your ${category || "complete"} data export has been initiated. You'll receive an email when it's ready.`,
+        description: `Exporting ${selectedCategories.length} data categories. You'll receive an email when ready.`,
       })
+
+      setSelectedCategories([])
     } catch (error) {
       toast({
         title: "Export Failed",
@@ -82,46 +131,23 @@ export function DataManagement() {
         variant: "destructive",
       })
     } finally {
-      setIsExporting(false)
+      setLoading(false)
     }
   }
 
-  const handleImportData = async () => {
-    setIsImporting(true)
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-      toast({
-        title: "Import Completed",
-        description: "Your data has been successfully imported.",
-      })
-    } catch (error) {
-      toast({
-        title: "Import Failed",
-        description: "Failed to import data. Please check your file and try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsImporting(false)
-    }
+  const handleImportData = () => {
+    // In a real app, this would open a file picker
+    toast({
+      title: "Import Feature",
+      description: "Data import functionality will be available soon.",
+    })
   }
 
-  const handleClearData = async (category: string) => {
-    setIsClearing(true)
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      toast({
-        title: "Data Cleared",
-        description: `${category} has been permanently deleted.`,
-      })
-    } catch (error) {
-      toast({
-        title: "Clear Failed",
-        description: "Failed to clear data. Please try again.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsClearing(false)
-    }
+  const handleDeleteCategory = (categoryId: string) => {
+    toast({
+      title: "Data Deleted",
+      description: "Selected data category has been permanently deleted.",
+    })
   }
 
   return (
@@ -133,73 +159,34 @@ export function DataManagement() {
             <HardDrive className="h-5 w-5" />
             Storage Usage
           </CardTitle>
-          <CardDescription className="text-gray-400">Monitor your data storage and usage limits</CardDescription>
+          <CardDescription>Your current data storage utilization</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <span className="text-white">Used Storage</span>
-            <span className="text-white font-medium">
-              {storageUsage.used} GB / {storageUsage.total} GB
-            </span>
-          </div>
-          <Progress value={storageUsage.percentage} className="h-3" />
-          <div className="flex justify-between text-sm text-gray-400">
-            <span>{storageUsage.percentage}% used</span>
-            <span>{storageUsage.total - storageUsage.used} GB remaining</span>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Data Categories */}
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Database className="h-5 w-5" />
-            Data Categories
-          </CardTitle>
-          <CardDescription className="text-gray-400">
-            Manage different types of data stored in your account
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {dataCategories.map((category, index) => (
-            <div key={index} className="p-4 bg-slate-700/30 rounded-lg border border-slate-600">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-slate-600/50 rounded-lg text-gray-400">{category.icon}</div>
-                  <div>
-                    <h3 className="text-white font-medium">{category.name}</h3>
-                    <p className="text-sm text-gray-400 mb-2">{category.description}</p>
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
-                      <span>{category.size}</span>
-                      <span>{category.records} records</span>
-                      <span>Last backup: {category.lastBackup}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleExportData(category.name)}
-                    disabled={isExporting}
-                    className="border-slate-600 text-white hover:bg-slate-700"
-                  >
-                    <Download className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleClearData(category.name)}
-                    disabled={isClearing}
-                    className="border-red-600 text-red-400 hover:bg-red-600/20"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-white">Used Storage</span>
+              <span className="text-gray-400">
+                {storageUsage.used} GB / {storageUsage.total} GB
+              </span>
+            </div>
+            <Progress value={storageUsage.percentage} className="h-3" />
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-2xl font-bold text-blue-400">{storageUsage.used} GB</p>
+                <p className="text-sm text-gray-400">Used</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-green-400">
+                  {(storageUsage.total - storageUsage.used).toFixed(1)} GB
+                </p>
+                <p className="text-sm text-gray-400">Available</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-purple-400">{storageUsage.percentage}%</p>
+                <p className="text-sm text-gray-400">Utilized</p>
               </div>
             </div>
-          ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -208,53 +195,50 @@ export function DataManagement() {
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <Download className="h-5 w-5" />
-            Data Export
+            Export Data
           </CardTitle>
-          <CardDescription className="text-gray-400">Export your data for backup or migration purposes</CardDescription>
+          <CardDescription>Download your data for backup or migration purposes</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600">
-              <h3 className="text-white font-medium mb-2">Complete Export</h3>
-              <p className="text-sm text-gray-400 mb-4">
-                Export all your data including trades, bots, portfolio, and settings
-              </p>
-              <Button
-                onClick={() => handleExportData()}
-                disabled={isExporting}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {isExporting ? "Exporting..." : "Export All Data"}
-              </Button>
-            </div>
-
-            <div className="p-4 bg-slate-700/30 rounded-lg border border-slate-600">
-              <h3 className="text-white font-medium mb-2">Selective Export</h3>
-              <p className="text-sm text-gray-400 mb-4">Choose specific data categories to export</p>
-              <Button
-                variant="outline"
-                className="w-full border-slate-600 text-white hover:bg-slate-700 bg-transparent"
-              >
-                <Archive className="h-4 w-4 mr-2" />
-                Custom Export
-              </Button>
-            </div>
+          <div className="space-y-3">
+            {dataCategories.map((category) => (
+              <div key={category.id} className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg">
+                <div className="flex items-center gap-3">
+                  <Checkbox
+                    id={category.id}
+                    checked={selectedCategories.includes(category.id)}
+                    onCheckedChange={() => handleCategoryToggle(category.id)}
+                  />
+                  <div className="flex-1">
+                    <h4 className="text-white font-medium">{category.name}</h4>
+                    <p className="text-sm text-gray-400">{category.description}</p>
+                    <div className="flex items-center gap-4 mt-1 text-xs text-gray-500">
+                      <span>{category.size}</span>
+                      <span>{category.records}</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        Last backup: {category.lastBackup}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <Badge variant="outline" className="text-xs">
+                  {category.size}
+                </Badge>
+              </div>
+            ))}
           </div>
 
-          <div className="p-4 bg-blue-600/10 rounded-lg border border-blue-600/20">
-            <div className="flex items-start gap-2">
-              <CheckCircle className="h-5 w-5 text-blue-400 mt-0.5" />
-              <div>
-                <h4 className="text-blue-400 font-medium">Export Information</h4>
-                <ul className="text-sm text-gray-300 mt-2 space-y-1">
-                  <li>• Exports are generated in JSON format for easy import</li>
-                  <li>• Large exports may take several minutes to complete</li>
-                  <li>• You'll receive an email notification when ready</li>
-                  <li>• Export links expire after 7 days for security</li>
-                </ul>
-              </div>
-            </div>
+          <div className="flex items-center justify-between pt-4 border-t border-slate-600">
+            <div className="text-sm text-gray-400">{selectedCategories.length} categories selected</div>
+            <Button
+              onClick={handleExportData}
+              disabled={loading || selectedCategories.length === 0}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {loading ? "Exporting..." : "Export Selected"}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -264,38 +248,30 @@ export function DataManagement() {
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <Upload className="h-5 w-5" />
-            Data Import
+            Import Data
           </CardTitle>
-          <CardDescription className="text-gray-400">
-            Import data from previous exports or other platforms
-          </CardDescription>
+          <CardDescription>Import data from previous exports or other platforms</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="border-2 border-dashed border-slate-600 rounded-lg p-8 text-center">
             <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-white font-medium mb-2">Import Data File</h3>
-            <p className="text-gray-400 text-sm mb-4">Drag and drop your export file here, or click to browse</p>
-            <Button
-              onClick={handleImportData}
-              disabled={isImporting}
-              variant="outline"
-              className="border-slate-600 text-white hover:bg-slate-700 bg-transparent"
-            >
+            <h3 className="text-white font-medium mb-2">Import Your Data</h3>
+            <p className="text-gray-400 text-sm mb-4">Upload exported data files to restore your information</p>
+            <Button onClick={handleImportData} variant="outline">
               <Upload className="h-4 w-4 mr-2" />
-              {isImporting ? "Importing..." : "Choose File"}
+              Choose Files
             </Button>
           </div>
 
-          <div className="p-4 bg-yellow-600/10 rounded-lg border border-yellow-600/20">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="h-5 w-5 text-yellow-400 mt-0.5" />
+          <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <Shield className="h-5 w-5 text-blue-400 mt-0.5" />
               <div>
-                <h4 className="text-yellow-400 font-medium">Import Guidelines</h4>
-                <ul className="text-sm text-gray-300 mt-2 space-y-1">
-                  <li>• Only import files exported from Coinwayfinder</li>
-                  <li>• Importing will merge with existing data, not replace it</li>
-                  <li>• Large imports may take time to process</li>
-                  <li>• Create a backup before importing new data</li>
+                <h4 className="text-blue-400 font-medium">Supported Formats</h4>
+                <ul className="text-sm text-blue-200 mt-1 space-y-1">
+                  <li>• JSON exports from CoinWayFinder</li>
+                  <li>• CSV files for trading data</li>
+                  <li>• ZIP archives containing multiple data types</li>
                 </ul>
               </div>
             </div>
@@ -307,50 +283,132 @@ export function DataManagement() {
       <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Data Retention
+            <Archive className="h-5 w-5" />
+            Data Retention Policies
           </CardTitle>
-          <CardDescription className="text-gray-400">
-            Configure how long different types of data are stored
-          </CardDescription>
+          <CardDescription>How long we keep different types of your data</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {retentionPolicies.map((policy, index) => (
+              <div key={index} className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg">
+                <div>
+                  <h4 className="text-white font-medium">{policy.category}</h4>
+                  <p className="text-sm text-gray-400">{policy.reason}</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className="text-xs">
+                    {policy.period}
+                  </Badge>
+                  {policy.canModify ? (
+                    <Button variant="outline" size="sm">
+                      Modify
+                    </Button>
+                  ) : (
+                    <Badge variant="secondary" className="text-xs">
+                      Required
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Data Deletion */}
+      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <Trash2 className="h-5 w-5" />
+            Data Deletion
+          </CardTitle>
+          <CardDescription>Permanently delete specific data categories</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-white">Trade History</span>
-                <span className="text-gray-400">2 years</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-white">Bot Logs</span>
-                <span className="text-gray-400">6 months</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-white">Activity Logs</span>
-                <span className="text-gray-400">1 year</span>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-white">Portfolio Snapshots</span>
-                <span className="text-gray-400">1 year</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-white">News Data</span>
-                <span className="text-gray-400">3 months</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-white">Analytics Data</span>
-                <span className="text-gray-400">6 months</span>
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <Trash2 className="h-5 w-5 text-red-400 mt-0.5" />
+              <div>
+                <h4 className="text-red-400 font-medium">Permanent Deletion</h4>
+                <p className="text-sm text-red-200 mt-1">
+                  Deleted data cannot be recovered. Please export important data before deletion.
+                </p>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end">
-            <Button variant="outline" className="border-slate-600 text-white hover:bg-slate-700 bg-transparent">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Update Retention Settings
-            </Button>
+          <div className="space-y-3">
+            {dataCategories
+              .filter((cat) => !["trades", "settings"].includes(cat.id))
+              .map((category) => (
+                <div key={category.id} className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg">
+                  <div>
+                    <h4 className="text-white font-medium">{category.name}</h4>
+                    <p className="text-sm text-gray-400">
+                      {category.size} • {category.records}
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDeleteCategory(category.id)}
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </Button>
+                </div>
+              ))}
+          </div>
+
+          <div className="text-sm text-gray-400 bg-slate-700/30 rounded-lg p-3">
+            <strong>Note:</strong> Trading data and account settings cannot be deleted due to regulatory requirements
+            and platform functionality.
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Backup Status */}
+      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <CheckCircle className="h-5 w-5 text-green-400" />
+            Backup Status
+          </CardTitle>
+          <CardDescription>Automatic backup information</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-white font-medium">Automatic Backups</p>
+                <p className="text-sm text-gray-400">Daily backups of critical data</p>
+              </div>
+              <Badge variant="default" className="flex items-center gap-1">
+                <CheckCircle className="h-3 w-3" />
+                Enabled
+              </Badge>
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+              <div>
+                <p className="text-lg font-bold text-green-400">Daily</p>
+                <p className="text-sm text-gray-400">Frequency</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-blue-400">30 days</p>
+                <p className="text-sm text-gray-400">Retention</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-purple-400">Encrypted</p>
+                <p className="text-sm text-gray-400">Security</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-yellow-400">2024-01-15</p>
+                <p className="text-sm text-gray-400">Last Backup</p>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>

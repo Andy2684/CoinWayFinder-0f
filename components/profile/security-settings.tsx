@@ -8,23 +8,77 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { Shield, Key, Smartphone, Eye, EyeOff, AlertTriangle, CheckCircle, Lock, History, MapPin } from "lucide-react"
+import { Shield, Key, Smartphone, Monitor, MapPin, Clock, CheckCircle, AlertTriangle, Eye, EyeOff } from "lucide-react"
 
 export function SecuritySettings() {
   const { toast } = useToast()
+  const [loading, setLoading] = useState(false)
   const [showCurrentPassword, setShowCurrentPassword] = useState(false)
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(true)
   const [emailNotifications, setEmailNotifications] = useState(true)
-  const [loginAlerts, setLoginAlerts] = useState(true)
+  const [smsNotifications, setSmsNotifications] = useState(false)
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
   })
+
+  const activeSessions = [
+    {
+      id: 1,
+      device: "MacBook Pro",
+      location: "New York, USA",
+      ip: "192.168.1.1",
+      lastActive: "2 minutes ago",
+      current: true,
+    },
+    {
+      id: 2,
+      device: "iPhone 15 Pro",
+      location: "New York, USA",
+      ip: "192.168.1.2",
+      lastActive: "1 hour ago",
+      current: false,
+    },
+    {
+      id: 3,
+      device: "Chrome Browser",
+      location: "Los Angeles, USA",
+      ip: "10.0.0.1",
+      lastActive: "2 days ago",
+      current: false,
+    },
+  ]
+
+  const loginHistory = [
+    {
+      id: 1,
+      timestamp: "2024-01-15 14:30:00",
+      location: "New York, USA",
+      ip: "192.168.1.1",
+      device: "MacBook Pro",
+      status: "success",
+    },
+    {
+      id: 2,
+      timestamp: "2024-01-15 09:15:00",
+      location: "New York, USA",
+      ip: "192.168.1.2",
+      device: "iPhone 15 Pro",
+      status: "success",
+    },
+    {
+      id: 3,
+      timestamp: "2024-01-14 22:45:00",
+      location: "Unknown",
+      ip: "203.0.113.1",
+      device: "Chrome Browser",
+      status: "failed",
+    },
+  ]
 
   const handlePasswordChange = async () => {
     if (passwordData.newPassword !== passwordData.confirmPassword) {
@@ -36,14 +90,20 @@ export function SecuritySettings() {
       return
     }
 
-    setIsLoading(true)
+    setLoading(true)
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000))
+
       toast({
         title: "Password Updated",
         description: "Your password has been changed successfully.",
       })
-      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" })
+
+      setPasswordData({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      })
     } catch (error) {
       toast({
         title: "Error",
@@ -51,67 +111,16 @@ export function SecuritySettings() {
         variant: "destructive",
       })
     } finally {
-      setIsLoading(false)
+      setLoading(false)
     }
   }
 
-  const handleTwoFactorToggle = async (enabled: boolean) => {
-    setTwoFactorEnabled(enabled)
+  const handleTerminateSession = (sessionId: number) => {
     toast({
-      title: enabled ? "2FA Enabled" : "2FA Disabled",
-      description: enabled
-        ? "Two-factor authentication has been enabled for your account."
-        : "Two-factor authentication has been disabled for your account.",
+      title: "Session Terminated",
+      description: "The selected session has been terminated.",
     })
   }
-
-  const activeSessions = [
-    {
-      id: 1,
-      device: "Chrome on Windows",
-      location: "New York, US",
-      lastActive: "2 minutes ago",
-      current: true,
-    },
-    {
-      id: 2,
-      device: "Safari on iPhone",
-      location: "New York, US",
-      lastActive: "1 hour ago",
-      current: false,
-    },
-    {
-      id: 3,
-      device: "Firefox on MacOS",
-      location: "Los Angeles, US",
-      lastActive: "2 days ago",
-      current: false,
-    },
-  ]
-
-  const loginHistory = [
-    {
-      id: 1,
-      timestamp: "2024-01-15 14:30:00",
-      location: "New York, US",
-      device: "Chrome on Windows",
-      status: "success",
-    },
-    {
-      id: 2,
-      timestamp: "2024-01-15 09:15:00",
-      location: "New York, US",
-      device: "Safari on iPhone",
-      status: "success",
-    },
-    {
-      id: 3,
-      timestamp: "2024-01-14 18:45:00",
-      location: "Unknown Location",
-      device: "Chrome on Linux",
-      status: "failed",
-    },
-  ]
 
   return (
     <div className="space-y-6">
@@ -122,7 +131,7 @@ export function SecuritySettings() {
             <Key className="h-5 w-5" />
             Change Password
           </CardTitle>
-          <CardDescription className="text-gray-400">Update your password to keep your account secure</CardDescription>
+          <CardDescription>Update your account password</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -135,7 +144,7 @@ export function SecuritySettings() {
                 type={showCurrentPassword ? "text" : "password"}
                 value={passwordData.currentPassword}
                 onChange={(e) => setPasswordData((prev) => ({ ...prev, currentPassword: e.target.value }))}
-                className="bg-slate-700/50 border-slate-600 text-white pr-10"
+                className="bg-slate-700 border-slate-600 text-white pr-10"
               />
               <Button
                 type="button"
@@ -163,7 +172,7 @@ export function SecuritySettings() {
                 type={showNewPassword ? "text" : "password"}
                 value={passwordData.newPassword}
                 onChange={(e) => setPasswordData((prev) => ({ ...prev, newPassword: e.target.value }))}
-                className="bg-slate-700/50 border-slate-600 text-white pr-10"
+                className="bg-slate-700 border-slate-600 text-white pr-10"
               />
               <Button
                 type="button"
@@ -191,7 +200,7 @@ export function SecuritySettings() {
                 type={showConfirmPassword ? "text" : "password"}
                 value={passwordData.confirmPassword}
                 onChange={(e) => setPasswordData((prev) => ({ ...prev, confirmPassword: e.target.value }))}
-                className="bg-slate-700/50 border-slate-600 text-white pr-10"
+                className="bg-slate-700 border-slate-600 text-white pr-10"
               />
               <Button
                 type="button"
@@ -211,10 +220,10 @@ export function SecuritySettings() {
 
           <Button
             onClick={handlePasswordChange}
-            disabled={isLoading}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+            disabled={loading}
+            className="bg-blue-600 hover:bg-blue-700 text-white"
           >
-            {isLoading ? "Updating..." : "Update Password"}
+            {loading ? "Updating..." : "Update Password"}
           </Button>
         </CardContent>
       </Card>
@@ -226,7 +235,7 @@ export function SecuritySettings() {
             <Smartphone className="h-5 w-5" />
             Two-Factor Authentication
           </CardTitle>
-          <CardDescription className="text-gray-400">Add an extra layer of security to your account</CardDescription>
+          <CardDescription>Add an extra layer of security to your account</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
@@ -234,65 +243,50 @@ export function SecuritySettings() {
               <p className="text-white font-medium">Enable 2FA</p>
               <p className="text-sm text-gray-400">Secure your account with two-factor authentication</p>
             </div>
-            <Switch checked={twoFactorEnabled} onCheckedChange={handleTwoFactorToggle} />
+            <Switch checked={twoFactorEnabled} onCheckedChange={setTwoFactorEnabled} />
           </div>
 
           {twoFactorEnabled && (
-            <div className="space-y-4 p-4 bg-slate-700/30 rounded-lg border border-slate-600">
-              <div className="flex items-center gap-2">
-                <CheckCircle className="h-5 w-5 text-green-400" />
-                <span className="text-white font-medium">2FA is enabled</span>
+            <div className="space-y-4 p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
+              <div className="flex items-center gap-2 text-green-400">
+                <CheckCircle className="h-4 w-4" />
+                <span className="text-sm font-medium">2FA is enabled</span>
               </div>
-              <p className="text-sm text-gray-400">
+              <p className="text-sm text-gray-300">
                 Your account is protected with two-factor authentication using your authenticator app.
               </p>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-slate-600 text-white hover:bg-slate-700 bg-transparent"
-                >
-                  View Recovery Codes
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-slate-600 text-white hover:bg-slate-700 bg-transparent"
-                >
-                  Regenerate Codes
-                </Button>
-              </div>
+              <Button variant="outline" size="sm">
+                View Recovery Codes
+              </Button>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Security Preferences */}
+      {/* Security Notifications */}
       <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             <Shield className="h-5 w-5" />
-            Security Preferences
+            Security Notifications
           </CardTitle>
-          <CardDescription className="text-gray-400">
-            Configure your security and notification preferences
-          </CardDescription>
+          <CardDescription>Choose how you want to be notified about security events</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <p className="text-white font-medium">Email Security Notifications</p>
-              <p className="text-sm text-gray-400">Receive email alerts for security events</p>
+              <p className="text-white font-medium">Email Notifications</p>
+              <p className="text-sm text-gray-400">Get notified via email about login attempts and security changes</p>
             </div>
             <Switch checked={emailNotifications} onCheckedChange={setEmailNotifications} />
           </div>
 
           <div className="flex items-center justify-between">
             <div className="space-y-1">
-              <p className="text-white font-medium">Login Alerts</p>
-              <p className="text-sm text-gray-400">Get notified when someone logs into your account</p>
+              <p className="text-white font-medium">SMS Notifications</p>
+              <p className="text-sm text-gray-400">Get notified via SMS about suspicious activities</p>
             </div>
-            <Switch checked={loginAlerts} onCheckedChange={setLoginAlerts} />
+            <Switch checked={smsNotifications} onCheckedChange={setSmsNotifications} />
           </div>
         </CardContent>
       </Card>
@@ -301,48 +295,50 @@ export function SecuritySettings() {
       <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
-            <Lock className="h-5 w-5" />
+            <Monitor className="h-5 w-5" />
             Active Sessions
           </CardTitle>
-          <CardDescription className="text-gray-400">Manage your active login sessions across devices</CardDescription>
+          <CardDescription>Manage your active sessions across devices</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {activeSessions.map((session) => (
-            <div
-              key={session.id}
-              className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg border border-slate-600"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-slate-600/50 rounded-lg">
-                  <Smartphone className="h-4 w-4 text-gray-400" />
-                </div>
-                <div>
-                  <p className="text-white font-medium">{session.device}</p>
-                  <div className="flex items-center gap-2 text-sm text-gray-400">
-                    <MapPin className="h-3 w-3" />
-                    <span>{session.location}</span>
-                    <span>•</span>
-                    <span>{session.lastActive}</span>
+        <CardContent>
+          <div className="space-y-4">
+            {activeSessions.map((session) => (
+              <div
+                key={session.id}
+                className="flex items-center justify-between p-4 bg-slate-700/50 rounded-lg border border-slate-600"
+              >
+                <div className="flex items-center gap-3">
+                  <Monitor className="h-8 w-8 text-gray-400" />
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <p className="text-white font-medium">{session.device}</p>
+                      {session.current && (
+                        <Badge variant="default" className="text-xs">
+                          Current
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-gray-400">
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {session.location}
+                      </span>
+                      <span>{session.ip}</span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {session.lastActive}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {session.current ? (
-                  <Badge variant="secondary" className="bg-green-600/20 text-green-400">
-                    Current
-                  </Badge>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-slate-600 text-white hover:bg-slate-700 bg-transparent"
-                  >
-                    Revoke
+                {!session.current && (
+                  <Button variant="outline" size="sm" onClick={() => handleTerminateSession(session.id)}>
+                    Terminate
                   </Button>
                 )}
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </CardContent>
       </Card>
 
@@ -350,43 +346,41 @@ export function SecuritySettings() {
       <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
-            <History className="h-5 w-5" />
+            <Clock className="h-5 w-5" />
             Login History
           </CardTitle>
-          <CardDescription className="text-gray-400">Recent login attempts and security events</CardDescription>
+          <CardDescription>Recent login attempts to your account</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {loginHistory.map((login) => (
-            <div
-              key={login.id}
-              className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg border border-slate-600"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${login.status === "success" ? "bg-green-600/20" : "bg-red-600/20"}`}>
+        <CardContent>
+          <div className="space-y-3">
+            {loginHistory.map((login) => (
+              <div key={login.id} className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg">
+                <div className="flex items-center gap-3">
                   {login.status === "success" ? (
-                    <CheckCircle className="h-4 w-4 text-green-400" />
+                    <CheckCircle className="h-5 w-5 text-green-400" />
                   ) : (
-                    <AlertTriangle className="h-4 w-4 text-red-400" />
+                    <AlertTriangle className="h-5 w-5 text-red-400" />
                   )}
-                </div>
-                <div>
-                  <p className="text-white font-medium">{login.device}</p>
-                  <div className="flex items-center gap-2 text-sm text-gray-400">
-                    <MapPin className="h-3 w-3" />
-                    <span>{login.location}</span>
-                    <span>•</span>
-                    <span>{login.timestamp}</span>
+                  <div>
+                    <p className="text-white text-sm font-medium">
+                      {login.status === "success" ? "Successful login" : "Failed login attempt"}
+                    </p>
+                    <div className="flex items-center gap-4 text-xs text-gray-400">
+                      <span>{login.timestamp}</span>
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-3 w-3" />
+                        {login.location}
+                      </span>
+                      <span>{login.device}</span>
+                    </div>
                   </div>
                 </div>
+                <Badge variant={login.status === "success" ? "default" : "destructive"} className="text-xs">
+                  {login.status}
+                </Badge>
               </div>
-              <Badge
-                variant="secondary"
-                className={login.status === "success" ? "bg-green-600/20 text-green-400" : "bg-red-600/20 text-red-400"}
-              >
-                {login.status === "success" ? "Success" : "Failed"}
-              </Badge>
-            </div>
-          ))}
+            ))}
+          </div>
         </CardContent>
       </Card>
     </div>

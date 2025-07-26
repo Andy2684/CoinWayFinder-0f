@@ -7,72 +7,83 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { useToast } from "@/hooks/use-toast"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
-  Key,
-  Plus,
-  Eye,
-  EyeOff,
-  Copy,
-  Trash2,
-  Edit,
-  Shield,
-  AlertTriangle,
-  CheckCircle,
-  Activity,
-  Calendar,
-} from "lucide-react"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { useToast } from "@/hooks/use-toast"
+import { Key, Plus, Eye, EyeOff, Copy, Trash2, Shield, AlertTriangle, CheckCircle, Clock, Activity } from "lucide-react"
 
 interface ApiKey {
   id: string
   name: string
   key: string
   permissions: string[]
-  lastUsed: string
   created: string
+  lastUsed: string
   status: "active" | "inactive" | "expired"
-  exchange?: string
+  usage: number
 }
 
 export function ApiKeyManagement() {
   const { toast } = useToast()
-  const [showKeys, setShowKeys] = useState<{ [key: string]: boolean }>({})
-  const [isCreating, setIsCreating] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [showKeys, setShowKeys] = useState<Record<string, boolean>>({})
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
+
   const [newKeyData, setNewKeyData] = useState({
     name: "",
     permissions: [] as string[],
+    expiresIn: "never",
   })
 
   const [apiKeys] = useState<ApiKey[]>([
     {
       id: "1",
       name: "Trading Bot API",
-      key: "sk_live_51H7qYKJ2eZvKYlo2C8...",
-      permissions: ["read", "trade"],
-      lastUsed: "2 hours ago",
+      key: "cwf_live_1234567890abcdef1234567890abcdef",
+      permissions: ["read", "trade", "withdraw"],
       created: "2024-01-15",
+      lastUsed: "2 hours ago",
       status: "active",
-      exchange: "Binance",
+      usage: 1247,
     },
     {
       id: "2",
       name: "Portfolio Tracker",
-      key: "sk_live_51H7qYKJ2eZvKYlo2C9...",
+      key: "cwf_live_abcdef1234567890abcdef1234567890",
       permissions: ["read"],
-      lastUsed: "1 day ago",
       created: "2024-01-10",
+      lastUsed: "1 day ago",
       status: "active",
+      usage: 89,
     },
     {
       id: "3",
       name: "Analytics Dashboard",
-      key: "sk_live_51H7qYKJ2eZvKYlo2D0...",
+      key: "cwf_live_567890abcdef1234567890abcdef1234",
       permissions: ["read", "analytics"],
-      lastUsed: "Never",
       created: "2024-01-05",
+      lastUsed: "Never",
       status: "inactive",
+      usage: 0,
     },
   ])
+
+  const availablePermissions = [
+    { id: "read", label: "Read", description: "View account information and balances" },
+    { id: "trade", label: "Trade", description: "Execute trades and manage orders" },
+    { id: "withdraw", label: "Withdraw", description: "Withdraw funds from account" },
+    { id: "analytics", label: "Analytics", description: "Access advanced analytics data" },
+    { id: "bots", label: "Bot Management", description: "Create and manage trading bots" },
+    { id: "signals", label: "Signals", description: "Access and create trading signals" },
+  ]
 
   const toggleKeyVisibility = (keyId: string) => {
     setShowKeys((prev) => ({ ...prev, [keyId]: !prev[keyId] }))
@@ -81,29 +92,32 @@ export function ApiKeyManagement() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     toast({
-      title: "Copied to clipboard",
-      description: "API key has been copied to your clipboard.",
+      title: "Copied",
+      description: "API key copied to clipboard",
     })
   }
 
   const handleCreateKey = async () => {
-    if (!newKeyData.name.trim()) {
+    if (!newKeyData.name || newKeyData.permissions.length === 0) {
       toast({
         title: "Error",
-        description: "Please enter a name for the API key.",
+        description: "Please provide a name and select at least one permission.",
         variant: "destructive",
       })
       return
     }
 
-    setIsCreating(true)
+    setLoading(true)
     try {
       await new Promise((resolve) => setTimeout(resolve, 1000))
+
       toast({
         title: "API Key Created",
-        description: "Your new API key has been generated successfully.",
+        description: "Your new API key has been created successfully.",
       })
-      setNewKeyData({ name: "", permissions: [] })
+
+      setIsCreateDialogOpen(false)
+      setNewKeyData({ name: "", permissions: [], expiresIn: "never" })
     } catch (error) {
       toast({
         title: "Error",
@@ -111,251 +125,258 @@ export function ApiKeyManagement() {
         variant: "destructive",
       })
     } finally {
-      setIsCreating(false)
+      setLoading(false)
     }
   }
 
-  const handleDeleteKey = async (keyId: string) => {
+  const handleDeleteKey = (keyId: string) => {
     toast({
       title: "API Key Deleted",
       description: "The API key has been permanently deleted.",
     })
   }
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-green-600/20 text-green-400"
-      case "inactive":
-        return "bg-gray-600/20 text-gray-400"
-      case "expired":
-        return "bg-red-600/20 text-red-400"
-      default:
-        return "bg-gray-600/20 text-gray-400"
-    }
+  const handleToggleKeyStatus = (keyId: string) => {
+    toast({
+      title: "Status Updated",
+      description: "API key status has been updated.",
+    })
   }
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case "active":
-        return <CheckCircle className="h-4 w-4" />
-      case "inactive":
-        return <Activity className="h-4 w-4" />
-      case "expired":
-        return <AlertTriangle className="h-4 w-4" />
-      default:
-        return <Activity className="h-4 w-4" />
-    }
+  const maskApiKey = (key: string) => {
+    return key.substring(0, 12) + "..." + key.substring(key.length - 8)
   }
 
   return (
     <div className="space-y-6">
-      {/* Create New API Key */}
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Plus className="h-5 w-5" />
-            Create New API Key
-          </CardTitle>
-          <CardDescription className="text-gray-400">
-            Generate a new API key for accessing your account programmatically
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="keyName" className="text-white">
-              API Key Name
-            </Label>
-            <Input
-              id="keyName"
-              placeholder="e.g., Trading Bot, Portfolio Tracker"
-              value={newKeyData.name}
-              onChange={(e) => setNewKeyData((prev) => ({ ...prev, name: e.target.value }))}
-              className="bg-slate-700/50 border-slate-600 text-white"
-            />
-          </div>
-
-          <div className="space-y-3">
-            <Label className="text-white">Permissions</Label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { id: "read", label: "Read", description: "View account data" },
-                { id: "trade", label: "Trade", description: "Execute trades" },
-                { id: "withdraw", label: "Withdraw", description: "Withdraw funds" },
-                { id: "analytics", label: "Analytics", description: "Access analytics" },
-              ].map((permission) => (
-                <div key={permission.id} className="flex items-center space-x-2">
-                  <Switch
-                    id={permission.id}
-                    checked={newKeyData.permissions.includes(permission.id)}
-                    onCheckedChange={(checked) => {
-                      if (checked) {
-                        setNewKeyData((prev) => ({
-                          ...prev,
-                          permissions: [...prev.permissions, permission.id],
-                        }))
-                      } else {
-                        setNewKeyData((prev) => ({
-                          ...prev,
-                          permissions: prev.permissions.filter((p) => p !== permission.id),
-                        }))
-                      }
-                    }}
-                  />
-                  <div>
-                    <Label htmlFor={permission.id} className="text-white text-sm">
-                      {permission.label}
-                    </Label>
-                    <p className="text-xs text-gray-400">{permission.description}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <Button
-            onClick={handleCreateKey}
-            disabled={isCreating}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-          >
-            <Key className="h-4 w-4 mr-2" />
-            {isCreating ? "Creating..." : "Create API Key"}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Existing API Keys */}
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Key className="h-5 w-5" />
-            Your API Keys
-          </CardTitle>
-          <CardDescription className="text-gray-400">
-            Manage your existing API keys and their permissions
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {apiKeys.map((apiKey) => (
-            <div key={apiKey.id} className="p-4 bg-slate-700/30 rounded-lg border border-slate-600">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h3 className="text-white font-medium">{apiKey.name}</h3>
-                    <Badge variant="secondary" className={getStatusColor(apiKey.status)}>
-                      {getStatusIcon(apiKey.status)}
-                      <span className="ml-1 capitalize">{apiKey.status}</span>
-                    </Badge>
-                    {apiKey.exchange && (
-                      <Badge variant="outline" className="border-slate-600 text-gray-300">
-                        {apiKey.exchange}
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-gray-400">
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>Created {apiKey.created}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Activity className="h-3 w-3" />
-                      <span>Last used {apiKey.lastUsed}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="border-slate-600 text-white hover:bg-slate-700 bg-transparent"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleDeleteKey(apiKey.id)}
-                    className="border-red-600 text-red-400 hover:bg-red-600/20"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
+      {/* Header with Create Button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-xl font-semibold text-white">API Keys</h3>
+          <p className="text-gray-400">Manage your API keys for external applications</p>
+        </div>
+        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+          <DialogTrigger asChild>
+            <Button className="bg-blue-600 hover:bg-blue-700 text-white">
+              <Plus className="h-4 w-4 mr-2" />
+              Create API Key
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="bg-slate-800 border-slate-700">
+            <DialogHeader>
+              <DialogTitle className="text-white">Create New API Key</DialogTitle>
+              <DialogDescription>
+                Create a new API key with specific permissions for your application.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="keyName" className="text-white">
+                  API Key Name
+                </Label>
+                <Input
+                  id="keyName"
+                  value={newKeyData.name}
+                  onChange={(e) => setNewKeyData((prev) => ({ ...prev, name: e.target.value }))}
+                  placeholder="e.g., Trading Bot API"
+                  className="bg-slate-700 border-slate-600 text-white"
+                />
               </div>
 
               <div className="space-y-3">
-                <div>
-                  <Label className="text-white text-sm">API Key</Label>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="flex-1 p-2 bg-slate-800/50 rounded border border-slate-600">
-                      <code className="text-sm text-gray-300 font-mono">
-                        {showKeys[apiKey.id] ? apiKey.key : "•".repeat(32)}
-                      </code>
+                <Label className="text-white">Permissions</Label>
+                <div className="space-y-2">
+                  {availablePermissions.map((permission) => (
+                    <div key={permission.id} className="flex items-start space-x-3">
+                      <Checkbox
+                        id={permission.id}
+                        checked={newKeyData.permissions.includes(permission.id)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setNewKeyData((prev) => ({
+                              ...prev,
+                              permissions: [...prev.permissions, permission.id],
+                            }))
+                          } else {
+                            setNewKeyData((prev) => ({
+                              ...prev,
+                              permissions: prev.permissions.filter((p) => p !== permission.id),
+                            }))
+                          }
+                        }}
+                      />
+                      <div className="space-y-1">
+                        <Label htmlFor={permission.id} className="text-white font-medium">
+                          {permission.label}
+                        </Label>
+                        <p className="text-sm text-gray-400">{permission.description}</p>
+                      </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => toggleKeyVisibility(apiKey.id)}
-                      className="border-slate-600 text-white hover:bg-slate-700"
-                    >
-                      {showKeys[apiKey.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => copyToClipboard(apiKey.key)}
-                      className="border-slate-600 text-white hover:bg-slate-700"
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div>
-                  <Label className="text-white text-sm">Permissions</Label>
-                  <div className="flex flex-wrap gap-2 mt-1">
-                    {apiKey.permissions.map((permission) => (
-                      <Badge key={permission} variant="secondary" className="bg-blue-600/20 text-blue-400 capitalize">
-                        {permission}
-                      </Badge>
-                    ))}
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
-          ))}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateKey} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">
+                {loading ? "Creating..." : "Create API Key"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Security Notice */}
+      <Card className="bg-yellow-500/10 border-yellow-500/20">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-yellow-500 mt-0.5" />
+            <div>
+              <h4 className="text-yellow-500 font-medium">Security Best Practices</h4>
+              <ul className="text-sm text-yellow-200 mt-2 space-y-1">
+                <li>• Never share your API keys with anyone</li>
+                <li>• Use different keys for different applications</li>
+                <li>• Regularly rotate your API keys</li>
+                <li>• Only grant necessary permissions</li>
+                <li>• Monitor API key usage regularly</li>
+              </ul>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Security Notice */}
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700 border-l-4 border-l-yellow-500">
+      {/* API Keys List */}
+      <div className="space-y-4">
+        {apiKeys.map((apiKey) => (
+          <Card key={apiKey.id} className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Key className="h-5 w-5 text-gray-400" />
+                  <div>
+                    <CardTitle className="text-white text-lg">{apiKey.name}</CardTitle>
+                    <CardDescription>Created on {apiKey.created}</CardDescription>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge
+                    variant={apiKey.status === "active" ? "default" : "secondary"}
+                    className="flex items-center gap-1"
+                  >
+                    {apiKey.status === "active" ? <CheckCircle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                    {apiKey.status}
+                  </Badge>
+                  <Switch
+                    checked={apiKey.status === "active"}
+                    onCheckedChange={() => handleToggleKeyStatus(apiKey.id)}
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* API Key Display */}
+              <div className="space-y-2">
+                <Label className="text-white">API Key</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={showKeys[apiKey.id] ? apiKey.key : maskApiKey(apiKey.key)}
+                    readOnly
+                    className="bg-slate-700 border-slate-600 text-white font-mono text-sm"
+                  />
+                  <Button variant="outline" size="sm" onClick={() => toggleKeyVisibility(apiKey.id)}>
+                    {showKeys[apiKey.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => copyToClipboard(apiKey.key)}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {/* Permissions */}
+              <div className="space-y-2">
+                <Label className="text-white">Permissions</Label>
+                <div className="flex flex-wrap gap-2">
+                  {apiKey.permissions.map((permission) => (
+                    <Badge key={permission} variant="outline" className="text-xs">
+                      {availablePermissions.find((p) => p.id === permission)?.label || permission}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Usage Stats */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="flex items-center gap-2 text-gray-400">
+                  <Activity className="h-4 w-4" />
+                  <span>Usage: {apiKey.usage.toLocaleString()} calls</span>
+                </div>
+                <div className="flex items-center gap-2 text-gray-400">
+                  <Clock className="h-4 w-4" />
+                  <span>Last used: {apiKey.lastUsed}</span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-600">
+                <div className="text-sm text-gray-400">Key ID: {apiKey.id}</div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDeleteKey(apiKey.id)}
+                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Usage Guidelines */}
+      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
-            <Shield className="h-5 w-5 text-yellow-400" />
-            Security Best Practices
+            <Shield className="h-5 w-5" />
+            API Usage Guidelines
           </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="text-gray-300 space-y-2">
-            <p className="flex items-start gap-2">
-              <span className="text-yellow-400 mt-1">•</span>
-              <span>Never share your API keys with anyone or store them in public repositories</span>
-            </p>
-            <p className="flex items-start gap-2">
-              <span className="text-yellow-400 mt-1">•</span>
-              <span>Use separate API keys for different applications and services</span>
-            </p>
-            <p className="flex items-start gap-2">
-              <span className="text-yellow-400 mt-1">•</span>
-              <span>Regularly rotate your API keys and revoke unused ones</span>
-            </p>
-            <p className="flex items-start gap-2">
-              <span className="text-yellow-400 mt-1">•</span>
-              <span>Grant only the minimum permissions required for each use case</span>
-            </p>
-            <p className="flex items-start gap-2">
-              <span className="text-yellow-400 mt-1">•</span>
-              <span>Monitor API key usage and set up alerts for suspicious activity</span>
-            </p>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+            <div>
+              <h4 className="text-white font-medium mb-2">Rate Limits</h4>
+              <ul className="text-gray-400 space-y-1">
+                <li>• 1000 requests per minute</li>
+                <li>• 10,000 requests per hour</li>
+                <li>• 100,000 requests per day</li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-medium mb-2">Documentation</h4>
+              <ul className="text-gray-400 space-y-1">
+                <li>
+                  •{" "}
+                  <a href="#" className="text-blue-400 hover:underline">
+                    API Reference
+                  </a>
+                </li>
+                <li>
+                  •{" "}
+                  <a href="#" className="text-blue-400 hover:underline">
+                    Code Examples
+                  </a>
+                </li>
+                <li>
+                  •{" "}
+                  <a href="#" className="text-blue-400 hover:underline">
+                    SDKs & Libraries
+                  </a>
+                </li>
+              </ul>
+            </div>
           </div>
         </CardContent>
       </Card>
