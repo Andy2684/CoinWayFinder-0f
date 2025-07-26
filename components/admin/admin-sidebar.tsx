@@ -3,54 +3,99 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Shield, Users, Mail, BarChart3, Settings, Database, Activity, AlertTriangle, FileText } from "lucide-react"
+import {
+  LayoutDashboard,
+  Users,
+  Shield,
+  Activity,
+  Settings,
+  FileText,
+  AlertTriangle,
+  BarChart3,
+  Database,
+  Mail,
+} from "lucide-react"
 
-const navigation = [
-  { name: "Overview", href: "/admin", icon: BarChart3 },
-  { name: "Users", href: "/admin/users", icon: Users },
-  { name: "Email Queue", href: "/admin/email-queue", icon: Mail },
-  { name: "System Logs", href: "/admin/logs", icon: FileText },
-  { name: "Database", href: "/admin/database", icon: Database },
-  { name: "Monitoring", href: "/admin/monitoring", icon: Activity },
-  { name: "Alerts", href: "/admin/alerts", icon: AlertTriangle },
-  { name: "Settings", href: "/admin/settings", icon: Settings },
+const sidebarItems = [
+  {
+    title: "Dashboard",
+    href: "/admin",
+    icon: LayoutDashboard,
+  },
+  {
+    title: "Users",
+    href: "/admin/users",
+    icon: Users,
+  },
+  {
+    title: "Audit Logs",
+    href: "/admin/audit-logs",
+    icon: Shield,
+  },
+  {
+    title: "System Health",
+    href: "/admin/system",
+    icon: Activity,
+  },
+  {
+    title: "Security Alerts",
+    href: "/admin/security",
+    icon: AlertTriangle,
+  },
+  {
+    title: "Analytics",
+    href: "/admin/analytics",
+    icon: BarChart3,
+  },
+  {
+    title: "Database",
+    href: "/admin/database",
+    icon: Database,
+  },
+  {
+    title: "Email Queue",
+    href: "/admin/email-queue",
+    icon: Mail,
+  },
+  {
+    title: "Reports",
+    href: "/admin/reports",
+    icon: FileText,
+  },
+  {
+    title: "Settings",
+    href: "/admin/settings",
+    icon: Settings,
+  },
 ]
 
 export function AdminSidebar() {
   const pathname = usePathname()
 
   return (
-    <div className="fixed inset-y-0 left-0 z-50 w-64 bg-gray-900/95 backdrop-blur-sm border-r border-gray-800">
-      <div className="flex h-16 items-center px-6 border-b border-gray-800">
-        <Shield className="h-8 w-8 text-red-400" />
-        <span className="ml-2 text-xl font-bold text-white">Admin Panel</span>
+    <div className="flex h-full w-64 flex-col bg-gray-50 dark:bg-gray-900">
+      <div className="flex h-16 items-center border-b px-6">
+        <h2 className="text-lg font-semibold">Admin Panel</h2>
       </div>
-
-      <nav className="mt-6 px-3">
-        <ul className="space-y-1">
-          {navigation.map((item) => {
-            const isActive = pathname === item.href
-            return (
-              <li key={item.name}>
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                    isActive ? "bg-red-600 text-white" : "text-gray-300 hover:bg-gray-800 hover:text-white",
-                  )}
-                >
-                  <item.icon
-                    className={cn(
-                      "mr-3 h-5 w-5 flex-shrink-0",
-                      isActive ? "text-white" : "text-gray-400 group-hover:text-white",
-                    )}
-                  />
-                  {item.name}
-                </Link>
-              </li>
-            )
-          })}
-        </ul>
+      <nav className="flex-1 space-y-1 px-3 py-4">
+        {sidebarItems.map((item) => {
+          const isActive = pathname === item.href
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-primary text-primary-foreground"
+                  : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-800",
+              )}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.title}
+            </Link>
+          )
+        })}
       </nav>
     </div>
   )
