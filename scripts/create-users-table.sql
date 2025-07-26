@@ -18,10 +18,29 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 -- Add missing columns if they don't exist
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'user';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(20) DEFAULT 'free';
 ALTER TABLE users ADD COLUMN IF NOT EXISTS is_email_verified BOOLEAN DEFAULT FALSE;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verification_token TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_token TEXT;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS password_reset_expires TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+-- Add constraints if they don't exist
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_role_check') THEN
+        ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('user', 'admin'));
+    END IF;
+END $$;
+
+DO $$ 
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_subscription_status_check') THEN
+        ALTER TABLE users ADD CONSTRAINT users_subscription_status_check CHECK (subscription_status IN ('free', 'starter', 'pro', 'enterprise'));
+    END IF;
+END $$;
 
 -- Create indexes for better performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -42,6 +61,11 @@ $$ language 'plpgsql';
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Update existing users to have default values
+UPDATE users SET role = 'user' WHERE role IS NULL;
+UPDATE users SET subscription_status = 'free' WHERE subscription_status IS NULL;
+UPDATE users SET is_email_verified = FALSE WHERE is_email_verified IS NULL;
 
 -- Insert demo admin user (password: AdminPass123!)
 INSERT INTO users (
@@ -64,6 +88,8 @@ INSERT INTO users (
     TRUE
 ) ON CONFLICT (email) DO UPDATE SET
     password_hash = EXCLUDED.password_hash,
+    role = EXCLUDED.role,
+    subscription_status = EXCLUDED.subscription_status,
     is_email_verified = EXCLUDED.is_email_verified;
 
 -- Insert demo regular user (password: password)
@@ -87,4 +113,6 @@ INSERT INTO users (
     TRUE
 ) ON CONFLICT (email) DO UPDATE SET
     password_hash = EXCLUDED.password_hash,
+    role = EXCLUDED.role,
+    subscription_status = EXCLUDED.subscription_status,
     is_email_verified = EXCLUDED.is_email_verified;

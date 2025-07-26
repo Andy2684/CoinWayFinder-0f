@@ -56,15 +56,19 @@ export async function POST(request: NextRequest) {
     `
 
     if (existingUser) {
-      await auditLogger.log({
-        eventType: "signup_attempt_duplicate_email",
-        eventCategory: "auth",
-        eventDescription: `Signup attempt with existing email: ${email}`,
-        ipAddress,
-        userAgent,
-        riskLevel: "medium",
-        success: false,
-      })
+      try {
+        await auditLogger.log({
+          eventType: "signup_attempt_duplicate_email",
+          eventCategory: "auth",
+          eventDescription: `Signup attempt with existing email: ${email}`,
+          ipAddress,
+          userAgent,
+          riskLevel: "medium",
+          success: false,
+        })
+      } catch (auditError) {
+        console.error("Audit logging error:", auditError)
+      }
 
       return NextResponse.json(
         {
@@ -101,7 +105,7 @@ export async function POST(request: NextRequest) {
     // Generate username if not provided
     const finalUsername = username || `${firstName.toLowerCase()}_${lastName.toLowerCase()}_${Date.now()}`
 
-    // Create user
+    // Create user with explicit column values
     const [newUser] = await sql`
       INSERT INTO users (
         email, 
@@ -136,18 +140,22 @@ export async function POST(request: NextRequest) {
     `
 
     // Log successful signup
-    await auditLogger.log({
-      userId: newUser.id,
-      eventType: "user_signup",
-      eventCategory: "auth",
-      eventDescription: `New user registered: ${email}`,
-      ipAddress,
-      userAgent,
-      riskLevel: "low",
-      success: true,
-    })
+    try {
+      await auditLogger.log({
+        userId: newUser.id,
+        eventType: "user_signup",
+        eventCategory: "auth",
+        eventDescription: `New user registered: ${email}`,
+        ipAddress,
+        userAgent,
+        riskLevel: "low",
+        success: true,
+      })
+    } catch (auditError) {
+      console.error("Audit logging error:", auditError)
+    }
 
-    // Return success without auto-login (as requested)
+    // Return success without auto-login (as requested in work items)
     return NextResponse.json({
       success: true,
       message: "Account created successfully! You can now log in.",
@@ -162,16 +170,20 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Signup error:", error)
 
-    await auditLogger.log({
-      eventType: "signup_server_error",
-      eventCategory: "system",
-      eventDescription: "Server error during signup attempt",
-      ipAddress,
-      userAgent,
-      riskLevel: "high",
-      success: false,
-      errorMessage: error instanceof Error ? error.message : "Unknown error",
-    })
+    try {
+      await auditLogger.log({
+        eventType: "signup_server_error",
+        eventCategory: "system",
+        eventDescription: "Server error during signup attempt",
+        ipAddress,
+        userAgent,
+        riskLevel: "high",
+        success: false,
+        errorMessage: error instanceof Error ? error.message : "Unknown error",
+      })
+    } catch (auditError) {
+      console.error("Audit logging error:", auditError)
+    }
 
     return NextResponse.json(
       {

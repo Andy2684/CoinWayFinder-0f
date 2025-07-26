@@ -44,10 +44,12 @@ export default function HomePage() {
       {/* Content */}
       <div className="relative z-10">
         <Navigation />
-        <HeroSection />
-        <FeaturesSection />
-        <PricingSection />
-        <CTASection />
+        <main>
+          <HeroSection />
+          <FeaturesSection />
+          <PricingSection />
+          <CTASection />
+        </main>
         <Footer />
       </div>
 

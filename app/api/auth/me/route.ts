@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    // Get user from database
+    // Get user from database with safe column access
     const [user] = await sql`
       SELECT 
         id, 
@@ -39,12 +39,12 @@ export async function GET(request: NextRequest) {
         first_name, 
         last_name, 
         username, 
-        role, 
-        subscription_status,
+        COALESCE(role, 'user') as role, 
+        COALESCE(subscription_status, 'free') as subscription_status,
         COALESCE(is_email_verified, false) as is_email_verified,
         last_login,
         created_at, 
-        updated_at
+        COALESCE(updated_at, created_at) as updated_at
       FROM users 
       WHERE id = ${decoded.userId}
     `
@@ -68,12 +68,12 @@ export async function GET(request: NextRequest) {
         username: user.username,
         firstName: user.first_name,
         lastName: user.last_name,
-        role: user.role || 'user',
-        subscriptionStatus: user.subscription_status || 'free',
-        isEmailVerified: user.is_email_verified || false,
+        role: user.role,
+        subscriptionStatus: user.subscription_status,
+        isEmailVerified: user.is_email_verified,
         lastLogin: user.last_login,
         createdAt: user.created_at,
-        updatedAt: user.updated_at || user.created_at,
+        updatedAt: user.updated_at,
       },
     })
   } catch (error) {

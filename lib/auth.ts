@@ -97,62 +97,82 @@ export function verifyToken(token: string): { userId: string; email: string } | 
   }
 }
 
-// Get user by ID
+// Get user by ID with safe column access
 export async function getUserById(userId: string): Promise<User | null> {
-  const [user] = await sql`
-    SELECT 
-      id, 
-      email, 
-      first_name as "firstName", 
-      last_name as "lastName", 
-      username, 
-      role, 
-      subscription_status as "subscriptionStatus", 
-      COALESCE(is_email_verified, false) as "isEmailVerified", 
-      last_login as "lastLogin", 
-      created_at as "createdAt", 
-      updated_at as "updatedAt"
-    FROM users 
-    WHERE id = ${userId}
-  `
+  try {
+    const [user] = await sql`
+      SELECT 
+        id, 
+        email, 
+        first_name as "firstName", 
+        last_name as "lastName", 
+        username, 
+        COALESCE(role, 'user') as "role", 
+        COALESCE(subscription_status, 'free') as "subscriptionStatus", 
+        COALESCE(is_email_verified, false) as "isEmailVerified", 
+        last_login as "lastLogin", 
+        created_at as "createdAt", 
+        COALESCE(updated_at, created_at) as "updatedAt"
+      FROM users 
+      WHERE id = ${userId}
+    `
 
-  return user || null
+    return user || null
+  } catch (error) {
+    console.error("Error getting user by ID:", error)
+    return null
+  }
 }
 
-// Get user by email
+// Get user by email with safe column access
 export async function getUserByEmail(email: string): Promise<User | null> {
-  const [user] = await sql`
-    SELECT 
-      id, 
-      email, 
-      first_name as "firstName", 
-      last_name as "lastName", 
-      username, 
-      role, 
-      subscription_status as "subscriptionStatus", 
-      COALESCE(is_email_verified, false) as "isEmailVerified", 
-      last_login as "lastLogin", 
-      created_at as "createdAt", 
-      updated_at as "updatedAt"
-    FROM users 
-    WHERE email = ${email}
-  `
+  try {
+    const [user] = await sql`
+      SELECT 
+        id, 
+        email, 
+        first_name as "firstName", 
+        last_name as "lastName", 
+        username, 
+        COALESCE(role, 'user') as "role", 
+        COALESCE(subscription_status, 'free') as "subscriptionStatus", 
+        COALESCE(is_email_verified, false) as "isEmailVerified", 
+        last_login as "lastLogin", 
+        created_at as "createdAt", 
+        COALESCE(updated_at, created_at) as "updatedAt"
+      FROM users 
+      WHERE email = ${email}
+    `
 
-  return user || null
+    return user || null
+  } catch (error) {
+    console.error("Error getting user by email:", error)
+    return null
+  }
 }
 
 // Check if email exists
 export async function emailExists(email: string): Promise<boolean> {
-  const [result] = await sql`
-    SELECT 1 FROM users WHERE email = ${email}
-  `
-  return !!result
+  try {
+    const [result] = await sql`
+      SELECT 1 FROM users WHERE email = ${email}
+    `
+    return !!result
+  } catch (error) {
+    console.error("Error checking email exists:", error)
+    return false
+  }
 }
 
 // Check if username exists
 export async function usernameExists(username: string): Promise<boolean> {
-  const [result] = await sql`
-    SELECT 1 FROM users WHERE username = ${username}
-  `
-  return !!result
+  try {
+    const [result] = await sql`
+      SELECT 1 FROM users WHERE username = ${username}
+    `
+    return !!result
+  } catch (error) {
+    console.error("Error checking username exists:", error)
+    return false
+  }
 }

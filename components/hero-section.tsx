@@ -1,128 +1,85 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Play, TrendingUp, Shield, Zap } from "lucide-react"
+import { ArrowRight, TrendingUp, Shield, Zap } from "lucide-react"
 import Link from "next/link"
 
 export function HeroSection() {
-  const [mounted, setMounted] = useState(false)
-  const [user, setUser] = useState(null)
+  return (
+    <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 px-6 py-24 sm:py-32 lg:px-8">
+      {/* Background decoration */}
+      <div className="absolute inset-0 -z-10">
+        <div className="absolute inset-0 bg-[radial-gradient(45rem_50rem_at_top,theme(colors.indigo.100),transparent)] opacity-20" />
+        <div className="absolute inset-y-0 right-1/2 -z-10 mr-16 w-[200%] origin-bottom-left skew-x-[-30deg] bg-white shadow-xl shadow-indigo-600/10 ring-1 ring-indigo-50 sm:mr-28 lg:mr-0 xl:mr-16 xl:origin-center" />
+      </div>
 
-  useEffect(() => {
-    setMounted(true)
-    // Check for user after mount to avoid SSR issues
-    const userData = localStorage.getItem("user_data")
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData))
-      } catch (error) {
-        console.error("Error parsing user data:", error)
-      }
-    }
-  }, [])
-
-  if (!mounted) {
-    return (
-      <section className="relative py-20 px-4 text-center">
-        <div className="container mx-auto max-w-6xl">
-          <div className="animate-pulse">
-            <div className="h-16 bg-white/10 rounded-lg mb-6 mx-auto max-w-4xl"></div>
-            <div className="h-6 bg-white/10 rounded-lg mb-8 mx-auto max-w-2xl"></div>
-            <div className="flex justify-center gap-4">
-              <div className="h-12 w-32 bg-white/10 rounded-lg"></div>
-              <div className="h-12 w-32 bg-white/10 rounded-lg"></div>
+      <div className="mx-auto max-w-7xl">
+        <div className="mx-auto max-w-2xl text-center">
+          <div className="mb-8 flex justify-center">
+            <div className="relative rounded-full px-3 py-1 text-sm leading-6 text-gray-300 ring-1 ring-white/10 hover:ring-white/20">
+              Advanced AI-powered trading platform.{" "}
+              <Link href="/features" className="font-semibold text-indigo-400">
+                <span className="absolute inset-0" aria-hidden="true" />
+                Learn more <ArrowRight className="inline h-4 w-4" />
+              </Link>
             </div>
           </div>
-        </div>
-      </section>
-    )
-  }
 
-  return (
-    <section className="relative py-20 px-4 text-center">
-      <div className="container mx-auto max-w-6xl">
-        {/* Main Hero Content */}
-        <div className="mb-12">
-          <h1 className="text-5xl md:text-7xl font-bold text-white mb-6 leading-tight">
-            Trade Smarter with{" "}
-            <span className="bg-gradient-to-r from-blue-400 via-purple-500 to-cyan-400 bg-clip-text text-transparent animate-pulse">
-              AI-Powered
-            </span>{" "}
-            Crypto Bots
+          <h1 className="text-4xl font-bold tracking-tight text-white sm:text-6xl">
+            Smart Trading with{" "}
+            <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+              AI-Powered Bots
+            </span>
           </h1>
 
-          <p className="text-xl md:text-2xl text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed">
-            Automate your cryptocurrency trading with advanced AI algorithms, real-time market analysis, and
-            professional-grade risk management tools.
+          <p className="mt-6 text-lg leading-8 text-gray-300">
+            Maximize your crypto trading potential with our advanced AI bots, real-time market analysis, and
+            comprehensive portfolio management tools. Trade smarter, not harder.
           </p>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
-            {user ? (
-              <Link href="/dashboard">
-                <Button
-                  size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105"
-                >
-                  <TrendingUp className="mr-2 h-5 w-5" />
-                  Go to Dashboard
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-            ) : (
-              <Link href="/auth/signup">
-                <Button
-                  size="lg"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg font-semibold rounded-xl shadow-2xl hover:shadow-blue-500/25 transition-all duration-300 transform hover:scale-105"
-                >
-                  <Zap className="mr-2 h-5 w-5" />
-                  Start Trading Now
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </Link>
-            )}
-
-            <Button
-              variant="outline"
-              size="lg"
-              className="border-2 border-white/20 text-white hover:bg-white/10 px-8 py-4 text-lg font-semibold rounded-xl backdrop-blur-sm transition-all duration-300 transform hover:scale-105 bg-transparent"
-            >
-              <Play className="mr-2 h-5 w-5" />
-              Watch Demo
-            </Button>
+          <div className="mt-10 flex items-center justify-center gap-x-6">
+            <Link href="/auth/signup">
+              <Button size="lg" className="bg-indigo-600 hover:bg-indigo-500">
+                Get Started Free
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+            </Link>
+            <Link href="/features">
+              <Button
+                variant="outline"
+                size="lg"
+                className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+              >
+                View Features
+              </Button>
+            </Link>
           </div>
 
-          {/* Trust Indicators */}
-          <div className="flex flex-wrap justify-center items-center gap-8 text-gray-400 mb-12">
-            <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-green-400" />
-              <span>Bank-Grade Security</span>
+          {/* Feature highlights */}
+          <div className="mt-16 grid grid-cols-1 gap-8 sm:grid-cols-3">
+            <div className="flex flex-col items-center text-center">
+              <div className="rounded-lg bg-indigo-600/10 p-3 ring-1 ring-indigo-600/20">
+                <TrendingUp className="h-6 w-6 text-indigo-400" />
+              </div>
+              <h3 className="mt-4 text-sm font-semibold text-white">AI Trading Bots</h3>
+              <p className="mt-2 text-sm text-gray-400">Automated trading strategies powered by machine learning</p>
             </div>
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-blue-400" />
-              <span>95% Success Rate</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-purple-400" />
-              <span>24/7 Automated Trading</span>
-            </div>
-          </div>
-        </div>
 
-        {/* Hero Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-          <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 transform hover:scale-105">
-            <div className="text-3xl font-bold text-white mb-2">$2.5M+</div>
-            <div className="text-gray-400">Total Volume Traded</div>
-          </div>
-          <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 transform hover:scale-105">
-            <div className="text-3xl font-bold text-white mb-2">10,000+</div>
-            <div className="text-gray-400">Active Traders</div>
-          </div>
-          <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-6 border border-white/10 hover:bg-white/10 transition-all duration-300 transform hover:scale-105">
-            <div className="text-3xl font-bold text-white mb-2">99.9%</div>
-            <div className="text-gray-400">Uptime Guarantee</div>
+            <div className="flex flex-col items-center text-center">
+              <div className="rounded-lg bg-purple-600/10 p-3 ring-1 ring-purple-600/20">
+                <Shield className="h-6 w-6 text-purple-400" />
+              </div>
+              <h3 className="mt-4 text-sm font-semibold text-white">Secure & Reliable</h3>
+              <p className="mt-2 text-sm text-gray-400">Bank-grade security with 99.9% uptime guarantee</p>
+            </div>
+
+            <div className="flex flex-col items-center text-center">
+              <div className="rounded-lg bg-emerald-600/10 p-3 ring-1 ring-emerald-600/20">
+                <Zap className="h-6 w-6 text-emerald-400" />
+              </div>
+              <h3 className="mt-4 text-sm font-semibold text-white">Real-time Analytics</h3>
+              <p className="mt-2 text-sm text-gray-400">Live market data and performance tracking</p>
+            </div>
           </div>
         </div>
       </div>
