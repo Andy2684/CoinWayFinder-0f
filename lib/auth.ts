@@ -1,7 +1,8 @@
 import { sql } from "./database"
+import jwt from "jsonwebtoken"
+import { cookies } from "next/headers"
 
-const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production"
-const JWT_EXPIRES_IN = 7 * 24 * 60 * 60 * 1000 // 7 days in milliseconds
+const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 
 export interface User {
   id: string
@@ -21,77 +22,36 @@ export interface AuthUser extends User {
   token: string
 }
 
-// Simple JWT implementation for Next.js compatibility
-function base64UrlEncode(str: string): string {
-  return Buffer.from(str).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "")
+export interface TokenPayload {
+  userId: string
+  email: string
 }
 
-function base64UrlDecode(str: string): string {
-  str += new Array(5 - (str.length % 4)).join("=")
-  return Buffer.from(str.replace(/-/g, "+").replace(/_/g, "/"), "base64").toString()
+// Generate JWT token using jsonwebtoken library
+export function generateToken(payload: TokenPayload): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" })
 }
 
-// Generate JWT token (simplified for Next.js compatibility)
-export function generateToken(payload: { userId: string; email: string }): string {
-  const header = {
-    alg: "HS256",
-    typ: "JWT",
-  }
-
-  const tokenPayload = {
-    userId: payload.userId,
-    email: payload.email,
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor((Date.now() + JWT_EXPIRES_IN) / 1000),
-  }
-
-  const encodedHeader = base64UrlEncode(JSON.stringify(header))
-  const encodedPayload = base64UrlEncode(JSON.stringify(tokenPayload))
-
-  const crypto = require("crypto")
-  const signature = crypto
-    .createHmac("sha256", JWT_SECRET)
-    .update(`${encodedHeader}.${encodedPayload}`)
-    .digest("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=/g, "")
-
-  return `${encodedHeader}.${encodedPayload}.${signature}`
-}
-
-// Verify JWT token
-export function verifyToken(token: string): { userId: string; email: string } | null {
+// Verify JWT token using jsonwebtoken library
+export function verifyToken(token: string): TokenPayload | null {
   try {
-    const [encodedHeader, encodedPayload, signature] = token.split(".")
+    return jwt.verify(token, JWT_SECRET) as TokenPayload
+  } catch (error) {
+    return null
+  }
+}
 
-    if (!encodedHeader || !encodedPayload || !signature) {
+// Get current user from cookies
+export async function getCurrentUser(): Promise<TokenPayload | null> {
+  try {
+    const cookieStore = await cookies()
+    const token = cookieStore.get("auth-token")?.value
+
+    if (!token) {
       return null
     }
 
-    // Verify signature
-    const crypto = require("crypto")
-    const expectedSignature = crypto
-      .createHmac("sha256", JWT_SECRET)
-      .update(`${encodedHeader}.${encodedPayload}`)
-      .digest("base64")
-      .replace(/\+/g, "-")
-      .replace(/\//g, "_")
-      .replace(/=/g, "")
-
-    if (signature !== expectedSignature) {
-      return null
-    }
-
-    // Decode payload
-    const payload = JSON.parse(base64UrlDecode(encodedPayload))
-
-    // Check expiration
-    if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
-      return null
-    }
-
-    return { userId: payload.userId, email: payload.email }
+    return verifyToken(token)
   } catch (error) {
     return null
   }

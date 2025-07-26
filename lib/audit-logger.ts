@@ -13,20 +13,21 @@ export type EventCategory =
 export type RiskLevel = "low" | "medium" | "high" | "critical"
 
 export interface AuditLogEntry {
-  userId?: number | null
+  userId?: string | null
   eventType: string
   eventCategory: string
   eventDescription: string
-  ipAddress?: string
-  userAgent?: string
-  riskLevel?: "low" | "medium" | "high"
-  success?: boolean
+  ipAddress: string
+  userAgent: string
+  riskLevel: "low" | "medium" | "high"
+  success: boolean
   errorMessage?: string
   metadata?: Record<string, any>
+  timestamp: Date
 }
 
 export interface AuditLogFilter {
-  userId?: number
+  userId?: string
   eventCategory?: EventCategory
   eventType?: string
   riskLevel?: RiskLevel
@@ -121,7 +122,7 @@ class AuditLogger {
     }
   }
 
-  public async log(entry: AuditLogEntry): Promise<void> {
+  public async log(entry: Omit<AuditLogEntry, "timestamp">): Promise<void> {
     try {
       // Ensure table exists before logging
       await this.ensureTableExists()
@@ -162,7 +163,7 @@ class AuditLogger {
 
   // Authentication Events
   public async logLoginAttempt(
-    userId: number | null,
+    userId: string | null,
     email: string,
     success: boolean,
     ipAddress: string,
@@ -184,7 +185,7 @@ class AuditLogger {
   }
 
   public async logSignupAttempt(
-    userId: number | null,
+    userId: string | null,
     email: string,
     success: boolean,
     ipAddress: string,
@@ -205,7 +206,11 @@ class AuditLogger {
     })
   }
 
-  public async logLogout(userId: number, email: string, ipAddress?: string, userAgent?: string): Promise<void> {
+  public async logSignup(userId: string, email: string, ipAddress: string, userAgent: string): Promise<void> {
+    await this.logSignupAttempt(userId, email, true, ipAddress, userAgent)
+  }
+
+  public async logLogout(userId: string, email: string, ipAddress?: string, userAgent?: string): Promise<void> {
     await this.log({
       userId,
       eventType: "logout",
@@ -219,11 +224,7 @@ class AuditLogger {
     })
   }
 
-  public async logSignup(userId: number, email: string, ipAddress: string, userAgent: string): Promise<void> {
-    await this.logSignupAttempt(userId, email, true, ipAddress, userAgent)
-  }
-
-  public async logPasswordChange(userId: number, ipAddress?: string, userAgent?: string): Promise<void> {
+  public async logPasswordChange(userId: string, ipAddress?: string, userAgent?: string): Promise<void> {
     await this.log({
       userId,
       eventType: "password_change",
@@ -236,7 +237,7 @@ class AuditLogger {
     })
   }
 
-  public async logTokenRefresh(userId: number, ipAddress?: string, userAgent?: string): Promise<void> {
+  public async logTokenRefresh(userId: string, ipAddress?: string, userAgent?: string): Promise<void> {
     await this.log({
       userId,
       eventType: "token_refresh",
@@ -251,7 +252,7 @@ class AuditLogger {
 
   // Security Events
   public async logSuspiciousActivity(
-    userId: number | null,
+    userId: string | null,
     activityType: string,
     description: string,
     ipAddress?: string,
@@ -272,7 +273,7 @@ class AuditLogger {
   }
 
   public async logUnauthorizedAccess(
-    userId: number | null,
+    userId: string | null,
     resource: string,
     ipAddress?: string,
     userAgent?: string,
@@ -305,7 +306,7 @@ class AuditLogger {
 
   // Data Access Events
   public async logDataAccess(
-    userId: number,
+    userId: string,
     dataType: string,
     action: string,
     recordId?: string,
@@ -327,7 +328,7 @@ class AuditLogger {
 
   // Trading Events
   public async logTradingAction(
-    userId: number,
+    userId: string,
     action: string,
     symbol: string,
     amount?: number,
@@ -362,7 +363,7 @@ class AuditLogger {
 
   // API Events
   public async logApiCall(
-    userId: number | null,
+    userId: string | null,
     endpoint: string,
     method: string,
     statusCode: number,

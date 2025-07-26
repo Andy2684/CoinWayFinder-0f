@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import { sql } from "@/lib/database"
+import { connectToDatabase } from "@/lib/mongodb"
 import { generateToken } from "@/lib/auth"
 import { auditLogger } from "@/lib/audit-logger"
 
@@ -49,24 +49,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Get user from database - handle missing columns gracefully
-    const [user] = await sql`
-      SELECT 
-        id, 
-        email, 
-        password_hash,
-        first_name, 
-        last_name, 
-        username, 
-        COALESCE(role, 'user') as role, 
-        COALESCE(subscription_status, 'free') as subscription_status,
-        COALESCE(is_email_verified, false) as is_email_verified,
-        last_login,
-        created_at, 
-        COALESCE(updated_at, created_at) as updated_at
-      FROM users 
-      WHERE email = ${email}
-    `
+    // Connect to MongoDB and get user
+    const { db } = await connectToDatabase()
+    const user = await db.collection("users").findOne({ email })
 
     if (!user) {
       await auditLogger.logLoginAttempt(null, email, false, ipAddress, userAgent, "User not found")
@@ -85,7 +70,7 @@ export async function POST(request: NextRequest) {
     const isValidPassword = await bcrypt.compare(password, user.password_hash)
 
     if (!isValidPassword) {
-      await auditLogger.logLoginAttempt(user.id, email, false, ipAddress, userAgent, "Invalid password")
+      await auditLogger.logLoginAttempt(user._id.toString(), email, false, ipAddress, userAgent, "Invalid password")
 
       return NextResponse.json(
         {
@@ -97,39 +82,34 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Update last login timestamp if column exists
+    // Update last login timestamp
     try {
-      await sql`
-        UPDATE users 
-        SET last_login = CURRENT_TIMESTAMP 
-        WHERE id = ${user.id}
-      `
+      await db.collection("users").updateOne({ _id: user._id }, { $set: { last_login: new Date() } })
     } catch (updateError) {
       console.error("Error updating last login:", updateError)
-      // Continue even if update fails
     }
 
     // Generate JWT token
-    const token = generateToken({ userId: user.id, email: user.email })
+    const token = generateToken({ userId: user._id.toString(), email: user.email })
 
     // Log successful login
-    await auditLogger.logLoginAttempt(user.id, email, true, ipAddress, userAgent)
+    await auditLogger.logLoginAttempt(user._id.toString(), email, true, ipAddress, userAgent)
 
     // Create response with httpOnly cookie
     const response = NextResponse.json({
       success: true,
       message: "Login successful",
       user: {
-        id: user.id,
+        id: user._id.toString(),
         email: user.email,
         username: user.username,
         firstName: user.first_name,
         lastName: user.last_name,
-        role: user.role,
-        subscriptionStatus: user.subscription_status,
-        isEmailVerified: user.is_email_verified,
+        role: user.role || "user",
+        subscriptionStatus: user.subscription_status || "free",
+        isEmailVerified: user.is_email_verified || false,
         createdAt: user.created_at,
-        updatedAt: user.updated_at,
+        updatedAt: user.updated_at || user.created_at,
       },
     })
 

@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
-import { sql } from "@/lib/database"
+import { connectToDatabase } from "@/lib/mongodb"
 import { auditLogger } from "@/lib/audit-logger"
 
 function getClientIP(request: NextRequest): string {
@@ -62,10 +62,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Connect to MongoDB
+    const { db } = await connectToDatabase()
+
     // Check if user already exists
-    const [existingUser] = await sql`
-      SELECT id FROM users WHERE email = ${email}
-    `
+    const existingUser = await db.collection("users").findOne({ email })
 
     if (existingUser) {
       await auditLogger.logSignupAttempt(null, email, false, ipAddress, userAgent, "Email already exists")
@@ -80,6 +81,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Check if username is taken (if provided)
+    if (username) {
+      const existingUsername = await db.collection("users").findOne({ username })
+      if (existingUsername) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Username taken",
+            message: "This username is already taken",
+          },
+          { status: 409 },
+        )
+      }
+    }
+
     // Hash password
     const saltRounds = 12
     const passwordHash = await bcrypt.hash(password, saltRounds)
@@ -87,46 +103,32 @@ export async function POST(request: NextRequest) {
     // Generate username if not provided
     const finalUsername = username || `${firstName.toLowerCase()}_${lastName.toLowerCase()}_${Date.now()}`
 
-    // Create user
-    const [newUser] = await sql`
-      INSERT INTO users (
-        email, 
-        password_hash, 
-        first_name, 
-        last_name, 
-        username,
-        role,
-        subscription_status,
-        is_email_verified
-      )
-      VALUES (
-        ${email}, 
-        ${passwordHash}, 
-        ${firstName}, 
-        ${lastName}, 
-        ${finalUsername},
-        'user',
-        'free',
-        false
-      )
-      RETURNING 
-        id, 
-        email, 
-        first_name, 
-        last_name, 
-        username,
-        created_at
-    `
+    // Create user document
+    const newUser = {
+      email,
+      password_hash: passwordHash,
+      first_name: firstName,
+      last_name: lastName,
+      username: finalUsername,
+      role: "user",
+      subscription_status: "free",
+      is_email_verified: false,
+      created_at: new Date(),
+      updated_at: new Date(),
+    }
+
+    // Insert user into MongoDB
+    const result = await db.collection("users").insertOne(newUser)
 
     // Log successful signup
-    await auditLogger.logSignupAttempt(newUser.id, email, true, ipAddress, userAgent)
+    await auditLogger.logSignupAttempt(result.insertedId.toString(), email, true, ipAddress, userAgent)
 
     // Return success without auto-login (as requested)
     return NextResponse.json({
       success: true,
       message: "Account created successfully! Please log in to continue.",
       user: {
-        id: newUser.id,
+        id: result.insertedId.toString(),
         email: newUser.email,
         firstName: newUser.first_name,
         lastName: newUser.last_name,
