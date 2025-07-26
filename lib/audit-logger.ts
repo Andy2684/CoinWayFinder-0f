@@ -1,4 +1,4 @@
-import { sql } from "@/lib/database"
+import { connectToDatabase } from "./mongodb"
 
 export type EventCategory =
   | "authentication"
@@ -17,13 +17,12 @@ export interface AuditLogEntry {
   eventType: string
   eventCategory: string
   eventDescription: string
-  ipAddress: string
-  userAgent: string
-  riskLevel: "low" | "medium" | "high"
-  success: boolean
+  ipAddress?: string
+  userAgent?: string
+  riskLevel?: "low" | "medium" | "high"
+  success?: boolean
   errorMessage?: string
   metadata?: Record<string, any>
-  timestamp: Date
 }
 
 export interface AuditLogFilter {
@@ -41,8 +40,6 @@ export interface AuditLogFilter {
 
 class AuditLogger {
   private requestId = ""
-  private tableInitialized = false
-  private initializationPromise: Promise<void> | null = null
 
   private constructor() {}
 
@@ -50,111 +47,28 @@ class AuditLogger {
     this.requestId = requestId
   }
 
-  private async ensureTableExists(): Promise<void> {
-    if (this.tableInitialized) {
-      return
-    }
-
-    if (this.initializationPromise) {
-      return this.initializationPromise
-    }
-
-    this.initializationPromise = this.initializeTable()
-    return this.initializationPromise
-  }
-
-  private async initializeTable(): Promise<void> {
+  public async log(entry: AuditLogEntry): Promise<void> {
     try {
-      // Check if table exists
-      const [tableExists] = await sql`
-        SELECT EXISTS (
-          SELECT FROM information_schema.tables 
-          WHERE table_schema = 'public' 
-          AND table_name = 'audit_logs'
-        )
-      `
+      const { db } = await connectToDatabase()
 
-      if (!tableExists.exists) {
-        console.log("Creating audit_logs table...")
-
-        // Create the audit_logs table
-        await sql`
-          CREATE TABLE audit_logs (
-            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-            user_id INT,
-            event_type VARCHAR(50) NOT NULL,
-            event_category VARCHAR(30) NOT NULL,
-            event_description TEXT NOT NULL,
-            ip_address VARCHAR(45),
-            user_agent TEXT,
-            session_id VARCHAR(255),
-            request_id VARCHAR(255),
-            metadata JSONB DEFAULT '{}',
-            risk_level VARCHAR(20) DEFAULT 'low',
-            success BOOLEAN DEFAULT true,
-            error_message TEXT,
-            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            expires_at TIMESTAMP WITH TIME ZONE DEFAULT (CURRENT_TIMESTAMP + INTERVAL '2 years')
-          )
-        `
-
-        // Create indexes
-        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id)`
-        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_event_type ON audit_logs(event_type)`
-        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_event_category ON audit_logs(event_category)`
-        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC)`
-        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_ip_address ON audit_logs(ip_address)`
-        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_risk_level ON audit_logs(risk_level)`
-        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_success ON audit_logs(success)`
-        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_expires_at ON audit_logs(expires_at)`
-
-        // Create composite indexes
-        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_user_category ON audit_logs(user_id, event_category)`
-        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_category_time ON audit_logs(event_category, created_at DESC)`
-
-        console.log("Audit logs table created successfully")
+      const auditLog = {
+        user_id: entry.userId || null,
+        event_type: entry.eventType,
+        event_category: entry.eventCategory,
+        event_description: entry.eventDescription,
+        ip_address: this.validateIpAddress(entry.ipAddress),
+        user_agent: entry.userAgent || "",
+        session_id: null,
+        request_id: this.requestId || null,
+        metadata: entry.metadata || {},
+        risk_level: entry.riskLevel || "low",
+        success: entry.success !== false,
+        error_message: entry.errorMessage || null,
+        created_at: new Date(),
+        expires_at: new Date(Date.now() + 2 * 365 * 24 * 60 * 60 * 1000), // 2 years
       }
 
-      this.tableInitialized = true
-    } catch (error) {
-      console.error("Failed to initialize audit logs table:", error)
-      // Don't throw error to avoid breaking the application
-    }
-  }
-
-  public async log(entry: Omit<AuditLogEntry, "timestamp">): Promise<void> {
-    try {
-      // Ensure table exists before logging
-      await this.ensureTableExists()
-
-      if (!this.tableInitialized) {
-        console.warn("Audit logs table not initialized, skipping log entry")
-        return
-      }
-
-      // Validate and sanitize IP address
-      const validIpAddress = entry.ipAddress && this.validateIpAddress(entry.ipAddress) ? entry.ipAddress : null
-
-      await sql`
-        INSERT INTO audit_logs (
-          user_id, event_type, event_category, event_description,
-          ip_address, user_agent, session_id, request_id,
-          metadata, risk_level, success, error_message
-        ) VALUES (
-          ${entry.userId || null},
-          ${entry.eventType},
-          ${entry.eventCategory},
-          ${entry.eventDescription},
-          ${validIpAddress},
-          ${entry.userAgent || ""},
-          ${entry.sessionId || null},
-          ${this.requestId || entry.requestId || null},
-          ${entry.metadata ? JSON.stringify(entry.metadata) : null},
-          ${entry.riskLevel || "low"},
-          ${entry.success !== false},
-          ${entry.errorMessage || null}
-        )
-      `
+      await db.collection("audit_logs").insertOne(auditLog)
     } catch (error) {
       console.error("Failed to write audit log:", error)
       // Don't throw error to avoid breaking the main application flow
@@ -408,8 +322,9 @@ class AuditLogger {
 export const auditLogger = new AuditLogger()
 
 // Database query functions with error handling
-export async function getAuditLogs(filter: AuditLogFilter = {}) {
+export async function getAuditLogs(filter: AuditLogFilter = []) {
   try {
+    const { db } = await connectToDatabase()
     const {
       userId,
       eventCategory,
@@ -423,46 +338,29 @@ export async function getAuditLogs(filter: AuditLogFilter = {}) {
       offset = 0,
     } = filter
 
-    // Check if table exists first
-    const [tableExists] = await sql`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'audit_logs'
-      )
-    `
+    const query: any = {}
 
-    if (!tableExists.exists) {
-      return []
+    if (userId) query.user_id = userId
+    if (eventCategory) query.event_category = eventCategory
+    if (eventType) query.event_type = eventType
+    if (riskLevel) query.risk_level = riskLevel
+    if (success !== undefined) query.success = success
+    if (startDate || endDate) {
+      query.created_at = {}
+      if (startDate) query.created_at.$gte = startDate
+      if (endDate) query.created_at.$lte = endDate
     }
+    if (ipAddress) query.ip_address = ipAddress
 
-    const whereConditions = []
+    const logs = await db
+      .collection("audit_logs")
+      .find(query)
+      .sort({ created_at: -1 })
+      .limit(limit)
+      .skip(offset)
+      .toArray()
 
-    if (userId) whereConditions.push(sql`al.user_id = ${userId}`)
-    if (eventCategory) whereConditions.push(sql`al.event_category = ${eventCategory}`)
-    if (eventType) whereConditions.push(sql`al.event_type = ${eventType}`)
-    if (riskLevel) whereConditions.push(sql`al.risk_level = ${riskLevel}`)
-    if (success !== undefined) whereConditions.push(sql`al.success = ${success}`)
-    if (startDate) whereConditions.push(sql`al.created_at >= ${startDate}`)
-    if (endDate) whereConditions.push(sql`al.created_at <= ${endDate}`)
-    if (ipAddress) whereConditions.push(sql`al.ip_address = ${ipAddress}`)
-
-    const whereClause = whereConditions.length > 0 ? sql`WHERE ${sql.join(whereConditions, sql` AND `)}` : sql``
-
-    return await sql`
-      SELECT 
-        al.*,
-        u.email,
-        u.username,
-        u.first_name as "firstName",
-        u.last_name as "lastName"
-      FROM audit_logs al
-      LEFT JOIN users u ON al.user_id = u.id
-      ${whereClause}
-      ORDER BY al.created_at DESC
-      LIMIT ${limit}
-      OFFSET ${offset}
-    `
+    return logs
   } catch (error) {
     console.error("Error fetching audit logs:", error)
     return []
@@ -471,17 +369,51 @@ export async function getAuditLogs(filter: AuditLogFilter = {}) {
 
 export async function getAuditLogStats() {
   try {
-    // Check if table exists first
-    const [tableExists] = await sql`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'audit_logs'
-      )
-    `
+    const { db } = await connectToDatabase()
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
 
-    if (!tableExists.exists) {
-      return {
+    const stats = await db
+      .collection("audit_logs")
+      .aggregate([
+        { $match: { created_at: { $gte: thirtyDaysAgo } } },
+        {
+          $group: {
+            _id: null,
+            total_events: { $sum: 1 },
+            failed_events: { $sum: { $cond: [{ $eq: ["$success", false] }, 1, 0] } },
+            high_risk_events: { $sum: { $cond: [{ $eq: ["$risk_level", "high"] }, 1, 0] } },
+            critical_events: { $sum: { $cond: [{ $eq: ["$risk_level", "critical"] }, 1, 0] } },
+            events_last_24h: {
+              $sum: {
+                $cond: [{ $gte: ["$created_at", new Date(Date.now() - 24 * 60 * 60 * 1000)] }, 1, 0],
+              },
+            },
+            events_last_7d: {
+              $sum: {
+                $cond: [{ $gte: ["$created_at", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)] }, 1, 0],
+              },
+            },
+            unique_users: { $addToSet: "$user_id" },
+            unique_ips: { $addToSet: "$ip_address" },
+          },
+        },
+        {
+          $project: {
+            total_events: 1,
+            failed_events: 1,
+            high_risk_events: 1,
+            critical_events: 1,
+            events_last_24h: 1,
+            events_last_7d: 1,
+            unique_users: { $size: "$unique_users" },
+            unique_ips: { $size: "$unique_ips" },
+          },
+        },
+      ])
+      .toArray()
+
+    return (
+      stats[0] || {
         total_events: 0,
         failed_events: 0,
         high_risk_events: 0,
@@ -491,23 +423,7 @@ export async function getAuditLogStats() {
         unique_users: 0,
         unique_ips: 0,
       }
-    }
-
-    const [stats] = await sql`
-      SELECT 
-        COUNT(*) as total_events,
-        COUNT(CASE WHEN success = false THEN 1 END) as failed_events,
-        COUNT(CASE WHEN risk_level = 'high' THEN 1 END) as high_risk_events,
-        COUNT(CASE WHEN risk_level = 'critical' THEN 1 END) as critical_events,
-        COUNT(CASE WHEN created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours' THEN 1 END) as events_last_24h,
-        COUNT(CASE WHEN created_at >= CURRENT_TIMESTAMP - INTERVAL '7 days' THEN 1 END) as events_last_7d,
-        COUNT(DISTINCT user_id) as unique_users,
-        COUNT(DISTINCT ip_address) as unique_ips
-      FROM audit_logs
-      WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '30 days'
-    `
-
-    return stats
+    )
   } catch (error) {
     console.error("Error fetching audit log stats:", error)
     return {
@@ -525,31 +441,34 @@ export async function getAuditLogStats() {
 
 export async function getTopEventTypes(limit = 10) {
   try {
-    // Check if table exists first
-    const [tableExists] = await sql`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'audit_logs'
-      )
-    `
+    const { db } = await connectToDatabase()
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
 
-    if (!tableExists.exists) {
-      return []
-    }
+    const eventTypes = await db
+      .collection("audit_logs")
+      .aggregate([
+        { $match: { created_at: { $gte: sevenDaysAgo } } },
+        {
+          $group: {
+            _id: { event_type: "$event_type", event_category: "$event_category" },
+            count: { $sum: 1 },
+            failed_count: { $sum: { $cond: [{ $eq: ["$success", false] }, 1, 0] } },
+          },
+        },
+        { $sort: { count: -1 } },
+        { $limit: limit },
+        {
+          $project: {
+            event_type: "$_id.event_type",
+            event_category: "$_id.event_category",
+            count: 1,
+            failed_count: 1,
+          },
+        },
+      ])
+      .toArray()
 
-    return await sql`
-      SELECT 
-        event_type,
-        event_category,
-        COUNT(*) as count,
-        COUNT(CASE WHEN success = false THEN 1 END) as failed_count
-      FROM audit_logs
-      WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '7 days'
-      GROUP BY event_type, event_category
-      ORDER BY count DESC
-      LIMIT ${limit}
-    `
+    return eventTypes
   } catch (error) {
     console.error("Error fetching top event types:", error)
     return []
@@ -558,31 +477,20 @@ export async function getTopEventTypes(limit = 10) {
 
 export async function getSecurityAlerts() {
   try {
-    // Check if table exists first
-    const [tableExists] = await sql`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables 
-        WHERE table_schema = 'public' 
-        AND table_name = 'audit_logs'
-      )
-    `
+    const { db } = await connectToDatabase()
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
 
-    if (!tableExists.exists) {
-      return []
-    }
+    const alerts = await db
+      .collection("audit_logs")
+      .find({
+        risk_level: { $in: ["high", "critical"] },
+        created_at: { $gte: twentyFourHoursAgo },
+      })
+      .sort({ created_at: -1 })
+      .limit(50)
+      .toArray()
 
-    return await sql`
-      SELECT 
-        al.*,
-        u.email,
-        u.username
-      FROM audit_logs al
-      LEFT JOIN users u ON al.user_id = u.id
-      WHERE al.risk_level IN ('high', 'critical')
-        AND al.created_at >= CURRENT_TIMESTAMP - INTERVAL '24 hours'
-      ORDER BY al.created_at DESC
-      LIMIT 50
-    `
+    return alerts
   } catch (error) {
     console.error("Error fetching security alerts:", error)
     return []

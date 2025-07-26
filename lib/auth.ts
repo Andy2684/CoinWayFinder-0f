@@ -1,6 +1,7 @@
-import { sql } from "./database"
 import jwt from "jsonwebtoken"
 import { cookies } from "next/headers"
+import { connectToDatabase } from "./mongodb"
+import { ObjectId } from "mongodb"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 
@@ -57,80 +58,80 @@ export async function getCurrentUser(): Promise<TokenPayload | null> {
   }
 }
 
-// Get user by ID with safe column access
+// Get user by ID from MongoDB
 export async function getUserById(userId: string): Promise<User | null> {
   try {
-    const [user] = await sql`
-      SELECT 
-        id, 
-        email, 
-        first_name as "firstName", 
-        last_name as "lastName", 
-        username, 
-        COALESCE(role, 'user') as "role", 
-        COALESCE(subscription_status, 'free') as "subscriptionStatus", 
-        COALESCE(is_email_verified, false) as "isEmailVerified", 
-        last_login as "lastLogin", 
-        created_at as "createdAt", 
-        COALESCE(updated_at, created_at) as "updatedAt"
-      FROM users 
-      WHERE id = ${userId}
-    `
+    const { db } = await connectToDatabase()
+    const user = await db
+      .collection("users")
+      .findOne({ _id: new ObjectId(userId) }, { projection: { password_hash: 0 } })
 
-    return user || null
+    if (!user) return null
+
+    return {
+      id: user._id.toString(),
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      username: user.username,
+      role: user.role || "user",
+      subscriptionStatus: user.subscription_status || "free",
+      isEmailVerified: user.is_email_verified || false,
+      lastLogin: user.last_login,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at || user.created_at,
+    }
   } catch (error) {
     console.error("Error getting user by ID:", error)
     return null
   }
 }
 
-// Get user by email with safe column access
+// Get user by email from MongoDB
 export async function getUserByEmail(email: string): Promise<User | null> {
   try {
-    const [user] = await sql`
-      SELECT 
-        id, 
-        email, 
-        first_name as "firstName", 
-        last_name as "lastName", 
-        username, 
-        COALESCE(role, 'user') as "role", 
-        COALESCE(subscription_status, 'free') as "subscriptionStatus", 
-        COALESCE(is_email_verified, false) as "isEmailVerified", 
-        last_login as "lastLogin", 
-        created_at as "createdAt", 
-        COALESCE(updated_at, created_at) as "updatedAt"
-      FROM users 
-      WHERE email = ${email}
-    `
+    const { db } = await connectToDatabase()
+    const user = await db.collection("users").findOne({ email }, { projection: { password_hash: 0 } })
 
-    return user || null
+    if (!user) return null
+
+    return {
+      id: user._id.toString(),
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      username: user.username,
+      role: user.role || "user",
+      subscriptionStatus: user.subscription_status || "free",
+      isEmailVerified: user.is_email_verified || false,
+      lastLogin: user.last_login,
+      createdAt: user.created_at,
+      updatedAt: user.updated_at || user.created_at,
+    }
   } catch (error) {
     console.error("Error getting user by email:", error)
     return null
   }
 }
 
-// Check if email exists
+// Check if email exists in MongoDB
 export async function emailExists(email: string): Promise<boolean> {
   try {
-    const [result] = await sql`
-      SELECT 1 FROM users WHERE email = ${email}
-    `
-    return !!result
+    const { db } = await connectToDatabase()
+    const user = await db.collection("users").findOne({ email })
+    return !!user
   } catch (error) {
     console.error("Error checking email exists:", error)
     return false
   }
 }
 
-// Check if username exists
+// Check if username exists in MongoDB
 export async function usernameExists(username: string): Promise<boolean> {
   try {
-    const [result] = await sql`
-      SELECT 1 FROM users WHERE username = ${username}
-    `
-    return !!result
+    const { db } = await connectToDatabase()
+    const user = await db.collection("users").findOne({ username })
+    return !!user
   } catch (error) {
     console.error("Error checking username exists:", error)
     return false
