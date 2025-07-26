@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import { Settings, CheckCircle, XCircle, AlertCircle, ExternalLink } from "lucide-react"
+import { Settings, CheckCircle, XCircle, AlertCircle, ExternalLink, Shield, TrendingUp, Globe, Zap } from "lucide-react"
 
 interface Exchange {
   id: string
@@ -23,6 +23,8 @@ interface Exchange {
     nft: boolean
     p2p: boolean
     fiat: boolean
+    options: boolean
+    derivatives: boolean
   }
   fees: {
     maker: string
@@ -43,6 +45,8 @@ interface Exchange {
   }
   documentation: string
   testnet: boolean
+  tier: "premium" | "standard" | "basic"
+  specialFeatures: string[]
 }
 
 export function ExchangeIntegrations() {
@@ -63,6 +67,8 @@ export function ExchangeIntegrations() {
         nft: true,
         p2p: true,
         fiat: true,
+        options: true,
+        derivatives: true,
       },
       fees: { maker: "0.1%", taker: "0.1%", withdrawal: "Variable" },
       supportedPairs: 1500,
@@ -70,7 +76,7 @@ export function ExchangeIntegrations() {
       established: "2017",
       security: {
         rating: 9,
-        features: ["2FA", "Whitelist", "Anti-phishing", "SAFU Fund"],
+        features: ["2FA", "Whitelist", "Anti-phishing", "SAFU Fund", "Cold Storage"],
       },
       apiLimits: {
         requests: "1200/min",
@@ -79,39 +85,45 @@ export function ExchangeIntegrations() {
       },
       documentation: "https://binance-docs.github.io/apidocs/",
       testnet: true,
+      tier: "premium",
+      specialFeatures: ["Launchpad", "Earn", "NFT Marketplace", "Futures", "Options"],
     },
     {
-      id: "binance-us",
-      name: "Binance.US",
-      logo: "🔵",
-      description: "US-compliant version of Binance exchange",
-      status: "disconnected",
-      region: ["United States"],
+      id: "bybit",
+      name: "Bybit",
+      logo: "🟠",
+      description: "Derivatives-focused exchange with high leverage",
+      status: "connected",
+      region: ["Global", "Except US"],
       features: {
         spotTrading: true,
-        futuresTrading: false,
-        marginTrading: false,
+        futuresTrading: true,
+        marginTrading: true,
         staking: true,
-        lending: false,
+        lending: true,
         nft: false,
-        p2p: false,
+        p2p: true,
         fiat: true,
+        options: true,
+        derivatives: true,
       },
       fees: { maker: "0.1%", taker: "0.1%", withdrawal: "Variable" },
-      supportedPairs: 150,
-      volume24h: "$180M",
-      established: "2019",
+      supportedPairs: 600,
+      volume24h: "$3.2B",
+      established: "2018",
       security: {
         rating: 8,
-        features: ["2FA", "Whitelist", "FDIC Insurance"],
+        features: ["2FA", "Whitelist", "Anti-phishing", "Cold Storage", "Multi-sig"],
       },
       apiLimits: {
-        requests: "1200/min",
+        requests: "120/min",
         orders: "10/sec",
-        websocket: "5 connections",
+        websocket: "10 connections",
       },
-      documentation: "https://docs.binance.us/",
+      documentation: "https://bybit-exchange.github.io/docs/",
       testnet: true,
+      tier: "premium",
+      specialFeatures: ["Copy Trading", "Grid Trading", "DCA Bot", "Leveraged Tokens"],
     },
     {
       id: "coinbase",
@@ -129,6 +141,8 @@ export function ExchangeIntegrations() {
         nft: true,
         p2p: false,
         fiat: true,
+        options: false,
+        derivatives: false,
       },
       fees: { maker: "0.5%", taker: "0.5%", withdrawal: "Variable" },
       supportedPairs: 200,
@@ -136,7 +150,7 @@ export function ExchangeIntegrations() {
       established: "2012",
       security: {
         rating: 9,
-        features: ["2FA", "Vault Storage", "Insurance", "Regulated"],
+        features: ["2FA", "Vault Storage", "Insurance", "Regulated", "FDIC Protected"],
       },
       apiLimits: {
         requests: "10000/hour",
@@ -145,6 +159,8 @@ export function ExchangeIntegrations() {
       },
       documentation: "https://docs.cloud.coinbase.com/",
       testnet: true,
+      tier: "premium",
+      specialFeatures: ["Institutional Grade", "Custody", "Prime Brokerage", "Earn Rewards"],
     },
     {
       id: "kraken",
@@ -162,6 +178,8 @@ export function ExchangeIntegrations() {
         nft: false,
         p2p: false,
         fiat: true,
+        options: false,
+        derivatives: true,
       },
       fees: { maker: "0.16%", taker: "0.26%", withdrawal: "Variable" },
       supportedPairs: 400,
@@ -169,7 +187,7 @@ export function ExchangeIntegrations() {
       established: "2011",
       security: {
         rating: 9,
-        features: ["2FA", "PGP/GPG", "Global Settings Lock", "Master Key"],
+        features: ["2FA", "PGP/GPG", "Global Settings Lock", "Master Key", "Proof of Reserves"],
       },
       apiLimits: {
         requests: "15-20/sec",
@@ -178,39 +196,8 @@ export function ExchangeIntegrations() {
       },
       documentation: "https://docs.kraken.com/rest/",
       testnet: false,
-    },
-    {
-      id: "bybit",
-      name: "Bybit",
-      logo: "🟠",
-      description: "Derivatives-focused exchange with high leverage",
-      status: "pending",
-      region: ["Global", "Except US"],
-      features: {
-        spotTrading: true,
-        futuresTrading: true,
-        marginTrading: true,
-        staking: true,
-        lending: true,
-        nft: false,
-        p2p: true,
-        fiat: true,
-      },
-      fees: { maker: "0.1%", taker: "0.1%", withdrawal: "Variable" },
-      supportedPairs: 600,
-      volume24h: "$3.2B",
-      established: "2018",
-      security: {
-        rating: 8,
-        features: ["2FA", "Whitelist", "Anti-phishing", "Cold Storage"],
-      },
-      apiLimits: {
-        requests: "120/min",
-        orders: "10/sec",
-        websocket: "10 connections",
-      },
-      documentation: "https://bybit-exchange.github.io/docs/",
-      testnet: true,
+      tier: "premium",
+      specialFeatures: ["Dark Pool", "OTC Trading", "Margin Trading", "Futures"],
     },
     {
       id: "okx",
@@ -228,6 +215,8 @@ export function ExchangeIntegrations() {
         nft: true,
         p2p: true,
         fiat: true,
+        options: true,
+        derivatives: true,
       },
       fees: { maker: "0.08%", taker: "0.1%", withdrawal: "Variable" },
       supportedPairs: 800,
@@ -235,7 +224,7 @@ export function ExchangeIntegrations() {
       established: "2017",
       security: {
         rating: 8,
-        features: ["2FA", "Whitelist", "Anti-phishing", "Proof of Reserves"],
+        features: ["2FA", "Whitelist", "Anti-phishing", "Proof of Reserves", "Multi-sig"],
       },
       apiLimits: {
         requests: "20/2sec",
@@ -244,6 +233,8 @@ export function ExchangeIntegrations() {
       },
       documentation: "https://www.okx.com/docs-v5/",
       testnet: true,
+      tier: "premium",
+      specialFeatures: ["DEX", "Web3 Wallet", "DeFi", "Copy Trading", "Trading Bots"],
     },
     {
       id: "kucoin",
@@ -261,6 +252,8 @@ export function ExchangeIntegrations() {
         nft: true,
         p2p: true,
         fiat: true,
+        options: false,
+        derivatives: true,
       },
       fees: { maker: "0.1%", taker: "0.1%", withdrawal: "Variable" },
       supportedPairs: 1200,
@@ -268,7 +261,7 @@ export function ExchangeIntegrations() {
       established: "2017",
       security: {
         rating: 7,
-        features: ["2FA", "Whitelist", "Anti-phishing", "Micro-withdrawal"],
+        features: ["2FA", "Whitelist", "Anti-phishing", "Micro-withdrawal", "Cold Storage"],
       },
       apiLimits: {
         requests: "1800/min",
@@ -277,6 +270,8 @@ export function ExchangeIntegrations() {
       },
       documentation: "https://docs.kucoin.com/",
       testnet: true,
+      tier: "standard",
+      specialFeatures: ["KCS Token", "Pool-X", "KuCoin Earn", "Trading Bot", "Margin"],
     },
     {
       id: "huobi",
@@ -294,6 +289,8 @@ export function ExchangeIntegrations() {
         nft: false,
         p2p: true,
         fiat: true,
+        options: false,
+        derivatives: true,
       },
       fees: { maker: "0.2%", taker: "0.2%", withdrawal: "Variable" },
       supportedPairs: 700,
@@ -301,7 +298,7 @@ export function ExchangeIntegrations() {
       established: "2013",
       security: {
         rating: 7,
-        features: ["2FA", "Whitelist", "Anti-phishing", "Cold Storage"],
+        features: ["2FA", "Whitelist", "Anti-phishing", "Cold Storage", "Risk Control"],
       },
       apiLimits: {
         requests: "100/10sec",
@@ -310,6 +307,8 @@ export function ExchangeIntegrations() {
       },
       documentation: "https://huobiapi.github.io/docs/",
       testnet: false,
+      tier: "standard",
+      specialFeatures: ["HT Token", "Huobi Earn", "Prime Pool", "C2C Trading"],
     },
     {
       id: "gate-io",
@@ -327,6 +326,8 @@ export function ExchangeIntegrations() {
         nft: true,
         p2p: true,
         fiat: true,
+        options: true,
+        derivatives: true,
       },
       fees: { maker: "0.2%", taker: "0.2%", withdrawal: "Variable" },
       supportedPairs: 1400,
@@ -334,7 +335,7 @@ export function ExchangeIntegrations() {
       established: "2013",
       security: {
         rating: 7,
-        features: ["2FA", "Whitelist", "Fund Password", "Cold Storage"],
+        features: ["2FA", "Whitelist", "Fund Password", "Cold Storage", "Multi-sig"],
       },
       apiLimits: {
         requests: "900/min",
@@ -343,6 +344,8 @@ export function ExchangeIntegrations() {
       },
       documentation: "https://www.gate.io/docs/developers/",
       testnet: true,
+      tier: "standard",
+      specialFeatures: ["Startup IEO", "Hodl & Earn", "Copy Trading", "Quantitative"],
     },
     {
       id: "bitfinex",
@@ -360,6 +363,8 @@ export function ExchangeIntegrations() {
         nft: false,
         p2p: false,
         fiat: true,
+        options: false,
+        derivatives: true,
       },
       fees: { maker: "0.1%", taker: "0.2%", withdrawal: "Variable" },
       supportedPairs: 300,
@@ -367,7 +372,7 @@ export function ExchangeIntegrations() {
       established: "2012",
       security: {
         rating: 6,
-        features: ["2FA", "Whitelist", "Universal 2nd Factor", "PGP"],
+        features: ["2FA", "Whitelist", "Universal 2nd Factor", "PGP", "Cold Storage"],
       },
       apiLimits: {
         requests: "90/min",
@@ -376,6 +381,8 @@ export function ExchangeIntegrations() {
       },
       documentation: "https://docs.bitfinex.com/docs/",
       testnet: false,
+      tier: "standard",
+      specialFeatures: ["Margin Funding", "Derivatives", "Paper Trading", "Advanced Orders"],
     },
     {
       id: "mexc",
@@ -393,6 +400,8 @@ export function ExchangeIntegrations() {
         nft: false,
         p2p: true,
         fiat: true,
+        options: false,
+        derivatives: true,
       },
       fees: { maker: "0.2%", taker: "0.2%", withdrawal: "Variable" },
       supportedPairs: 1600,
@@ -400,7 +409,7 @@ export function ExchangeIntegrations() {
       established: "2018",
       security: {
         rating: 7,
-        features: ["2FA", "Whitelist", "Anti-phishing", "Cold Storage"],
+        features: ["2FA", "Whitelist", "Anti-phishing", "Cold Storage", "Risk Management"],
       },
       apiLimits: {
         requests: "1200/min",
@@ -409,6 +418,8 @@ export function ExchangeIntegrations() {
       },
       documentation: "https://mxcdevelop.github.io/apidocs/",
       testnet: false,
+      tier: "standard",
+      specialFeatures: ["MX Token", "Launchpad", "Assessment", "Futures Grid"],
     },
     {
       id: "crypto-com",
@@ -426,6 +437,8 @@ export function ExchangeIntegrations() {
         nft: true,
         p2p: false,
         fiat: true,
+        options: false,
+        derivatives: true,
       },
       fees: { maker: "0.4%", taker: "0.4%", withdrawal: "Variable" },
       supportedPairs: 250,
@@ -433,7 +446,7 @@ export function ExchangeIntegrations() {
       established: "2019",
       security: {
         rating: 8,
-        features: ["2FA", "Whitelist", "Multi-signature", "Cold Storage"],
+        features: ["2FA", "Whitelist", "Multi-signature", "Cold Storage", "Insurance"],
       },
       apiLimits: {
         requests: "100/sec",
@@ -442,6 +455,119 @@ export function ExchangeIntegrations() {
       },
       documentation: "https://exchange-docs.crypto.com/",
       testnet: true,
+      tier: "premium",
+      specialFeatures: ["CRO Token", "Visa Card", "DeFi Wallet", "Earn", "NFT Platform"],
+    },
+    {
+      id: "ftx",
+      name: "FTX",
+      logo: "🔶",
+      description: "Advanced derivatives and spot trading platform",
+      status: "disconnected",
+      region: ["Global", "Except US"],
+      features: {
+        spotTrading: true,
+        futuresTrading: true,
+        marginTrading: true,
+        staking: true,
+        lending: true,
+        nft: true,
+        p2p: false,
+        fiat: true,
+        options: true,
+        derivatives: true,
+      },
+      fees: { maker: "0.02%", taker: "0.07%", withdrawal: "Variable" },
+      supportedPairs: 400,
+      volume24h: "$1.5B",
+      established: "2019",
+      security: {
+        rating: 8,
+        features: ["2FA", "Whitelist", "Cold Storage", "Multi-sig", "Insurance"],
+      },
+      apiLimits: {
+        requests: "30/sec",
+        orders: "200/10sec",
+        websocket: "Multiple",
+      },
+      documentation: "https://docs.ftx.com/",
+      testnet: false,
+      tier: "premium",
+      specialFeatures: ["Tokenized Stocks", "Prediction Markets", "Leveraged Tokens", "Quant Zone"],
+    },
+    {
+      id: "deribit",
+      name: "Deribit",
+      logo: "🟨",
+      description: "Bitcoin and Ethereum options and futures exchange",
+      status: "disconnected",
+      region: ["Global"],
+      features: {
+        spotTrading: false,
+        futuresTrading: true,
+        marginTrading: true,
+        staking: false,
+        lending: false,
+        nft: false,
+        p2p: false,
+        fiat: false,
+        options: true,
+        derivatives: true,
+      },
+      fees: { maker: "0.02%", taker: "0.05%", withdrawal: "Variable" },
+      supportedPairs: 50,
+      volume24h: "$800M",
+      established: "2016",
+      security: {
+        rating: 8,
+        features: ["2FA", "Cold Storage", "Multi-sig", "Segregated Accounts"],
+      },
+      apiLimits: {
+        requests: "20/sec",
+        orders: "50/sec",
+        websocket: "Multiple",
+      },
+      documentation: "https://docs.deribit.com/",
+      testnet: true,
+      tier: "premium",
+      specialFeatures: ["Options Trading", "Volatility Index", "Block Trading", "Portfolio Margin"],
+    },
+    {
+      id: "bitget",
+      name: "Bitget",
+      logo: "🟡",
+      description: "Copy trading and derivatives platform",
+      status: "disconnected",
+      region: ["Global", "Except US"],
+      features: {
+        spotTrading: true,
+        futuresTrading: true,
+        marginTrading: true,
+        staking: true,
+        lending: false,
+        nft: false,
+        p2p: true,
+        fiat: true,
+        options: false,
+        derivatives: true,
+      },
+      fees: { maker: "0.1%", taker: "0.1%", withdrawal: "Variable" },
+      supportedPairs: 500,
+      volume24h: "$2.5B",
+      established: "2018",
+      security: {
+        rating: 7,
+        features: ["2FA", "Whitelist", "Cold Storage", "Protection Fund"],
+      },
+      apiLimits: {
+        requests: "20/sec",
+        orders: "10/sec",
+        websocket: "Multiple",
+      },
+      documentation: "https://bitgetlimited.github.io/apidoc/",
+      testnet: true,
+      tier: "standard",
+      specialFeatures: ["Copy Trading", "Grid Trading", "DCA", "One-Click Copy"],
     },
   ])
 
@@ -471,6 +597,17 @@ export function ExchangeIntegrations() {
     }
   }
 
+  const getTierColor = (tier: string) => {
+    switch (tier) {
+      case "premium":
+        return "bg-gradient-to-r from-yellow-400 to-orange-500 text-black"
+      case "standard":
+        return "bg-blue-500/10 text-blue-400"
+      default:
+        return "bg-gray-500/10 text-gray-400"
+    }
+  }
+
   const toggleConnection = (exchangeId: string) => {
     setExchanges(
       exchanges.map((exchange) =>
@@ -484,23 +621,46 @@ export function ExchangeIntegrations() {
   return (
     <section className="mb-12">
       <div className="mb-8">
-        <h2 className="text-2xl font-bold text-white mb-2">🏢 Supported Exchanges</h2>
-        <p className="text-gray-300">Connect to major cryptocurrency exchanges worldwide</p>
+        <h2 className="text-3xl font-bold text-white mb-2 flex items-center gap-3">
+          <Globe className="w-8 h-8 text-[#30D5C8]" />🏢 Supported Exchanges
+        </h2>
+        <p className="text-gray-300 text-lg">
+          Connect to major cryptocurrency exchanges worldwide with advanced trading features
+        </p>
+        <div className="flex items-center gap-4 mt-4">
+          <Badge className="bg-green-500/10 text-green-400">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            {exchanges.filter((e) => e.status === "connected").length} Connected
+          </Badge>
+          <Badge className="bg-blue-500/10 text-blue-400">
+            <TrendingUp className="w-3 h-3 mr-1" />
+            {exchanges.filter((e) => e.tier === "premium").length} Premium Exchanges
+          </Badge>
+          <Badge className="bg-purple-500/10 text-purple-400">
+            <Shield className="w-3 h-3 mr-1" />
+            Advanced Security
+          </Badge>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {exchanges.map((exchange) => (
           <Card
             key={exchange.id}
-            className="bg-gray-900/50 border-gray-800 hover:border-[#30D5C8]/50 transition-colors"
+            className="bg-gray-900/50 border-gray-800 hover:border-[#30D5C8]/50 transition-all duration-300 hover:shadow-lg hover:shadow-[#30D5C8]/10"
           >
             <CardHeader className="pb-4">
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="text-2xl">{exchange.logo}</div>
+                  <div className="text-3xl">{exchange.logo}</div>
                   <div>
-                    <CardTitle className="text-white text-lg">{exchange.name}</CardTitle>
-                    <p className="text-gray-400 text-sm">{exchange.description}</p>
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-white text-lg">{exchange.name}</CardTitle>
+                      <Badge className={getTierColor(exchange.tier)} variant="outline">
+                        {exchange.tier}
+                      </Badge>
+                    </div>
+                    <p className="text-gray-400 text-sm mt-1">{exchange.description}</p>
                   </div>
                 </div>
                 {getStatusIcon(exchange.status)}
@@ -569,6 +729,11 @@ export function ExchangeIntegrations() {
                       Margin
                     </Badge>
                   )}
+                  {exchange.features.options && (
+                    <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
+                      Options
+                    </Badge>
+                  )}
                   {exchange.features.staking && (
                     <Badge variant="outline" className="text-xs border-gray-600 text-gray-300">
                       Staking
@@ -582,10 +747,35 @@ export function ExchangeIntegrations() {
                 </div>
               </div>
 
+              {/* Special Features */}
+              {exchange.specialFeatures.length > 0 && (
+                <div>
+                  <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+                    <Zap className="w-3 h-3" />
+                    Special Features
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {exchange.specialFeatures.slice(0, 3).map((feature, index) => (
+                      <Badge key={index} variant="outline" className="text-xs border-[#30D5C8]/20 text-[#30D5C8]">
+                        {feature}
+                      </Badge>
+                    ))}
+                    {exchange.specialFeatures.length > 3 && (
+                      <Badge variant="outline" className="text-xs border-gray-600 text-gray-400">
+                        +{exchange.specialFeatures.length - 3} more
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Security Rating */}
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-gray-400 mb-1">Security Rating</p>
+                  <p className="text-xs text-gray-400 mb-1 flex items-center gap-1">
+                    <Shield className="w-3 h-3" />
+                    Security Rating
+                  </p>
                   <div className="flex items-center space-x-2">
                     <div className="flex space-x-1">
                       {[...Array(10)].map((_, i) => (
@@ -631,6 +821,40 @@ export function ExchangeIntegrations() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Summary Stats */}
+      <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="bg-gray-900/30 border-gray-800">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-[#30D5C8]">{exchanges.length}</div>
+            <div className="text-sm text-gray-400">Total Exchanges</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gray-900/30 border-gray-800">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-green-400">
+              {exchanges.filter((e) => e.status === "connected").length}
+            </div>
+            <div className="text-sm text-gray-400">Connected</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gray-900/30 border-gray-800">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-yellow-400">
+              {exchanges.filter((e) => e.tier === "premium").length}
+            </div>
+            <div className="text-sm text-gray-400">Premium Tier</div>
+          </CardContent>
+        </Card>
+        <Card className="bg-gray-900/30 border-gray-800">
+          <CardContent className="p-4 text-center">
+            <div className="text-2xl font-bold text-blue-400">
+              {exchanges.reduce((sum, e) => sum + e.supportedPairs, 0).toLocaleString()}
+            </div>
+            <div className="text-sm text-gray-400">Total Pairs</div>
+          </CardContent>
+        </Card>
       </div>
     </section>
   )
