@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
 import Link from "next/link"
 
@@ -28,17 +28,41 @@ export function LoginForm() {
     setIsLoading(true)
     setError("")
 
+    // Client-side validation
+    if (!email.trim()) {
+      setError("Email is required")
+      setIsLoading(false)
+      return
+    }
+
+    if (!password) {
+      setError("Password is required")
+      setIsLoading(false)
+      return
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email.trim())) {
+      setError("Please enter a valid email address")
+      setIsLoading(false)
+      return
+    }
+
     try {
-      const result = await login(email, password)
+      const result = await login(email.trim(), password)
 
       if (result.success) {
-        // Redirect to dashboard after successful login
-        router.push("/dashboard")
+        console.log("Login successful, redirecting to dashboard...")
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+          router.push("/dashboard")
+        }, 100)
       } else {
-        setError(result.message || "Login failed")
+        setError(result.message || result.error || "Login failed")
       }
     } catch (error) {
-      setError("An unexpected error occurred")
+      console.error("Login error:", error)
+      setError("An unexpected error occurred. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -58,6 +82,7 @@ export function LoginForm() {
           <CardContent className="space-y-4">
             {error && (
               <Alert variant="destructive" className="border-red-200 bg-red-50">
+                <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
@@ -73,7 +98,9 @@ export function LoginForm() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={isLoading}
                 className="h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                autoComplete="email"
               />
             </div>
 
@@ -89,16 +116,26 @@ export function LoginForm() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  disabled={isLoading}
                   className="h-11 pr-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  disabled={isLoading}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+            </div>
+
+            <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+              <p className="font-medium mb-1">Demo Accounts:</p>
+              <p>• demo@coinwayfinder.com / password</p>
+              <p>• admin@coinwayfinder.com / admin123</p>
+              <p>• test@example.com / test123</p>
             </div>
           </CardContent>
 
@@ -106,7 +143,7 @@ export function LoginForm() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium"
+              className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium disabled:opacity-50"
             >
               {isLoading ? (
                 <>

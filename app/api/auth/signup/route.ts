@@ -2,69 +2,65 @@ import { type NextRequest, NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { connectToDatabase } from "@/lib/mongodb"
 import { sendWelcomeEmail } from "@/lib/email"
-
-const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
+import { emailExists, usernameExists } from "@/lib/auth"
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, firstName, lastName, username, acceptTerms } = await request.json()
+    const body = await request.json()
+    const { email, password, firstName, lastName, username, acceptTerms } = body
 
     console.log("Signup attempt for email:", email)
 
-    // Validation
-    if (!email || !password || !firstName || !lastName) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "All required fields must be provided",
-        },
-        { status: 400 },
-      )
-    }
+    // Comprehensive validation
+    const errors: string[] = []
 
-    if (!acceptTerms) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "You must accept the terms and conditions",
-        },
-        { status: 400 },
-      )
-    }
-
-    // Password strength validation
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$/
-    if (!passwordRegex.test(password)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Password must be at least 6 characters with uppercase, lowercase, and number",
-        },
-        { status: 400 },
-      )
-    }
-
-    // Username validation (if provided)
-    if (username) {
-      const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
-      if (!usernameRegex.test(username)) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: "Username must be 3-20 characters, alphanumeric and underscore only",
-          },
-          { status: 400 },
-        )
+    if (!email || typeof email !== "string") {
+      errors.push("Email is required")
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(email)) {
+        errors.push("Please enter a valid email address")
       }
     }
 
-    // Email validation
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email)) {
+    if (!password || typeof password !== "string") {
+      errors.push("Password is required")
+    } else {
+      if (password.length < 8) {
+        errors.push("Password must be at least 8 characters long")
+      }
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/
+      if (!passwordRegex.test(password)) {
+        errors.push("Password must contain at least one uppercase letter, one lowercase letter, and one number")
+      }
+    }
+
+    if (!firstName || typeof firstName !== "string" || firstName.trim().length === 0) {
+      errors.push("First name is required")
+    }
+
+    if (!lastName || typeof lastName !== "string" || lastName.trim().length === 0) {
+      errors.push("Last name is required")
+    }
+
+    if (username && typeof username === "string") {
+      const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
+      if (!usernameRegex.test(username)) {
+        errors.push("Username must be 3-20 characters, alphanumeric and underscore only")
+      }
+    }
+
+    if (!acceptTerms) {
+      errors.push("You must accept the terms and conditions")
+    }
+
+    if (errors.length > 0) {
       return NextResponse.json(
         {
           success: false,
-          error: "Please enter a valid email address",
+          error: "Validation failed",
+          message: errors.join(". "),
+          errors: errors,
         },
         { status: 400 },
       )
@@ -74,35 +70,37 @@ export async function POST(request: NextRequest) {
     const normalizedUsername = username ? username.toLowerCase().trim() : null
 
     try {
+      // Check for existing users
+      const [emailTaken, usernameTaken] = await Promise.all([
+        emailExists(normalizedEmail),
+        normalizedUsername ? usernameExists(normalizedUsername) : Promise.resolve(false),
+      ])
+
+      if (emailTaken) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Email already exists",
+            message: "An account with this email address already exists",
+          },
+          { status: 409 },
+        )
+      }
+
+      if (usernameTaken) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Username taken",
+            message: "This username is already taken",
+          },
+          { status: 409 },
+        )
+      }
+
       // Try MongoDB first
       const { db } = await connectToDatabase()
       console.log("Connected to database for signup")
-
-      // Check if user already exists
-      const existingUser = await db.collection("users").findOne({
-        $or: [{ email: normalizedEmail }, ...(normalizedUsername ? [{ username: normalizedUsername }] : [])],
-      })
-
-      if (existingUser) {
-        if (existingUser.email === normalizedEmail) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: "User with this email already exists",
-            },
-            { status: 409 },
-          )
-        }
-        if (existingUser.username === normalizedUsername) {
-          return NextResponse.json(
-            {
-              success: false,
-              error: "Username is already taken",
-            },
-            { status: 409 },
-          )
-        }
-      }
 
       // Hash password
       const passwordHash = await bcrypt.hash(password, 12)
@@ -111,12 +109,36 @@ export async function POST(request: NextRequest) {
       const newUser = {
         email: normalizedEmail,
         password_hash: passwordHash,
-        first_name: firstName,
-        last_name: lastName,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
         username: normalizedUsername,
         role: "user",
         subscription_status: "free",
         is_email_verified: false,
+        security: {
+          two_factor_enabled: false,
+          login_attempts: 0,
+          last_password_change: new Date(),
+        },
+        preferences: {
+          notifications: {
+            email: true,
+            push: true,
+            trading_alerts: true,
+            news_updates: true,
+            price_alerts: true,
+          },
+          trading: {
+            default_exchange: "binance",
+            risk_level: "medium",
+            auto_trading: false,
+          },
+          ui: {
+            theme: "dark",
+            language: "en",
+            currency: "USD",
+          },
+        },
         created_at: new Date(),
         updated_at: new Date(),
         last_login: null,
@@ -125,19 +147,14 @@ export async function POST(request: NextRequest) {
       const insertResult = await db.collection("users").insertOne(newUser)
       console.log("User created with ID:", insertResult.insertedId)
 
-      // Send welcome email
-      console.log("Sending welcome email to:", normalizedEmail)
+      // Send welcome email (don't fail signup if email fails)
       try {
-        const emailResult = await sendWelcomeEmail(normalizedEmail, firstName)
+        console.log("Sending welcome email to:", normalizedEmail)
+        const emailResult = await sendWelcomeEmail(normalizedEmail, firstName.trim())
         console.log("Welcome email result:", emailResult)
-
-        if (!emailResult.success) {
-          console.error("Failed to send welcome email:", emailResult.error)
-          // Don't fail the signup if email fails, just log it
-        }
       } catch (emailError) {
         console.error("Welcome email error:", emailError)
-        // Don't fail the signup if email fails
+        // Continue with successful signup even if email fails
       }
 
       return NextResponse.json({
@@ -146,12 +163,14 @@ export async function POST(request: NextRequest) {
         user: {
           id: insertResult.insertedId.toString(),
           email: normalizedEmail,
-          firstName: firstName,
-          lastName: lastName,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
           username: normalizedUsername,
           role: "user",
           subscriptionStatus: "free",
           isEmailVerified: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       })
     } catch (dbError) {
@@ -175,7 +194,8 @@ export async function POST(request: NextRequest) {
           return NextResponse.json(
             {
               success: false,
-              error: "User with this email already exists",
+              error: "Email already exists",
+              message: "An account with this email address already exists",
             },
             { status: 409 },
           )
@@ -184,7 +204,8 @@ export async function POST(request: NextRequest) {
           return NextResponse.json(
             {
               success: false,
-              error: "Username is already taken",
+              error: "Username taken",
+              message: "This username is already taken",
             },
             { status: 409 },
           )
@@ -199,8 +220,8 @@ export async function POST(request: NextRequest) {
         id: `demo-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         email: normalizedEmail,
         password_hash: passwordHash,
-        first_name: firstName,
-        last_name: lastName,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
         username: normalizedUsername,
         role: "user",
         subscription_status: "free",
@@ -213,9 +234,9 @@ export async function POST(request: NextRequest) {
       console.log("Demo user created:", demoUser.id)
 
       // Send welcome email for demo user
-      console.log("Sending welcome email to demo user:", normalizedEmail)
       try {
-        const emailResult = await sendWelcomeEmail(normalizedEmail, firstName)
+        console.log("Sending welcome email to demo user:", normalizedEmail)
+        const emailResult = await sendWelcomeEmail(normalizedEmail, firstName.trim())
         console.log("Demo user welcome email result:", emailResult)
       } catch (emailError) {
         console.error("Demo user welcome email error:", emailError)
@@ -227,12 +248,14 @@ export async function POST(request: NextRequest) {
         user: {
           id: demoUser.id,
           email: normalizedEmail,
-          firstName: firstName,
-          lastName: lastName,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
           username: normalizedUsername,
           role: "user",
           subscriptionStatus: "free",
           isEmailVerified: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         },
       })
     }
