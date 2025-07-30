@@ -1,60 +1,109 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+"use client"
+
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { CheckCircle, Mail, ArrowRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { CheckCircle, Mail, ArrowRight, Home } from "lucide-react"
+import Link from "next/link"
+import { useRouter } from "next/navigation"
 
 export default function ThankYouPage() {
+  const [countdown, setCountdown] = useState(10)
+  const router = useRouter()
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          router.push("/")
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [router])
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 p-4">
-      <Card className="w-full max-w-md bg-white/10 backdrop-blur-lg border-white/20 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-4">
+      <Card className="w-full max-w-md text-center">
         <CardHeader className="space-y-4">
-          <div className="mx-auto w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center">
-            <CheckCircle className="w-8 h-8 text-green-400" />
+          <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+            <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
-          <CardTitle className="text-2xl font-bold text-white">Welcome to CoinWayFinder!</CardTitle>
-          <CardDescription className="text-gray-300">Your account has been created successfully</CardDescription>
+          <CardTitle className="text-2xl font-bold text-green-600">Welcome to CoinWayFinder!</CardTitle>
+          <CardDescription className="text-base">
+            Your account has been created successfully. We're excited to have you on board!
+          </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
-          <div className="space-y-4">
-            <div className="flex items-center justify-center space-x-3 text-gray-300">
-              <Mail className="w-5 h-5 text-blue-400" />
-              <span>Check your email to verify your account</span>
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+            <div className="flex items-center justify-center gap-2 mb-2">
+              <Mail className="w-5 h-5 text-blue-600" />
+              <span className="font-medium text-blue-800">Check Your Email</span>
             </div>
-
-            <p className="text-sm text-gray-400">
-              We've sent you a verification link. Please check your inbox and click the link to activate your account.
+            <p className="text-sm text-blue-700">
+              We've sent a verification email to your inbox. Please verify your email address to activate all features.
             </p>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg">What's Next?</h3>
+            <div className="space-y-3 text-left">
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-xs font-bold text-purple-600">1</span>
+                </div>
+                <div>
+                  <p className="font-medium">Verify Your Email</p>
+                  <p className="text-sm text-muted-foreground">Click the link in your email to activate your account</p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-xs font-bold text-purple-600">2</span>
+                </div>
+                <div>
+                  <p className="font-medium">Explore Features</p>
+                  <p className="text-sm text-muted-foreground">
+                    Discover our trading bots, signals, and market analysis tools
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-xs font-bold text-purple-600">3</span>
+                </div>
+                <div>
+                  <p className="font-medium">Start Trading</p>
+                  <p className="text-sm text-muted-foreground">Connect your exchange and begin automated trading</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-3">
-            <Button
-              asChild
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold"
-            >
-              <Link href="/auth/login">
+            <Link href="/auth/login">
+              <Button className="w-full" size="lg">
+                <ArrowRight className="w-4 h-4 mr-2" />
                 Sign In to Your Account
-                <ArrowRight className="ml-2 w-4 h-4" />
-              </Link>
-            </Button>
+              </Button>
+            </Link>
 
-            <Button
-              asChild
-              variant="outline"
-              className="w-full border-white/20 text-white hover:bg-white/10 bg-transparent"
-            >
-              <Link href="/">Back to Homepage</Link>
-            </Button>
+            <Link href="/">
+              <Button variant="outline" className="w-full bg-transparent">
+                <Home className="w-4 h-4 mr-2" />
+                Back to Homepage
+              </Button>
+            </Link>
           </div>
 
-          <div className="pt-4 border-t border-white/20">
-            <p className="text-xs text-gray-400">
-              Didn't receive the email? Check your spam folder or{" "}
-              <Link href="/auth/resend-verification" className="text-blue-400 hover:text-blue-300">
-                resend verification
-              </Link>
-            </p>
-          </div>
+          <div className="text-sm text-muted-foreground">Redirecting to homepage in {countdown} seconds...</div>
         </CardContent>
       </Card>
     </div>
