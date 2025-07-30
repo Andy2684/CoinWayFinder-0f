@@ -1,420 +1,492 @@
 "use client"
 
-import type React from "react"
-
 import { useState, useEffect } from "react"
-import { useAuth } from "@/hooks/use-auth"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useAuth } from "@/hooks/use-auth"
+import { Loader2, Save, User, Settings, Bell, Shield } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import {
-  User,
-  Calendar,
-  Shield,
-  Settings,
-  Save,
-  Loader2,
-  AlertCircle,
-  CheckCircle,
-  Crown,
-  Activity,
-} from "lucide-react"
 
-export default function ProfileContent() {
-  const { user, loading, updateProfile } = useAuth()
-  const [isEditing, setIsEditing] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [error, setError] = useState("")
-  const [success, setSuccess] = useState("")
+export function ProfileContent() {
+  const { user, updateProfile, loading } = useAuth()
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    username: "",
-    email: "",
+  // Profile form state
+  const [profileData, setProfileData] = useState({
+    first_name: "",
+    last_name: "",
+    bio: "",
+    timezone: "UTC",
+    language: "en",
   })
 
+  // Settings form state
+  const [settingsData, setSettingsData] = useState({
+    notifications: {
+      email: true,
+      push: true,
+      trading_alerts: true,
+      news_alerts: false,
+    },
+    trading: {
+      default_risk_level: "medium",
+      auto_trading: false,
+      max_daily_trades: 10,
+    },
+    privacy: {
+      profile_public: false,
+      show_portfolio: false,
+    },
+  })
+
+  // Load user data when component mounts
   useEffect(() => {
-    if (user) {
-      setFormData({
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
-        username: user.username || "",
-        email: user.email || "",
+    if (user?.profile) {
+      setProfileData({
+        first_name: user.profile.first_name || "",
+        last_name: user.profile.last_name || "",
+        bio: user.profile.bio || "",
+        timezone: user.profile.timezone || "UTC",
+        language: user.profile.language || "en",
+      })
+    }
+
+    if (user?.settings) {
+      setSettingsData({
+        notifications: {
+          email: user.settings.notifications?.email ?? true,
+          push: user.settings.notifications?.push ?? true,
+          trading_alerts: user.settings.notifications?.trading_alerts ?? true,
+          news_alerts: user.settings.notifications?.news_alerts ?? false,
+        },
+        trading: {
+          default_risk_level: user.settings.trading?.default_risk_level || "medium",
+          auto_trading: user.settings.trading?.auto_trading ?? false,
+          max_daily_trades: user.settings.trading?.max_daily_trades || 10,
+        },
+        privacy: {
+          profile_public: user.settings.privacy?.profile_public ?? false,
+          show_portfolio: user.settings.privacy?.show_portfolio ?? false,
+        },
       })
     }
   }, [user])
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }))
-  }
-
-  const handleSave = async () => {
-    setIsSaving(true)
-    setError("")
-    setSuccess("")
+  const handleProfileUpdate = async () => {
+    setIsUpdating(true)
+    setMessage(null)
 
     try {
-      const updates: any = {}
-
-      if (formData.firstName !== (user?.firstName || "")) {
-        updates.firstName = formData.firstName
-      }
-      if (formData.lastName !== (user?.lastName || "")) {
-        updates.lastName = formData.lastName
-      }
-      if (formData.username !== (user?.username || "")) {
-        updates.username = formData.username
-      }
-      if (formData.email !== (user?.email || "")) {
-        updates.email = formData.email
-      }
-
-      if (Object.keys(updates).length === 0) {
-        setError("No changes to save")
-        setIsSaving(false)
-        return
-      }
-
-      const result = await updateProfile(updates)
+      const result = await updateProfile({
+        profile: profileData,
+      })
 
       if (result.success) {
-        setSuccess("Profile updated successfully!")
-        setIsEditing(false)
-        setTimeout(() => setSuccess(""), 3000)
+        setMessage({ type: "success", text: "Profile updated successfully!" })
       } else {
-        setError(result.message || result.error || "Failed to update profile")
+        setMessage({ type: "error", text: result.error || "Failed to update profile" })
       }
     } catch (error) {
-      console.error("Profile update error:", error)
-      setError("An unexpected error occurred")
+      setMessage({ type: "error", text: "An unexpected error occurred" })
     } finally {
-      setIsSaving(false)
+      setIsUpdating(false)
     }
   }
 
-  const handleCancel = () => {
-    if (user) {
-      setFormData({
-        firstName: user.firstName || "",
-        lastName: user.lastName || "",
-        username: user.username || "",
-        email: user.email || "",
+  const handleSettingsUpdate = async () => {
+    setIsUpdating(true)
+    setMessage(null)
+
+    try {
+      const result = await updateProfile({
+        settings: settingsData,
       })
-    }
-    setIsEditing(false)
-    setError("")
-    setSuccess("")
-  }
 
-  const getSubscriptionBadge = (status: string) => {
-    const badges = {
-      free: { label: "Free", variant: "secondary" as const },
-      starter: { label: "Starter", variant: "default" as const },
-      pro: { label: "Pro", variant: "default" as const },
-      enterprise: { label: "Enterprise", variant: "default" as const },
+      if (result.success) {
+        setMessage({ type: "success", text: "Settings updated successfully!" })
+      } else {
+        setMessage({ type: "error", text: result.error || "Failed to update settings" })
+      }
+    } catch (error) {
+      setMessage({ type: "error", text: "An unexpected error occurred" })
+    } finally {
+      setIsUpdating(false)
     }
-    return badges[status as keyof typeof badges] || badges.free
-  }
-
-  const getRoleBadge = (role: string) => {
-    return role === "admin"
-      ? { label: "Admin", variant: "destructive" as const, icon: Crown }
-      : { label: "User", variant: "outline" as const, icon: User }
   }
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-white" />
-              <p className="text-white">Loading profile...</p>
-            </div>
-          </div>
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     )
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-        <div className="container mx-auto px-4 py-8">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <Card className="w-full max-w-md">
-              <CardContent className="pt-6">
-                <div className="text-center">
-                  <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-                  <h2 className="text-xl font-semibold mb-2">Not Authenticated</h2>
-                  <p className="text-gray-600 mb-4">Please log in to view your profile.</p>
-                  <Button onClick={() => (window.location.href = "/auth/login")}>Go to Login</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+      <div className="text-center py-8">
+        <p className="text-muted-foreground">Please log in to view your profile.</p>
       </div>
     )
   }
 
-  const subscriptionBadge = getSubscriptionBadge(user.subscriptionStatus)
-  const roleBadge = getRoleBadge(user.role)
-  const RoleIcon = roleBadge.icon
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
+    <div className="container mx-auto py-8 px-4">
+      <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Profile Settings</h1>
-          <p className="text-gray-300">Manage your account information and preferences</p>
+          <h1 className="text-3xl font-bold">Profile Settings</h1>
+          <p className="text-muted-foreground">Manage your account settings and preferences</p>
         </div>
 
-        {/* Alerts */}
-        {error && (
-          <Alert variant="destructive" className="mb-6">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        {success && (
-          <Alert className="mb-6 border-green-200 bg-green-50">
-            <CheckCircle className="h-4 w-4 text-green-600" />
-            <AlertDescription className="text-green-800">{success}</AlertDescription>
+        {message && (
+          <Alert variant={message.type === "error" ? "destructive" : "default"} className="mb-6">
+            <AlertDescription>{message.text}</AlertDescription>
           </Alert>
         )}
 
         <Tabs defaultValue="profile" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="profile">Profile</TabsTrigger>
-            <TabsTrigger value="account">Account</TabsTrigger>
-            <TabsTrigger value="activity">Activity</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="profile" className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Profile
+            </TabsTrigger>
+            <TabsTrigger value="notifications" className="flex items-center gap-2">
+              <Bell className="h-4 w-4" />
+              Notifications
+            </TabsTrigger>
+            <TabsTrigger value="trading" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Trading
+            </TabsTrigger>
+            <TabsTrigger value="privacy" className="flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              Privacy
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="profile" className="space-y-6">
+          <TabsContent value="profile">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="flex items-center gap-2">
-                      <User className="h-5 w-5" />
-                      Personal Information
-                    </CardTitle>
-                    <CardDescription>Update your personal details and contact information</CardDescription>
-                  </div>
-                  {!isEditing && (
-                    <Button onClick={() => setIsEditing(true)} variant="outline">
-                      <Settings className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button>
-                  )}
-                </div>
+                <CardTitle>Personal Information</CardTitle>
+                <CardDescription>Update your personal details and profile information</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="firstName">First Name</Label>
+                    <Label htmlFor="email">Email</Label>
+                    <Input id="email" type="email" value={user.email} disabled className="bg-muted" />
+                    <p className="text-sm text-muted-foreground">Email cannot be changed</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="username">Username</Label>
+                    <Input id="username" value={user.username || ""} disabled className="bg-muted" />
+                    <p className="text-sm text-muted-foreground">Username cannot be changed</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="first_name">First Name</Label>
                     <Input
-                      id="firstName"
-                      name="firstName"
-                      value={formData.firstName}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
+                      id="first_name"
+                      value={profileData.first_name}
+                      onChange={(e) => setProfileData((prev) => ({ ...prev, first_name: e.target.value }))}
                       placeholder="Enter your first name"
                     />
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="lastName">Last Name</Label>
+                    <Label htmlFor="last_name">Last Name</Label>
                     <Input
-                      id="lastName"
-                      name="lastName"
-                      value={formData.lastName}
-                      onChange={handleInputChange}
-                      disabled={!isEditing}
+                      id="last_name"
+                      value={profileData.last_name}
+                      onChange={(e) => setProfileData((prev) => ({ ...prev, last_name: e.target.value }))}
                       placeholder="Enter your last name"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    placeholder="Enter your email address"
+                  <Label htmlFor="bio">Bio</Label>
+                  <Textarea
+                    id="bio"
+                    value={profileData.bio}
+                    onChange={(e) => setProfileData((prev) => ({ ...prev, bio: e.target.value }))}
+                    placeholder="Tell us about yourself"
+                    rows={3}
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input
-                    id="username"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleInputChange}
-                    disabled={!isEditing}
-                    placeholder="Enter your username (optional)"
-                  />
-                </div>
-
-                {isEditing && (
-                  <div className="flex gap-2 pt-4">
-                    <Button onClick={handleSave} disabled={isSaving} className="flex-1">
-                      {isSaving ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <Save className="h-4 w-4 mr-2" />
-                          Save Changes
-                        </>
-                      )}
-                    </Button>
-                    <Button onClick={handleCancel} variant="outline" disabled={isSaving}>
-                      Cancel
-                    </Button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="timezone">Timezone</Label>
+                    <Input
+                      id="timezone"
+                      value={profileData.timezone}
+                      onChange={(e) => setProfileData((prev) => ({ ...prev, timezone: e.target.value }))}
+                      placeholder="UTC"
+                    />
                   </div>
-                )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="language">Language</Label>
+                    <Input
+                      id="language"
+                      value={profileData.language}
+                      onChange={(e) => setProfileData((prev) => ({ ...prev, language: e.target.value }))}
+                      placeholder="en"
+                    />
+                  </div>
+                </div>
+
+                <Button onClick={handleProfileUpdate} disabled={isUpdating}>
+                  {isUpdating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Profile
+                    </>
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="account" className="space-y-6">
+          <TabsContent value="notifications">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5" />
-                  Account Information
-                </CardTitle>
-                <CardDescription>View your account status and subscription details</CardDescription>
+                <CardTitle>Notification Preferences</CardTitle>
+                <CardDescription>Choose how you want to be notified about important events</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-sm font-medium text-gray-600">Account Status</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant={roleBadge.variant}>
-                          <RoleIcon className="h-3 w-3 mr-1" />
-                          {roleBadge.label}
-                        </Badge>
-                        <Badge variant={subscriptionBadge.variant}>{subscriptionBadge.label}</Badge>
-                      </div>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Email Notifications</Label>
+                      <p className="text-sm text-muted-foreground">Receive notifications via email</p>
                     </div>
-
-                    <div>
-                      <Label className="text-sm font-medium text-gray-600">Email Verification</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge variant={user.isEmailVerified ? "default" : "secondary"}>
-                          {user.isEmailVerified ? "Verified" : "Unverified"}
-                        </Badge>
-                      </div>
-                    </div>
+                    <Switch
+                      checked={settingsData.notifications.email}
+                      onCheckedChange={(checked) =>
+                        setSettingsData((prev) => ({
+                          ...prev,
+                          notifications: { ...prev.notifications, email: checked },
+                        }))
+                      }
+                    />
                   </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <Label className="text-sm font-medium text-gray-600">Member Since</Label>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Calendar className="h-4 w-4 text-gray-500" />
-                        <span className="text-sm">
-                          {new Date(user.createdAt).toLocaleDateString("en-US", {
-                            year: "numeric",
-                            month: "long",
-                            day: "numeric",
-                          })}
-                        </span>
-                      </div>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Push Notifications</Label>
+                      <p className="text-sm text-muted-foreground">Receive push notifications in your browser</p>
                     </div>
-
-                    {user.lastLogin && (
-                      <div>
-                        <Label className="text-sm font-medium text-gray-600">Last Login</Label>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Activity className="h-4 w-4 text-gray-500" />
-                          <span className="text-sm">
-                            {new Date(user.lastLogin).toLocaleDateString("en-US", {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                    <Switch
+                      checked={settingsData.notifications.push}
+                      onCheckedChange={(checked) =>
+                        setSettingsData((prev) => ({
+                          ...prev,
+                          notifications: { ...prev.notifications, push: checked },
+                        }))
+                      }
+                    />
                   </div>
-                </div>
 
-                <Separator />
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Trading Alerts</Label>
+                      <p className="text-sm text-muted-foreground">
+                        Get notified about trading opportunities and bot activities
+                      </p>
+                    </div>
+                    <Switch
+                      checked={settingsData.notifications.trading_alerts}
+                      onCheckedChange={(checked) =>
+                        setSettingsData((prev) => ({
+                          ...prev,
+                          notifications: { ...prev.notifications, trading_alerts: checked },
+                        }))
+                      }
+                    />
+                  </div>
 
-                <div>
-                  <h3 className="text-lg font-semibold mb-3">Account Details</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="font-medium text-gray-600">User ID:</span>
-                      <span className="ml-2 font-mono text-xs bg-gray-100 px-2 py-1 rounded">{user.id}</span>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>News Alerts</Label>
+                      <p className="text-sm text-muted-foreground">Receive notifications about important market news</p>
                     </div>
-                    <div>
-                      <span className="font-medium text-gray-600">Email:</span>
-                      <span className="ml-2">{user.email}</span>
-                    </div>
-                    {user.username && (
-                      <div>
-                        <span className="font-medium text-gray-600">Username:</span>
-                        <span className="ml-2">@{user.username}</span>
-                      </div>
-                    )}
-                    <div>
-                      <span className="font-medium text-gray-600">Role:</span>
-                      <span className="ml-2 capitalize">{user.role}</span>
-                    </div>
+                    <Switch
+                      checked={settingsData.notifications.news_alerts}
+                      onCheckedChange={(checked) =>
+                        setSettingsData((prev) => ({
+                          ...prev,
+                          notifications: { ...prev.notifications, news_alerts: checked },
+                        }))
+                      }
+                    />
                   </div>
                 </div>
+
+                <Button onClick={handleSettingsUpdate} disabled={isUpdating}>
+                  {isUpdating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Notifications
+                    </>
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="activity" className="space-y-6">
+          <TabsContent value="trading">
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
-                  Recent Activity
-                </CardTitle>
-                <CardDescription>View your recent account activity and login history</CardDescription>
+                <CardTitle>Trading Settings</CardTitle>
+                <CardDescription>Configure your trading preferences and risk management</CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="text-center py-8">
-                  <Activity className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-600 mb-2">Activity Tracking</h3>
-                  <p className="text-gray-500 mb-4">Activity tracking features will be available in a future update.</p>
-                  <div className="text-sm text-gray-400">
-                    <p>• Login history</p>
-                    <p>• Profile changes</p>
-                    <p>• Security events</p>
-                    <p>• Trading activity</p>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="risk_level">Default Risk Level</Label>
+                    <select
+                      id="risk_level"
+                      className="w-full p-2 border rounded-md"
+                      value={settingsData.trading.default_risk_level}
+                      onChange={(e) =>
+                        setSettingsData((prev) => ({
+                          ...prev,
+                          trading: { ...prev.trading, default_risk_level: e.target.value },
+                        }))
+                      }
+                    >
+                      <option value="low">Low Risk</option>
+                      <option value="medium">Medium Risk</option>
+                      <option value="high">High Risk</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Auto Trading</Label>
+                      <p className="text-sm text-muted-foreground">Allow bots to execute trades automatically</p>
+                    </div>
+                    <Switch
+                      checked={settingsData.trading.auto_trading}
+                      onCheckedChange={(checked) =>
+                        setSettingsData((prev) => ({
+                          ...prev,
+                          trading: { ...prev.trading, auto_trading: checked },
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="max_trades">Maximum Daily Trades</Label>
+                    <Input
+                      id="max_trades"
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={settingsData.trading.max_daily_trades}
+                      onChange={(e) =>
+                        setSettingsData((prev) => ({
+                          ...prev,
+                          trading: { ...prev.trading, max_daily_trades: Number.parseInt(e.target.value) || 10 },
+                        }))
+                      }
+                    />
                   </div>
                 </div>
+
+                <Button onClick={handleSettingsUpdate} disabled={isUpdating}>
+                  {isUpdating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Trading Settings
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="privacy">
+            <Card>
+              <CardHeader>
+                <CardTitle>Privacy Settings</CardTitle>
+                <CardDescription>Control your privacy and data sharing preferences</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Public Profile</Label>
+                      <p className="text-sm text-muted-foreground">Make your profile visible to other users</p>
+                    </div>
+                    <Switch
+                      checked={settingsData.privacy.profile_public}
+                      onCheckedChange={(checked) =>
+                        setSettingsData((prev) => ({
+                          ...prev,
+                          privacy: { ...prev.privacy, profile_public: checked },
+                        }))
+                      }
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label>Show Portfolio</Label>
+                      <p className="text-sm text-muted-foreground">Display your portfolio performance publicly</p>
+                    </div>
+                    <Switch
+                      checked={settingsData.privacy.show_portfolio}
+                      onCheckedChange={(checked) =>
+                        setSettingsData((prev) => ({
+                          ...prev,
+                          privacy: { ...prev.privacy, show_portfolio: checked },
+                        }))
+                      }
+                    />
+                  </div>
+                </div>
+
+                <Button onClick={handleSettingsUpdate} disabled={isUpdating}>
+                  {isUpdating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Privacy Settings
+                    </>
+                  )}
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>

@@ -1,17 +1,8 @@
 import { NextResponse } from "next/server"
 import { initializeDatabase } from "@/lib/mongodb"
-import { getCurrentUser } from "@/lib/auth"
 
 export async function POST() {
   try {
-    // Check if user is admin (optional security check)
-    const user = await getCurrentUser()
-    if (user) {
-      // You could add admin check here if needed
-      console.log("Database initialization requested by user:", user.email)
-    }
-
-    console.log("Initializing database...")
     await initializeDatabase()
 
     return NextResponse.json({
@@ -21,7 +12,6 @@ export async function POST() {
     })
   } catch (error) {
     console.error("Database initialization error:", error)
-
     return NextResponse.json(
       {
         success: false,

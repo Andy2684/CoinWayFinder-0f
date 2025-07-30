@@ -1,62 +1,45 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getCurrentUser, getUserById } from "@/lib/auth"
+import { verifyToken, getUserById } from "@/lib/auth"
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("Getting current user...")
+    // Get token from cookie
+    const token = request.cookies.get("auth-token")?.value
 
-    const tokenPayload = await getCurrentUser()
-
-    if (!tokenPayload) {
-      console.log("No valid token found")
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Not authenticated",
-          message: "Please log in to access this resource",
-        },
-        { status: 401 },
-      )
+    if (!token) {
+      return NextResponse.json({ error: "No authentication token found" }, { status: 401 })
     }
 
-    console.log("Token payload:", { userId: tokenPayload.userId, email: tokenPayload.email })
+    // Verify token
+    const decoded = verifyToken(token)
+    if (!decoded) {
+      return NextResponse.json({ error: "Invalid or expired token" }, { status: 401 })
+    }
 
-    // Get full user data from database
-    const user = await getUserById(tokenPayload.userId)
-
+    // Get user data
+    const user = await getUserById(decoded.userId)
     if (!user) {
-      console.log("User not found in database:", tokenPayload.userId)
-
-      // Clear invalid cookie
-      const response = NextResponse.json(
-        {
-          success: false,
-          error: "User not found",
-          message: "User account no longer exists",
-        },
-        { status: 404 },
-      )
-
-      response.cookies.delete("auth-token")
-      return response
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    console.log("User found:", { id: user.id, email: user.email })
-
+    // Return user data (excluding sensitive information)
     return NextResponse.json({
       success: true,
-      user: user,
+      user: {
+        id: user.id,
+        email: user.email,
+        username: user.username,
+        role: user.role,
+        created_at: user.created_at,
+        updated_at: user.updated_at,
+        last_login: user.last_login,
+        email_verified: user.email_verified,
+        profile: user.profile,
+        settings: user.settings,
+      },
     })
   } catch (error) {
-    console.error("Error in /api/auth/me:", error)
-
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Internal server error",
-        message: "An error occurred while fetching user data",
-      },
-      { status: 500 },
-    )
+    console.error("Get user error:", error)
+    return NextResponse.json({ error: "An unexpected error occurred" }, { status: 500 })
   }
 }

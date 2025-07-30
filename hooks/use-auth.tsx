@@ -1,126 +1,103 @@
 "use client"
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-
-interface User {
-  id: string
-  email: string
-  firstName?: string
-  lastName?: string
-  username?: string
-  role: "user" | "admin"
-  subscriptionStatus: "free" | "starter" | "pro" | "enterprise"
-  isEmailVerified: boolean
-  lastLogin?: string
-  createdAt: string
-  updatedAt: string
-}
+import type React from "react"
+import { createContext, useContext, useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
+import type { User } from "@/types"
 
 interface AuthContextType {
   user: User | null
   loading: boolean
-  error: string | null
-  login: (email: string, password: string) => Promise<{ success: boolean; message?: string; error?: string }>
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>
+  signup: (email: string, password: string, username?: string) => Promise<{ success: boolean; error?: string }>
   logout: () => Promise<void>
-  signup: (userData: {
-    email: string
-    password: string
-    firstName: string
-    lastName: string
-    username?: string
-    acceptTerms: boolean
-  }) => Promise<{ success: boolean; message?: string; error?: string }>
+  updateProfile: (updates: Partial<User>) => Promise<{ success: boolean; error?: string }>
   refreshUser: () => Promise<void>
-  updateProfile: (updates: {
-    firstName?: string
-    lastName?: string
-    username?: string
-    email?: string
-  }) => Promise<{ success: boolean; message?: string; error?: string }>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
-  // Check authentication status on mount and refresh
+  // Check if user is authenticated on mount
+  useEffect(() => {
+    checkAuth()
+  }, [])
+
   const checkAuth = async () => {
     try {
-      setError(null)
       const response = await fetch("/api/auth/me", {
         credentials: "include",
-        headers: {
-          "Cache-Control": "no-cache",
-        },
       })
 
-      const data = await response.json()
-
-      if (response.ok && data.success && data.user) {
+      if (response.ok) {
+        const data = await response.json()
         setUser(data.user)
-        console.log("User authenticated:", data.user.email)
       } else {
         setUser(null)
-        if (data.error && data.error !== "Not authenticated") {
-          console.error("Auth check error:", data.error)
-        }
       }
     } catch (error) {
       console.error("Auth check failed:", error)
       setUser(null)
-      setError("Failed to check authentication status")
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    checkAuth()
-  }, [])
-
   const login = async (email: string, password: string) => {
     try {
-      setError(null)
       setLoading(true)
-
-      console.log("Attempting login for:", email)
-
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         credentials: "include",
-        body: JSON.stringify({
-          email: email.trim(),
-          password,
-        }),
+        body: JSON.stringify({ email, password }),
       })
 
       const data = await response.json()
-      console.log("Login response:", { success: data.success, status: response.status })
 
-      if (data.success && data.user) {
+      if (response.ok) {
         setUser(data.user)
-        console.log("Login successful for:", data.user.email)
-        return { success: true, message: data.message }
+        return { success: true }
       } else {
-        console.error("Login failed:", data)
-        setError(data.message || data.error || "Login failed")
-        return {
-          success: false,
-          error: data.error || "Login failed",
-          message: data.message || "Invalid credentials",
-        }
+        return { success: false, error: data.error || "Login failed" }
       }
     } catch (error) {
-      console.error("Login network error:", error)
-      const errorMessage = "Network error occurred. Please check your connection and try again."
-      setError(errorMessage)
-      return { success: false, error: errorMessage }
+      console.error("Login error:", error)
+      return { success: false, error: "Network error. Please try again." }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const signup = async (email: string, password: string, username?: string) => {
+    try {
+      setLoading(true)
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ email, password, username }),
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setUser(data.user)
+        return { success: true }
+      } else {
+        return { success: false, error: data.error || "Signup failed" }
+      }
+    } catch (error) {
+      console.error("Signup error:", error)
+      return { success: false, error: "Network error. Please try again." }
     } finally {
       setLoading(false)
     }
@@ -128,82 +105,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      setError(null)
-
       await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include",
       })
-
       setUser(null)
-      console.log("User logged out successfully")
+      router.push("/")
     } catch (error) {
       console.error("Logout error:", error)
-      // Still clear user state even if logout request fails
+      // Still clear user state even if request fails
       setUser(null)
+      router.push("/")
     }
   }
 
-  const signup = async (userData: {
-    email: string
-    password: string
-    firstName: string
-    lastName: string
-    username?: string
-    acceptTerms: boolean
-  }) => {
+  const updateProfile = async (updates: Partial<User>) => {
     try {
-      setError(null)
-      setLoading(true)
-
-      console.log("Attempting signup for:", userData.email)
-
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify(userData),
-      })
-
-      const data = await response.json()
-      console.log("Signup response:", { success: data.success, status: response.status })
-
-      if (data.success) {
-        console.log("Signup successful for:", userData.email)
-        // Don't auto-login after signup as requested
-        return { success: true, message: data.message }
-      } else {
-        console.error("Signup failed:", data)
-        setError(data.message || data.error || "Signup failed")
-        return {
-          success: false,
-          error: data.error || "Signup failed",
-          message: data.message || "Registration failed",
-        }
-      }
-    } catch (error) {
-      console.error("Signup network error:", error)
-      const errorMessage = "Network error occurred. Please check your connection and try again."
-      setError(errorMessage)
-      return { success: false, error: errorMessage }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const updateProfile = async (updates: {
-    firstName?: string
-    lastName?: string
-    username?: string
-    email?: string
-  }) => {
-    try {
-      setError(null)
-
-      console.log("Updating profile:", updates)
-
       const response = await fetch("/api/profile", {
         method: "PUT",
         headers: {
@@ -214,43 +131,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
 
       const data = await response.json()
-      console.log("Profile update response:", { success: data.success, status: response.status })
 
-      if (data.success && data.user) {
+      if (response.ok) {
         setUser(data.user)
-        console.log("Profile updated successfully")
-        return { success: true, message: data.message }
+        return { success: true }
       } else {
-        console.error("Profile update failed:", data)
-        setError(data.message || data.error || "Profile update failed")
-        return {
-          success: false,
-          error: data.error || "Update failed",
-          message: data.message || "Failed to update profile",
-        }
+        return { success: false, error: data.error || "Update failed" }
       }
     } catch (error) {
-      console.error("Profile update network error:", error)
-      const errorMessage = "Network error occurred. Please check your connection and try again."
-      setError(errorMessage)
-      return { success: false, error: errorMessage }
+      console.error("Profile update error:", error)
+      return { success: false, error: "Network error. Please try again." }
     }
   }
 
   const refreshUser = async () => {
-    setLoading(true)
     await checkAuth()
   }
 
   const value = {
     user,
     loading,
-    error,
     login,
-    logout,
     signup,
-    refreshUser,
+    logout,
     updateProfile,
+    refreshUser,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

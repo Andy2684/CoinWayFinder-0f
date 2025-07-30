@@ -4,93 +4,62 @@ import type React from "react"
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Loader2, AlertCircle } from "lucide-react"
 import { useAuth } from "@/hooks/use-auth"
-import Link from "next/link"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 
 export function LoginForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [isLoading, setIsLoading] = useState(false)
 
   const { login } = useAuth()
   const router = useRouter()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
     setError("")
-
-    // Client-side validation
-    if (!email.trim()) {
-      setError("Email is required")
-      setIsLoading(false)
-      return
-    }
-
-    if (!password) {
-      setError("Password is required")
-      setIsLoading(false)
-      return
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    if (!emailRegex.test(email.trim())) {
-      setError("Please enter a valid email address")
-      setIsLoading(false)
-      return
-    }
+    setIsLoading(true)
 
     try {
-      const result = await login(email.trim(), password)
+      const result = await login(email, password)
 
       if (result.success) {
-        console.log("Login successful, redirecting to dashboard...")
-        // Small delay to ensure state is updated
-        setTimeout(() => {
-          router.push("/dashboard")
-        }, 100)
+        router.push("/dashboard")
       } else {
-        setError(result.message || result.error || "Login failed")
+        setError(result.error || "Login failed")
       }
     } catch (error) {
-      console.error("Login error:", error)
-      setError("An unexpected error occurred. Please try again.")
+      setError("An unexpected error occurred")
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4">
-      <Card className="w-full max-w-md shadow-xl border-0 bg-white/80 backdrop-blur-sm">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Welcome Back
-          </CardTitle>
-          <CardDescription className="text-gray-600">Sign in to your CoinWayFinder account</CardDescription>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+      <Card className="w-full max-w-md">
+        <CardHeader className="space-y-1">
+          <CardTitle className="text-2xl font-bold text-center">Welcome Back</CardTitle>
+          <CardDescription className="text-center">Sign in to your CoinWayfinder account</CardDescription>
         </CardHeader>
-
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             {error && (
-              <Alert variant="destructive" className="border-red-200 bg-red-50">
-                <AlertCircle className="h-4 w-4" />
+              <Alert variant="destructive">
                 <AlertDescription>{error}</AlertDescription>
               </Alert>
             )}
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium text-gray-700">
-                Email
-              </Label>
+              <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -99,15 +68,11 @@ export function LoginForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 disabled={isLoading}
-                className="h-11 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                autoComplete="email"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="password" className="text-sm font-medium text-gray-700">
-                Password
-              </Label>
+              <Label htmlFor="password">Password</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -117,48 +82,43 @@ export function LoginForm() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   disabled={isLoading}
-                  className="h-11 pr-10 border-gray-200 focus:border-blue-500 focus:ring-blue-500"
-                  autoComplete="current-password"
                 />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
                   disabled={isLoading}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </Button>
               </div>
-            </div>
-
-            <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
-              <p className="font-medium mb-1">Demo Accounts:</p>
-              <p>• demo@coinwayfinder.com / password</p>
-              <p>• admin@coinwayfinder.com / admin123</p>
-              <p>• test@example.com / test123</p>
             </div>
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-4">
-            <Button
-              type="submit"
-              disabled={isLoading}
-              className="w-full h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium disabled:opacity-50"
-            >
+            <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
+                  Signing In...
                 </>
               ) : (
                 "Sign In"
               )}
             </Button>
 
-            <div className="text-center text-sm text-gray-600">
-              Don't have an account?{" "}
-              <Link href="/auth/signup" className="text-blue-600 hover:text-blue-700 font-medium">
+            <div className="text-center text-sm">
+              <span className="text-muted-foreground">Don't have an account? </span>
+              <Link href="/auth/signup" className="text-primary hover:underline font-medium">
                 Sign up
+              </Link>
+            </div>
+
+            <div className="text-center">
+              <Link href="/auth/forgot-password" className="text-sm text-muted-foreground hover:underline">
+                Forgot your password?
               </Link>
             </div>
           </CardFooter>

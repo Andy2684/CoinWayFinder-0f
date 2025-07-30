@@ -2,63 +2,52 @@
 
 import type React from "react"
 
-import { useEffect, useState } from "react"
+import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/hooks/use-auth"
 import { Loader2 } from "lucide-react"
 
 interface ProtectedRouteProps {
   children: React.ReactNode
-  requireAuth?: boolean
   requireAdmin?: boolean
   redirectTo?: string
 }
 
-export function ProtectedRoute({
-  children,
-  requireAuth = true,
-  requireAdmin = false,
-  redirectTo = "/auth/login",
-}: ProtectedRouteProps) {
+export function ProtectedRoute({ children, requireAdmin = false, redirectTo = "/auth/login" }: ProtectedRouteProps) {
   const { user, loading } = useAuth()
   const router = useRouter()
-  const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
     if (!loading) {
-      if (requireAuth && !user) {
-        console.log("User not authenticated, redirecting to:", redirectTo)
+      if (!user) {
         router.push(redirectTo)
         return
       }
 
-      if (requireAdmin && user && user.role !== "admin") {
-        console.log("User not admin, redirecting to dashboard")
+      if (requireAdmin && user.role !== "admin") {
         router.push("/dashboard")
         return
       }
-
-      setIsChecking(false)
     }
-  }, [user, loading, requireAuth, requireAdmin, router, redirectTo])
+  }, [user, loading, router, requireAdmin, redirectTo])
 
-  if (loading || isChecking) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-white" />
-          <p className="text-white">Loading...</p>
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     )
   }
 
-  if (requireAuth && !user) {
-    return null // Will redirect
+  if (!user) {
+    return null
   }
 
-  if (requireAdmin && user && user.role !== "admin") {
-    return null // Will redirect
+  if (requireAdmin && user.role !== "admin") {
+    return null
   }
 
   return <>{children}</>
