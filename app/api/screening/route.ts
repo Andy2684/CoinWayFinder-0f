@@ -1,80 +1,104 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { realTimeScreener, type ScreeningCriteria } from "@/lib/real-time-screener"
-
-export async function POST(request: NextRequest) {
-  try {
-    const { criteria, screenId } = await request.json()
-
-    if (!criteria || !screenId) {
-      return NextResponse.json({ success: false, error: "Missing criteria or screenId" }, { status: 400 })
-    }
-
-    // Validate criteria
-    const validatedCriteria: ScreeningCriteria = {
-      priceChange24h: criteria.priceChange24h,
-      volume24h: criteria.volume24h,
-      marketCap: criteria.marketCap,
-      price: criteria.price,
-      rsi: criteria.rsi,
-      macd: criteria.macd,
-      movingAverage: criteria.movingAverage,
-      volatility: criteria.volatility,
-      exchanges: criteria.exchanges || ["binance", "bybit"],
-      symbols: criteria.symbols,
-    }
-
-    // Start screening
-    realTimeScreener.startScreening(
-      screenId,
-      validatedCriteria,
-      (results) => {
-        // In a real implementation, this would use WebSocket or Server-Sent Events
-        console.log(`Screening results for ${screenId}:`, results.length, "matches")
-      },
-      5000,
-    )
-
-    return NextResponse.json({
-      success: true,
-      message: `Screening started for ${screenId}`,
-      criteria: validatedCriteria,
-    })
-  } catch (error) {
-    console.error("Screening API error:", error)
-    return NextResponse.json({ success: false, error: "Failed to start screening" }, { status: 500 })
-  }
-}
+import { realTimeScreener } from "@/lib/real-time-screener"
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const action = searchParams.get("action")
-    const screenId = searchParams.get("screenId")
+
+    const filters = {
+      minPrice: searchParams.get("minPrice") ? Number.parseFloat(searchParams.get("minPrice")!) : undefined,
+      maxPrice: searchParams.get("maxPrice") ? Number.parseFloat(searchParams.get("maxPrice")!) : undefined,
+      minVolume: searchParams.get("minVolume") ? Number.parseFloat(searchParams.get("minVolume")!) : undefined,
+      minMarketCap: searchParams.get("minMarketCap") ? Number.parseFloat(searchParams.get("minMarketCap")!) : undefined,
+      maxMarketCap: searchParams.get("maxMarketCap") ? Number.parseFloat(searchParams.get("maxMarketCap")!) : undefined,
+      exchanges: searchParams.get("exchanges")?.split(","),
+      symbols: searchParams.get("symbols")?.split(","),
+      minRSI: searchParams.get("minRSI") ? Number.parseFloat(searchParams.get("minRSI")!) : undefined,
+      maxRSI: searchParams.get("maxRSI") ? Number.parseFloat(searchParams.get("maxRSI")!) : undefined,
+      minChange: searchParams.get("minChange") ? Number.parseFloat(searchParams.get("minChange")!) : undefined,
+      maxChange: searchParams.get("maxChange") ? Number.parseFloat(searchParams.get("maxChange")!) : undefined,
+    }
+
+    const results = await realTimeScreener.screen(filters)
+    const stats = realTimeScreener.getStats()
+
+    return NextResponse.json({
+      success: true,
+      data: results,
+      stats,
+      timestamp: new Date().toISOString(),
+      filters: Object.fromEntries(Object.entries(filters).filter(([_, value]) => value !== undefined)),
+    })
+  } catch (error: any) {
+    console.error("Screening API error:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Failed to fetch screening results",
+        details: error.message,
+      },
+      { status: 500 },
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json()
+    const { action, ...params } = body
 
     switch (action) {
-      case "stats":
-        const stats = realTimeScreener.getScreeningStats()
-        return NextResponse.json({ success: true, data: stats })
-
-      case "active":
-        const activeScreenings = realTimeScreener.getActiveScreenings()
-        return NextResponse.json({ success: true, data: activeScreenings })
-
-      case "stop":
-        if (!screenId) {
-          return NextResponse.json({ success: false, error: "Missing screenId" }, { status: 400 })
-        }
-        realTimeScreener.stopScreening(screenId)
+      case "start":
+        realTimeScreener.start()
         return NextResponse.json({
           success: true,
-          message: `Screening stopped for ${screenId}`,
+          message: "Real-time screener started",
+        })
+
+      case "stop":
+        realTimeScreener.stop()
+        return NextResponse.json({
+          success: true,
+          message: "Real-time screener stopped",
+        })
+
+      case "stats":
+        const stats = realTimeScreener.getStats()
+        return NextResponse.json({
+          success: true,
+          stats,
+        })
+
+      case "symbol":
+        const { symbol } = params
+        if (!symbol) {
+          return NextResponse.json({ success: false, error: "Symbol is required" }, { status: 400 })
+        }
+
+        const marketData = realTimeScreener.getMarketData(symbol)
+        const indicators = realTimeScreener.getIndicators(symbol)
+
+        return NextResponse.json({
+          success: true,
+          data: {
+            marketData,
+            indicators,
+            symbol,
+          },
         })
 
       default:
         return NextResponse.json({ success: false, error: "Invalid action" }, { status: 400 })
     }
-  } catch (error) {
-    console.error("Screening GET API error:", error)
-    return NextResponse.json({ success: false, error: "Failed to process request" }, { status: 500 })
+  } catch (error: any) {
+    console.error("Screening POST API error:", error)
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Internal server error",
+        details: error.message,
+      },
+      { status: 500 },
+    )
   }
 }

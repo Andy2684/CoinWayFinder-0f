@@ -1,53 +1,22 @@
-// Real-time cryptocurrency screening and analysis engine
-
-import { marketDataManager } from "./market-data-ingestion"
-
-export interface ScreeningCriteria {
-  priceChange24h?: { min?: number; max?: number }
-  volume24h?: { min?: number; max?: number }
-  marketCap?: { min?: number; max?: number }
-  price?: { min?: number; max?: number }
-  rsi?: { min?: number; max?: number }
-  macd?: { signal?: "bullish" | "bearish" | "neutral" }
-  movingAverage?: { period: number; position: "above" | "below" }
-  volatility?: { min?: number; max?: number }
-  exchanges?: string[]
-  symbols?: string[]
-}
-
-export interface ScreeningResult {
+interface MarketData {
   symbol: string
-  exchange: string
   price: number
-  priceChange24h: number
+  change24h: number
   volume24h: number
   marketCap: number
-  rsi: number
-  macd: {
-    value: number
-    signal: number
-    histogram: number
-    trend: "bullish" | "bearish" | "neutral"
-  }
-  movingAverages: {
-    ma20: number
-    ma50: number
-    ma200: number
-  }
-  volatility: number
-  score: number
-  alerts: string[]
+  high24h: number
+  low24h: number
   timestamp: number
 }
 
-export interface TechnicalIndicators {
+interface TechnicalIndicators {
   rsi: number
   macd: {
-    value: number
+    macd: number
     signal: number
     histogram: number
   }
-  bollinger: {
+  bollingerBands: {
     upper: number
     middle: number
     lower: number
@@ -56,445 +25,517 @@ export interface TechnicalIndicators {
     k: number
     d: number
   }
-  williams: number
+  williamsR: number
   cci: number
-  momentum: number
   roc: number
+  ma20: number
+  ma50: number
+  ma200: number
 }
 
-export class RealTimeScreener {
-  private static instance: RealTimeScreener
-  private subscribers: Map<string, ((results: ScreeningResult[]) => void)[]> = new Map()
-  private screeningIntervals: Map<string, NodeJS.Timeout> = new Map()
+interface ScreenerResult {
+  symbol: string
+  exchange: string
+  price: number
+  change24h: number
+  volume24h: number
+  marketCap: number
+  score: number
+  indicators: TechnicalIndicators
+  signals: string[]
+  lastUpdate: number
+}
+
+interface ScreenerFilters {
+  minPrice?: number
+  maxPrice?: number
+  minVolume?: number
+  minMarketCap?: number
+  maxMarketCap?: number
+  exchanges?: string[]
+  symbols?: string[]
+  minRSI?: number
+  maxRSI?: number
+  minChange?: number
+  maxChange?: number
+}
+
+class RealTimeScreener {
+  private wsConnections: Map<string, WebSocket> = new Map()
+  private marketData: Map<string, MarketData> = new Map()
+  private indicators: Map<string, TechnicalIndicators> = new Map()
   private priceHistory: Map<string, number[]> = new Map()
-  private volumeHistory: Map<string, number[]> = new Map()
+  private isRunning = false
+  private updateInterval: NodeJS.Timeout | null = null
 
-  static getInstance(): RealTimeScreener {
-    if (!RealTimeScreener.instance) {
-      RealTimeScreener.instance = new RealTimeScreener()
-    }
-    return RealTimeScreener.instance
+  constructor() {
+    this.initializeConnections()
   }
 
-  // Start real-time screening with custom criteria
-  startScreening(
-    screenId: string,
-    criteria: ScreeningCriteria,
-    callback: (results: ScreeningResult[]) => void,
-    intervalMs = 5000,
-  ): void {
-    // Stop existing screening if running
-    this.stopScreening(screenId)
-
-    // Add subscriber
-    if (!this.subscribers.has(screenId)) {
-      this.subscribers.set(screenId, [])
-    }
-    this.subscribers.get(screenId)!.push(callback)
-
-    // Start screening interval
-    const interval = setInterval(async () => {
-      try {
-        const results = await this.performScreening(criteria)
-        const subscribers = this.subscribers.get(screenId)
-        if (subscribers) {
-          subscribers.forEach((cb) => cb(results))
-        }
-      } catch (error) {
-        console.error(`Screening error for ${screenId}:`, error)
-      }
-    }, intervalMs)
-
-    this.screeningIntervals.set(screenId, interval)
-  }
-
-  // Stop screening
-  stopScreening(screenId: string): void {
-    const interval = this.screeningIntervals.get(screenId)
-    if (interval) {
-      clearInterval(interval)
-      this.screeningIntervals.delete(screenId)
-    }
-    this.subscribers.delete(screenId)
-  }
-
-  // Perform screening based on criteria
-  private async performScreening(criteria: ScreeningCriteria): Promise<ScreeningResult[]> {
-    const exchanges = criteria.exchanges || ["binance", "bybit", "coinbase"]
-    const symbols = criteria.symbols || (await this.getPopularSymbols())
-    const results: ScreeningResult[] = []
+  private async initializeConnections() {
+    const exchanges = ["binance", "bybit", "coinbase", "kraken"]
 
     for (const exchange of exchanges) {
-      for (const symbol of symbols) {
-        try {
-          const marketData = await marketDataManager.getMarketData([symbol], exchange)
-          if (marketData.length === 0) continue
-
-          const data = marketData[0]
-          const technicals = await this.calculateTechnicalIndicators(symbol, exchange)
-          const marketCap = await this.estimateMarketCap(symbol, data.price)
-
-          const result: ScreeningResult = {
-            symbol,
-            exchange,
-            price: data.price,
-            priceChange24h: data.changePercent,
-            volume24h: data.volume,
-            marketCap,
-            rsi: technicals.rsi,
-            macd: {
-              value: technicals.macd.value,
-              signal: technicals.macd.signal,
-              histogram: technicals.macd.histogram,
-              trend: this.getMacdTrend(technicals.macd),
-            },
-            movingAverages: {
-              ma20: await this.calculateMA(symbol, exchange, 20),
-              ma50: await this.calculateMA(symbol, exchange, 50),
-              ma200: await this.calculateMA(symbol, exchange, 200),
-            },
-            volatility: await this.calculateVolatility(symbol, exchange),
-            score: 0,
-            alerts: [],
-            timestamp: Date.now(),
-          }
-
-          // Apply screening criteria
-          if (this.matchesCriteria(result, criteria)) {
-            result.score = this.calculateScore(result, criteria)
-            result.alerts = this.generateAlerts(result, criteria)
-            results.push(result)
-          }
-        } catch (error) {
-          console.error(`Error screening ${symbol} on ${exchange}:`, error)
-        }
+      try {
+        await this.connectToExchange(exchange)
+      } catch (error) {
+        console.error(`Failed to connect to ${exchange}:`, error)
       }
     }
-
-    // Sort by score (highest first)
-    return results.sort((a, b) => b.score - a.score)
   }
 
-  // Calculate technical indicators
-  private async calculateTechnicalIndicators(symbol: string, exchange: string): Promise<TechnicalIndicators> {
-    const prices = await this.getPriceHistory(symbol, exchange, 50)
+  private async connectToExchange(exchange: string) {
+    const wsUrls = {
+      binance: "wss://stream.binance.com:9443/ws/!ticker@arr",
+      bybit: "wss://stream.bybit.com/v5/public/spot",
+      coinbase: "wss://ws-feed.exchange.coinbase.com",
+      kraken: "wss://ws.kraken.com",
+    }
 
-    return {
-      rsi: this.calculateRSI(prices),
-      macd: this.calculateMACD(prices),
-      bollinger: this.calculateBollingerBands(prices),
-      stochastic: this.calculateStochastic(prices),
-      williams: this.calculateWilliamsR(prices),
-      cci: this.calculateCCI(prices),
-      momentum: this.calculateMomentum(prices),
-      roc: this.calculateROC(prices),
+    const wsUrl = wsUrls[exchange as keyof typeof wsUrls]
+    if (!wsUrl) return
+
+    const ws = new WebSocket(wsUrl)
+
+    ws.onopen = () => {
+      console.log(`Connected to ${exchange}`)
+      this.setupExchangeSubscription(ws, exchange)
+    }
+
+    ws.onmessage = (event) => {
+      this.handleMarketData(JSON.parse(event.data), exchange)
+    }
+
+    ws.onerror = (error) => {
+      console.error(`${exchange} WebSocket error:`, error)
+    }
+
+    ws.onclose = () => {
+      console.log(`${exchange} connection closed, reconnecting...`)
+      setTimeout(() => this.connectToExchange(exchange), 5000)
+    }
+
+    this.wsConnections.set(exchange, ws)
+  }
+
+  private setupExchangeSubscription(ws: WebSocket, exchange: string) {
+    const subscriptions = {
+      binance: null, // Already subscribed to all tickers
+      bybit: {
+        op: "subscribe",
+        args: ["tickers.spot"],
+      },
+      coinbase: {
+        type: "subscribe",
+        product_ids: ["BTC-USD", "ETH-USD", "ADA-USD", "DOT-USD"],
+        channels: ["ticker"],
+      },
+      kraken: {
+        event: "subscribe",
+        pair: ["XBT/USD", "ETH/USD", "ADA/USD", "DOT/USD"],
+        subscription: { name: "ticker" },
+      },
+    }
+
+    const subscription = subscriptions[exchange as keyof typeof subscriptions]
+    if (subscription) {
+      ws.send(JSON.stringify(subscription))
     }
   }
 
-  // RSI Calculation
+  private handleMarketData(data: any, exchange: string) {
+    try {
+      const marketData = this.parseMarketData(data, exchange)
+      if (marketData) {
+        this.marketData.set(`${exchange}:${marketData.symbol}`, marketData)
+        this.updatePriceHistory(marketData.symbol, marketData.price)
+        this.calculateTechnicalIndicators(marketData.symbol)
+      }
+    } catch (error) {
+      console.error(`Error handling market data from ${exchange}:`, error)
+    }
+  }
+
+  private parseMarketData(data: any, exchange: string): MarketData | null {
+    switch (exchange) {
+      case "binance":
+        if (Array.isArray(data)) {
+          return data.map((ticker) => ({
+            symbol: ticker.s,
+            price: Number.parseFloat(ticker.c),
+            change24h: Number.parseFloat(ticker.P),
+            volume24h: Number.parseFloat(ticker.v),
+            marketCap: 0, // Would need additional API call
+            high24h: Number.parseFloat(ticker.h),
+            low24h: Number.parseFloat(ticker.l),
+            timestamp: Date.now(),
+          }))[0]
+        }
+        break
+
+      case "bybit":
+        if (data.topic === "tickers.spot" && data.data) {
+          return {
+            symbol: data.data.symbol,
+            price: Number.parseFloat(data.data.lastPrice),
+            change24h: Number.parseFloat(data.data.price24hPcnt) * 100,
+            volume24h: Number.parseFloat(data.data.volume24h),
+            marketCap: 0,
+            high24h: Number.parseFloat(data.data.highPrice24h),
+            low24h: Number.parseFloat(data.data.lowPrice24h),
+            timestamp: Date.now(),
+          }
+        }
+        break
+
+      case "coinbase":
+        if (data.type === "ticker") {
+          return {
+            symbol: data.product_id,
+            price: Number.parseFloat(data.price),
+            change24h: Number.parseFloat(data.open_24h)
+              ? ((Number.parseFloat(data.price) - Number.parseFloat(data.open_24h)) /
+                  Number.parseFloat(data.open_24h)) *
+                100
+              : 0,
+            volume24h: Number.parseFloat(data.volume_24h),
+            marketCap: 0,
+            high24h: Number.parseFloat(data.high_24h),
+            low24h: Number.parseFloat(data.low_24h),
+            timestamp: Date.now(),
+          }
+        }
+        break
+
+      case "kraken":
+        if (data[1] && data[2] === "ticker") {
+          const ticker = data[1]
+          return {
+            symbol: data[3],
+            price: Number.parseFloat(ticker.c[0]),
+            change24h: 0, // Would need calculation
+            volume24h: Number.parseFloat(ticker.v[1]),
+            marketCap: 0,
+            high24h: Number.parseFloat(ticker.h[1]),
+            low24h: Number.parseFloat(ticker.l[1]),
+            timestamp: Date.now(),
+          }
+        }
+        break
+    }
+
+    return null
+  }
+
+  private updatePriceHistory(symbol: string, price: number) {
+    if (!this.priceHistory.has(symbol)) {
+      this.priceHistory.set(symbol, [])
+    }
+
+    const history = this.priceHistory.get(symbol)!
+    history.push(price)
+
+    // Keep only last 200 prices for calculations
+    if (history.length > 200) {
+      history.shift()
+    }
+  }
+
+  private calculateTechnicalIndicators(symbol: string) {
+    const history = this.priceHistory.get(symbol)
+    if (!history || history.length < 20) return
+
+    const indicators: TechnicalIndicators = {
+      rsi: this.calculateRSI(history),
+      macd: this.calculateMACD(history),
+      bollingerBands: this.calculateBollingerBands(history),
+      stochastic: this.calculateStochastic(history),
+      williamsR: this.calculateWilliamsR(history),
+      cci: this.calculateCCI(history),
+      roc: this.calculateROC(history),
+      ma20: this.calculateMA(history, 20),
+      ma50: this.calculateMA(history, 50),
+      ma200: this.calculateMA(history, 200),
+    }
+
+    this.indicators.set(symbol, indicators)
+  }
+
   private calculateRSI(prices: number[], period = 14): number {
     if (prices.length < period + 1) return 50
 
-    const gains: number[] = []
-    const losses: number[] = []
+    let gains = 0
+    let losses = 0
 
-    for (let i = 1; i < prices.length; i++) {
-      const change = prices[i] - prices[i - 1]
-      gains.push(change > 0 ? change : 0)
-      losses.push(change < 0 ? Math.abs(change) : 0)
+    for (let i = 1; i <= period; i++) {
+      const change = prices[prices.length - i] - prices[prices.length - i - 1]
+      if (change > 0) gains += change
+      else losses -= change
     }
 
-    const avgGain = gains.slice(-period).reduce((sum, gain) => sum + gain, 0) / period
-    const avgLoss = losses.slice(-period).reduce((sum, loss) => sum + loss, 0) / period
+    const avgGain = gains / period
+    const avgLoss = losses / period
 
     if (avgLoss === 0) return 100
     const rs = avgGain / avgLoss
     return 100 - 100 / (1 + rs)
   }
 
-  // MACD Calculation
-  private calculateMACD(prices: number[]): { value: number; signal: number; histogram: number } {
+  private calculateMACD(prices: number[]): { macd: number; signal: number; histogram: number } {
     const ema12 = this.calculateEMA(prices, 12)
     const ema26 = this.calculateEMA(prices, 26)
-    const macdLine = ema12 - ema26
+    const macd = ema12 - ema26
 
     // For simplicity, using a basic signal calculation
-    const signalLine = macdLine * 0.9 // Simplified signal line
-    const histogram = macdLine - signalLine
+    const signal = macd * 0.9 // Simplified signal line
+    const histogram = macd - signal
 
-    return {
-      value: macdLine,
-      signal: signalLine,
-      histogram: histogram,
-    }
+    return { macd, signal, histogram }
   }
 
-  // EMA Calculation
   private calculateEMA(prices: number[], period: number): number {
-    if (prices.length === 0) return 0
+    if (prices.length < period) return prices[prices.length - 1] || 0
 
     const multiplier = 2 / (period + 1)
-    let ema = prices[0]
+    let ema = prices[prices.length - period]
 
-    for (let i = 1; i < prices.length; i++) {
-      ema = prices[i] * multiplier + ema * (1 - multiplier)
+    for (let i = prices.length - period + 1; i < prices.length; i++) {
+      ema = (prices[i] - ema) * multiplier + ema
     }
 
     return ema
   }
 
-  // Bollinger Bands Calculation
   private calculateBollingerBands(prices: number[], period = 20): { upper: number; middle: number; lower: number } {
-    const sma = prices.slice(-period).reduce((sum, price) => sum + price, 0) / period
-    const variance = prices.slice(-period).reduce((sum, price) => sum + Math.pow(price - sma, 2), 0) / period
+    const ma = this.calculateMA(prices, period)
+    const variance = this.calculateVariance(prices.slice(-period), ma)
     const stdDev = Math.sqrt(variance)
 
     return {
-      upper: sma + stdDev * 2,
-      middle: sma,
-      lower: sma - stdDev * 2,
+      upper: ma + stdDev * 2,
+      middle: ma,
+      lower: ma - stdDev * 2,
     }
   }
 
-  // Stochastic Oscillator
+  private calculateMA(prices: number[], period: number): number {
+    if (prices.length < period) return prices[prices.length - 1] || 0
+
+    const slice = prices.slice(-period)
+    return slice.reduce((sum, price) => sum + price, 0) / slice.length
+  }
+
+  private calculateVariance(prices: number[], mean: number): number {
+    const squaredDiffs = prices.map((price) => Math.pow(price - mean, 2))
+    return squaredDiffs.reduce((sum, diff) => sum + diff, 0) / prices.length
+  }
+
   private calculateStochastic(prices: number[], period = 14): { k: number; d: number } {
-    const recentPrices = prices.slice(-period)
-    const high = Math.max(...recentPrices)
-    const low = Math.min(...recentPrices)
+    if (prices.length < period) return { k: 50, d: 50 }
+
+    const slice = prices.slice(-period)
+    const high = Math.max(...slice)
+    const low = Math.min(...slice)
     const current = prices[prices.length - 1]
 
     const k = ((current - low) / (high - low)) * 100
-    const d = k * 0.9 // Simplified D calculation
+    const d = k * 0.9 // Simplified %D calculation
 
     return { k, d }
   }
 
-  // Williams %R
   private calculateWilliamsR(prices: number[], period = 14): number {
-    const recentPrices = prices.slice(-period)
-    const high = Math.max(...recentPrices)
-    const low = Math.min(...recentPrices)
+    if (prices.length < period) return -50
+
+    const slice = prices.slice(-period)
+    const high = Math.max(...slice)
+    const low = Math.min(...slice)
     const current = prices[prices.length - 1]
 
     return ((high - current) / (high - low)) * -100
   }
 
-  // Commodity Channel Index
   private calculateCCI(prices: number[], period = 20): number {
-    const sma = prices.slice(-period).reduce((sum, price) => sum + price, 0) / period
-    const meanDeviation = prices.slice(-period).reduce((sum, price) => sum + Math.abs(price - sma), 0) / period
-    const current = prices[prices.length - 1]
-
-    return (current - sma) / (0.015 * meanDeviation)
-  }
-
-  // Momentum
-  private calculateMomentum(prices: number[], period = 10): number {
     if (prices.length < period) return 0
-    return prices[prices.length - 1] - prices[prices.length - 1 - period]
+
+    const ma = this.calculateMA(prices, period)
+    const slice = prices.slice(-period)
+    const meanDeviation = slice.reduce((sum, price) => sum + Math.abs(price - ma), 0) / period
+
+    const current = prices[prices.length - 1]
+    return (current - ma) / (0.015 * meanDeviation)
   }
 
-  // Rate of Change
   private calculateROC(prices: number[], period = 12): number {
-    if (prices.length < period) return 0
+    if (prices.length < period + 1) return 0
+
     const current = prices[prices.length - 1]
-    const previous = prices[prices.length - 1 - period]
+    const previous = prices[prices.length - period - 1]
+
     return ((current - previous) / previous) * 100
   }
 
-  // Moving Average calculation
-  private async calculateMA(symbol: string, exchange: string, period: number): Promise<number> {
-    const prices = await this.getPriceHistory(symbol, exchange, period)
-    if (prices.length < period) return 0
-    return prices.slice(-period).reduce((sum, price) => sum + price, 0) / period
-  }
+  public async screen(filters: ScreenerFilters = {}): Promise<ScreenerResult[]> {
+    const results: ScreenerResult[] = []
 
-  // Volatility calculation
-  private async calculateVolatility(symbol: string, exchange: string): Promise<number> {
-    const prices = await this.getPriceHistory(symbol, exchange, 20)
-    if (prices.length < 2) return 0
+    for (const [key, marketData] of this.marketData.entries()) {
+      const [exchange, symbol] = key.split(":")
+      const indicators = this.indicators.get(symbol)
 
-    const returns = []
-    for (let i = 1; i < prices.length; i++) {
-      returns.push((prices[i] - prices[i - 1]) / prices[i - 1])
+      if (!indicators) continue
+
+      // Apply filters
+      if (filters.minPrice && marketData.price < filters.minPrice) continue
+      if (filters.maxPrice && marketData.price > filters.maxPrice) continue
+      if (filters.minVolume && marketData.volume24h < filters.minVolume) continue
+      if (filters.minMarketCap && marketData.marketCap < filters.minMarketCap) continue
+      if (filters.maxMarketCap && marketData.marketCap > filters.maxMarketCap) continue
+      if (filters.exchanges && !filters.exchanges.includes(exchange)) continue
+      if (filters.symbols && !filters.symbols.includes(symbol)) continue
+      if (filters.minRSI && indicators.rsi < filters.minRSI) continue
+      if (filters.maxRSI && indicators.rsi > filters.maxRSI) continue
+      if (filters.minChange && marketData.change24h < filters.minChange) continue
+      if (filters.maxChange && marketData.change24h > filters.maxChange) continue
+
+      const signals = this.generateSignals(marketData, indicators)
+      const score = this.calculateScore(marketData, indicators, signals)
+
+      results.push({
+        symbol,
+        exchange,
+        price: marketData.price,
+        change24h: marketData.change24h,
+        volume24h: marketData.volume24h,
+        marketCap: marketData.marketCap,
+        score,
+        indicators,
+        signals,
+        lastUpdate: marketData.timestamp,
+      })
     }
 
-    const avgReturn = returns.reduce((sum, ret) => sum + ret, 0) / returns.length
-    const variance = returns.reduce((sum, ret) => sum + Math.pow(ret - avgReturn, 2), 0) / returns.length
-    return Math.sqrt(variance) * Math.sqrt(365) * 100 // Annualized volatility
+    return results.sort((a, b) => b.score - a.score)
   }
 
-  // Get price history (mock implementation)
-  private async getPriceHistory(symbol: string, exchange: string, periods: number): Promise<number[]> {
-    const key = `${exchange}:${symbol}`
+  private generateSignals(marketData: MarketData, indicators: TechnicalIndicators): string[] {
+    const signals: string[] = []
 
-    if (!this.priceHistory.has(key)) {
-      // Generate mock price history
-      const basePrice = 100 + Math.random() * 50000
-      const prices = []
-      let currentPrice = basePrice
+    // RSI signals
+    if (indicators.rsi > 70) signals.push("RSI Overbought")
+    if (indicators.rsi < 30) signals.push("RSI Oversold")
 
-      for (let i = 0; i < periods; i++) {
-        const change = (Math.random() - 0.5) * 0.05 // ±2.5% change
-        currentPrice *= 1 + change
-        prices.push(currentPrice)
+    // MACD signals
+    if (indicators.macd.macd > indicators.macd.signal) signals.push("MACD Bullish")
+    if (indicators.macd.macd < indicators.macd.signal) signals.push("MACD Bearish")
+
+    // Bollinger Bands signals
+    if (marketData.price > indicators.bollingerBands.upper) signals.push("Above Upper BB")
+    if (marketData.price < indicators.bollingerBands.lower) signals.push("Below Lower BB")
+
+    // Moving Average signals
+    if (marketData.price > indicators.ma20) signals.push("Above MA20")
+    if (marketData.price > indicators.ma50) signals.push("Above MA50")
+    if (marketData.price > indicators.ma200) signals.push("Above MA200")
+
+    // Volume signals
+    if (marketData.volume24h > 1000000) signals.push("High Volume")
+
+    // Price change signals
+    if (marketData.change24h > 5) signals.push("Strong Bullish")
+    if (marketData.change24h < -5) signals.push("Strong Bearish")
+
+    return signals
+  }
+
+  private calculateScore(marketData: MarketData, indicators: TechnicalIndicators, signals: string[]): number {
+    let score = 50 // Base score
+
+    // RSI scoring
+    if (indicators.rsi > 30 && indicators.rsi < 70) score += 10
+    if (indicators.rsi < 30) score += 15 // Oversold opportunity
+    if (indicators.rsi > 70) score -= 10 // Overbought risk
+
+    // MACD scoring
+    if (indicators.macd.macd > indicators.macd.signal) score += 10
+    if (indicators.macd.histogram > 0) score += 5
+
+    // Volume scoring
+    if (marketData.volume24h > 1000000) score += 15
+    if (marketData.volume24h > 10000000) score += 10
+
+    // Price change scoring
+    score += Math.min(Math.max(marketData.change24h, -20), 20)
+
+    // Signal bonus
+    score += signals.length * 2
+
+    return Math.max(0, Math.min(100, score))
+  }
+
+  public getMarketData(symbol: string): MarketData | undefined {
+    for (const [key, data] of this.marketData.entries()) {
+      if (key.includes(symbol)) return data
+    }
+    return undefined
+  }
+
+  public getIndicators(symbol: string): TechnicalIndicators | undefined {
+    return this.indicators.get(symbol)
+  }
+
+  public start() {
+    if (this.isRunning) return
+
+    this.isRunning = true
+    this.updateInterval = setInterval(() => {
+      // Periodic cleanup and maintenance
+      this.cleanupOldData()
+    }, 60000) // Every minute
+
+    console.log("Real-time screener started")
+  }
+
+  public stop() {
+    if (!this.isRunning) return
+
+    this.isRunning = false
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval)
+      this.updateInterval = null
+    }
+
+    // Close WebSocket connections
+    for (const ws of this.wsConnections.values()) {
+      ws.close()
+    }
+    this.wsConnections.clear()
+
+    console.log("Real-time screener stopped")
+  }
+
+  private cleanupOldData() {
+    const now = Date.now()
+    const maxAge = 5 * 60 * 1000 // 5 minutes
+
+    for (const [key, data] of this.marketData.entries()) {
+      if (now - data.timestamp > maxAge) {
+        this.marketData.delete(key)
+        const symbol = key.split(":")[1]
+        this.indicators.delete(symbol)
+        this.priceHistory.delete(symbol)
       }
-
-      this.priceHistory.set(key, prices)
     }
-
-    return this.priceHistory.get(key)!
   }
 
-  // Check if result matches criteria
-  private matchesCriteria(result: ScreeningResult, criteria: ScreeningCriteria): boolean {
-    if (criteria.priceChange24h) {
-      if (criteria.priceChange24h.min !== undefined && result.priceChange24h < criteria.priceChange24h.min) return false
-      if (criteria.priceChange24h.max !== undefined && result.priceChange24h > criteria.priceChange24h.max) return false
-    }
-
-    if (criteria.volume24h) {
-      if (criteria.volume24h.min !== undefined && result.volume24h < criteria.volume24h.min) return false
-      if (criteria.volume24h.max !== undefined && result.volume24h > criteria.volume24h.max) return false
-    }
-
-    if (criteria.marketCap) {
-      if (criteria.marketCap.min !== undefined && result.marketCap < criteria.marketCap.min) return false
-      if (criteria.marketCap.max !== undefined && result.marketCap > criteria.marketCap.max) return false
-    }
-
-    if (criteria.price) {
-      if (criteria.price.min !== undefined && result.price < criteria.price.min) return false
-      if (criteria.price.max !== undefined && result.price > criteria.price.max) return false
-    }
-
-    if (criteria.rsi) {
-      if (criteria.rsi.min !== undefined && result.rsi < criteria.rsi.min) return false
-      if (criteria.rsi.max !== undefined && result.rsi > criteria.rsi.max) return false
-    }
-
-    if (criteria.macd?.signal && result.macd.trend !== criteria.macd.signal) return false
-
-    if (criteria.movingAverage) {
-      const ma =
-        criteria.movingAverage.period === 20
-          ? result.movingAverages.ma20
-          : criteria.movingAverage.period === 50
-            ? result.movingAverages.ma50
-            : result.movingAverages.ma200
-
-      if (criteria.movingAverage.position === "above" && result.price <= ma) return false
-      if (criteria.movingAverage.position === "below" && result.price >= ma) return false
-    }
-
-    if (criteria.volatility) {
-      if (criteria.volatility.min !== undefined && result.volatility < criteria.volatility.min) return false
-      if (criteria.volatility.max !== undefined && result.volatility > criteria.volatility.max) return false
-    }
-
-    return true
-  }
-
-  // Calculate screening score
-  private calculateScore(result: ScreeningResult, criteria: ScreeningCriteria): number {
-    let score = 0
-
-    // Volume score (higher volume = higher score)
-    score += Math.min(result.volume24h / 1000000, 10) // Max 10 points for volume
-
-    // Price change score
-    score += Math.abs(result.priceChange24h) / 2 // Max ~50 points for extreme moves
-
-    // RSI score (extreme values get higher scores)
-    if (result.rsi < 30 || result.rsi > 70) score += 15
-    else if (result.rsi < 40 || result.rsi > 60) score += 5
-
-    // MACD score
-    if (result.macd.trend === "bullish") score += 10
-    else if (result.macd.trend === "bearish") score += 8
-
-    // Volatility score
-    score += Math.min(result.volatility / 5, 15) // Max 15 points for volatility
-
-    return Math.round(score)
-  }
-
-  // Generate alerts
-  private generateAlerts(result: ScreeningResult, criteria: ScreeningCriteria): string[] {
-    const alerts: string[] = []
-
-    if (result.rsi < 30) alerts.push("Oversold condition (RSI < 30)")
-    if (result.rsi > 70) alerts.push("Overbought condition (RSI > 70)")
-    if (result.macd.trend === "bullish") alerts.push("MACD bullish crossover")
-    if (result.macd.trend === "bearish") alerts.push("MACD bearish crossover")
-    if (Math.abs(result.priceChange24h) > 10) alerts.push("High volatility (>10% change)")
-    if (result.volume24h > 100000000) alerts.push("High volume activity")
-
-    // Moving average alerts
-    if (result.price > result.movingAverages.ma20) alerts.push("Price above MA20")
-    if (result.price < result.movingAverages.ma20) alerts.push("Price below MA20")
-
-    return alerts
-  }
-
-  // Get MACD trend
-  private getMacdTrend(macd: { value: number; signal: number; histogram: number }): "bullish" | "bearish" | "neutral" {
-    if (macd.histogram > 0 && macd.value > macd.signal) return "bullish"
-    if (macd.histogram < 0 && macd.value < macd.signal) return "bearish"
-    return "neutral"
-  }
-
-  // Estimate market cap (simplified)
-  private async estimateMarketCap(symbol: string, price: number): Promise<number> {
-    // Mock market cap calculation based on symbol
-    const supplies: Record<string, number> = {
-      BTCUSDT: 19700000,
-      ETHUSDT: 120000000,
-      BNBUSDT: 166000000,
-      ADAUSDT: 35000000000,
-      SOLUSDT: 400000000,
-      DOTUSDT: 1100000000,
-    }
-
-    const supply = supplies[symbol] || 1000000000
-    return price * supply
-  }
-
-  // Get popular symbols
-  private async getPopularSymbols(): Promise<string[]> {
-    return [
-      "BTCUSDT",
-      "ETHUSDT",
-      "BNBUSDT",
-      "ADAUSDT",
-      "SOLUSDT",
-      "DOTUSDT",
-      "LINKUSDT",
-      "AVAXUSDT",
-      "MATICUSDT",
-      "UNIUSDT",
-      "LTCUSDT",
-      "BCHUSDT",
-      "XLMUSDT",
-      "VETUSDT",
-      "FILUSDT",
-    ]
-  }
-
-  // Get all active screenings
-  getActiveScreenings(): string[] {
-    return Array.from(this.screeningIntervals.keys())
-  }
-
-  // Get screening statistics
-  getScreeningStats(): { activeScreenings: number; totalSymbols: number; lastUpdate: number } {
+  public getStats() {
     return {
-      activeScreenings: this.screeningIntervals.size,
-      totalSymbols: this.priceHistory.size,
-      lastUpdate: Date.now(),
+      connectedExchanges: this.wsConnections.size,
+      trackedSymbols: this.marketData.size,
+      indicatorsCalculated: this.indicators.size,
+      isRunning: this.isRunning,
+      lastUpdate: Math.max(...Array.from(this.marketData.values()).map((d) => d.timestamp)),
     }
   }
 }
 
-// Export singleton instance
-export const realTimeScreener = RealTimeScreener.getInstance()
+export const realTimeScreener = new RealTimeScreener()
