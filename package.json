@@ -1,5 +1,5 @@
 {
-  "name": "coinwayfinder",
+  "name": "my-v0-project",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -11,6 +11,7 @@
   "dependencies": {
     "@ai-sdk/openai": "latest",
     "@aws-sdk/credential-providers": "latest",
+    "@hookform/resolvers": "^3.9.1",
     "@mongodb-js/zstd": "latest",
     "@neondatabase/serverless": "latest",
     "@radix-ui/react-accordion": "latest",
@@ -32,7 +33,6 @@
     "@radix-ui/react-scroll-area": "latest",
     "@radix-ui/react-select": "latest",
     "@radix-ui/react-separator": "latest",
-    "@radix-ui/react-sheet": "^1.0.4",
     "@radix-ui/react-slider": "latest",
     "@radix-ui/react-slot": "latest",
     "@radix-ui/react-switch": "latest",
@@ -42,6 +42,7 @@
     "@radix-ui/react-toggle-group": "latest",
     "@radix-ui/react-tooltip": "latest",
     "ai": "latest",
+    "autoprefixer": "^10.4.20",
     "bcryptjs": "latest",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -49,11 +50,14 @@
     "crypto": "latest",
     "date-fns": "latest",
     "embla-carousel-react": "latest",
+    "form-data": "latest",
     "gcp-metadata": "latest",
+    "geist": "^1.3.1",
     "input-otp": "latest",
     "jsonwebtoken": "latest",
     "kerberos": "latest",
     "lucide-react": "^0.454.0",
+    "mailgun.js": "latest",
     "mongodb": "latest",
     "mongodb-client-encryption": "latest",
     "next": "14.2.16",
@@ -71,17 +75,13 @@
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "^1.0.7",
     "vaul": "latest",
-    "zod": "latest"
+    "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/jsonwebtoken": "^9.0.5",
+    "@types/form-data": "^2.5.0",
     "@types/node": "^22",
     "@types/react": "^18",
     "@types/react-dom": "^18",
-    "autoprefixer": "^10.0.1",
-    "eslint": "^8",
-    "eslint-config-next": "14.0.4",
     "postcss": "^8.5",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"
