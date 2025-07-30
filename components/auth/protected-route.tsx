@@ -11,62 +11,54 @@ interface ProtectedRouteProps {
   children: React.ReactNode
   requireAuth?: boolean
   requireAdmin?: boolean
+  redirectTo?: string
 }
 
-export function ProtectedRoute({ children, requireAuth = true, requireAdmin = false }: ProtectedRouteProps) {
-  const { user, isLoading, isAuthenticated } = useAuth()
+export function ProtectedRoute({
+  children,
+  requireAuth = true,
+  requireAdmin = false,
+  redirectTo = "/auth/login",
+}: ProtectedRouteProps) {
+  const { user, loading } = useAuth()
   const router = useRouter()
   const [isChecking, setIsChecking] = useState(true)
 
   useEffect(() => {
-    const checkAuth = async () => {
-      if (!isLoading) {
-        if (requireAuth && !isAuthenticated) {
-          router.push("/auth/login")
-          return
-        }
-
-        if (requireAdmin && (!user || user.role !== "admin")) {
-          router.push("/dashboard")
-          return
-        }
-
-        setIsChecking(false)
+    if (!loading) {
+      if (requireAuth && !user) {
+        console.log("User not authenticated, redirecting to:", redirectTo)
+        router.push(redirectTo)
+        return
       }
+
+      if (requireAdmin && user && user.role !== "admin") {
+        console.log("User not admin, redirecting to dashboard")
+        router.push("/dashboard")
+        return
+      }
+
+      setIsChecking(false)
     }
+  }, [user, loading, requireAuth, requireAdmin, router, redirectTo])
 
-    checkAuth()
-  }, [isAuthenticated, isLoading, requireAuth, requireAdmin, user, router])
-
-  if (isLoading || isChecking) {
+  if (loading || isChecking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-400" />
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-white" />
           <p className="text-white">Loading...</p>
         </div>
       </div>
     )
   }
 
-  if (requireAuth && !isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
-        <div className="text-center">
-          <p className="text-white">Redirecting to login...</p>
-        </div>
-      </div>
-    )
+  if (requireAuth && !user) {
+    return null // Will redirect
   }
 
-  if (requireAdmin && (!user || user.role !== "admin")) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900">
-        <div className="text-center">
-          <p className="text-white">Access denied. Admin privileges required.</p>
-        </div>
-      </div>
-    )
+  if (requireAdmin && user && user.role !== "admin") {
+    return null // Will redirect
   }
 
   return <>{children}</>

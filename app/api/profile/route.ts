@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getCurrentUser, getUserById, updateUserProfile } from "@/lib/auth"
+import { getCurrentUser, updateUserProfile, getUserById } from "@/lib/auth"
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,12 +35,11 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("Error fetching profile:", error)
-
     return NextResponse.json(
       {
         success: false,
         error: "Internal server error",
-        message: "An error occurred while fetching your profile",
+        message: "Failed to fetch profile data",
       },
       { status: 500 },
     )
@@ -66,85 +65,134 @@ export async function PUT(request: NextRequest) {
     const { firstName, lastName, username, email } = body
 
     // Validate input
-    const errors: string[] = []
+    const updates: any = {}
 
-    if (firstName !== undefined && (typeof firstName !== "string" || firstName.trim().length === 0)) {
-      errors.push("First name cannot be empty")
+    if (firstName !== undefined) {
+      if (typeof firstName !== "string" || firstName.trim().length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Invalid first name",
+            message: "First name is required and must be a valid string",
+          },
+          { status: 400 },
+        )
+      }
+      updates.firstName = firstName.trim()
     }
 
-    if (lastName !== undefined && (typeof lastName !== "string" || lastName.trim().length === 0)) {
-      errors.push("Last name cannot be empty")
+    if (lastName !== undefined) {
+      if (typeof lastName !== "string" || lastName.trim().length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Invalid last name",
+            message: "Last name is required and must be a valid string",
+          },
+          { status: 400 },
+        )
+      }
+      updates.lastName = lastName.trim()
     }
 
-    if (username !== undefined && typeof username === "string") {
-      const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
-      if (!usernameRegex.test(username)) {
-        errors.push("Username must be 3-20 characters, alphanumeric and underscore only")
+    if (username !== undefined) {
+      if (username && typeof username === "string") {
+        const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/
+        if (!usernameRegex.test(username.trim())) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: "Invalid username",
+              message: "Username must be 3-20 characters, alphanumeric and underscore only",
+            },
+            { status: 400 },
+          )
+        }
+        updates.username = username.trim()
+      } else if (username === "") {
+        updates.username = null
       }
     }
 
-    if (email !== undefined && typeof email === "string") {
+    if (email !== undefined) {
+      if (typeof email !== "string" || email.trim().length === 0) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Invalid email",
+            message: "Email is required and must be a valid string",
+          },
+          { status: 400 },
+        )
+      }
+
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-      if (!emailRegex.test(email)) {
-        errors.push("Please enter a valid email address")
+      if (!emailRegex.test(email.trim())) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Invalid email format",
+            message: "Please enter a valid email address",
+          },
+          { status: 400 },
+        )
       }
+      updates.email = email.trim()
     }
 
-    if (errors.length > 0) {
+    if (Object.keys(updates).length === 0) {
       return NextResponse.json(
         {
           success: false,
-          error: "Validation failed",
-          message: errors.join(". "),
-          errors: errors,
+          error: "No updates provided",
+          message: "No valid updates were provided",
         },
         { status: 400 },
       )
     }
 
-    // Update user profile
-    const updatedUser = await updateUserProfile(tokenPayload.userId, {
-      firstName,
-      lastName,
-      username,
-      email,
-    })
+    try {
+      const updatedUser = await updateUserProfile(tokenPayload.userId, updates)
 
-    if (!updatedUser) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Update failed",
-          message: "Failed to update profile",
-        },
-        { status: 500 },
-      )
+      return NextResponse.json({
+        success: true,
+        message: "Profile updated successfully",
+        user: updatedUser,
+      })
+    } catch (updateError: any) {
+      console.error("Profile update error:", updateError)
+
+      if (updateError.message === "Email already in use") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Email conflict",
+            message: "This email address is already in use by another account",
+          },
+          { status: 409 },
+        )
+      }
+
+      if (updateError.message === "Username already taken") {
+        return NextResponse.json(
+          {
+            success: false,
+            error: "Username conflict",
+            message: "This username is already taken",
+          },
+          { status: 409 },
+        )
+      }
+
+      throw updateError
     }
-
-    return NextResponse.json({
-      success: true,
-      message: "Profile updated successfully",
-      user: updatedUser,
-    })
   } catch (error) {
     console.error("Error updating profile:", error)
-
-    if (error instanceof Error) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Update failed",
-          message: error.message,
-        },
-        { status: 400 },
-      )
-    }
-
     return NextResponse.json(
       {
         success: false,
         error: "Internal server error",
-        message: "An error occurred while updating your profile",
+        message: "Failed to update profile",
       },
       { status: 500 },
     )

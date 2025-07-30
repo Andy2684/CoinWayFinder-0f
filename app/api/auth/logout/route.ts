@@ -2,22 +2,20 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
   try {
-    console.log("Logging out user...")
+    console.log("Processing logout request")
 
+    // Create response
     const response = NextResponse.json({
       success: true,
       message: "Logged out successfully",
     })
 
     // Clear the auth cookie
-    response.cookies.delete("auth-token")
-
-    // Also set an expired cookie to ensure it's cleared
     response.cookies.set("auth-token", "", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 0,
+      maxAge: 0, // Expire immediately
       path: "/",
     })
 
@@ -26,17 +24,13 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Logout error:", error)
 
-    // Even if there's an error, clear the cookie
-    const response = NextResponse.json(
+    return NextResponse.json(
       {
         success: false,
-        error: "Logout error",
+        error: "Internal server error",
         message: "An error occurred during logout",
       },
       { status: 500 },
     )
-
-    response.cookies.delete("auth-token")
-    return response
   }
 }

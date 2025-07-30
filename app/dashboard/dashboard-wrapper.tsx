@@ -1,16 +1,12 @@
 "use client"
 
-import dynamic from "next/dynamic"
-
-const DashboardClient = dynamic(() => import("./dashboard-client"), {
-  ssr: false,
-  loading: () => (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500"></div>
-    </div>
-  ),
-})
+import { ProtectedRoute } from "@/components/auth/protected-route"
+import DashboardClient from "./dashboard-client"
 
 export default function DashboardWrapper() {
-  return <DashboardClient />
+  return (
+    <ProtectedRoute requireAuth={true}>
+      <DashboardClient />
+    </ProtectedRoute>
+  )
 }
