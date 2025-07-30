@@ -10,7 +10,7 @@ function getClientIP(request: NextRequest): string {
 
   if (forwarded) {
     const ip = forwarded.split(",")[0].trim()
-    return ip !== "unknown" ? ip : ""
+    return ip !== "unknown" ? ip : "127.0.0.1"
   }
   if (realIP && realIP !== "unknown") {
     return realIP
@@ -24,8 +24,9 @@ function getClientIP(request: NextRequest): string {
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json()
+    const clientIP = getClientIP(request)
 
-    console.log("Login attempt for email:", email)
+    console.log("Login attempt for email:", email, "from IP:", clientIP)
 
     if (!email || !password) {
       return NextResponse.json(
@@ -57,7 +58,15 @@ export async function POST(request: NextRequest) {
         if (isValidPassword) {
           // Update last login timestamp
           try {
-            await db.collection("users").updateOne({ _id: user._id }, { $set: { last_login: new Date() } })
+            await db.collection("users").updateOne(
+              { _id: user._id },
+              {
+                $set: {
+                  last_login: new Date(),
+                  updated_at: new Date(),
+                },
+              },
+            )
             console.log("Updated last login timestamp")
           } catch (updateError) {
             console.error("Error updating last login:", updateError)
@@ -88,6 +97,7 @@ export async function POST(request: NextRequest) {
               role: user.role || "user",
               subscriptionStatus: user.subscription_status || "free",
               isEmailVerified: user.is_email_verified || false,
+              lastLogin: user.last_login,
               createdAt: user.created_at,
               updatedAt: user.updated_at || user.created_at,
             },
@@ -179,6 +189,7 @@ export async function POST(request: NextRequest) {
           role: predefinedUser.role,
           subscriptionStatus: predefinedUser.subscription_status,
           isEmailVerified: predefinedUser.is_email_verified,
+          lastLogin: predefinedUser.last_login,
           createdAt: predefinedUser.created_at,
           updatedAt: predefinedUser.last_login,
         },
@@ -227,6 +238,7 @@ export async function POST(request: NextRequest) {
               role: demoUser.role,
               subscriptionStatus: demoUser.subscription_status,
               isEmailVerified: demoUser.is_email_verified,
+              lastLogin: new Date(),
               createdAt: demoUser.created_at,
               updatedAt: demoUser.created_at,
             },
@@ -251,7 +263,7 @@ export async function POST(request: NextRequest) {
       {
         success: false,
         error: "Invalid credentials",
-        message: "Invalid email or password",
+        message: "Invalid email or password. Please check your credentials and try again.",
       },
       { status: 401 },
     )

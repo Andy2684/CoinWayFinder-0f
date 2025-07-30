@@ -1,6 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server"
 import jwt from "jsonwebtoken"
 import { connectToDatabase } from "@/lib/mongodb"
+import { ObjectId } from "mongodb"
+
+const JWT_SECRET = process.env.JWT_SECRET || "fallback-secret-key"
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,8 +14,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         {
           success: false,
-          error: "No token provided",
-          message: "Authentication required",
+          error: "No authentication token found",
+          user: null,
         },
         { status: 401 },
       )
@@ -21,14 +24,14 @@ export async function GET(request: NextRequest) {
     // Verify token
     let decoded: any
     try {
-      decoded = jwt.verify(token, process.env.JWT_SECRET || "fallback-secret-key")
+      decoded = jwt.verify(token, JWT_SECRET)
     } catch (jwtError) {
       console.error("JWT verification failed:", jwtError)
       return NextResponse.json(
         {
           success: false,
-          error: "Invalid token",
-          message: "Authentication failed",
+          error: "Invalid authentication token",
+          user: null,
         },
         { status: 401 },
       )
@@ -39,7 +42,9 @@ export async function GET(request: NextRequest) {
     try {
       // Try to get user from MongoDB
       const { db } = await connectToDatabase()
-      const user = await db.collection("users").findOne({ email: email.toLowerCase() })
+      const user = await db
+        .collection("users")
+        .findOne({ _id: new ObjectId(userId) }, { projection: { password_hash: 0 } })
 
       if (user) {
         return NextResponse.json({
@@ -53,13 +58,14 @@ export async function GET(request: NextRequest) {
             role: user.role || "user",
             subscriptionStatus: user.subscription_status || "free",
             isEmailVerified: user.is_email_verified || false,
+            lastLogin: user.last_login,
             createdAt: user.created_at,
             updatedAt: user.updated_at || user.created_at,
           },
         })
       }
     } catch (dbError) {
-      console.error("Database error in /me:", dbError)
+      console.error("Database error in auth/me:", dbError)
     }
 
     // Check predefined demo users
@@ -74,6 +80,7 @@ export async function GET(request: NextRequest) {
         subscription_status: "pro",
         is_email_verified: true,
         created_at: new Date(),
+        last_login: new Date(),
       },
       {
         id: "admin-demo-456",
@@ -85,6 +92,7 @@ export async function GET(request: NextRequest) {
         subscription_status: "enterprise",
         is_email_verified: true,
         created_at: new Date(),
+        last_login: new Date(),
       },
       {
         id: "test-user-789",
@@ -96,10 +104,11 @@ export async function GET(request: NextRequest) {
         subscription_status: "free",
         is_email_verified: true,
         created_at: new Date(),
+        last_login: new Date(),
       },
     ]
 
-    const predefinedUser = predefinedDemoUsers.find((user) => user.email === email.toLowerCase())
+    const predefinedUser = predefinedDemoUsers.find((user) => user.id === userId)
     if (predefinedUser) {
       return NextResponse.json({
         success: true,
@@ -112,15 +121,16 @@ export async function GET(request: NextRequest) {
           role: predefinedUser.role,
           subscriptionStatus: predefinedUser.subscription_status,
           isEmailVerified: predefinedUser.is_email_verified,
+          lastLogin: predefinedUser.last_login,
           createdAt: predefinedUser.created_at,
-          updatedAt: predefinedUser.created_at,
+          updatedAt: predefinedUser.last_login,
         },
       })
     }
 
     // Check dynamically created demo users
     if (global.demoUsers) {
-      const demoUser = global.demoUsers.find((user: any) => user.email === email.toLowerCase())
+      const demoUser = global.demoUsers.find((user: any) => user.id === userId)
       if (demoUser) {
         return NextResponse.json({
           success: true,
@@ -133,6 +143,7 @@ export async function GET(request: NextRequest) {
             role: demoUser.role,
             subscriptionStatus: demoUser.subscription_status,
             isEmailVerified: demoUser.is_email_verified,
+            lastLogin: new Date(),
             createdAt: demoUser.created_at,
             updatedAt: demoUser.created_at,
           },
@@ -145,18 +156,17 @@ export async function GET(request: NextRequest) {
       {
         success: false,
         error: "User not found",
-        message: "User account no longer exists",
+        user: null,
       },
       { status: 404 },
     )
   } catch (error) {
     console.error("Auth check error:", error)
-
     return NextResponse.json(
       {
         success: false,
         error: "Internal server error",
-        message: "An error occurred during authentication check",
+        user: null,
       },
       { status: 500 },
     )

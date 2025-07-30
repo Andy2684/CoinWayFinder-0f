@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
   try {
+    console.log("Processing logout request")
+
     // Create response
     const response = NextResponse.json({
       success: true,
@@ -17,10 +19,10 @@ export async function POST(request: NextRequest) {
       path: "/",
     })
 
+    console.log("Logout successful")
     return response
   } catch (error) {
     console.error("Logout error:", error)
-
     return NextResponse.json(
       {
         success: false,
