@@ -1,8 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { cookies } from "next/headers"
-import { getGoogleProvider, getGitHubProvider, exchangeCodeForToken, getUserInfo } from "@/lib/oauth-providers"
-import { findOrCreateOAuthUser } from "@/lib/oauth-auth"
-import { generateToken } from "@/lib/auth"
+import { getOAuthProvider } from "@/lib/oauth-providers"
+import { exchangeCodeForToken, fetchOAuthUser, findOrCreateOAuthUser, createOAuthSession } from "@/lib/oauth-auth"
 
 export async function GET(request: NextRequest, { params }: { params: { provider: string } }) {
   try {
@@ -14,110 +12,59 @@ export async function GET(request: NextRequest, { params }: { params: { provider
 
     // Check for OAuth errors
     if (error) {
-      console.error(`OAuth ${provider} error:`, error)
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=oauth_error`)
+      const errorDescription = searchParams.get("error_description") || "OAuth authentication failed"
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=${encodeURIComponent(errorDescription)}`,
+      )
     }
 
     if (!code || !state) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=missing_code`)
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=Missing authorization code or state`,
+      )
     }
 
     // Verify state parameter
-    const cookieStore = await cookies()
-    const storedState = cookieStore.get("oauth_state")?.value
-
+    const storedState = request.cookies.get("oauth_state")?.value
     if (!storedState || storedState !== state) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=invalid_state`)
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=Invalid state parameter`)
     }
 
-    // Clear state cookie
-    cookieStore.delete("oauth_state")
-
-    // Get provider configuration
-    const providerConfig = provider === "google" ? getGoogleProvider() : getGitHubProvider()
-
-    if (!providerConfig.clientId || !providerConfig.clientSecret) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=provider_not_configured`)
+    const oauthProvider = getOAuthProvider(provider)
+    if (!oauthProvider) {
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=Invalid OAuth provider`)
     }
 
     // Exchange code for access token
-    const tokenData = await exchangeCodeForToken(providerConfig, code)
+    const accessToken = await exchangeCodeForToken(oauthProvider, code)
 
-    if (!tokenData.access_token) {
-      throw new Error("No access token received")
-    }
-
-    // Get user info from provider
-    const userInfo = await getUserInfo(providerConfig, tokenData.access_token)
-
-    // Handle different provider response formats
-    let oauthUser
-    if (provider === "google") {
-      oauthUser = {
-        id: userInfo.id,
-        email: userInfo.email,
-        name: userInfo.name,
-        avatar_url: userInfo.picture,
-        provider: "google",
-        provider_id: userInfo.id,
-      }
-    } else if (provider === "github") {
-      // GitHub might not return email in user info, need to fetch separately
-      let email = userInfo.email
-
-      if (!email) {
-        const emailResponse = await fetch("https://api.github.com/user/emails", {
-          headers: {
-            Authorization: `Bearer ${tokenData.access_token}`,
-            Accept: "application/json",
-            "User-Agent": "CoinWayFinder-App",
-          },
-        })
-
-        if (emailResponse.ok) {
-          const emails = await emailResponse.json()
-          const primaryEmail = emails.find((e: any) => e.primary && e.verified)
-          email = primaryEmail?.email || emails[0]?.email
-        }
-      }
-
-      if (!email) {
-        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=no_email`)
-      }
-
-      oauthUser = {
-        id: userInfo.id.toString(),
-        email: email,
-        name: userInfo.name || userInfo.login,
-        avatar_url: userInfo.avatar_url,
-        provider: "github",
-        provider_id: userInfo.id.toString(),
-      }
-    } else {
-      throw new Error(`Unsupported provider: ${provider}`)
-    }
+    // Fetch user information
+    const oauthUser = await fetchOAuthUser(oauthProvider, accessToken)
 
     // Find or create user in database
     const user = await findOrCreateOAuthUser(oauthUser)
 
-    // Generate JWT token
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
-    })
+    // Create session
+    const session = await createOAuthSession(user)
 
-    // Set auth cookie
-    cookieStore.set("auth-token", token, {
+    // Set auth cookie and redirect
+    const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/dashboard`)
+
+    response.cookies.set("auth_token", session.token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60, // 7 days
     })
 
-    // Redirect to dashboard
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/dashboard`)
+    // Clear OAuth state cookie
+    response.cookies.delete("oauth_state")
+
+    return response
   } catch (error) {
-    console.error(`OAuth ${params.provider} callback error:`, error)
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=oauth_callback_failed`)
+    console.error("OAuth callback error:", error)
+    return NextResponse.redirect(
+      `${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=${encodeURIComponent("Authentication failed. Please try again.")}`,
+    )
   }
 }
