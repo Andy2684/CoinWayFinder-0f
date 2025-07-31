@@ -1,388 +1,317 @@
-import { emailService } from "./email-service"
-import { auditLogger } from "./audit-logger"
+import { sendEmail } from "./email"
 
 export interface NotificationConfig {
   adminEmails: string[]
   securityEmails: string[]
   enabledTypes: {
-    securityAlerts: boolean
+    security: boolean
     adminActions: boolean
     systemHealth: boolean
     userManagement: boolean
   }
 }
 
-export interface SecurityAlert {
+export interface SecurityEvent {
   type: "failed_login" | "suspicious_activity" | "unauthorized_access" | "data_breach"
+  userId?: string
+  email?: string
+  ip?: string
+  userAgent?: string
+  details: string
+  timestamp: Date
   severity: "low" | "medium" | "high" | "critical"
-  details: {
-    userId?: string
-    email?: string
-    ipAddress?: string
-    userAgent?: string
-    timestamp: Date
-    description: string
-    metadata?: Record<string, any>
-  }
 }
 
 export interface AdminAction {
-  type: "user_deleted" | "user_banned" | "role_changed" | "settings_updated" | "data_exported"
+  type: "user_deleted" | "user_banned" | "role_changed" | "settings_updated" | "data_export"
   adminId: string
   adminEmail: string
   targetUserId?: string
   targetUserEmail?: string
-  details: {
-    action: string
-    timestamp: Date
-    changes?: Record<string, any>
-    reason?: string
-  }
+  details: string
+  timestamp: Date
 }
 
-class AdminNotificationService {
+export class AdminNotificationService {
+  private static instance: AdminNotificationService
   private config: NotificationConfig = {
     adminEmails: process.env.ADMIN_EMAILS?.split(",") || [],
     securityEmails: process.env.SECURITY_ALERT_EMAILS?.split(",") || [],
     enabledTypes: {
-      securityAlerts: true,
+      security: true,
       adminActions: true,
       systemHealth: true,
       userManagement: true,
     },
   }
 
-  async updateConfig(newConfig: Partial<NotificationConfig>) {
-    this.config = { ...this.config, ...newConfig }
-    await auditLogger.log({
-      action: "notification_config_updated",
-      userId: "system",
-      details: { newConfig },
-      timestamp: new Date(),
-    })
+  static getInstance(): AdminNotificationService {
+    if (!AdminNotificationService.instance) {
+      AdminNotificationService.instance = new AdminNotificationService()
+    }
+    return AdminNotificationService.instance
   }
 
-  async sendSecurityAlert(alert: SecurityAlert) {
-    if (!this.config.enabledTypes.securityAlerts) return
+  async updateConfig(newConfig: Partial<NotificationConfig>): Promise<void> {
+    this.config = { ...this.config, ...newConfig }
+  }
+
+  getConfig(): NotificationConfig {
+    return this.config
+  }
+
+  async sendSecurityAlert(event: SecurityEvent): Promise<void> {
+    if (!this.config.enabledTypes.security) return
 
     const recipients =
-      alert.severity === "critical" || alert.severity === "high"
+      event.severity === "critical" || event.severity === "high"
         ? [...this.config.adminEmails, ...this.config.securityEmails]
         : this.config.securityEmails
 
-    const subject = `🚨 Security Alert: ${alert.type.replace("_", " ").toUpperCase()}`
+    const subject = `🚨 Security Alert: ${this.getSecurityEventTitle(event.type)}`
+    const htmlContent = this.generateSecurityAlertHTML(event)
+    const textContent = this.generateSecurityAlertText(event)
 
-    const htmlContent = this.generateSecurityAlertHTML(alert)
-    const textContent = this.generateSecurityAlertText(alert)
-
-    try {
-      await emailService.sendEmail({
-        to: recipients,
-        subject,
-        html: htmlContent,
-        text: textContent,
-      })
-
-      await auditLogger.log({
-        action: "security_alert_sent",
-        userId: "system",
-        details: { alert, recipients: recipients.length },
-        timestamp: new Date(),
-      })
-    } catch (error) {
-      console.error("Failed to send security alert:", error)
-      throw error
+    for (const email of recipients) {
+      try {
+        await sendEmail({
+          to: email,
+          subject,
+          html: htmlContent,
+          text: textContent,
+        })
+      } catch (error) {
+        console.error(`Failed to send security alert to ${email}:`, error)
+      }
     }
   }
 
-  async sendAdminActionNotification(action: AdminAction) {
+  async sendAdminActionNotification(action: AdminAction): Promise<void> {
     if (!this.config.enabledTypes.adminActions) return
 
-    const recipients = this.config.adminEmails
-    const subject = `Admin Action: ${action.type.replace("_", " ").toUpperCase()}`
-
+    const subject = `📋 Admin Action: ${this.getAdminActionTitle(action.type)}`
     const htmlContent = this.generateAdminActionHTML(action)
     const textContent = this.generateAdminActionText(action)
 
-    try {
-      await emailService.sendEmail({
-        to: recipients,
-        subject,
-        html: htmlContent,
-        text: textContent,
-      })
-
-      await auditLogger.log({
-        action: "admin_notification_sent",
-        userId: action.adminId,
-        details: { action, recipients: recipients.length },
-        timestamp: new Date(),
-      })
-    } catch (error) {
-      console.error("Failed to send admin action notification:", error)
-      throw error
+    for (const email of this.config.adminEmails) {
+      try {
+        await sendEmail({
+          to: email,
+          subject,
+          html: htmlContent,
+          text: textContent,
+        })
+      } catch (error) {
+        console.error(`Failed to send admin action notification to ${email}:`, error)
+      }
     }
   }
 
-  async sendSystemHealthAlert(details: {
-    component: string
-    status: "degraded" | "down" | "recovered"
-    message: string
-    timestamp: Date
-  }) {
+  async sendSystemHealthAlert(message: string, severity: "low" | "medium" | "high" | "critical"): Promise<void> {
     if (!this.config.enabledTypes.systemHealth) return
 
     const recipients =
-      details.status === "down" ? [...this.config.adminEmails, ...this.config.securityEmails] : this.config.adminEmails
+      severity === "critical" || severity === "high"
+        ? [...this.config.adminEmails, ...this.config.securityEmails]
+        : this.config.adminEmails
 
-    const subject = `System Health: ${details.component} is ${details.status.toUpperCase()}`
+    const subject = `⚠️ System Health Alert: ${severity.toUpperCase()}`
+    const htmlContent = this.generateSystemHealthHTML(message, severity)
+    const textContent = this.generateSystemHealthText(message, severity)
 
-    const htmlContent = this.generateSystemHealthHTML(details)
-    const textContent = this.generateSystemHealthText(details)
-
-    try {
-      await emailService.sendEmail({
-        to: recipients,
-        subject,
-        html: htmlContent,
-        text: textContent,
-      })
-    } catch (error) {
-      console.error("Failed to send system health alert:", error)
-      throw error
+    for (const email of recipients) {
+      try {
+        await sendEmail({
+          to: email,
+          subject,
+          html: htmlContent,
+          text: textContent,
+        })
+      } catch (error) {
+        console.error(`Failed to send system health alert to ${email}:`, error)
+      }
     }
   }
 
-  async sendTestNotification(email: string, type: "security" | "admin" | "system") {
-    const testData = {
-      security: {
-        subject: "🧪 Test Security Alert",
-        html: "<h2>Test Security Alert</h2><p>This is a test security notification.</p>",
-        text: "Test Security Alert\n\nThis is a test security notification.",
-      },
-      admin: {
-        subject: "🧪 Test Admin Notification",
-        html: "<h2>Test Admin Notification</h2><p>This is a test admin action notification.</p>",
-        text: "Test Admin Notification\n\nThis is a test admin action notification.",
-      },
-      system: {
-        subject: "🧪 Test System Health Alert",
-        html: "<h2>Test System Health Alert</h2><p>This is a test system health notification.</p>",
-        text: "Test System Health Alert\n\nThis is a test system health notification.",
-      },
-    }
+  async sendTestNotification(email: string, type: string): Promise<void> {
+    const subject = `🧪 Test Notification: ${type}`
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Test Notification</h2>
+        <p>This is a test notification of type: <strong>${type}</strong></p>
+        <p>Sent at: ${new Date().toISOString()}</p>
+        <p>If you received this email, your notification configuration is working correctly.</p>
+      </div>
+    `
+    const textContent = `Test Notification: ${type}\n\nSent at: ${new Date().toISOString()}\n\nIf you received this email, your notification configuration is working correctly.`
 
-    const notification = testData[type]
-
-    await emailService.sendEmail({
-      to: [email],
-      subject: notification.subject,
-      html: notification.html,
-      text: notification.text,
+    await sendEmail({
+      to: email,
+      subject,
+      html: htmlContent,
+      text: textContent,
     })
   }
 
-  private generateSecurityAlertHTML(alert: SecurityAlert): string {
+  private getSecurityEventTitle(type: string): string {
+    const titles = {
+      failed_login: "Failed Login Attempt",
+      suspicious_activity: "Suspicious Activity Detected",
+      unauthorized_access: "Unauthorized Access Attempt",
+      data_breach: "Potential Data Breach",
+    }
+    return titles[type as keyof typeof titles] || "Security Event"
+  }
+
+  private getAdminActionTitle(type: string): string {
+    const titles = {
+      user_deleted: "User Account Deleted",
+      user_banned: "User Account Banned",
+      role_changed: "User Role Changed",
+      settings_updated: "System Settings Updated",
+      data_export: "Data Export Performed",
+    }
+    return titles[type as keyof typeof titles] || "Admin Action"
+  }
+
+  private generateSecurityAlertHTML(event: SecurityEvent): string {
+    const severityColor = {
+      low: "#28a745",
+      medium: "#ffc107",
+      high: "#fd7e14",
+      critical: "#dc3545",
+    }
+
     return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Security Alert</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: #dc3545; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-              <h1 style="margin: 0;">🚨 Security Alert</h1>
-              <p style="margin: 5px 0 0 0;">Severity: ${alert.severity.toUpperCase()}</p>
-            </div>
-            
-            <h2>Alert Details</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Type:</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${alert.type.replace("_", " ").toUpperCase()}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Time:</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${alert.details.timestamp.toISOString()}</td>
-              </tr>
-              ${
-                alert.details.email
-                  ? `
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">User Email:</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${alert.details.email}</td>
-              </tr>
-              `
-                  : ""
-              }
-              ${
-                alert.details.ipAddress
-                  ? `
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">IP Address:</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${alert.details.ipAddress}</td>
-              </tr>
-              `
-                  : ""
-              }
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Description:</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${alert.details.description}</td>
-              </tr>
-            </table>
-            
-            <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px;">
-              <p style="margin: 0;"><strong>Action Required:</strong> Please review this security event and take appropriate action if necessary.</p>
-            </div>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px;">
+        <div style="background-color: ${severityColor[event.severity]}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+          <h2 style="margin: 0;">🚨 Security Alert</h2>
+          <p style="margin: 5px 0 0 0; opacity: 0.9;">${this.getSecurityEventTitle(event.type)}</p>
+        </div>
+        <div style="padding: 20px;">
+          <div style="margin-bottom: 15px;">
+            <strong>Severity:</strong> <span style="color: ${severityColor[event.severity]}; text-transform: uppercase;">${event.severity}</span>
           </div>
-        </body>
-      </html>
+          <div style="margin-bottom: 15px;">
+            <strong>Time:</strong> ${event.timestamp.toISOString()}
+          </div>
+          ${event.email ? `<div style="margin-bottom: 15px;"><strong>User:</strong> ${event.email}</div>` : ""}
+          ${event.ip ? `<div style="margin-bottom: 15px;"><strong>IP Address:</strong> ${event.ip}</div>` : ""}
+          ${event.userAgent ? `<div style="margin-bottom: 15px;"><strong>User Agent:</strong> ${event.userAgent}</div>` : ""}
+          <div style="margin-bottom: 15px;">
+            <strong>Details:</strong> ${event.details}
+          </div>
+          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 20px;">
+            <p style="margin: 0; font-size: 14px; color: #666;">
+              This is an automated security alert from CoinWayFinder. Please review and take appropriate action if necessary.
+            </p>
+          </div>
+        </div>
+      </div>
     `
   }
 
-  private generateSecurityAlertText(alert: SecurityAlert): string {
+  private generateSecurityAlertText(event: SecurityEvent): string {
     return `
-SECURITY ALERT - ${alert.severity.toUpperCase()}
+SECURITY ALERT: ${this.getSecurityEventTitle(event.type)}
 
-Type: ${alert.type.replace("_", " ").toUpperCase()}
-Time: ${alert.details.timestamp.toISOString()}
-${alert.details.email ? `User Email: ${alert.details.email}` : ""}
-${alert.details.ipAddress ? `IP Address: ${alert.details.ipAddress}` : ""}
-Description: ${alert.details.description}
+Severity: ${event.severity.toUpperCase()}
+Time: ${event.timestamp.toISOString()}
+${event.email ? `User: ${event.email}` : ""}
+${event.ip ? `IP Address: ${event.ip}` : ""}
+${event.userAgent ? `User Agent: ${event.userAgent}` : ""}
 
-Action Required: Please review this security event and take appropriate action if necessary.
+Details: ${event.details}
+
+This is an automated security alert from CoinWayFinder. Please review and take appropriate action if necessary.
     `.trim()
   }
 
   private generateAdminActionHTML(action: AdminAction): string {
     return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>Admin Action Notification</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: #007bff; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-              <h1 style="margin: 0;">Admin Action Performed</h1>
-            </div>
-            
-            <h2>Action Details</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Action:</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${action.type.replace("_", " ").toUpperCase()}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Admin:</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${action.adminEmail}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Time:</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${action.details.timestamp.toISOString()}</td>
-              </tr>
-              ${
-                action.targetUserEmail
-                  ? `
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Target User:</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${action.targetUserEmail}</td>
-              </tr>
-              `
-                  : ""
-              }
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Description:</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${action.details.action}</td>
-              </tr>
-            </table>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px;">
+        <div style="background-color: #007bff; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+          <h2 style="margin: 0;">📋 Admin Action</h2>
+          <p style="margin: 5px 0 0 0; opacity: 0.9;">${this.getAdminActionTitle(action.type)}</p>
+        </div>
+        <div style="padding: 20px;">
+          <div style="margin-bottom: 15px;">
+            <strong>Time:</strong> ${action.timestamp.toISOString()}
           </div>
-        </body>
-      </html>
+          <div style="margin-bottom: 15px;">
+            <strong>Admin:</strong> ${action.adminEmail}
+          </div>
+          ${action.targetUserEmail ? `<div style="margin-bottom: 15px;"><strong>Target User:</strong> ${action.targetUserEmail}</div>` : ""}
+          <div style="margin-bottom: 15px;">
+            <strong>Details:</strong> ${action.details}
+          </div>
+          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 20px;">
+            <p style="margin: 0; font-size: 14px; color: #666;">
+              This is an automated notification of an admin action performed on CoinWayFinder.
+            </p>
+          </div>
+        </div>
+      </div>
     `
   }
 
   private generateAdminActionText(action: AdminAction): string {
     return `
-ADMIN ACTION NOTIFICATION
+ADMIN ACTION: ${this.getAdminActionTitle(action.type)}
 
-Action: ${action.type.replace("_", " ").toUpperCase()}
+Time: ${action.timestamp.toISOString()}
 Admin: ${action.adminEmail}
-Time: ${action.details.timestamp.toISOString()}
 ${action.targetUserEmail ? `Target User: ${action.targetUserEmail}` : ""}
-Description: ${action.details.action}
+
+Details: ${action.details}
+
+This is an automated notification of an admin action performed on CoinWayFinder.
     `.trim()
   }
 
-  private generateSystemHealthHTML(details: {
-    component: string
-    status: string
-    message: string
-    timestamp: Date
-  }): string {
-    const statusColor = details.status === "down" ? "#dc3545" : details.status === "degraded" ? "#ffc107" : "#28a745"
+  private generateSystemHealthHTML(message: string, severity: string): string {
+    const severityColor = {
+      low: "#28a745",
+      medium: "#ffc107",
+      high: "#fd7e14",
+      critical: "#dc3545",
+    }
 
     return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>System Health Alert</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: ${statusColor}; color: white; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-              <h1 style="margin: 0;">System Health Alert</h1>
-              <p style="margin: 5px 0 0 0;">Status: ${details.status.toUpperCase()}</p>
-            </div>
-            
-            <h2>System Details</h2>
-            <table style="width: 100%; border-collapse: collapse;">
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Component:</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${details.component}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Status:</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${details.status.toUpperCase()}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Time:</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${details.timestamp.toISOString()}</td>
-              </tr>
-              <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; font-weight: bold;">Message:</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">${details.message}</td>
-              </tr>
-            </table>
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #ddd; border-radius: 8px;">
+        <div style="background-color: ${severityColor[severity as keyof typeof severityColor]}; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+          <h2 style="margin: 0;">⚠️ System Health Alert</h2>
+          <p style="margin: 5px 0 0 0; opacity: 0.9;">Severity: ${severity.toUpperCase()}</p>
+        </div>
+        <div style="padding: 20px;">
+          <div style="margin-bottom: 15px;">
+            <strong>Time:</strong> ${new Date().toISOString()}
           </div>
-        </body>
-      </html>
+          <div style="margin-bottom: 15px;">
+            <strong>Message:</strong> ${message}
+          </div>
+          <div style="background-color: #f8f9fa; padding: 15px; border-radius: 4px; margin-top: 20px;">
+            <p style="margin: 0; font-size: 14px; color: #666;">
+              This is an automated system health alert from CoinWayFinder. Please investigate and resolve if necessary.
+            </p>
+          </div>
+        </div>
+      </div>
     `
   }
 
-  private generateSystemHealthText(details: {
-    component: string
-    status: string
-    message: string
-    timestamp: Date
-  }): string {
+  private generateSystemHealthText(message: string, severity: string): string {
     return `
 SYSTEM HEALTH ALERT
 
-Component: ${details.component}
-Status: ${details.status.toUpperCase()}
-Time: ${details.timestamp.toISOString()}
-Message: ${details.message}
-    `.trim()
-  }
+Severity: ${severity.toUpperCase()}
+Time: ${new Date().toISOString()}
 
-  getConfig(): NotificationConfig {
-    return { ...this.config }
+Message: ${message}
+
+This is an automated system health alert from CoinWayFinder. Please investigate and resolve if necessary.
+    `.trim()
   }
 }
 
-export const adminNotificationService = new AdminNotificationService()
+export const adminNotificationService = AdminNotificationService.getInstance()

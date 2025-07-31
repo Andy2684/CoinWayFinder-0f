@@ -1,148 +1,219 @@
-import { db } from "./db"
 import bcrypt from "bcryptjs"
+import { connectToDatabase } from "./mongodb"
+import type { User } from "@/types"
 
-export interface User {
-  id: string
-  email: string
-  password?: string
-  name?: string
-  role: "user" | "admin"
-  isActive: boolean
-  emailVerified: boolean
-  createdAt: Date
-  updatedAt: Date
-  lastLoginAt?: Date
+export async function hashPassword(password: string): Promise<string> {
+  const saltRounds = 12
+  return bcrypt.hash(password, saltRounds)
 }
 
-export interface CreateUserData {
+export async function verifyPassword(password: string, hashedPassword: string): Promise<boolean> {
+  return bcrypt.compare(password, hashedPassword)
+}
+
+export async function findUserByEmail(email: string): Promise<User | null> {
+  try {
+    const { db } = await connectToDatabase()
+    const user = await db.collection("users").findOne({ email })
+
+    if (!user) return null
+
+    return {
+      id: user._id.toString(),
+      email: user.email,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role || "user",
+      plan: user.plan || "free",
+      isVerified: user.isVerified || false,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+    }
+  } catch (error) {
+    console.error("Error finding user by email:", error)
+    return null
+  }
+}
+
+export async function findUserById(id: string): Promise<User | null> {
+  try {
+    const { db } = await connectToDatabase()
+    const { ObjectId } = require("mongodb")
+    const user = await db.collection("users").findOne({ _id: new ObjectId(id) })
+
+    if (!user) return null
+
+    return {
+      id: user._id.toString(),
+      email: user.email,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role || "user",
+      plan: user.plan || "free",
+      isVerified: user.isVerified || false,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+    }
+  } catch (error) {
+    console.error("Error finding user by ID:", error)
+    return null
+  }
+}
+
+export async function createUser(userData: {
   email: string
   password: string
-  name?: string
-  role?: "user" | "admin"
-}
+  username?: string
+  firstName?: string
+  lastName?: string
+}): Promise<User> {
+  try {
+    const { db } = await connectToDatabase()
 
-export interface UpdateUserData {
-  name?: string
-  email?: string
-  role?: "user" | "admin"
-  isActive?: boolean
-  emailVerified?: boolean
-}
-
-export class UserService {
-  async createUser(data: CreateUserData): Promise<User> {
-    const hashedPassword = await bcrypt.hash(data.password, 12)
-
-    const user = await db.query(
-      `INSERT INTO users (email, password, name, role, is_active, email_verified, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, true, false, NOW(), NOW())
-       RETURNING id, email, name, role, is_active as "isActive", email_verified as "emailVerified", created_at as "createdAt", updated_at as "updatedAt"`,
-      [data.email, hashedPassword, data.name || null, data.role || "user"],
-    )
-
-    return user.rows[0]
-  }
-
-  async findByEmail(email: string): Promise<User | null> {
-    const result = await db.query(
-      `SELECT id, email, password, name, role, is_active as "isActive", 
-              email_verified as "emailVerified", created_at as "createdAt", 
-              updated_at as "updatedAt", last_login_at as "lastLoginAt"
-       FROM users WHERE email = $1`,
-      [email],
-    )
-
-    return result.rows[0] || null
-  }
-
-  async findById(id: string): Promise<User | null> {
-    const result = await db.query(
-      `SELECT id, email, name, role, is_active as "isActive", 
-              email_verified as "emailVerified", created_at as "createdAt", 
-              updated_at as "updatedAt", last_login_at as "lastLoginAt"
-       FROM users WHERE id = $1`,
-      [id],
-    )
-
-    return result.rows[0] || null
-  }
-
-  async updateUser(id: string, data: UpdateUserData): Promise<User | null> {
-    const fields = []
-    const values = []
-    let paramCount = 1
-
-    if (data.name !== undefined) {
-      fields.push(`name = $${paramCount++}`)
-      values.push(data.name)
-    }
-    if (data.email !== undefined) {
-      fields.push(`email = $${paramCount++}`)
-      values.push(data.email)
-    }
-    if (data.role !== undefined) {
-      fields.push(`role = $${paramCount++}`)
-      values.push(data.role)
-    }
-    if (data.isActive !== undefined) {
-      fields.push(`is_active = $${paramCount++}`)
-      values.push(data.isActive)
-    }
-    if (data.emailVerified !== undefined) {
-      fields.push(`email_verified = $${paramCount++}`)
-      values.push(data.emailVerified)
+    // Check if user already exists
+    const existingUser = await db.collection("users").findOne({ email: userData.email })
+    if (existingUser) {
+      throw new Error("User already exists")
     }
 
-    if (fields.length === 0) {
-      return this.findById(id)
+    // Hash password
+    const hashedPassword = await hashPassword(userData.password)
+
+    // Create user document
+    const userDoc = {
+      email: userData.email,
+      password: hashedPassword,
+      username: userData.username || userData.email.split("@")[0],
+      firstName: userData.firstName || "",
+      lastName: userData.lastName || "",
+      role: "user",
+      plan: "free",
+      isVerified: false,
+      created_at: new Date(),
+      updated_at: new Date(),
     }
 
-    fields.push(`updated_at = NOW()`)
-    values.push(id)
+    const result = await db.collection("users").insertOne(userDoc)
 
-    const result = await db.query(
-      `UPDATE users SET ${fields.join(", ")} WHERE id = $${paramCount}
-       RETURNING id, email, name, role, is_active as "isActive", 
-                email_verified as "emailVerified", created_at as "createdAt", 
-                updated_at as "updatedAt", last_login_at as "lastLoginAt"`,
-      values,
-    )
-
-    return result.rows[0] || null
-  }
-
-  async updateLastLogin(id: string): Promise<void> {
-    await db.query("UPDATE users SET last_login_at = NOW() WHERE id = $1", [id])
-  }
-
-  async verifyPassword(user: User, password: string): Promise<boolean> {
-    if (!user.password) return false
-    return bcrypt.compare(password, user.password)
-  }
-
-  async deleteUser(id: string): Promise<boolean> {
-    const result = await db.query("DELETE FROM users WHERE id = $1", [id])
-    return result.rowCount > 0
-  }
-
-  async getAllUsers(limit = 50, offset = 0): Promise<User[]> {
-    const result = await db.query(
-      `SELECT id, email, name, role, is_active as "isActive", 
-              email_verified as "emailVerified", created_at as "createdAt", 
-              updated_at as "updatedAt", last_login_at as "lastLoginAt"
-       FROM users 
-       ORDER BY created_at DESC 
-       LIMIT $1 OFFSET $2`,
-      [limit, offset],
-    )
-
-    return result.rows
-  }
-
-  async getUserCount(): Promise<number> {
-    const result = await db.query("SELECT COUNT(*) as count FROM users")
-    return Number.parseInt(result.rows[0].count)
+    return {
+      id: result.insertedId.toString(),
+      email: userDoc.email,
+      username: userDoc.username,
+      firstName: userDoc.firstName,
+      lastName: userDoc.lastName,
+      role: userDoc.role,
+      plan: userDoc.plan,
+      isVerified: userDoc.isVerified,
+      created_at: userDoc.created_at,
+      updated_at: userDoc.updated_at,
+    }
+  } catch (error) {
+    console.error("Error creating user:", error)
+    throw error
   }
 }
 
-export const userService = new UserService()
+export async function updateUser(id: string, updates: Partial<User>): Promise<User | null> {
+  try {
+    const { db } = await connectToDatabase()
+    const { ObjectId } = require("mongodb")
+
+    const updateDoc = {
+      ...updates,
+      updated_at: new Date(),
+    }
+
+    // Remove id from updates if present
+    delete updateDoc.id
+
+    const result = await db
+      .collection("users")
+      .findOneAndUpdate({ _id: new ObjectId(id) }, { $set: updateDoc }, { returnDocument: "after" })
+
+    if (!result.value) return null
+
+    const user = result.value
+    return {
+      id: user._id.toString(),
+      email: user.email,
+      username: user.username,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      plan: user.plan,
+      isVerified: user.isVerified,
+      created_at: user.created_at,
+      updated_at: user.updated_at,
+    }
+  } catch (error) {
+    console.error("Error updating user:", error)
+    return null
+  }
+}
+
+export async function deleteUser(id: string): Promise<boolean> {
+  try {
+    const { db } = await connectToDatabase()
+    const { ObjectId } = require("mongodb")
+
+    const result = await db.collection("users").deleteOne({ _id: new ObjectId(id) })
+    return result.deletedCount === 1
+  } catch (error) {
+    console.error("Error deleting user:", error)
+    return false
+  }
+}
+
+export async function getUserStats(): Promise<{
+  total: number
+  verified: number
+  unverified: number
+  byPlan: Record<string, number>
+  byRole: Record<string, number>
+}> {
+  try {
+    const { db } = await connectToDatabase()
+
+    const [totalResult, verifiedResult, planStats, roleStats] = await Promise.all([
+      db.collection("users").countDocuments(),
+      db.collection("users").countDocuments({ isVerified: true }),
+      db
+        .collection("users")
+        .aggregate([{ $group: { _id: "$plan", count: { $sum: 1 } } }])
+        .toArray(),
+      db
+        .collection("users")
+        .aggregate([{ $group: { _id: "$role", count: { $sum: 1 } } }])
+        .toArray(),
+    ])
+
+    const byPlan: Record<string, number> = {}
+    planStats.forEach((stat) => {
+      byPlan[stat._id || "unknown"] = stat.count
+    })
+
+    const byRole: Record<string, number> = {}
+    roleStats.forEach((stat) => {
+      byRole[stat._id || "unknown"] = stat.count
+    })
+
+    return {
+      total: totalResult,
+      verified: verifiedResult,
+      unverified: totalResult - verifiedResult,
+      byPlan,
+      byRole,
+    }
+  } catch (error) {
+    console.error("Error getting user stats:", error)
+    return {
+      total: 0,
+      verified: 0,
+      unverified: 0,
+      byPlan: {},
+      byRole: {},
+    }
+  }
+}

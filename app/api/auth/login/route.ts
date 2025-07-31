@@ -1,86 +1,53 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { userService } from "@/lib/user"
+import { findUserByEmail, verifyPassword } from "@/lib/user"
+import { generateToken } from "@/lib/auth"
 import { securityMonitor } from "@/lib/security-monitor"
-import jwt from "jsonwebtoken"
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json()
+    const body = await request.json()
+    const { email, password } = body
+
+    // Get client info for security monitoring
+    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown"
+    const userAgent = request.headers.get("user-agent") || "unknown"
 
     if (!email || !password) {
       return NextResponse.json({ error: "Email and password are required" }, { status: 400 })
     }
 
-    const ipAddress = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown"
-    const userAgent = request.headers.get("user-agent") || "unknown"
-
     // Find user
-    const user = await userService.findByEmail(email)
-
-    if (!user || !user.isActive) {
-      // Record failed attempt
-      await securityMonitor.recordLoginAttempt({
-        email,
-        ipAddress,
-        userAgent,
-        success: false,
-        timestamp: new Date(),
-      })
-
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
+    const user = await findUserByEmail(email)
+    if (!user) {
+      // Log failed login attempt
+      await securityMonitor.logFailedLogin(email, ip, userAgent)
+      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
 
     // Verify password
-    const isValidPassword = await userService.verifyPassword(user, password)
-
+    const isValidPassword = await verifyPassword(password, user.password || "")
     if (!isValidPassword) {
-      // Record failed attempt
-      await securityMonitor.recordLoginAttempt({
-        email,
-        ipAddress,
-        userAgent,
-        success: false,
-        timestamp: new Date(),
-      })
-
-      return NextResponse.json({ error: "Invalid credentials" }, { status: 401 })
+      // Log failed login attempt
+      await securityMonitor.logFailedLogin(email, ip, userAgent)
+      return NextResponse.json({ error: "Invalid email or password" }, { status: 401 })
     }
-
-    // Check if email is verified
-    if (!user.emailVerified) {
-      return NextResponse.json({ error: "Please verify your email before logging in" }, { status: 401 })
-    }
-
-    // Record successful attempt
-    await securityMonitor.recordLoginAttempt({
-      email,
-      ipAddress,
-      userAgent,
-      success: true,
-      timestamp: new Date(),
-    })
-
-    // Update last login
-    await userService.updateLastLogin(user.id)
 
     // Generate JWT token
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        email: user.email,
-        role: user.role,
-      },
-      process.env.JWT_SECRET!,
-      { expiresIn: "7d" },
-    )
+    const token = generateToken(user)
 
     // Create response
     const response = NextResponse.json({
+      success: true,
+      message: "Login successful",
       user: {
         id: user.id,
         email: user.email,
-        name: user.name,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
         role: user.role,
+        plan: user.plan,
+        isVerified: user.isVerified,
       },
     })
 
@@ -90,11 +57,16 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
       maxAge: 7 * 24 * 60 * 60, // 7 days
+      path: "/",
     })
 
     return response
   } catch (error) {
     console.error("Login error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return NextResponse.json({ error: "An unexpected error occurred. Please try again." }, { status: 500 })
   }
+}
+
+export async function GET() {
+  return NextResponse.json({ error: "Method not allowed" }, { status: 405 })
 }

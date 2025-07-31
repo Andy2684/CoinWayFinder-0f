@@ -4,29 +4,28 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { toast } from "@/hooks/use-toast"
-import { Loader2, Mail, Shield, Activity, Users } from "lucide-react"
+import { Switch } from "@/components/ui/switch"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Trash2, Plus, Send, CheckCircle, XCircle } from "lucide-react"
 
 interface NotificationConfig {
   adminEmails: string[]
   securityEmails: string[]
   enabledTypes: {
-    securityAlerts: boolean
+    security: boolean
     adminActions: boolean
     systemHealth: boolean
     userManagement: boolean
   }
 }
 
-export function NotificationSettings() {
+export default function NotificationSettings() {
   const [config, setConfig] = useState<NotificationConfig>({
     adminEmails: [],
     securityEmails: [],
     enabledTypes: {
-      securityAlerts: true,
+      security: true,
       adminActions: true,
       systemHealth: true,
       userManagement: true,
@@ -35,26 +34,28 @@ export function NotificationSettings() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [testEmail, setTestEmail] = useState("")
-  const [sendingTest, setSendingTest] = useState<string | null>(null)
+  const [testType, setTestType] = useState("security")
+  const [sendingTest, setSendingTest] = useState(false)
+  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const [newAdminEmail, setNewAdminEmail] = useState("")
+  const [newSecurityEmail, setNewSecurityEmail] = useState("")
 
   useEffect(() => {
-    fetchConfig()
+    loadConfig()
   }, [])
 
-  const fetchConfig = async () => {
+  const loadConfig = async () => {
     try {
       const response = await fetch("/api/admin/notifications/config")
-      if (response.ok) {
-        const data = await response.json()
-        setConfig(data)
+      const data = await response.json()
+
+      if (data.success) {
+        setConfig(data.config)
+      } else {
+        setMessage({ type: "error", text: "Failed to load notification config" })
       }
     } catch (error) {
-      console.error("Failed to fetch config:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load notification settings",
-        variant: "destructive",
-      })
+      setMessage({ type: "error", text: "Error loading notification config" })
     } finally {
       setLoading(false)
     }
@@ -62,90 +63,113 @@ export function NotificationSettings() {
 
   const saveConfig = async () => {
     setSaving(true)
+    setMessage(null)
+
     try {
       const response = await fetch("/api/admin/notifications/config", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(config),
       })
 
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Notification settings saved successfully",
-        })
+      const data = await response.json()
+
+      if (data.success) {
+        setMessage({ type: "success", text: "Notification settings saved successfully" })
+        setConfig(data.config)
       } else {
-        throw new Error("Failed to save")
+        setMessage({ type: "error", text: data.error || "Failed to save settings" })
       }
     } catch (error) {
-      console.error("Failed to save config:", error)
-      toast({
-        title: "Error",
-        description: "Failed to save notification settings",
-        variant: "destructive",
-      })
+      setMessage({ type: "error", text: "Error saving notification settings" })
     } finally {
       setSaving(false)
     }
   }
 
-  const sendTestNotification = async (type: "security" | "admin" | "system") => {
+  const sendTestNotification = async () => {
     if (!testEmail) {
-      toast({
-        title: "Error",
-        description: "Please enter an email address",
-        variant: "destructive",
-      })
+      setMessage({ type: "error", text: "Please enter an email address for testing" })
       return
     }
 
-    setSendingTest(type)
+    setSendingTest(true)
+    setMessage(null)
+
     try {
       const response = await fetch("/api/admin/notifications/test", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: testEmail, type }),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: testEmail, type: testType }),
       })
 
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: `Test ${type} notification sent to ${testEmail}`,
-        })
+      const data = await response.json()
+
+      if (data.success) {
+        setMessage({ type: "success", text: data.message })
+        setTestEmail("")
       } else {
-        throw new Error("Failed to send test notification")
+        setMessage({ type: "error", text: data.error || "Failed to send test notification" })
       }
     } catch (error) {
-      console.error("Failed to send test notification:", error)
-      toast({
-        title: "Error",
-        description: "Failed to send test notification",
-        variant: "destructive",
-      })
+      setMessage({ type: "error", text: "Error sending test notification" })
     } finally {
-      setSendingTest(null)
+      setSendingTest(false)
     }
   }
 
-  const updateEmails = (type: "adminEmails" | "securityEmails", value: string) => {
-    const emails = value
-      .split(",")
-      .map((email) => email.trim())
-      .filter(Boolean)
-    setConfig((prev) => ({ ...prev, [type]: emails }))
+  const addAdminEmail = () => {
+    if (newAdminEmail && !config.adminEmails.includes(newAdminEmail)) {
+      setConfig((prev) => ({
+        ...prev,
+        adminEmails: [...prev.adminEmails, newAdminEmail],
+      }))
+      setNewAdminEmail("")
+    }
   }
 
-  const updateEnabledType = (type: keyof NotificationConfig["enabledTypes"], enabled: boolean) => {
+  const removeAdminEmail = (email: string) => {
     setConfig((prev) => ({
       ...prev,
-      enabledTypes: { ...prev.enabledTypes, [type]: enabled },
+      adminEmails: prev.adminEmails.filter((e) => e !== email),
+    }))
+  }
+
+  const addSecurityEmail = () => {
+    if (newSecurityEmail && !config.securityEmails.includes(newSecurityEmail)) {
+      setConfig((prev) => ({
+        ...prev,
+        securityEmails: [...prev.securityEmails, newSecurityEmail],
+      }))
+      setNewSecurityEmail("")
+    }
+  }
+
+  const removeSecurityEmail = (email: string) => {
+    setConfig((prev) => ({
+      ...prev,
+      securityEmails: prev.securityEmails.filter((e) => e !== email),
+    }))
+  }
+
+  const updateNotificationType = (type: keyof typeof config.enabledTypes, enabled: boolean) => {
+    setConfig((prev) => ({
+      ...prev,
+      enabledTypes: {
+        ...prev.enabledTypes,
+        [type]: enabled,
+      },
     }))
   }
 
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
       </div>
     )
   }
@@ -153,166 +177,209 @@ export function NotificationSettings() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold">Notification Settings</h2>
+        <h1 className="text-3xl font-bold">Notification Settings</h1>
         <p className="text-muted-foreground">Configure email notifications for admin actions and security alerts</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="h-5 w-5" />
-            Email Recipients
-          </CardTitle>
-          <CardDescription>Configure who receives different types of notifications</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="admin-emails">Admin Emails</Label>
-            <Input
-              id="admin-emails"
-              placeholder="admin1@example.com, admin2@example.com"
-              value={config.adminEmails.join(", ")}
-              onChange={(e) => updateEmails("adminEmails", e.target.value)}
-            />
-            <p className="text-sm text-muted-foreground mt-1">Comma-separated list of admin email addresses</p>
-          </div>
+      {message && (
+        <Alert variant={message.type === "error" ? "destructive" : "default"}>
+          {message.type === "success" ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+          <AlertDescription>{message.text}</AlertDescription>
+        </Alert>
+      )}
 
-          <div>
-            <Label htmlFor="security-emails">Security Team Emails</Label>
-            <Input
-              id="security-emails"
-              placeholder="security1@example.com, security2@example.com"
-              value={config.securityEmails.join(", ")}
-              onChange={(e) => updateEmails("securityEmails", e.target.value)}
-            />
-            <p className="text-sm text-muted-foreground mt-1">Comma-separated list of security team email addresses</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Admin Email Recipients */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Admin Email Recipients</CardTitle>
+            <CardDescription>Email addresses that will receive admin action notifications</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder="admin@example.com"
+                value={newAdminEmail}
+                onChange={(e) => setNewAdminEmail(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && addAdminEmail()}
+              />
+              <Button onClick={addAdminEmail} size="sm">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {config.adminEmails.map((email) => (
+                <div key={email} className="flex items-center justify-between p-2 bg-muted rounded">
+                  <span className="text-sm">{email}</span>
+                  <Button variant="ghost" size="sm" onClick={() => removeAdminEmail(email)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              {config.adminEmails.length === 0 && (
+                <p className="text-sm text-muted-foreground">No admin emails configured</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
+        {/* Security Email Recipients */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Security Email Recipients</CardTitle>
+            <CardDescription>
+              Email addresses that will receive security alerts and critical notifications
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
+              <Input
+                placeholder="security@example.com"
+                value={newSecurityEmail}
+                onChange={(e) => setNewSecurityEmail(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && addSecurityEmail()}
+              />
+              <Button onClick={addSecurityEmail} size="sm">
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="space-y-2">
+              {config.securityEmails.map((email) => (
+                <div key={email} className="flex items-center justify-between p-2 bg-muted rounded">
+                  <span className="text-sm">{email}</span>
+                  <Button variant="ghost" size="sm" onClick={() => removeSecurityEmail(email)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+              {config.securityEmails.length === 0 && (
+                <p className="text-sm text-muted-foreground">No security emails configured</p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Notification Types */}
       <Card>
         <CardHeader>
           <CardTitle>Notification Types</CardTitle>
-          <CardDescription>Enable or disable different types of notifications</CardDescription>
+          <CardDescription>Configure which types of notifications to send</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Shield className="h-4 w-4 text-red-500" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="flex items-center justify-between">
               <div>
-                <Label>Security Alerts</Label>
-                <p className="text-sm text-muted-foreground">Failed logins, suspicious activity, unauthorized access</p>
+                <Label htmlFor="security">Security Alerts</Label>
+                <p className="text-sm text-muted-foreground">Failed logins, suspicious activity</p>
               </div>
+              <Switch
+                id="security"
+                checked={config.enabledTypes.security}
+                onCheckedChange={(checked) => updateNotificationType("security", checked)}
+              />
             </div>
-            <Switch
-              checked={config.enabledTypes.securityAlerts}
-              onCheckedChange={(checked) => updateEnabledType("securityAlerts", checked)}
-            />
-          </div>
 
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-blue-500" />
+            <div className="flex items-center justify-between">
               <div>
-                <Label>Admin Actions</Label>
-                <p className="text-sm text-muted-foreground">User management, role changes, system settings</p>
+                <Label htmlFor="adminActions">Admin Actions</Label>
+                <p className="text-sm text-muted-foreground">User management, settings changes</p>
               </div>
+              <Switch
+                id="adminActions"
+                checked={config.enabledTypes.adminActions}
+                onCheckedChange={(checked) => updateNotificationType("adminActions", checked)}
+              />
             </div>
-            <Switch
-              checked={config.enabledTypes.adminActions}
-              onCheckedChange={(checked) => updateEnabledType("adminActions", checked)}
-            />
-          </div>
 
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Activity className="h-4 w-4 text-green-500" />
+            <div className="flex items-center justify-between">
               <div>
-                <Label>System Health</Label>
-                <p className="text-sm text-muted-foreground">Component failures, performance issues, recovery</p>
+                <Label htmlFor="systemHealth">System Health</Label>
+                <p className="text-sm text-muted-foreground">Performance issues, component failures</p>
               </div>
+              <Switch
+                id="systemHealth"
+                checked={config.enabledTypes.systemHealth}
+                onCheckedChange={(checked) => updateNotificationType("systemHealth", checked)}
+              />
             </div>
-            <Switch
-              checked={config.enabledTypes.systemHealth}
-              onCheckedChange={(checked) => updateEnabledType("systemHealth", checked)}
-            />
-          </div>
 
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-purple-500" />
+            <div className="flex items-center justify-between">
               <div>
-                <Label>User Management</Label>
-                <p className="text-sm text-muted-foreground">User registrations, account changes, deletions</p>
+                <Label htmlFor="userManagement">User Management</Label>
+                <p className="text-sm text-muted-foreground">Account changes, registrations</p>
               </div>
+              <Switch
+                id="userManagement"
+                checked={config.enabledTypes.userManagement}
+                onCheckedChange={(checked) => updateNotificationType("userManagement", checked)}
+              />
             </div>
-            <Switch
-              checked={config.enabledTypes.userManagement}
-              onCheckedChange={(checked) => updateEnabledType("userManagement", checked)}
-            />
           </div>
         </CardContent>
       </Card>
 
+      {/* Test Notifications */}
       <Card>
         <CardHeader>
           <CardTitle>Test Notifications</CardTitle>
-          <CardDescription>Send test notifications to verify your email configuration</CardDescription>
+          <CardDescription>Send a test notification to verify your email configuration</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label htmlFor="test-email">Test Email Address</Label>
-            <Input
-              id="test-email"
-              type="email"
-              placeholder="test@example.com"
-              value={testEmail}
-              onChange={(e) => setTestEmail(e.target.value)}
-            />
-          </div>
-
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => sendTestNotification("security")}
-              disabled={sendingTest === "security"}
-            >
-              {sendingTest === "security" && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Test Security Alert
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => sendTestNotification("admin")}
-              disabled={sendingTest === "admin"}
-            >
-              {sendingTest === "admin" && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Test Admin Action
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => sendTestNotification("system")}
-              disabled={sendingTest === "system"}
-            >
-              {sendingTest === "system" && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              Test System Health
-            </Button>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <Label htmlFor="testEmail">Test Email</Label>
+              <Input
+                id="testEmail"
+                placeholder="test@example.com"
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="testType">Notification Type</Label>
+              <select
+                id="testType"
+                className="w-full p-2 border rounded"
+                value={testType}
+                onChange={(e) => setTestType(e.target.value)}
+              >
+                <option value="security">Security Alert</option>
+                <option value="admin_action">Admin Action</option>
+                <option value="system_health">System Health</option>
+                <option value="user_management">User Management</option>
+              </select>
+            </div>
+            <div className="flex items-end">
+              <Button onClick={sendTestNotification} disabled={sendingTest || !testEmail} className="w-full">
+                {sendingTest ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    Send Test
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* Save Button */}
       <div className="flex justify-end">
         <Button onClick={saveConfig} disabled={saving}>
-          {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-          Save Settings
+          {saving ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+              Saving...
+            </>
+          ) : (
+            "Save Settings"
+          )}
         </Button>
       </div>
     </div>
