@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { getOAuthProvider } from "@/lib/oauth-providers"
-import { exchangeCodeForToken, fetchOAuthUser, findOrCreateOAuthUser, createOAuthSession } from "@/lib/oauth-auth"
+import { exchangeCodeForToken, fetchUserInfo } from "@/lib/oauth-auth"
+import { createUser, getUserByEmail, linkOAuthAccount } from "@/lib/auth"
+import { generateToken } from "@/lib/auth"
 
 export async function GET(request: NextRequest, { params }: { params: { provider: string } }) {
   try {
@@ -10,47 +11,65 @@ export async function GET(request: NextRequest, { params }: { params: { provider
     const state = searchParams.get("state")
     const error = searchParams.get("error")
 
-    // Check for OAuth errors
     if (error) {
-      const errorDescription = searchParams.get("error_description") || "OAuth authentication failed"
-      return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=${encodeURIComponent(errorDescription)}`,
-      )
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=oauth_cancelled`)
     }
 
     if (!code || !state) {
-      return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=Missing authorization code or state`,
-      )
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=oauth_invalid`)
     }
 
-    // Verify state parameter
     const storedState = request.cookies.get("oauth_state")?.value
     if (!storedState || storedState !== state) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=Invalid state parameter`)
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=oauth_state_mismatch`)
     }
 
-    const oauthProvider = getOAuthProvider(provider)
-    if (!oauthProvider) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=Invalid OAuth provider`)
+    const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/callback/${provider}`
+    const accessToken = await exchangeCodeForToken(provider, code, redirectUri)
+
+    if (!accessToken) {
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=oauth_token_failed`)
     }
 
-    // Exchange code for access token
-    const accessToken = await exchangeCodeForToken(oauthProvider, code)
+    const userInfo = await fetchUserInfo(provider, accessToken)
+    if (!userInfo) {
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=oauth_user_info_failed`)
+    }
 
-    // Fetch user information
-    const oauthUser = await fetchOAuthUser(oauthProvider, accessToken)
+    // Check if user exists
+    let user = await getUserByEmail(userInfo.email)
 
-    // Find or create user in database
-    const user = await findOrCreateOAuthUser(oauthUser)
+    if (user) {
+      // Link OAuth account to existing user
+      await linkOAuthAccount(user.id, provider, userInfo.id, userInfo)
+    } else {
+      // Create new user
+      user = await createUser({
+        email: userInfo.email,
+        username: userInfo.username || userInfo.email.split("@")[0],
+        profile: {
+          firstName: userInfo.name?.split(" ")[0] || "",
+          lastName: userInfo.name?.split(" ").slice(1).join(" ") || "",
+          avatar: userInfo.avatar,
+        },
+        isEmailVerified: true, // OAuth emails are considered verified
+        oauthAccounts: [
+          {
+            provider,
+            providerId: userInfo.id,
+            email: userInfo.email,
+            name: userInfo.name,
+            avatar: userInfo.avatar,
+          },
+        ],
+      })
+    }
 
-    // Create session
-    const session = await createOAuthSession(user)
+    // Generate JWT token
+    const token = generateToken({ userId: user.id, email: user.email })
 
-    // Set auth cookie and redirect
     const response = NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/dashboard`)
-
-    response.cookies.set("auth_token", session.token, {
+    response.cookies.set("auth-token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
@@ -63,8 +82,6 @@ export async function GET(request: NextRequest, { params }: { params: { provider
     return response
   } catch (error) {
     console.error("OAuth callback error:", error)
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=${encodeURIComponent("Authentication failed. Please try again.")}`,
-    )
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/auth/login?error=oauth_callback_failed`)
   }
 }

@@ -4,8 +4,8 @@ import { getOAuthProvider, generateState, buildAuthUrl } from "@/lib/oauth-provi
 export async function GET(request: NextRequest, { params }: { params: { provider: string } }) {
   try {
     const { provider } = params
-
     const oauthProvider = getOAuthProvider(provider)
+
     if (!oauthProvider) {
       return NextResponse.json({ error: "Invalid OAuth provider" }, { status: 400 })
     }
@@ -15,9 +15,9 @@ export async function GET(request: NextRequest, { params }: { params: { provider
     }
 
     const state = generateState()
-    const authUrl = buildAuthUrl(oauthProvider, state)
+    const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL}/api/auth/callback/${provider}`
+    const authUrl = buildAuthUrl(oauthProvider, state, redirectUri)
 
-    // Store state in cookie for verification
     const response = NextResponse.redirect(authUrl)
     response.cookies.set("oauth_state", state, {
       httpOnly: true,
@@ -29,6 +29,6 @@ export async function GET(request: NextRequest, { params }: { params: { provider
     return response
   } catch (error) {
     console.error("OAuth initiation error:", error)
-    return NextResponse.json({ error: "Failed to initiate OAuth flow" }, { status: 500 })
+    return NextResponse.json({ error: "Failed to initiate OAuth" }, { status: 500 })
   }
 }
