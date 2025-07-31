@@ -104,8 +104,9 @@ class EmailQueue {
       job.attempts++
       job.processedAt = new Date()
 
-      // Import emailService dynamically to avoid circular dependencies
+      // Import services dynamically to avoid circular dependencies
       const { emailService } = await import("./email-service")
+      const { adminEmailService } = await import("./admin-email-service")
 
       let success = false
 
@@ -114,7 +115,7 @@ class EmailQueue {
           success = await emailService.sendProfileChangeNotification(job.data)
           break
         case "security-alert":
-          success = await emailService.sendSecurityAlert(job.data)
+          success = await adminEmailService.sendSecurityAlert(job.data)
           break
         case "password-change":
           success = await emailService.sendPasswordChangeConfirmation(job.data)
@@ -124,6 +125,12 @@ class EmailQueue {
           break
         case "api-key-change":
           success = await emailService.sendApiKeyNotification(job.data)
+          break
+        case "admin-action":
+          success = await adminEmailService.sendAdminActionNotification(job.data)
+          break
+        case "system-event":
+          success = await adminEmailService.sendSystemEvent(job.data)
           break
         default:
           throw new Error(`Unknown job type: ${job.type}`)

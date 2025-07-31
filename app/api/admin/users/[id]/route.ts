@@ -63,7 +63,14 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
     const body = await request.json()
     const { action, ...updates } = body
 
+    // Get target user before update
+    const targetUser = await db.collection("users").findOne({ _id: new ObjectId(params.id) })
+    if (!targetUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
     let updateQuery: any = {}
+    let actionDescription = ""
 
     switch (action) {
       case "update":
@@ -73,6 +80,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
             updated_at: new Date(),
           },
         }
+        actionDescription = `Updated user profile: ${Object.keys(updates).join(", ")}`
         break
       case "verify":
         updateQuery = {
@@ -81,6 +89,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
             updated_at: new Date(),
           },
         }
+        actionDescription = "Verified user email address"
         break
       case "unverify":
         updateQuery = {
@@ -89,6 +98,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
             updated_at: new Date(),
           },
         }
+        actionDescription = "Unverified user email address"
         break
       case "promote":
         updateQuery = {
@@ -97,6 +107,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
             updated_at: new Date(),
           },
         }
+        actionDescription = "Promoted user to admin role"
         break
       case "demote":
         updateQuery = {
@@ -105,6 +116,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
             updated_at: new Date(),
           },
         }
+        actionDescription = "Demoted user from admin role"
         break
       default:
         return NextResponse.json({ error: "Invalid action" }, { status: 400 })
@@ -117,6 +129,27 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
 
     if (!result.value) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    // Send admin action notification
+    try {
+      const { adminNotificationHelper } = await import("@/lib/admin-notification-helper")
+      await adminNotificationHelper.sendAdminActionNotification(
+        adminUser.email,
+        adminUser.username || adminUser.email,
+        targetUser.email,
+        targetUser.username || targetUser.email,
+        action,
+        actionDescription,
+        {
+          targetUserId: params.id,
+          adminUserId: decoded.userId,
+          changes: updates,
+        },
+      )
+    } catch (notificationError) {
+      console.error("Failed to send admin action notification:", notificationError)
+      // Don't fail the main operation if notification fails
     }
 
     return NextResponse.json({
@@ -154,10 +187,42 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       return NextResponse.json({ error: "Cannot delete your own account" }, { status: 400 })
     }
 
+    // Get target user before deletion
+    const targetUser = await db.collection("users").findOne({ _id: new ObjectId(params.id) })
+    if (!targetUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
     const result = await db.collection("users").deleteOne({ _id: new ObjectId(params.id) })
 
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    // Send admin action notification
+    try {
+      const { adminNotificationHelper } = await import("@/lib/admin-notification-helper")
+      await adminNotificationHelper.sendAdminActionNotification(
+        adminUser.email,
+        adminUser.username || adminUser.email,
+        targetUser.email,
+        targetUser.username || targetUser.email,
+        "delete",
+        "Permanently deleted user account",
+        {
+          targetUserId: params.id,
+          adminUserId: decoded.userId,
+          deletedUserData: {
+            email: targetUser.email,
+            username: targetUser.username,
+            role: targetUser.role,
+            createdAt: targetUser.created_at,
+          },
+        },
+      )
+    } catch (notificationError) {
+      console.error("Failed to send admin action notification:", notificationError)
+      // Don't fail the main operation if notification fails
     }
 
     return NextResponse.json({ success: true })
