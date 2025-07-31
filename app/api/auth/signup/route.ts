@@ -36,18 +36,6 @@ export async function POST(request: NextRequest) {
     try {
       const user = await createUser({ email, password, username })
 
-      // Send user registration notification to admins
-      try {
-        const { adminNotificationHelper } = await import("@/lib/admin-notification-helper")
-        const clientIP =
-          request.headers.get("x-forwarded-for")?.split(",")[0] || request.headers.get("x-real-ip") || "127.0.0.1"
-
-        await adminNotificationHelper.sendUserRegistrationAlert(user.email, user.username || user.email, clientIP)
-      } catch (notificationError) {
-        console.error("Failed to send user registration notification:", notificationError)
-        // Don't fail the signup if notification fails
-      }
-
       // Generate JWT token
       const token = generateToken(user)
 

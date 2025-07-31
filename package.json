@@ -62,7 +62,6 @@
     "framer-motion": "^11.11.17",
     "gcp-metadata": "latest",
     "http": "latest",
-    "icons": "latest",
     "input-otp": "latest",
     "jsonwebtoken": "latest",
     "kerberos": "latest",
