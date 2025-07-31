@@ -14,6 +14,7 @@ import {
   BarChart3,
   Database,
   Mail,
+  LinkIcon,
 } from "lucide-react"
 
 const sidebarItems = [
@@ -26,6 +27,11 @@ const sidebarItems = [
     title: "Users",
     href: "/admin/users",
     icon: Users,
+  },
+  {
+    title: "OAuth Management",
+    href: "/admin/oauth",
+    icon: LinkIcon,
   },
   {
     title: "Audit Logs",
