@@ -1,14 +1,6 @@
 import adminNotificationService from "./admin-notification-service"
 import { auditLog } from "./audit-logger"
-
-interface SecurityEvent {
-  userId?: string
-  ipAddress?: string
-  userAgent?: string
-  eventType: "login_attempt" | "failed_login" | "suspicious_activity" | "data_access" | "admin_action"
-  timestamp: Date
-  details: Record<string, any>
-}
+import type { SecurityEvent } from "./admin-notification-service"
 
 class SecurityMonitor {
   private static instance: SecurityMonitor
@@ -37,10 +29,48 @@ class SecurityMonitor {
       },
     })
 
+    // Track failed login attempts
+    if (event.eventType === "failed_login") {
+      const key = `${event.ipAddress}:${event.userId || "unknown"}`
+      const record = this.failedLoginAttempts.get(key) || {
+        count: 0,
+        lastAttempt: new Date(),
+        attempts: [],
+      }
+      const now = new Date()
+
+      // Clean old attempts (older than lockout duration)
+      record.attempts = record.attempts.filter((attempt) => now.getTime() - attempt.getTime() < this.LOCKOUT_DURATION)
+
+      record.attempts.push(now)
+      record.count = record.attempts.length
+      record.lastAttempt = now
+
+      this.failedLoginAttempts.set(key, record)
+
+      // Mark IP as suspicious after 5 failed attempts
+      if (record.count >= this.MAX_FAILED_ATTEMPTS) {
+        this.suspiciousIps.add(event.ipAddress)
+        await adminNotificationService.sendSecurityAlert({
+          ...event,
+          eventType: "suspicious_activity",
+          details: {
+            ...event.details,
+            failedAttempts: record.count,
+            reason: "Multiple failed login attempts",
+          },
+        })
+      } else {
+        await adminNotificationService.sendSecurityAlert(event)
+      }
+    } else {
+      await adminNotificationService.sendSecurityAlert(event)
+    }
+
     // Process specific event types
     switch (event.eventType) {
       case "failed_login":
-        await this.handleFailedLogin(event)
+        // Handled above
         break
       case "suspicious_activity":
         await this.handleSuspiciousActivity(event)
@@ -49,54 +79,14 @@ class SecurityMonitor {
         await this.handleAdminAction(event)
         break
     }
-  }
 
-  private async handleFailedLogin(event: SecurityEvent): Promise<void> {
-    const key = event.ipAddress || "unknown"
-    const now = new Date()
-
-    // Get or create tracking record
-    const record = this.failedLoginAttempts.get(key) || {
-      count: 0,
-      lastAttempt: now,
-      attempts: [],
-    }
-
-    // Clean old attempts (older than lockout duration)
-    record.attempts = record.attempts.filter((attempt) => now.getTime() - attempt.getTime() < this.LOCKOUT_DURATION)
-
-    record.attempts.push(now)
-    record.count = record.attempts.length
-    record.lastAttempt = now
-
-    this.failedLoginAttempts.set(key, record)
-
-    // Check if threshold exceeded
-    if (record.count >= this.MAX_FAILED_ATTEMPTS) {
-      // Mark IP as suspicious
-      this.suspiciousIps.add(key)
-
-      // Send security alert
-      await adminNotificationService.sendSecurityAlert({
-        type: "failed_login",
-        severity: record.count >= this.MAX_FAILED_ATTEMPTS * 2 ? "high" : "medium",
-        details: {
-          userId: event.userId,
-          ipAddress: event.ipAddress,
-          userAgent: event.userAgent,
-          timestamp: now,
-          description: `Multiple failed login attempts detected from IP ${event.ipAddress}`,
-          location: event.details.location,
-          attemptCount: record.count,
-        },
-        recommendedActions: [
-          "Block IP address temporarily",
-          "Review user account security",
-          "Check for credential stuffing attacks",
-          "Monitor for additional attempts from this IP",
-        ],
-      })
-    }
+    // Log to console for debugging
+    console.log("Security event logged:", {
+      type: event.eventType,
+      userId: event.userId,
+      ip: event.ipAddress,
+      timestamp: event.timestamp,
+    })
   }
 
   private async handleSuspiciousActivity(event: SecurityEvent): Promise<void> {
@@ -172,7 +162,8 @@ class SecurityMonitor {
   }
 
   async clearFailedAttempts(ipAddress: string): Promise<void> {
-    this.failedLoginAttempts.delete(ipAddress)
+    const key = `${ipAddress}:${event.userId || "unknown"}`
+    this.failedLoginAttempts.delete(key)
     this.suspiciousIps.delete(ipAddress)
   }
 
@@ -192,6 +183,11 @@ class SecurityMonitor {
     // This would typically query the audit log for recent security events
     // For now, return a placeholder
     return 0
+  }
+
+  getFailedAttempts(ip: string, userId?: string): number {
+    const key = `${ip}:${userId || "unknown"}`
+    return (this.failedLoginAttempts.get(key) || { count: 0 }).count
   }
 }
 

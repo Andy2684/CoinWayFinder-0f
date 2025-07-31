@@ -1,29 +1,24 @@
-import { Mail } from "lucide-react"
+import type React from "react"
+import { Sidebar } from "components/common/Sidebar"
+import { Home } from "lucide-react"
+import { Bell } from "lucide-react" // Added import for Bell
 
-const AdminSidebar = () => {
-  const navigationItems = [
+const AdminSidebar: React.FC = () => {
+  const navigation = [
     {
       title: "Dashboard",
-      href: "/admin/dashboard",
-      icon: "DashboardIcon",
-      description: "View admin dashboard",
+      url: "/admin/dashboard",
+      icon: Home,
     },
     {
-      title: "Users",
-      href: "/admin/users",
-      icon: "UsersIcon",
-      description: "Manage users",
+      title: "Notifications",
+      url: "/admin/notifications",
+      icon: Bell, // Added notifications menu item
     },
-    {
-      title: "Email Notifications",
-      href: "/admin/notifications",
-      icon: Mail,
-      description: "Configure email alerts and notifications",
-    },
-    // ** rest of code here **
+    // /** rest of code here **/
   ]
 
-  return <div>{/* Sidebar content */}</div>
+  return <Sidebar navigation={navigation} />
 }
 
 export default AdminSidebar

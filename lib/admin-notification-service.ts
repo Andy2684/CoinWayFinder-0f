@@ -1,95 +1,70 @@
-import { sendEmail } from "./email-service"
-import { auditLog } from "./audit-logger"
+import { sendEmail } from "./email"
 
-export interface AdminNotificationConfig {
-  userManagement: boolean
-  securityAlerts: boolean
-  systemHealth: boolean
-  complianceReports: boolean
-  dataExports: boolean
+export interface NotificationConfig {
   adminEmails: string[]
   securityEmails: string[]
-}
-
-export interface SecurityAlertData {
-  type: "failed_login" | "suspicious_activity" | "data_breach" | "unauthorized_access" | "system_compromise"
-  severity: "low" | "medium" | "high" | "critical"
-  details: {
-    userId?: string
-    ipAddress?: string
-    userAgent?: string
-    timestamp: Date
-    description: string
-    location?: string
-    attemptCount?: number
+  enabledNotifications: {
+    securityAlerts: boolean
+    adminActions: boolean
+    systemHealth: boolean
+    userManagement: boolean
   }
-  affectedSystems?: string[]
-  recommendedActions?: string[]
 }
 
-export interface AdminActionData {
-  action: string
+export interface SecurityEvent {
+  userId?: string
+  ipAddress: string
+  userAgent: string
+  eventType: "failed_login" | "suspicious_activity" | "data_breach" | "unauthorized_access" | "login_attempt"
+  timestamp: Date
+  details: Record<string, any>
+}
+
+export interface AdminAction {
   adminId: string
   adminEmail: string
+  action: "user_delete" | "user_ban" | "role_change" | "data_export" | "settings_change"
   targetUserId?: string
   targetUserEmail?: string
-  details: Record<string, any>
   timestamp: Date
-  ipAddress?: string
+  details: Record<string, any>
 }
 
 class AdminNotificationService {
-  private static instance: AdminNotificationService
-  private config: AdminNotificationConfig
-
-  constructor() {
-    this.config = {
-      userManagement: true,
+  private config: NotificationConfig = {
+    adminEmails: process.env.ADMIN_EMAILS?.split(",") || [],
+    securityEmails: process.env.SECURITY_ALERT_EMAILS?.split(",") || [],
+    enabledNotifications: {
       securityAlerts: true,
+      adminActions: true,
       systemHealth: true,
-      complianceReports: true,
-      dataExports: true,
-      adminEmails: process.env.ADMIN_EMAILS?.split(",") || [],
-      securityEmails: process.env.SECURITY_ALERT_EMAILS?.split(",") || process.env.ADMIN_EMAILS?.split(",") || [],
-    }
+      userManagement: true,
+    },
   }
 
-  static getInstance(): AdminNotificationService {
-    if (!AdminNotificationService.instance) {
-      AdminNotificationService.instance = new AdminNotificationService()
-    }
-    return AdminNotificationService.instance
+  async updateConfig(newConfig: Partial<NotificationConfig>) {
+    this.config = { ...this.config, ...newConfig }
   }
 
-  async sendSecurityAlert(alertData: SecurityAlertData): Promise<void> {
-    if (!this.config.securityAlerts) return
+  getConfig(): NotificationConfig {
+    return this.config
+  }
 
-    const subject = this.getSecurityAlertSubject(alertData)
-    const htmlContent = this.generateSecurityAlertEmail(alertData)
-    const textContent = this.generateSecurityAlertText(alertData)
+  async sendSecurityAlert(event: SecurityEvent) {
+    if (!this.config.enabledNotifications.securityAlerts) return
 
-    const recipients =
-      alertData.severity === "critical" || alertData.severity === "high"
-        ? [...this.config.securityEmails, ...this.config.adminEmails]
-        : this.config.securityEmails
+    const subject = this.getSecurityAlertSubject(event.eventType)
+    const { html, text } = this.generateSecurityAlertEmail(event)
+
+    const recipients = [...this.config.adminEmails, ...this.config.securityEmails]
 
     for (const email of recipients) {
       try {
         await sendEmail({
           to: email,
           subject,
-          html: htmlContent,
-          text: textContent,
-        })
-
-        await auditLog({
-          action: "security_alert_sent",
-          userId: "system",
-          details: {
-            alertType: alertData.type,
-            severity: alertData.severity,
-            recipient: email,
-          },
+          html,
+          text,
         })
       } catch (error) {
         console.error(`Failed to send security alert to ${email}:`, error)
@@ -97,375 +72,229 @@ class AdminNotificationService {
     }
   }
 
-  async sendAdminActionNotification(actionData: AdminActionData): Promise<void> {
-    if (!this.config.userManagement && !this.isHighRiskAction(actionData.action)) return
+  async sendAdminActionNotification(action: AdminAction) {
+    if (!this.config.enabledNotifications.adminActions) return
 
-    const subject = this.getAdminActionSubject(actionData)
-    const htmlContent = this.generateAdminActionEmail(actionData)
-    const textContent = this.generateAdminActionText(actionData)
+    const subject = this.getAdminActionSubject(action.action)
+    const { html, text } = this.generateAdminActionEmail(action)
 
-    const recipients = this.isHighRiskAction(actionData.action)
-      ? [...this.config.adminEmails, ...this.config.securityEmails]
-      : this.config.adminEmails
-
-    for (const email of recipients) {
-      if (email === actionData.adminEmail) continue // Don't send to the admin who performed the action
-
+    for (const email of this.config.adminEmails) {
       try {
         await sendEmail({
           to: email,
           subject,
-          html: htmlContent,
-          text: textContent,
-        })
-
-        await auditLog({
-          action: "admin_notification_sent",
-          userId: actionData.adminId,
-          details: {
-            notificationAction: actionData.action,
-            recipient: email,
-          },
+          html,
+          text,
         })
       } catch (error) {
-        console.error(`Failed to send admin notification to ${email}:`, error)
+        console.error(`Failed to send admin action notification to ${email}:`, error)
       }
     }
   }
 
-  async sendSystemHealthAlert(healthData: {
-    component: string
-    status: "degraded" | "down" | "recovered"
-    details: string
-    timestamp: Date
-  }): Promise<void> {
-    if (!this.config.systemHealth) return
+  async sendTestNotification(email: string, type: "security" | "admin") {
+    const testEvent: SecurityEvent = {
+      userId: "test-user",
+      ipAddress: "192.168.1.1",
+      userAgent: "Test Browser",
+      eventType: "failed_login",
+      timestamp: new Date(),
+      details: { test: true },
+    }
 
-    const subject = `System Health Alert - ${healthData.component} is ${healthData.status}`
-    const htmlContent = this.generateSystemHealthEmail(healthData)
-    const textContent = this.generateSystemHealthText(healthData)
+    const testAction: AdminAction = {
+      adminId: "test-admin",
+      adminEmail: "admin@test.com",
+      action: "user_delete",
+      targetUserId: "test-target",
+      targetUserEmail: "target@test.com",
+      timestamp: new Date(),
+      details: { test: true },
+    }
 
-    for (const email of [...this.config.adminEmails, ...this.config.securityEmails]) {
-      try {
-        await sendEmail({
-          to: email,
-          subject,
-          html: htmlContent,
-          text: textContent,
-        })
-      } catch (error) {
-        console.error(`Failed to send system health alert to ${email}:`, error)
-      }
+    if (type === "security") {
+      const subject = "[TEST] Security Alert - Failed Login Attempt"
+      const { html, text } = this.generateSecurityAlertEmail(testEvent)
+      await sendEmail({ to: email, subject, html, text })
+    } else {
+      const subject = "[TEST] Admin Action - User Deletion"
+      const { html, text } = this.generateAdminActionEmail(testAction)
+      await sendEmail({ to: email, subject, html, text })
     }
   }
 
-  private getSecurityAlertSubject(alertData: SecurityAlertData): string {
-    const severityPrefix = alertData.severity.toUpperCase()
-    const alertTypeMap = {
-      failed_login: "Multiple Failed Login Attempts",
-      suspicious_activity: "Suspicious User Activity Detected",
-      data_breach: "Potential Data Breach",
-      unauthorized_access: "Unauthorized Access Attempt",
-      system_compromise: "System Compromise Detected",
+  private getSecurityAlertSubject(eventType: string): string {
+    const subjects = {
+      failed_login: "🚨 Security Alert - Failed Login Attempt",
+      suspicious_activity: "⚠️ Security Alert - Suspicious Activity Detected",
+      data_breach: "🔴 CRITICAL - Potential Data Breach",
+      unauthorized_access: "🚨 Security Alert - Unauthorized Access Attempt",
+      login_attempt: "✅ Login Notification",
     }
-
-    return `[${severityPrefix}] Security Alert - ${alertTypeMap[alertData.type]}`
+    return subjects[eventType as keyof typeof subjects] || "🚨 Security Alert"
   }
 
-  private getAdminActionSubject(actionData: AdminActionData): string {
-    const actionMap = {
-      user_created: "New User Account Created",
-      user_deleted: "User Account Deleted",
-      user_banned: "User Account Banned",
-      user_unbanned: "User Account Unbanned",
-      role_changed: "User Role Modified",
-      data_export: "User Data Export Performed",
-      bulk_action: "Bulk User Action Performed",
-      security_settings_changed: "Security Settings Modified",
-      admin_created: "New Admin Account Created",
+  private getAdminActionSubject(action: string): string {
+    const subjects = {
+      user_delete: "👤 Admin Action - User Account Deleted",
+      user_ban: "🚫 Admin Action - User Account Banned",
+      role_change: "🔄 Admin Action - User Role Changed",
+      data_export: "📊 Admin Action - Data Export Performed",
+      settings_change: "⚙️ Admin Action - System Settings Changed",
     }
-
-    return `Admin Action Notification - ${actionMap[actionData.action as keyof typeof actionMap] || actionData.action}`
+    return subjects[action as keyof typeof subjects] || "⚙️ Admin Action Performed"
   }
 
-  private isHighRiskAction(action: string): boolean {
-    const highRiskActions = [
-      "user_deleted",
-      "user_banned",
-      "admin_created",
-      "role_changed",
-      "data_export",
-      "bulk_action",
-      "security_settings_changed",
-    ]
-    return highRiskActions.includes(action)
-  }
-
-  private generateSecurityAlertEmail(alertData: SecurityAlertData): string {
-    const severityColor = {
-      low: "#fbbf24",
-      medium: "#f59e0b",
-      high: "#dc2626",
-      critical: "#991b1b",
-    }
-
-    return `
+  private generateSecurityAlertEmail(event: SecurityEvent) {
+    const html = `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="utf-8">
           <title>Security Alert</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #dc2626; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background: #f9f9f9; }
+            .details { background: white; padding: 15px; margin: 10px 0; border-left: 4px solid #dc2626; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+          </style>
         </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: ${severityColor[alertData.severity]}; color: white; padding: 15px; border-radius: 5px; text-align: center;">
-              <h1 style="margin: 0; font-size: 24px;">🚨 Security Alert</h1>
-              <p style="margin: 5px 0 0 0; font-size: 16px;">Severity: ${alertData.severity.toUpperCase()}</p>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>🚨 Security Alert</h1>
             </div>
-            
-            <div style="background: #f9fafb; padding: 20px; border-radius: 5px; margin: 20px 0;">
-              <h2 style="color: #374151; margin-top: 0;">Alert Details</h2>
-              <p><strong>Type:</strong> ${alertData.type.replace("_", " ").toUpperCase()}</p>
-              <p><strong>Time:</strong> ${alertData.details.timestamp.toISOString()}</p>
-              <p><strong>Description:</strong> ${alertData.details.description}</p>
+            <div class="content">
+              <h2>Security Event Detected</h2>
+              <p>A security event has been detected on your CoinWayFinder platform:</p>
               
-              ${alertData.details.userId ? `<p><strong>User ID:</strong> ${alertData.details.userId}</p>` : ""}
-              ${alertData.details.ipAddress ? `<p><strong>IP Address:</strong> ${alertData.details.ipAddress}</p>` : ""}
-              ${alertData.details.location ? `<p><strong>Location:</strong> ${alertData.details.location}</p>` : ""}
-              ${alertData.details.attemptCount ? `<p><strong>Attempt Count:</strong> ${alertData.details.attemptCount}</p>` : ""}
-              
-              ${
-                alertData.affectedSystems && alertData.affectedSystems.length > 0
-                  ? `
-                <p><strong>Affected Systems:</strong></p>
-                <ul>
-                  ${alertData.affectedSystems.map((system) => `<li>${system}</li>`).join("")}
-                </ul>
-              `
-                  : ""
-              }
-            </div>
-
-            ${
-              alertData.recommendedActions && alertData.recommendedActions.length > 0
-                ? `
-              <div style="background: #eff6ff; padding: 20px; border-radius: 5px; border-left: 4px solid #3b82f6;">
-                <h3 style="color: #1e40af; margin-top: 0;">Recommended Actions</h3>
-                <ul>
-                  ${alertData.recommendedActions.map((action) => `<li>${action}</li>`).join("")}
-                </ul>
+              <div class="details">
+                <h3>Event Details</h3>
+                <p><strong>Event Type:</strong> ${event.eventType.replace("_", " ").toUpperCase()}</p>
+                <p><strong>Timestamp:</strong> ${event.timestamp.toISOString()}</p>
+                <p><strong>IP Address:</strong> ${event.ipAddress}</p>
+                <p><strong>User Agent:</strong> ${event.userAgent}</p>
+                ${event.userId ? `<p><strong>User ID:</strong> ${event.userId}</p>` : ""}
+                ${Object.entries(event.details)
+                  .map(([key, value]) => `<p><strong>${key.replace("_", " ")}:</strong> ${value}</p>`)
+                  .join("")}
               </div>
-            `
-                : ""
-            }
-
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 14px; color: #6b7280;">
-              <p>This is an automated security alert from CoinWayFinder. Please investigate immediately if this is a high or critical severity alert.</p>
-              <p>For questions or support, contact your security team.</p>
+              
+              <p><strong>Recommended Actions:</strong></p>
+              <ul>
+                <li>Review the security logs for additional suspicious activity</li>
+                <li>Consider implementing additional security measures if needed</li>
+                <li>Monitor for similar events from the same IP address</li>
+              </ul>
+            </div>
+            <div class="footer">
+              <p>This is an automated security notification from CoinWayFinder</p>
             </div>
           </div>
         </body>
       </html>
     `
+
+    const text = `
+SECURITY ALERT - CoinWayFinder
+
+A security event has been detected:
+
+Event Type: ${event.eventType.replace("_", " ").toUpperCase()}
+Timestamp: ${event.timestamp.toISOString()}
+IP Address: ${event.ipAddress}
+User Agent: ${event.userAgent}
+${event.userId ? `User ID: ${event.userId}` : ""}
+
+Additional Details:
+${Object.entries(event.details)
+  .map(([key, value]) => `${key}: ${value}`)
+  .join("\n")}
+
+Please review your security logs and take appropriate action if necessary.
+
+This is an automated notification from CoinWayFinder.
+    `
+
+    return { html, text }
   }
 
-  private generateSecurityAlertText(alertData: SecurityAlertData): string {
-    return `
-SECURITY ALERT - ${alertData.severity.toUpperCase()}
-
-Alert Type: ${alertData.type.replace("_", " ").toUpperCase()}
-Time: ${alertData.details.timestamp.toISOString()}
-Description: ${alertData.details.description}
-
-${alertData.details.userId ? `User ID: ${alertData.details.userId}\n` : ""}${alertData.details.ipAddress ? `IP Address: ${alertData.details.ipAddress}\n` : ""}${alertData.details.location ? `Location: ${alertData.details.location}\n` : ""}${alertData.details.attemptCount ? `Attempt Count: ${alertData.details.attemptCount}\n` : ""}
-
-${
-  alertData.affectedSystems && alertData.affectedSystems.length > 0
-    ? `
-Affected Systems:
-${alertData.affectedSystems.map((system) => `- ${system}`).join("\n")}
-`
-    : ""
-}
-
-${
-  alertData.recommendedActions && alertData.recommendedActions.length > 0
-    ? `
-Recommended Actions:
-${alertData.recommendedActions.map((action) => `- ${action}`).join("\n")}
-`
-    : ""
-}
-
-This is an automated security alert from CoinWayFinder. Please investigate immediately if this is a high or critical severity alert.
-    `.trim()
-  }
-
-  private generateAdminActionEmail(actionData: AdminActionData): string {
-    return `
+  private generateAdminActionEmail(action: AdminAction) {
+    const html = `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="utf-8">
           <title>Admin Action Notification</title>
+          <style>
+            body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+            .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+            .header { background: #2563eb; color: white; padding: 20px; text-align: center; }
+            .content { padding: 20px; background: #f9f9f9; }
+            .details { background: white; padding: 15px; margin: 10px 0; border-left: 4px solid #2563eb; }
+            .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+          </style>
         </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: #3b82f6; color: white; padding: 15px; border-radius: 5px; text-align: center;">
-              <h1 style="margin: 0; font-size: 24px;">👤 Admin Action Notification</h1>
+        <body>
+          <div class="container">
+            <div class="header">
+              <h1>⚙️ Admin Action Performed</h1>
             </div>
-            
-            <div style="background: #f9fafb; padding: 20px; border-radius: 5px; margin: 20px 0;">
-              <h2 style="color: #374151; margin-top: 0;">Action Details</h2>
-              <p><strong>Action:</strong> ${actionData.action.replace("_", " ").toUpperCase()}</p>
-              <p><strong>Performed by:</strong> ${actionData.adminEmail}</p>
-              <p><strong>Time:</strong> ${actionData.timestamp.toISOString()}</p>
-              ${actionData.ipAddress ? `<p><strong>IP Address:</strong> ${actionData.ipAddress}</p>` : ""}
+            <div class="content">
+              <h2>Administrative Action Notification</h2>
+              <p>An administrative action has been performed on the CoinWayFinder platform:</p>
               
-              ${
-                actionData.targetUserEmail
-                  ? `
-                <p><strong>Target User:</strong> ${actionData.targetUserEmail}</p>
-              `
-                  : ""
-              }
-              
-              ${
-                Object.keys(actionData.details).length > 0
-                  ? `
-                <h3 style="color: #374151;">Additional Details</h3>
-                ${Object.entries(actionData.details)
-                  .map(
-                    ([key, value]) =>
-                      `<p><strong>${key.replace("_", " ")}:</strong> ${typeof value === "object" ? JSON.stringify(value) : value}</p>`,
-                  )
+              <div class="details">
+                <h3>Action Details</h3>
+                <p><strong>Action:</strong> ${action.action.replace("_", " ").toUpperCase()}</p>
+                <p><strong>Performed By:</strong> ${action.adminEmail}</p>
+                <p><strong>Admin ID:</strong> ${action.adminId}</p>
+                <p><strong>Timestamp:</strong> ${action.timestamp.toISOString()}</p>
+                ${action.targetUserId ? `<p><strong>Target User ID:</strong> ${action.targetUserId}</p>` : ""}
+                ${action.targetUserEmail ? `<p><strong>Target User Email:</strong> ${action.targetUserEmail}</p>` : ""}
+                
+                <h4>Additional Details:</h4>
+                ${Object.entries(action.details)
+                  .map(([key, value]) => `<p><strong>${key.replace("_", " ")}:</strong> ${value}</p>`)
                   .join("")}
-              `
-                  : ""
-              }
+              </div>
+              
+              <p>This action has been logged in the audit trail for compliance purposes.</p>
             </div>
-
-            <div style="background: #fef3c7; padding: 15px; border-radius: 5px; border-left: 4px solid #f59e0b;">
-              <p style="margin: 0; font-size: 14px;">This action has been logged in the audit trail for compliance and security purposes.</p>
-            </div>
-
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 14px; color: #6b7280;">
-              <p>This is an automated notification from CoinWayFinder admin system.</p>
-              <p>If you have concerns about this action, please contact your security team immediately.</p>
+            <div class="footer">
+              <p>This is an automated notification from CoinWayFinder Admin System</p>
             </div>
           </div>
         </body>
       </html>
     `
-  }
 
-  private generateAdminActionText(actionData: AdminActionData): string {
-    return `
-ADMIN ACTION NOTIFICATION
+    const text = `
+ADMIN ACTION NOTIFICATION - CoinWayFinder
 
-Action: ${actionData.action.replace("_", " ").toUpperCase()}
-Performed by: ${actionData.adminEmail}
-Time: ${actionData.timestamp.toISOString()}
-${actionData.ipAddress ? `IP Address: ${actionData.ipAddress}\n` : ""}
+An administrative action has been performed:
 
-${actionData.targetUserEmail ? `Target User: ${actionData.targetUserEmail}\n` : ""}
+Action: ${action.action.replace("_", " ").toUpperCase()}
+Performed By: ${action.adminEmail}
+Admin ID: ${action.adminId}
+Timestamp: ${action.timestamp.toISOString()}
+${action.targetUserId ? `Target User ID: ${action.targetUserId}` : ""}
+${action.targetUserEmail ? `Target User Email: ${action.targetUserEmail}` : ""}
 
-${
-  Object.keys(actionData.details).length > 0
-    ? `
 Additional Details:
-${Object.entries(actionData.details)
-  .map(([key, value]) => `${key.replace("_", " ")}: ${typeof value === "object" ? JSON.stringify(value) : value}`)
+${Object.entries(action.details)
+  .map(([key, value]) => `${key}: ${value}`)
   .join("\n")}
-`
-    : ""
-}
 
-This action has been logged in the audit trail for compliance and security purposes.
-This is an automated notification from CoinWayFinder admin system.
-    `.trim()
-  }
+This action has been logged in the audit trail.
 
-  private generateSystemHealthEmail(healthData: {
-    component: string
-    status: "degraded" | "down" | "recovered"
-    details: string
-    timestamp: Date
-  }): string {
-    const statusColor = {
-      degraded: "#f59e0b",
-      down: "#dc2626",
-      recovered: "#10b981",
-    }
-
-    const statusIcon = {
-      degraded: "⚠️",
-      down: "🔴",
-      recovered: "✅",
-    }
-
-    return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>System Health Alert</title>
-        </head>
-        <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
-          <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="background: ${statusColor[healthData.status]}; color: white; padding: 15px; border-radius: 5px; text-align: center;">
-              <h1 style="margin: 0; font-size: 24px;">${statusIcon[healthData.status]} System Health Alert</h1>
-            </div>
-            
-            <div style="background: #f9fafb; padding: 20px; border-radius: 5px; margin: 20px 0;">
-              <h2 style="color: #374151; margin-top: 0;">System Status Update</h2>
-              <p><strong>Component:</strong> ${healthData.component}</p>
-              <p><strong>Status:</strong> ${healthData.status.toUpperCase()}</p>
-              <p><strong>Time:</strong> ${healthData.timestamp.toISOString()}</p>
-              <p><strong>Details:</strong> ${healthData.details}</p>
-            </div>
-
-            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb; font-size: 14px; color: #6b7280;">
-              <p>This is an automated system health notification from CoinWayFinder.</p>
-            </div>
-          </div>
-        </body>
-      </html>
+This is an automated notification from CoinWayFinder.
     `
-  }
 
-  private generateSystemHealthText(healthData: {
-    component: string
-    status: "degraded" | "down" | "recovered"
-    details: string
-    timestamp: Date
-  }): string {
-    return `
-SYSTEM HEALTH ALERT
-
-Component: ${healthData.component}
-Status: ${healthData.status.toUpperCase()}
-Time: ${healthData.timestamp.toISOString()}
-Details: ${healthData.details}
-
-This is an automated system health notification from CoinWayFinder.
-    `.trim()
-  }
-
-  async updateConfiguration(config: Partial<AdminNotificationConfig>): Promise<void> {
-    this.config = { ...this.config, ...config }
-
-    await auditLog({
-      action: "notification_config_updated",
-      userId: "admin",
-      details: config,
-    })
-  }
-
-  getConfiguration(): AdminNotificationConfig {
-    return { ...this.config }
+    return { html, text }
   }
 }
 
-export const adminNotificationService = AdminNotificationService.getInstance()
-export default adminNotificationService
+export const adminNotificationService = new AdminNotificationService()
