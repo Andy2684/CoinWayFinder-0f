@@ -70,3 +70,5 @@ CREATE TRIGGER trigger_update_user_notification_preferences_updated_at
   BEFORE UPDATE ON user_notification_preferences
   FOR EACH ROW
   EXECUTE FUNCTION update_user_notification_preferences_updated_at();
+scripts/create-user-notification-preferences.sql
+[]
