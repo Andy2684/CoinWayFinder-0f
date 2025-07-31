@@ -14,7 +14,12 @@ export async function POST(request: Request) {
   const user = await createUser(email, password)
 
   // Create default notification preferences
-  await createDefaultPreferences(user.id)
+  try {
+    await createDefaultPreferences(user.id)
+  } catch (error) {
+    console.error("Failed to create default notification preferences:", error)
+    // Don't fail the signup if preferences creation fails
+  }
 
   // Return a success response
   return new Response("User created successfully", { status: 201 })

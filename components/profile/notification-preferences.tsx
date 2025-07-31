@@ -3,315 +3,121 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useToast } from "@/hooks/use-toast"
+import { Switch } from "@/components/ui/switch"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
+import { useToast } from "@/hooks/use-toast"
 import {
   Bell,
   Mail,
-  Smartphone,
   MessageSquare,
+  Shield,
   TrendingUp,
   Bot,
   Signal,
-  AlertTriangle,
-  DollarSign,
-  Clock,
-  Save,
-  Phone,
-  Check,
-  X,
+  Wallet,
+  Newspaper,
+  Settings,
+  Gift,
 } from "lucide-react"
 
 interface NotificationPreferences {
-  id?: string
-  emailPreferences: {
-    enabled: boolean
-    tradingAlerts: boolean
-    botUpdates: boolean
-    signalNotifications: boolean
-    portfolioUpdates: boolean
-    securityAlerts: boolean
-    marketNews: boolean
-    systemUpdates: boolean
-    promotions: boolean
-  }
-  pushPreferences: {
-    enabled: boolean
-    tradingAlerts: boolean
-    botUpdates: boolean
-    signalNotifications: boolean
-    portfolioUpdates: boolean
-    securityAlerts: boolean
-    marketNews: boolean
-    systemUpdates: boolean
-    promotions: boolean
-  }
-  smsPreferences: {
-    enabled: boolean
-    tradingAlerts: boolean
-    botUpdates: boolean
-    signalNotifications: boolean
-    portfolioUpdates: boolean
-    securityAlerts: boolean
-    marketNews: boolean
-    systemUpdates: boolean
-    promotions: boolean
-  }
-  deliveryPreferences: {
-    frequency: string
-    quietHoursEnabled: boolean
-    quietStart: string
-    quietEnd: string
-    timezone: string
-    language: string
-  }
-  contactInfo: {
-    phoneNumber: string
-    phoneVerified: boolean
-  }
-}
-
-const defaultPreferences: NotificationPreferences = {
-  emailPreferences: {
-    enabled: true,
-    tradingAlerts: true,
-    botUpdates: true,
-    signalNotifications: true,
-    portfolioUpdates: false,
-    securityAlerts: true,
-    marketNews: true,
-    systemUpdates: false,
-    promotions: false,
-  },
-  pushPreferences: {
-    enabled: true,
-    tradingAlerts: true,
-    botUpdates: false,
-    signalNotifications: true,
-    portfolioUpdates: true,
-    securityAlerts: true,
-    marketNews: false,
-    systemUpdates: true,
-    promotions: false,
-  },
-  smsPreferences: {
-    enabled: false,
-    tradingAlerts: false,
-    botUpdates: false,
-    signalNotifications: false,
-    portfolioUpdates: false,
-    securityAlerts: true,
-    marketNews: false,
-    systemUpdates: false,
-    promotions: false,
-  },
-  deliveryPreferences: {
-    frequency: "immediate",
-    quietHoursEnabled: false,
-    quietStart: "22:00",
-    quietEnd: "08:00",
-    timezone: "UTC",
-    language: "en",
-  },
-  contactInfo: {
-    phoneNumber: "",
-    phoneVerified: false,
-  },
+  email_enabled: boolean
+  email_trading_alerts: boolean
+  email_bot_updates: boolean
+  email_signals: boolean
+  email_portfolio: boolean
+  email_security: boolean
+  email_news: boolean
+  email_system: boolean
+  email_promotions: boolean
+  push_enabled: boolean
+  push_trading_alerts: boolean
+  push_bot_updates: boolean
+  push_signals: boolean
+  push_portfolio: boolean
+  push_security: boolean
+  push_news: boolean
+  push_system: boolean
+  push_promotions: boolean
+  sms_enabled: boolean
+  sms_trading_alerts: boolean
+  sms_bot_updates: boolean
+  sms_signals: boolean
+  sms_portfolio: boolean
+  sms_security: boolean
+  sms_news: boolean
+  sms_system: boolean
+  sms_promotions: boolean
+  frequency: string
+  quiet_hours_enabled: boolean
+  quiet_hours_start: string
+  quiet_hours_end: string
+  timezone: string
+  phone_number: string | null
+  phone_verified: boolean
 }
 
 const notificationTypes = [
   {
-    key: "tradingAlerts",
+    key: "trading_alerts",
     label: "Trading Alerts",
-    description: "Notifications about trade executions, fills, and order updates",
     icon: TrendingUp,
+    description: "Price alerts and trading opportunities",
   },
-  {
-    key: "botUpdates",
-    label: "Bot Updates",
-    description: "Status changes, performance updates, and bot notifications",
-    icon: Bot,
-  },
-  {
-    key: "signalNotifications",
-    label: "Signal Notifications",
-    description: "New trading signals and signal performance updates",
-    icon: Signal,
-  },
-  {
-    key: "portfolioUpdates",
-    label: "Portfolio Updates",
-    description: "Portfolio value changes and performance summaries",
-    icon: DollarSign,
-  },
-  {
-    key: "securityAlerts",
-    label: "Security Alerts",
-    description: "Login attempts, security changes, and suspicious activities",
-    icon: AlertTriangle,
-  },
-  {
-    key: "marketNews",
-    label: "Market News",
-    description: "Important market news and analysis updates",
-    icon: Bell,
-  },
-  {
-    key: "systemUpdates",
-    label: "System Updates",
-    description: "Platform updates, maintenance notifications, and new features",
-    icon: Bell,
-  },
-  {
-    key: "promotions",
-    label: "Promotions",
-    description: "Special offers, discounts, and promotional content",
-    icon: Bell,
-  },
+  { key: "bot_updates", label: "Bot Updates", icon: Bot, description: "Trading bot status and performance updates" },
+  { key: "signals", label: "Signals", icon: Signal, description: "Trading signals and recommendations" },
+  { key: "portfolio", label: "Portfolio", icon: Wallet, description: "Portfolio performance and updates" },
+  { key: "security", label: "Security", icon: Shield, description: "Security alerts and account changes" },
+  { key: "news", label: "News", icon: Newspaper, description: "Market news and analysis" },
+  { key: "system", label: "System", icon: Settings, description: "System updates and maintenance" },
+  { key: "promotions", label: "Promotions", icon: Gift, description: "Special offers and promotions" },
+]
+
+const deliveryMethods = [
+  { key: "email", label: "Email", icon: Mail },
+  { key: "push", label: "Push", icon: Bell },
+  { key: "sms", label: "SMS", icon: MessageSquare },
 ]
 
 export function NotificationPreferences() {
-  const { toast } = useToast()
-  const [loading, setLoading] = useState(false)
-  const [preferences, setPreferences] = useState<NotificationPreferences>(defaultPreferences)
-  const [verificationDialog, setVerificationDialog] = useState(false)
+  const [preferences, setPreferences] = useState<NotificationPreferences | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [phoneVerificationOpen, setPhoneVerificationOpen] = useState(false)
   const [verificationCode, setVerificationCode] = useState("")
   const [sendingCode, setSendingCode] = useState(false)
   const [verifyingCode, setVerifyingCode] = useState(false)
+  const { toast } = useToast()
 
   useEffect(() => {
-    loadPreferences()
+    fetchPreferences()
   }, [])
 
-  const loadPreferences = async () => {
+  const fetchPreferences = async () => {
     try {
-      const response = await fetch("/api/notifications/preferences")
+      const response = await fetch("/api/notifications/preferences", {
+        credentials: "include",
+      })
+
       if (response.ok) {
         const data = await response.json()
-        if (data.preferences) {
-          // Map database fields to UI structure
-          const dbPrefs = data.preferences
-          setPreferences({
-            emailPreferences: {
-              enabled: dbPrefs.email_enabled,
-              tradingAlerts: dbPrefs.email_trading_alerts,
-              botUpdates: dbPrefs.email_bot_updates,
-              signalNotifications: dbPrefs.email_signal_notifications,
-              portfolioUpdates: dbPrefs.email_portfolio_updates,
-              securityAlerts: dbPrefs.email_security_alerts,
-              marketNews: dbPrefs.email_market_news,
-              systemUpdates: dbPrefs.email_system_updates,
-              promotions: dbPrefs.email_promotions,
-            },
-            pushPreferences: {
-              enabled: dbPrefs.push_enabled,
-              tradingAlerts: dbPrefs.push_trading_alerts,
-              botUpdates: dbPrefs.push_bot_updates,
-              signalNotifications: dbPrefs.push_signal_notifications,
-              portfolioUpdates: dbPrefs.push_portfolio_updates,
-              securityAlerts: dbPrefs.push_security_alerts,
-              marketNews: dbPrefs.push_market_news,
-              systemUpdates: dbPrefs.push_system_updates,
-              promotions: dbPrefs.push_promotions,
-            },
-            smsPreferences: {
-              enabled: dbPrefs.sms_enabled,
-              tradingAlerts: dbPrefs.sms_trading_alerts,
-              botUpdates: dbPrefs.sms_bot_updates,
-              signalNotifications: dbPrefs.sms_signal_notifications,
-              portfolioUpdates: dbPrefs.sms_portfolio_updates,
-              securityAlerts: dbPrefs.sms_security_alerts,
-              marketNews: dbPrefs.sms_market_news,
-              systemUpdates: dbPrefs.sms_system_updates,
-              promotions: dbPrefs.sms_promotions,
-            },
-            deliveryPreferences: {
-              frequency: dbPrefs.frequency,
-              quietHoursEnabled: dbPrefs.quiet_hours_enabled,
-              quietStart: dbPrefs.quiet_hours_start,
-              quietEnd: dbPrefs.quiet_hours_end,
-              timezone: dbPrefs.timezone,
-              language: dbPrefs.language,
-            },
-            contactInfo: {
-              phoneNumber: dbPrefs.phone_number || "",
-              phoneVerified: dbPrefs.phone_verified,
-            },
-          })
-        }
+        setPreferences(data.preferences)
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to load notification preferences",
+          variant: "destructive",
+        })
       }
     } catch (error) {
-      console.error("Failed to load preferences:", error)
       toast({
         title: "Error",
         description: "Failed to load notification preferences",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleEmailToggle = (key: string, value: boolean) => {
-    setPreferences((prev) => ({
-      ...prev,
-      emailPreferences: { ...prev.emailPreferences, [key]: value },
-    }))
-  }
-
-  const handlePushToggle = (key: string, value: boolean) => {
-    setPreferences((prev) => ({
-      ...prev,
-      pushPreferences: { ...prev.pushPreferences, [key]: value },
-    }))
-  }
-
-  const handleSmsToggle = (key: string, value: boolean) => {
-    setPreferences((prev) => ({
-      ...prev,
-      smsPreferences: { ...prev.smsPreferences, [key]: value },
-    }))
-  }
-
-  const handleDeliveryChange = (key: string, value: string | boolean) => {
-    setPreferences((prev) => ({
-      ...prev,
-      deliveryPreferences: { ...prev.deliveryPreferences, [key]: value },
-    }))
-  }
-
-  const handleContactChange = (key: string, value: string | boolean) => {
-    setPreferences((prev) => ({
-      ...prev,
-      contactInfo: { ...prev.contactInfo, [key]: value },
-    }))
-  }
-
-  const handleSave = async () => {
-    setLoading(true)
-    try {
-      const response = await fetch("/api/notifications/preferences", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(preferences),
-      })
-
-      if (response.ok) {
-        toast({
-          title: "Settings Saved",
-          description: "Your notification preferences have been updated successfully.",
-        })
-      } else {
-        throw new Error("Failed to save preferences")
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save settings. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -319,8 +125,52 @@ export function NotificationPreferences() {
     }
   }
 
+  const updatePreferences = async (updates: Partial<NotificationPreferences>) => {
+    if (!preferences) return
+
+    const newPreferences = { ...preferences, ...updates }
+    setPreferences(newPreferences)
+
+    setSaving(true)
+    try {
+      const response = await fetch("/api/notifications/preferences", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(updates),
+      })
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "Notification preferences updated",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to update preferences",
+          variant: "destructive",
+        })
+        // Revert changes
+        setPreferences(preferences)
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update preferences",
+        variant: "destructive",
+      })
+      // Revert changes
+      setPreferences(preferences)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const sendVerificationCode = async () => {
-    if (!preferences.contactInfo.phoneNumber) {
+    if (!preferences?.phone_number) {
       toast({
         title: "Error",
         description: "Please enter a phone number first",
@@ -336,18 +186,24 @@ export function NotificationPreferences() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ phoneNumber: preferences.contactInfo.phoneNumber }),
+        credentials: "include",
+        body: JSON.stringify({ phoneNumber: preferences.phone_number }),
       })
 
+      const data = await response.json()
+
       if (response.ok) {
-        const data = await response.json()
         toast({
-          title: "Verification Code Sent",
-          description: `Code sent to ${preferences.contactInfo.phoneNumber}. Demo code: ${data.demoCode}`,
+          title: "Code Sent",
+          description: `Verification code sent to ${preferences.phone_number}. Demo code: ${data.demoCode}`,
         })
-        setVerificationDialog(true)
+        setPhoneVerificationOpen(true)
       } else {
-        throw new Error("Failed to send verification code")
+        toast({
+          title: "Error",
+          description: data.error || "Failed to send verification code",
+          variant: "destructive",
+        })
       }
     } catch (error) {
       toast({
@@ -360,7 +216,16 @@ export function NotificationPreferences() {
     }
   }
 
-  const verifyPhoneNumber = async () => {
+  const verifyPhone = async () => {
+    if (!verificationCode) {
+      toast({
+        title: "Error",
+        description: "Please enter the verification code",
+        variant: "destructive",
+      })
+      return
+    }
+
     setVerifyingCode(true)
     try {
       const response = await fetch("/api/notifications/preferences/verify-phone", {
@@ -368,27 +233,31 @@ export function NotificationPreferences() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          phoneNumber: preferences.contactInfo.phoneNumber,
-          verificationCode,
-        }),
+        credentials: "include",
+        body: JSON.stringify({ code: verificationCode }),
       })
 
+      const data = await response.json()
+
       if (response.ok) {
-        handleContactChange("phoneVerified", true)
-        setVerificationDialog(false)
-        setVerificationCode("")
         toast({
-          title: "Phone Verified",
-          description: "Your phone number has been verified successfully",
+          title: "Success",
+          description: "Phone number verified successfully",
         })
+        setPhoneVerificationOpen(false)
+        setVerificationCode("")
+        await fetchPreferences() // Refresh preferences
       } else {
-        throw new Error("Invalid verification code")
+        toast({
+          title: "Error",
+          description: data.error || "Failed to verify phone number",
+          variant: "destructive",
+        })
       }
     } catch (error) {
       toast({
         title: "Error",
-        description: "Invalid verification code",
+        description: "Failed to verify phone number",
         variant: "destructive",
       })
     } finally {
@@ -396,111 +265,159 @@ export function NotificationPreferences() {
     }
   }
 
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  if (!preferences) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center text-gray-500">Failed to load notification preferences</div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <div className="space-y-6">
-      {/* Notification Preferences */}
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
+      {/* Delivery Methods */}
+      <Card>
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Bell className="h-5 w-5" />
-            Notification Preferences
-          </CardTitle>
-          <CardDescription>Choose how and when you want to receive notifications</CardDescription>
+          <CardTitle>Delivery Methods</CardTitle>
+          <CardDescription>Choose how you want to receive notifications</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Master Controls */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-slate-700/30 rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-blue-400" />
-                <span className="text-white font-medium">Email</span>
+        <CardContent className="space-y-4">
+          {/* Email */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Mail className="h-5 w-5 text-blue-500" />
+              <div>
+                <Label className="text-base font-medium">Email</Label>
+                <p className="text-sm text-gray-500">Receive notifications via email</p>
               </div>
-              <Switch
-                checked={preferences.emailPreferences.enabled}
-                onCheckedChange={(value) => handleEmailToggle("enabled", value)}
-              />
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Bell className="h-4 w-4 text-purple-400" />
-                <span className="text-white font-medium">Push</span>
+            <Switch
+              checked={preferences.email_enabled}
+              onCheckedChange={(checked) => updatePreferences({ email_enabled: checked })}
+            />
+          </div>
+
+          {/* Push Notifications */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Bell className="h-5 w-5 text-green-500" />
+              <div>
+                <Label className="text-base font-medium">Push Notifications</Label>
+                <p className="text-sm text-gray-500">Receive browser push notifications</p>
               </div>
-              <Switch
-                checked={preferences.pushPreferences.enabled}
-                onCheckedChange={(value) => handlePushToggle("enabled", value)}
-              />
             </div>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-green-400" />
-                <span className="text-white font-medium">SMS</span>
+            <Switch
+              checked={preferences.push_enabled}
+              onCheckedChange={(checked) => updatePreferences({ push_enabled: checked })}
+            />
+          </div>
+
+          {/* SMS */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <MessageSquare className="h-5 w-5 text-purple-500" />
+              <div>
+                <Label className="text-base font-medium">SMS</Label>
+                <p className="text-sm text-gray-500">Receive notifications via text message</p>
               </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              {preferences.phone_verified && (
+                <Badge variant="secondary" className="text-green-600">
+                  Verified
+                </Badge>
+              )}
               <Switch
-                checked={preferences.smsPreferences.enabled}
-                onCheckedChange={(value) => handleSmsToggle("enabled", value)}
+                checked={preferences.sms_enabled}
+                onCheckedChange={(checked) => updatePreferences({ sms_enabled: checked })}
+                disabled={!preferences.phone_verified}
               />
             </div>
           </div>
 
-          {/* Notification Types Table */}
+          {/* Phone Number Setup */}
+          {!preferences.phone_verified && (
+            <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+              <Label htmlFor="phone">Phone Number</Label>
+              <div className="flex space-x-2">
+                <Input
+                  id="phone"
+                  placeholder="+1 (555) 123-4567"
+                  value={preferences.phone_number || ""}
+                  onChange={(e) => updatePreferences({ phone_number: e.target.value })}
+                />
+                <Button onClick={sendVerificationCode} disabled={sendingCode || !preferences.phone_number}>
+                  {sendingCode ? "Sending..." : "Verify"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Notification Types */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Notification Types</CardTitle>
+          <CardDescription>Choose which notifications you want to receive for each delivery method</CardDescription>
+        </CardHeader>
+        <CardContent>
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-slate-600">
-                  <th className="text-left py-3 px-2 text-white font-medium">Notification Type</th>
-                  <th className="text-center py-3 px-2 text-white font-medium">
-                    <div className="flex items-center justify-center gap-1">
-                      <Mail className="h-4 w-4" />
-                      <span className="hidden sm:inline">Email</span>
-                    </div>
-                  </th>
-                  <th className="text-center py-3 px-2 text-white font-medium">
-                    <div className="flex items-center justify-center gap-1">
-                      <Bell className="h-4 w-4" />
-                      <span className="hidden sm:inline">Push</span>
-                    </div>
-                  </th>
-                  <th className="text-center py-3 px-2 text-white font-medium">
-                    <div className="flex items-center justify-center gap-1">
-                      <MessageSquare className="h-4 w-4" />
-                      <span className="hidden sm:inline">SMS</span>
-                    </div>
-                  </th>
+                <tr className="border-b">
+                  <th className="text-left py-3 px-2">Notification Type</th>
+                  {deliveryMethods.map((method) => (
+                    <th key={method.key} className="text-center py-3 px-2">
+                      <div className="flex items-center justify-center space-x-1">
+                        <method.icon className="h-4 w-4" />
+                        <span>{method.label}</span>
+                      </div>
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
                 {notificationTypes.map((type) => (
-                  <tr key={type.key} className="border-b border-slate-700/50">
+                  <tr key={type.key} className="border-b">
                     <td className="py-4 px-2">
-                      <div className="flex items-center gap-3">
-                        <type.icon className="h-5 w-5 text-gray-400" />
+                      <div className="flex items-center space-x-3">
+                        <type.icon className="h-5 w-5 text-gray-500" />
                         <div>
-                          <p className="text-white font-medium">{type.label}</p>
-                          <p className="text-sm text-gray-400">{type.description}</p>
+                          <div className="font-medium">{type.label}</div>
+                          <div className="text-sm text-gray-500">{type.description}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="py-4 px-2 text-center">
-                      <Switch
-                        checked={preferences.emailPreferences[type.key as keyof typeof preferences.emailPreferences]}
-                        onCheckedChange={(value) => handleEmailToggle(type.key, value)}
-                        disabled={!preferences.emailPreferences.enabled}
-                      />
-                    </td>
-                    <td className="py-4 px-2 text-center">
-                      <Switch
-                        checked={preferences.pushPreferences[type.key as keyof typeof preferences.pushPreferences]}
-                        onCheckedChange={(value) => handlePushToggle(type.key, value)}
-                        disabled={!preferences.pushPreferences.enabled}
-                      />
-                    </td>
-                    <td className="py-4 px-2 text-center">
-                      <Switch
-                        checked={preferences.smsPreferences[type.key as keyof typeof preferences.smsPreferences]}
-                        onCheckedChange={(value) => handleSmsToggle(type.key, value)}
-                        disabled={!preferences.smsPreferences.enabled}
-                      />
-                    </td>
+                    {deliveryMethods.map((method) => {
+                      const prefKey = `${method.key}_${type.key}` as keyof NotificationPreferences
+                      const enabledKey = `${method.key}_enabled` as keyof NotificationPreferences
+                      const isMethodEnabled = preferences[enabledKey] as boolean
+
+                      return (
+                        <td key={method.key} className="text-center py-4 px-2">
+                          <Switch
+                            checked={preferences[prefKey] as boolean}
+                            onCheckedChange={(checked) => updatePreferences({ [prefKey]: checked })}
+                            disabled={!isMethodEnabled || (method.key === "sms" && !preferences.phone_verified)}
+                          />
+                        </td>
+                      )
+                    })}
                   </tr>
                 ))}
               </tbody>
@@ -509,265 +426,126 @@ export function NotificationPreferences() {
         </CardContent>
       </Card>
 
-      {/* Delivery Preferences */}
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
+      {/* Delivery Settings */}
+      <Card>
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Clock className="h-5 w-5" />
-            Delivery Preferences
-          </CardTitle>
-          <CardDescription>Control when and how often you receive notifications</CardDescription>
+          <CardTitle>Delivery Settings</CardTitle>
+          <CardDescription>Configure when and how often you receive notifications</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="frequency" className="text-white">
-                Notification Frequency
-              </Label>
-              <Select
-                value={preferences.deliveryPreferences.frequency}
-                onValueChange={(value) => handleDeliveryChange("frequency", value)}
-              >
-                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="immediate">Immediate</SelectItem>
-                  <SelectItem value="hourly">Hourly Digest</SelectItem>
-                  <SelectItem value="daily">Daily Digest</SelectItem>
-                  <SelectItem value="weekly">Weekly Summary</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="timezone" className="text-white">
-                Timezone
-              </Label>
-              <Select
-                value={preferences.deliveryPreferences.timezone}
-                onValueChange={(value) => handleDeliveryChange("timezone", value)}
-              >
-                <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="UTC">UTC</SelectItem>
-                  <SelectItem value="EST">Eastern Time</SelectItem>
-                  <SelectItem value="PST">Pacific Time</SelectItem>
-                  <SelectItem value="GMT">Greenwich Mean Time</SelectItem>
-                  <SelectItem value="CET">Central European Time</SelectItem>
-                  <SelectItem value="JST">Japan Standard Time</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <CardContent className="space-y-6">
+          {/* Frequency */}
+          <div className="space-y-2">
+            <Label>Notification Frequency</Label>
+            <Select value={preferences.frequency} onValueChange={(value) => updatePreferences({ frequency: value })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="immediate">Immediate</SelectItem>
+                <SelectItem value="hourly">Hourly Digest</SelectItem>
+                <SelectItem value="daily">Daily Digest</SelectItem>
+                <SelectItem value="weekly">Weekly Summary</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-gray-500">Security notifications are always sent immediately</p>
           </div>
 
+          <Separator />
+
+          {/* Quiet Hours */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <p className="text-white font-medium">Quiet Hours</p>
-                <p className="text-sm text-gray-400">Disable non-critical notifications during specified hours</p>
+              <div>
+                <Label className="text-base font-medium">Quiet Hours</Label>
+                <p className="text-sm text-gray-500">Disable non-critical notifications during these hours</p>
               </div>
               <Switch
-                checked={preferences.deliveryPreferences.quietHoursEnabled}
-                onCheckedChange={(value) => handleDeliveryChange("quietHoursEnabled", value)}
+                checked={preferences.quiet_hours_enabled}
+                onCheckedChange={(checked) => updatePreferences({ quiet_hours_enabled: checked })}
               />
             </div>
 
-            {preferences.deliveryPreferences.quietHoursEnabled && (
-              <div className="grid grid-cols-2 gap-4 p-4 bg-slate-700/30 rounded-lg">
+            {preferences.quiet_hours_enabled && (
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="quietStart" className="text-white">
-                    Start Time
-                  </Label>
-                  <Select
-                    value={preferences.deliveryPreferences.quietStart}
-                    onValueChange={(value) => handleDeliveryChange("quietStart", value)}
-                  >
-                    <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 24 }, (_, i) => {
-                        const hour = i.toString().padStart(2, "0")
-                        return (
-                          <SelectItem key={hour} value={`${hour}:00`}>
-                            {hour}:00
-                          </SelectItem>
-                        )
-                      })}
-                    </SelectContent>
-                  </Select>
+                  <Label>Start Time</Label>
+                  <Input
+                    type="time"
+                    value={preferences.quiet_hours_start}
+                    onChange={(e) => updatePreferences({ quiet_hours_start: e.target.value })}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="quietEnd" className="text-white">
-                    End Time
-                  </Label>
-                  <Select
-                    value={preferences.deliveryPreferences.quietEnd}
-                    onValueChange={(value) => handleDeliveryChange("quietEnd", value)}
-                  >
-                    <SelectTrigger className="bg-slate-700 border-slate-600 text-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 24 }, (_, i) => {
-                        const hour = i.toString().padStart(2, "0")
-                        return (
-                          <SelectItem key={hour} value={`${hour}:00`}>
-                            {hour}:00
-                          </SelectItem>
-                        )
-                      })}
-                    </SelectContent>
-                  </Select>
+                  <Label>End Time</Label>
+                  <Input
+                    type="time"
+                    value={preferences.quiet_hours_end}
+                    onChange={(e) => updatePreferences({ quiet_hours_end: e.target.value })}
+                  />
                 </div>
               </div>
             )}
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Contact Methods */}
-      <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Smartphone className="h-5 w-5" />
-            Contact Methods
-          </CardTitle>
-          <CardDescription>Manage your notification delivery methods</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Mail className="h-5 w-5 text-blue-400" />
-                <div>
-                  <p className="text-white font-medium">Email Notifications</p>
-                  <p className="text-sm text-gray-400">Primary email address</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-green-400" />
-                <span className="text-sm text-green-400">Verified</span>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg">
-              <div className="flex items-center gap-3">
-                <MessageSquare className="h-5 w-5 text-green-400" />
-                <div>
-                  <p className="text-white font-medium">SMS Notifications</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Input
-                      type="tel"
-                      placeholder="+1 (555) 123-4567"
-                      value={preferences.contactInfo.phoneNumber}
-                      onChange={(e) => handleContactChange("phoneNumber", e.target.value)}
-                      className="bg-slate-600 border-slate-500 text-white text-sm w-40"
-                    />
-                    {preferences.contactInfo.phoneVerified ? (
-                      <div className="flex items-center gap-1 text-green-400">
-                        <Check className="h-4 w-4" />
-                        <span className="text-sm">Verified</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 text-gray-400">
-                        <X className="h-4 w-4" />
-                        <span className="text-sm">Not verified</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={sendVerificationCode}
-                  disabled={sendingCode || !preferences.contactInfo.phoneNumber}
-                >
-                  <Phone className="h-4 w-4 mr-1" />
-                  {sendingCode ? "Sending..." : "Verify"}
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-slate-700/30 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Bell className="h-5 w-5 text-purple-400" />
-                <div>
-                  <p className="text-white font-medium">Push Notifications</p>
-                  <p className="text-sm text-gray-400">Browser notifications</p>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  if ("Notification" in window) {
-                    Notification.requestPermission().then((permission) => {
-                      if (permission === "granted") {
-                        new Notification("Test notification", {
-                          body: "Push notifications are working!",
-                          icon: "/favicon.ico",
-                        })
-                      }
-                    })
-                  }
-                }}
-              >
-                Test Push
-              </Button>
-            </div>
+          {/* Timezone */}
+          <div className="space-y-2">
+            <Label>Timezone</Label>
+            <Select value={preferences.timezone} onValueChange={(value) => updatePreferences({ timezone: value })}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="UTC">UTC</SelectItem>
+                <SelectItem value="America/New_York">Eastern Time</SelectItem>
+                <SelectItem value="America/Chicago">Central Time</SelectItem>
+                <SelectItem value="America/Denver">Mountain Time</SelectItem>
+                <SelectItem value="America/Los_Angeles">Pacific Time</SelectItem>
+                <SelectItem value="Europe/London">London</SelectItem>
+                <SelectItem value="Europe/Paris">Paris</SelectItem>
+                <SelectItem value="Asia/Tokyo">Tokyo</SelectItem>
+                <SelectItem value="Asia/Shanghai">Shanghai</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
 
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={loading} className="bg-blue-600 hover:bg-blue-700 text-white">
-          <Save className="h-4 w-4 mr-2" />
-          {loading ? "Saving..." : "Save Preferences"}
-        </Button>
-      </div>
-
       {/* Phone Verification Dialog */}
-      <Dialog open={verificationDialog} onOpenChange={setVerificationDialog}>
-        <DialogContent className="bg-slate-800 border-slate-700">
+      <Dialog open={phoneVerificationOpen} onOpenChange={setPhoneVerificationOpen}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-white">Verify Phone Number</DialogTitle>
-            <DialogDescription>
-              Enter the verification code sent to {preferences.contactInfo.phoneNumber}
-            </DialogDescription>
+            <DialogTitle>Verify Phone Number</DialogTitle>
+            <DialogDescription>Enter the verification code sent to {preferences.phone_number}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="verificationCode" className="text-white">
-                Verification Code
-              </Label>
+              <Label htmlFor="verification-code">Verification Code</Label>
               <Input
-                id="verificationCode"
-                type="text"
+                id="verification-code"
                 placeholder="Enter 6-digit code"
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value)}
-                className="bg-slate-700 border-slate-600 text-white"
                 maxLength={6}
               />
+              <p className="text-sm text-gray-500">Demo code: 123456</p>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setVerificationDialog(false)}>
-                Cancel
-              </Button>
-              <Button onClick={verifyPhoneNumber} disabled={verifyingCode || verificationCode.length !== 6}>
+            <div className="flex space-x-2">
+              <Button onClick={verifyPhone} disabled={verifyingCode || !verificationCode} className="flex-1">
                 {verifyingCode ? "Verifying..." : "Verify"}
+              </Button>
+              <Button variant="outline" onClick={sendVerificationCode} disabled={sendingCode}>
+                {sendingCode ? "Sending..." : "Resend"}
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
+
+      {saving && (
+        <div className="fixed bottom-4 right-4 bg-blue-500 text-white px-4 py-2 rounded-lg shadow-lg">
+          Saving preferences...
+        </div>
+      )}
     </div>
   )
 }
