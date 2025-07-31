@@ -45,6 +45,20 @@ const providerConfig = {
     textColor: "text-gray-700",
     bgColor: "bg-gray-50",
   },
+  twitter: {
+    name: "Twitter",
+    icon: Icons.twitter,
+    color: "bg-blue-500",
+    textColor: "text-blue-700",
+    bgColor: "bg-blue-50",
+  },
+  discord: {
+    name: "Discord",
+    icon: Icons.discord,
+    color: "bg-indigo-600",
+    textColor: "text-indigo-700",
+    bgColor: "bg-indigo-50",
+  },
 }
 
 export function OAuthAccountManager() {
@@ -147,7 +161,7 @@ export function OAuthAccountManager() {
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {[1, 2].map((i) => (
+            {[1, 2, 3, 4].map((i) => (
               <div key={i} className="flex items-center space-x-4 p-4 bg-slate-700/50 rounded-lg animate-pulse">
                 <div className="w-10 h-10 bg-slate-600 rounded-full" />
                 <div className="flex-1 space-y-2">

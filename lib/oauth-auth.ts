@@ -17,19 +17,30 @@ export async function exchangeCodeForToken(
   if (!oauthProvider) return null
 
   try {
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+      "Content-Type": "application/x-www-form-urlencoded",
+    }
+
+    const body = new URLSearchParams({
+      client_id: oauthProvider.clientId,
+      client_secret: oauthProvider.clientSecret,
+      code,
+      redirect_uri: redirectUri,
+      grant_type: "authorization_code",
+    })
+
+    // Twitter uses different authentication method
+    if (provider === "twitter") {
+      const credentials = Buffer.from(`${oauthProvider.clientId}:${oauthProvider.clientSecret}`).toString("base64")
+      headers.Authorization = `Basic ${credentials}`
+      body.set("code_verifier", "challenge")
+    }
+
     const response = await fetch(oauthProvider.tokenUrl, {
       method: "POST",
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        client_id: oauthProvider.clientId,
-        client_secret: oauthProvider.clientSecret,
-        code,
-        redirect_uri: redirectUri,
-        grant_type: "authorization_code",
-      }),
+      headers,
+      body,
     })
 
     const data = await response.json()
@@ -45,11 +56,18 @@ export async function fetchUserInfo(provider: string, accessToken: string): Prom
   if (!oauthProvider) return null
 
   try {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    }
+
+    // Twitter uses different API version
+    if (provider === "twitter") {
+      headers["User-Agent"] = "CoinWayFinder/1.0"
+    }
+
     const response = await fetch(oauthProvider.userInfoUrl, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-      },
+      headers,
     })
 
     const userData = await response.json()
@@ -85,6 +103,30 @@ export async function fetchUserInfo(provider: string, accessToken: string): Prom
         name: userData.name || userData.login,
         avatar: userData.avatar_url,
         username: userData.login,
+      }
+    }
+
+    if (provider === "twitter") {
+      // Twitter API v2 response format
+      const user = userData.data || userData
+      return {
+        id: user.id,
+        email: user.email || `${user.username}@twitter.placeholder`, // Twitter doesn't always provide email
+        name: user.name,
+        avatar: user.profile_image_url,
+        username: user.username,
+      }
+    }
+
+    if (provider === "discord") {
+      return {
+        id: userData.id,
+        email: userData.email,
+        name: userData.global_name || userData.username,
+        avatar: userData.avatar
+          ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png`
+          : undefined,
+        username: userData.username,
       }
     }
 

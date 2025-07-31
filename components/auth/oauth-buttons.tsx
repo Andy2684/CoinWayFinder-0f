@@ -29,37 +29,55 @@ export function OAuthButtons({ mode = "login", className }: OAuthButtonsProps) {
     }
   }
 
+  const providers = [
+    {
+      id: "google",
+      name: "Google",
+      icon: Icons.google,
+      className: "bg-white hover:bg-gray-50 text-gray-900 border-gray-300",
+    },
+    {
+      id: "github",
+      name: "GitHub",
+      icon: Icons.github,
+      className: "bg-gray-900 hover:bg-gray-800 text-white border-gray-700",
+    },
+    {
+      id: "twitter",
+      name: "Twitter",
+      icon: Icons.twitter,
+      className: "bg-blue-500 hover:bg-blue-600 text-white border-blue-600",
+    },
+    {
+      id: "discord",
+      name: "Discord",
+      icon: Icons.discord,
+      className: "bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700",
+    },
+  ]
+
   return (
     <div className={`space-y-3 ${className}`}>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => handleOAuthLogin("google")}
-        disabled={loading !== null}
-        className="w-full bg-white hover:bg-gray-50 text-gray-900 border-gray-300"
-      >
-        {loading === "google" ? (
-          <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <Icons.google className="mr-2 h-4 w-4" />
-        )}
-        Continue with Google
-      </Button>
-
-      <Button
-        type="button"
-        variant="outline"
-        onClick={() => handleOAuthLogin("github")}
-        disabled={loading !== null}
-        className="w-full bg-gray-900 hover:bg-gray-800 text-white border-gray-700"
-      >
-        {loading === "github" ? (
-          <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-        ) : (
-          <Icons.github className="mr-2 h-4 w-4" />
-        )}
-        Continue with GitHub
-      </Button>
+      {providers.map((provider) => {
+        const IconComponent = provider.icon
+        return (
+          <Button
+            key={provider.id}
+            type="button"
+            variant="outline"
+            onClick={() => handleOAuthLogin(provider.id)}
+            disabled={loading !== null}
+            className={`w-full ${provider.className}`}
+          >
+            {loading === provider.id ? (
+              <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <IconComponent className="mr-2 h-4 w-4" />
+            )}
+            Continue with {provider.name}
+          </Button>
+        )
+      })}
     </div>
   )
 }
