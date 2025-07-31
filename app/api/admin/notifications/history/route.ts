@@ -1,40 +1,110 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { adminNotificationService } from "@/lib/admin-notification-service"
+import { neon } from "@neondatabase/serverless"
+
+const sql = neon(process.env.DATABASE_URL!)
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams
-
+    const { searchParams } = new URL(request.url)
     const page = Number.parseInt(searchParams.get("page") || "1")
-    const limit = Number.parseInt(searchParams.get("limit") || "10")
-    const type = searchParams.get("type") || undefined
-    const status = searchParams.get("status") || undefined
-    const search = searchParams.get("search") || undefined
+    const limit = Number.parseInt(searchParams.get("limit") || "20")
+    const type = searchParams.get("type")
+    const status = searchParams.get("status")
+    const search = searchParams.get("search")
+    const startDate = searchParams.get("startDate")
+    const endDate = searchParams.get("endDate")
+    const sortBy = searchParams.get("sortBy") || "created_at"
+    const sortOrder = searchParams.get("sortOrder") || "desc"
 
-    let startDate: Date | undefined
-    let endDate: Date | undefined
+    const offset = (page - 1) * limit
 
-    if (searchParams.has("startDate")) {
-      startDate = new Date(searchParams.get("startDate") as string)
+    // Build WHERE clause
+    const whereConditions = []
+    const params: any[] = []
+    let paramIndex = 1
+
+    if (type) {
+      whereConditions.push(`type = $${paramIndex}`)
+      params.push(type)
+      paramIndex++
     }
 
-    if (searchParams.has("endDate")) {
-      endDate = new Date(searchParams.get("endDate") as string)
+    if (status) {
+      whereConditions.push(`status = $${paramIndex}`)
+      params.push(status)
+      paramIndex++
     }
 
-    const result = await adminNotificationService.getNotificationHistory({
-      page,
-      limit,
-      type,
-      status,
-      startDate,
-      endDate,
-      search,
+    if (search) {
+      whereConditions.push(`(subject ILIKE $${paramIndex} OR array_to_string(recipients, ',') ILIKE $${paramIndex})`)
+      params.push(`%${search}%`)
+      paramIndex++
+    }
+
+    if (startDate) {
+      whereConditions.push(`created_at >= $${paramIndex}`)
+      params.push(startDate)
+      paramIndex++
+    }
+
+    if (endDate) {
+      whereConditions.push(`created_at <= $${paramIndex}`)
+      params.push(endDate)
+      paramIndex++
+    }
+
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : ""
+
+    // Get total count
+    const countQuery = `
+      SELECT COUNT(*) as total
+      FROM notification_history
+      ${whereClause}
+    `
+    const countResult = await sql(countQuery, params)
+    const total = Number.parseInt(countResult[0].total)
+
+    // Get notifications
+    const query = `
+      SELECT 
+        id,
+        notification_id,
+        type,
+        subject,
+        content,
+        recipients,
+        status,
+        error_message,
+        metadata,
+        sent_at,
+        delivered_at,
+        created_at,
+        updated_at
+      FROM notification_history
+      ${whereClause}
+      ORDER BY ${sortBy} ${sortOrder.toUpperCase()}
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `
+
+    params.push(limit, offset)
+    const notifications = await sql(query, params)
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        notifications,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages: Math.ceil(total / limit),
+          hasNext: page * limit < total,
+          hasPrev: page > 1,
+        },
+      },
     })
-
-    return NextResponse.json(result)
   } catch (error) {
     console.error("Error fetching notification history:", error)
-    return NextResponse.json({ error: "Failed to fetch notification history" }, { status: 500 })
+    return NextResponse.json({ success: false, error: "Failed to fetch notification history" }, { status: 500 })
   }
 }

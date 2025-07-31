@@ -1,30 +1,37 @@
+-- Create notification history table
 CREATE TABLE IF NOT EXISTS notification_history (
-  id SERIAL PRIMARY KEY,
-  type VARCHAR(50) NOT NULL,
-  subject VARCHAR(255) NOT NULL,
-  recipients TEXT[] NOT NULL,
-  content TEXT NOT NULL,
-  status VARCHAR(20) NOT NULL,
-  sent_at TIMESTAMP WITH TIME ZONE NOT NULL,
-  delivered_at TIMESTAMP WITH TIME ZONE,
-  error_message TEXT,
-  metadata JSONB,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    id SERIAL PRIMARY KEY,
+    notification_id VARCHAR(255) UNIQUE NOT NULL,
+    type VARCHAR(50) NOT NULL, -- 'security', 'admin', 'system', 'user'
+    subject VARCHAR(500) NOT NULL,
+    content TEXT NOT NULL,
+    html_content TEXT,
+    recipients TEXT[] NOT NULL, -- Array of email addresses
+    status VARCHAR(20) NOT NULL DEFAULT 'pending', -- 'pending', 'sent', 'delivered', 'failed'
+    error_message TEXT,
+    metadata JSONB DEFAULT '{}',
+    sent_at TIMESTAMP WITH TIME ZONE,
+    delivered_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
-CREATE INDEX idx_notification_history_type ON notification_history(type);
-CREATE INDEX idx_notification_history_status ON notification_history(status);
-CREATE INDEX idx_notification_history_sent_at ON notification_history(sent_at);
+-- Create indexes for better query performance
+CREATE INDEX IF NOT EXISTS idx_notification_history_type ON notification_history(type);
+CREATE INDEX IF NOT EXISTS idx_notification_history_status ON notification_history(status);
+CREATE INDEX IF NOT EXISTS idx_notification_history_created_at ON notification_history(created_at);
+CREATE INDEX IF NOT EXISTS idx_notification_history_recipients ON notification_history USING GIN(recipients);
 
--- Create a view for notification statistics
-CREATE OR REPLACE VIEW notification_stats AS
-SELECT
-  type,
-  status,
-  COUNT(*) as count,
-  MIN(sent_at) as first_sent,
-  MAX(sent_at) as last_sent,
-  AVG(EXTRACT(EPOCH FROM (delivered_at - sent_at))) as avg_delivery_time_seconds
-FROM notification_history
-GROUP BY type, status;
+-- Create trigger to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_notification_history_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+CREATE TRIGGER update_notification_history_updated_at
+    BEFORE UPDATE ON notification_history
+    FOR EACH ROW
+    EXECUTE FUNCTION update_notification_history_updated_at();

@@ -1,283 +1,367 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
+import { useState } from "react"
 import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination"
-import { Loader2, Eye } from "lucide-react"
-import { format } from "date-fns"
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import {
+  Eye,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  Mail,
+  Clock,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
+} from "lucide-react"
 
 interface Notification {
   id: number
+  notification_id: string
   type: string
   subject: string
-  recipients: string[]
   content: string
-  status: "sent" | "delivered" | "failed"
-  sent_at: string
-  delivered_at?: string
+  html_content?: string
+  recipients: string[]
+  status: string
   error_message?: string
-  metadata?: Record<string, any>
+  metadata: any
+  sent_at?: string
+  delivered_at?: string
+  created_at: string
+  updated_at: string
 }
 
 interface NotificationTableProps {
-  filters: {
-    type?: string
-    status?: string
-    startDate?: Date
-    endDate?: Date
-    search?: string
+  notifications: Notification[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+    hasNext: boolean
+    hasPrev: boolean
+  }
+  onPageChange: (page: number) => void
+  loading: boolean
+}
+
+const getTypeColor = (type: string) => {
+  switch (type) {
+    case "security":
+      return "destructive"
+    case "admin":
+      return "default"
+    case "system":
+      return "secondary"
+    case "user":
+      return "outline"
+    default:
+      return "default"
   }
 }
 
-export function NotificationTable({ filters }: NotificationTableProps) {
-  const [notifications, setNotifications] = useState<Notification[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [page, setPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
+const getStatusIcon = (status: string) => {
+  switch (status) {
+    case "delivered":
+      return <CheckCircle className="h-4 w-4 text-green-600" />
+    case "failed":
+      return <XCircle className="h-4 w-4 text-red-600" />
+    case "pending":
+      return <Clock className="h-4 w-4 text-yellow-600" />
+    case "sent":
+      return <Mail className="h-4 w-4 text-blue-600" />
+    default:
+      return <AlertCircle className="h-4 w-4 text-gray-600" />
+  }
+}
+
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "delivered":
+      return "text-green-600"
+    case "failed":
+      return "text-red-600"
+    case "pending":
+      return "text-yellow-600"
+    case "sent":
+      return "text-blue-600"
+    default:
+      return "text-gray-600"
+  }
+}
+
+export function NotificationTable({ notifications, pagination, onPageChange, loading }: NotificationTableProps) {
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null)
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
 
-  useEffect(() => {
-    fetchNotifications()
-  }, [page, filters])
-
-  const fetchNotifications = async () => {
-    setLoading(true)
-    setError(null)
-
-    try {
-      // Build query params
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: "10",
-      })
-
-      if (filters.type) params.append("type", filters.type)
-      if (filters.status) params.append("status", filters.status)
-      if (filters.startDate) params.append("startDate", filters.startDate.toISOString())
-      if (filters.endDate) params.append("endDate", filters.endDate.toISOString())
-      if (filters.search) params.append("search", filters.search)
-
-      const response = await fetch(`/api/admin/notifications/history?${params.toString()}`)
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch notification history")
-      }
-
-      const data = await response.json()
-      setNotifications(data.notifications)
-      setTotalPages(data.totalPages)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "An error occurred")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleViewDetails = (notification: Notification) => {
-    setSelectedNotification(notification)
-    setIsDialogOpen(true)
-  }
-
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "sent":
-        return <Badge variant="outline">Sent</Badge>
-      case "delivered":
-        return <Badge variant="success">Delivered</Badge>
-      case "failed":
-        return <Badge variant="destructive">Failed</Badge>
-      default:
-        return <Badge variant="secondary">{status}</Badge>
-    }
-  }
-
-  const formatNotificationType = (type: string) => {
-    return type
-      .split("_")
-      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(" ")
-  }
-
-  if (loading && page === 1) {
+  if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="p-4 bg-red-50 text-red-700 rounded-md">
-        <p>Error: {error}</p>
-      </div>
+      <Card>
+        <CardHeader>
+          <div className="h-6 w-48 bg-muted animate-pulse rounded" />
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center space-x-4">
+                <div className="h-4 w-20 bg-muted animate-pulse rounded" />
+                <div className="h-4 w-32 bg-muted animate-pulse rounded" />
+                <div className="h-4 w-48 bg-muted animate-pulse rounded" />
+                <div className="h-4 w-24 bg-muted animate-pulse rounded" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     )
   }
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Type</TableHead>
-              <TableHead>Subject</TableHead>
-              <TableHead>Recipients</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Sent At</TableHead>
-              <TableHead>Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {notifications.length === 0 ? (
+    <Card>
+      <CardHeader>
+        <CardTitle>Notification History</CardTitle>
+        <CardDescription>{pagination.total.toLocaleString()} total notifications</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                  No notifications found
-                </TableCell>
+                <TableHead>Type</TableHead>
+                <TableHead>Subject</TableHead>
+                <TableHead>Recipients</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
               </TableRow>
-            ) : (
-              notifications.map((notification) => (
-                <TableRow key={notification.id}>
-                  <TableCell>{formatNotificationType(notification.type)}</TableCell>
-                  <TableCell className="max-w-[200px] truncate">{notification.subject}</TableCell>
-                  <TableCell>
-                    {notification.recipients.length > 1
-                      ? `${notification.recipients[0]} +${notification.recipients.length - 1} more`
-                      : notification.recipients[0]}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(notification.status)}</TableCell>
-                  <TableCell>{format(new Date(notification.sent_at), "MMM d, yyyy HH:mm")}</TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="sm" onClick={() => handleViewDetails(notification)}>
-                      <Eye className="h-4 w-4" />
-                      <span className="sr-only">View Details</span>
-                    </Button>
+            </TableHeader>
+            <TableBody>
+              {notifications.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    No notifications found
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              ) : (
+                notifications.map((notification) => (
+                  <TableRow key={notification.id}>
+                    <TableCell>
+                      <Badge variant={getTypeColor(notification.type)}>{notification.type}</Badge>
+                    </TableCell>
+                    <TableCell className="max-w-xs">
+                      <div className="truncate" title={notification.subject}>
+                        {notification.subject}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm text-muted-foreground">
+                        {notification.recipients.length} recipient{notification.recipients.length !== 1 ? "s" : ""}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className={`flex items-center gap-2 ${getStatusColor(notification.status)}`}>
+                        {getStatusIcon(notification.status)}
+                        <span className="capitalize">{notification.status}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="text-sm">{new Date(notification.created_at).toLocaleDateString()}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {new Date(notification.created_at).toLocaleTimeString()}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button variant="ghost" size="sm" onClick={() => setSelectedNotification(notification)}>
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+                          <DialogHeader>
+                            <DialogTitle>Notification Details</DialogTitle>
+                            <DialogDescription>ID: {notification.notification_id}</DialogDescription>
+                          </DialogHeader>
 
-      {totalPages > 1 && (
-        <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} />
-            </PaginationItem>
+                          {selectedNotification && (
+                            <div className="space-y-6">
+                              {/* Basic Info */}
+                              <div className="grid gap-4 md:grid-cols-2">
+                                <div>
+                                  <h4 className="font-medium mb-2">Type</h4>
+                                  <Badge variant={getTypeColor(selectedNotification.type)}>
+                                    {selectedNotification.type}
+                                  </Badge>
+                                </div>
+                                <div>
+                                  <h4 className="font-medium mb-2">Status</h4>
+                                  <div
+                                    className={`flex items-center gap-2 ${getStatusColor(selectedNotification.status)}`}
+                                  >
+                                    {getStatusIcon(selectedNotification.status)}
+                                    <span className="capitalize">{selectedNotification.status}</span>
+                                  </div>
+                                </div>
+                              </div>
 
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              // Show pages around the current page
-              let pageNum
-              if (totalPages <= 5) {
-                pageNum = i + 1
-              } else if (page <= 3) {
-                pageNum = i + 1
-              } else if (page >= totalPages - 2) {
-                pageNum = totalPages - 4 + i
-              } else {
-                pageNum = page - 2 + i
-              }
+                              <Separator />
 
-              return (
-                <PaginationItem key={pageNum}>
-                  <PaginationLink isActive={page === pageNum} onClick={() => setPage(pageNum)}>
-                    {pageNum}
-                  </PaginationLink>
-                </PaginationItem>
-              )
-            })}
+                              {/* Subject */}
+                              <div>
+                                <h4 className="font-medium mb-2">Subject</h4>
+                                <p className="text-sm">{selectedNotification.subject}</p>
+                              </div>
 
-            <PaginationItem>
-              <PaginationNext
-                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      )}
+                              {/* Recipients */}
+                              <div>
+                                <h4 className="font-medium mb-2">Recipients</h4>
+                                <div className="flex flex-wrap gap-2">
+                                  {selectedNotification.recipients.map((recipient, index) => (
+                                    <Badge key={index} variant="outline">
+                                      {recipient}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Notification Details</DialogTitle>
-          </DialogHeader>
+                              {/* Content */}
+                              <div>
+                                <h4 className="font-medium mb-2">Content</h4>
+                                {selectedNotification.html_content ? (
+                                  <div className="border rounded-lg p-4 bg-muted/50">
+                                    <div
+                                      dangerouslySetInnerHTML={{
+                                        __html: selectedNotification.html_content,
+                                      }}
+                                    />
+                                  </div>
+                                ) : (
+                                  <div className="border rounded-lg p-4 bg-muted/50">
+                                    <pre className="whitespace-pre-wrap text-sm">{selectedNotification.content}</pre>
+                                  </div>
+                                )}
+                              </div>
 
-          {selectedNotification && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-semibold text-sm">Type</h3>
-                  <p>{formatNotificationType(selectedNotification.type)}</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm">Status</h3>
-                  <p>{getStatusBadge(selectedNotification.status)}</p>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm">Sent At</h3>
-                  <p>{format(new Date(selectedNotification.sent_at), "PPP HH:mm:ss")}</p>
-                </div>
-                {selectedNotification.delivered_at && (
-                  <div>
-                    <h3 className="font-semibold text-sm">Delivered At</h3>
-                    <p>{format(new Date(selectedNotification.delivered_at), "PPP HH:mm:ss")}</p>
-                  </div>
-                )}
-                <div className="col-span-2">
-                  <h3 className="font-semibold text-sm">Subject</h3>
-                  <p>{selectedNotification.subject}</p>
-                </div>
-                <div className="col-span-2">
-                  <h3 className="font-semibold text-sm">Recipients</h3>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {selectedNotification.recipients.map((recipient, index) => (
-                      <Badge key={index} variant="secondary">
-                        {recipient}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                {selectedNotification.error_message && (
-                  <div className="col-span-2">
-                    <h3 className="font-semibold text-sm text-red-600">Error</h3>
-                    <p className="text-red-600">{selectedNotification.error_message}</p>
-                  </div>
-                )}
-                {selectedNotification.metadata && (
-                  <div className="col-span-2">
-                    <h3 className="font-semibold text-sm">Metadata</h3>
-                    <pre className="bg-gray-50 p-2 rounded text-xs overflow-x-auto">
-                      {JSON.stringify(selectedNotification.metadata, null, 2)}
-                    </pre>
-                  </div>
-                )}
-              </div>
+                              {/* Error Message */}
+                              {selectedNotification.error_message && (
+                                <div>
+                                  <h4 className="font-medium mb-2 text-red-600">Error Message</h4>
+                                  <div className="border border-red-200 rounded-lg p-4 bg-red-50">
+                                    <p className="text-sm text-red-800">{selectedNotification.error_message}</p>
+                                  </div>
+                                </div>
+                              )}
 
-              <div>
-                <h3 className="font-semibold text-sm mb-2">Content</h3>
-                <div className="border rounded-md p-4 max-h-96 overflow-y-auto bg-white">
-                  <div dangerouslySetInnerHTML={{ __html: selectedNotification.content }} />
-                </div>
-              </div>
+                              {/* Timestamps */}
+                              <div className="grid gap-4 md:grid-cols-3">
+                                <div>
+                                  <h4 className="font-medium mb-2">Created</h4>
+                                  <p className="text-sm text-muted-foreground">
+                                    {new Date(selectedNotification.created_at).toLocaleString()}
+                                  </p>
+                                </div>
+                                {selectedNotification.sent_at && (
+                                  <div>
+                                    <h4 className="font-medium mb-2">Sent</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                      {new Date(selectedNotification.sent_at).toLocaleString()}
+                                    </p>
+                                  </div>
+                                )}
+                                {selectedNotification.delivered_at && (
+                                  <div>
+                                    <h4 className="font-medium mb-2">Delivered</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                      {new Date(selectedNotification.delivered_at).toLocaleString()}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Metadata */}
+                              {selectedNotification.metadata &&
+                                Object.keys(selectedNotification.metadata).length > 0 && (
+                                  <div>
+                                    <h4 className="font-medium mb-2">Metadata</h4>
+                                    <div className="border rounded-lg p-4 bg-muted/50">
+                                      <pre className="text-xs">
+                                        {JSON.stringify(selectedNotification.metadata, null, 2)}
+                                      </pre>
+                                    </div>
+                                  </div>
+                                )}
+                            </div>
+                          )}
+                        </DialogContent>
+                      </Dialog>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination */}
+        {pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between mt-4">
+            <div className="text-sm text-muted-foreground">
+              Showing {(pagination.page - 1) * pagination.limit + 1} to{" "}
+              {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total.toLocaleString()}{" "}
+              notifications
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
-    </div>
+
+            <div className="flex items-center space-x-2">
+              <Button variant="outline" size="sm" onClick={() => onPageChange(1)} disabled={!pagination.hasPrev}>
+                <ChevronsLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(pagination.page - 1)}
+                disabled={!pagination.hasPrev}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+
+              <div className="flex items-center space-x-1">
+                <span className="text-sm">
+                  Page {pagination.page} of {pagination.totalPages}
+                </span>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(pagination.page + 1)}
+                disabled={!pagination.hasNext}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => onPageChange(pagination.totalPages)}
+                disabled={!pagination.hasNext}
+              >
+                <ChevronsRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

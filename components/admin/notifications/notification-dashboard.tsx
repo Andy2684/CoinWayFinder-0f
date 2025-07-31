@@ -1,70 +1,143 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { toast } from "sonner"
 import { NotificationStats } from "./notification-stats"
 import { NotificationFilters } from "./notification-filters"
 import { NotificationTable } from "./notification-table"
-import { Button } from "@/components/ui/button"
-import { Download } from "lucide-react"
 
-export function NotificationDashboard() {
-  const [filters, setFilters] = useState<{
-    type?: string
-    status?: string
-    startDate?: Date
-    endDate?: Date
-    search?: string
-  }>({})
+interface NotificationDashboardProps {
+  initialData?: any
+}
 
-  const handleFilterChange = (newFilters: {
-    type?: string
-    status?: string
-    startDate?: Date
-    endDate?: Date
-    search?: string
-  }) => {
+export function NotificationDashboard({ initialData }: NotificationDashboardProps) {
+  const [activeTab, setActiveTab] = useState("history")
+  const [notifications, setNotifications] = useState([])
+  const [stats, setStats] = useState(null)
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+    hasNext: false,
+    hasPrev: false,
+  })
+  const [filters, setFilters] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [statsLoading, setStatsLoading] = useState(true)
+
+  // Fetch notifications
+  const fetchNotifications = async (page = 1, newFilters = filters) => {
+    try {
+      setLoading(true)
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: pagination.limit.toString(),
+        ...newFilters,
+      })
+
+      const response = await fetch(`/api/admin/notifications/history?${params}`)
+      const data = await response.json()
+
+      if (data.success) {
+        setNotifications(data.data.notifications)
+        setPagination(data.data.pagination)
+      } else {
+        toast.error("Failed to fetch notifications")
+      }
+    } catch (error) {
+      console.error("Error fetching notifications:", error)
+      toast.error("Failed to fetch notifications")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Fetch stats
+  const fetchStats = async () => {
+    try {
+      setStatsLoading(true)
+      const response = await fetch("/api/admin/notifications/history/stats")
+      const data = await response.json()
+
+      if (data.success) {
+        setStats(data.data)
+      } else {
+        toast.error("Failed to fetch notification stats")
+      }
+    } catch (error) {
+      console.error("Error fetching stats:", error)
+      toast.error("Failed to fetch notification stats")
+    } finally {
+      setStatsLoading(false)
+    }
+  }
+
+  // Handle filter changes
+  const handleFiltersChange = (newFilters: any) => {
     setFilters(newFilters)
+    fetchNotifications(1, newFilters)
   }
 
+  // Handle page changes
+  const handlePageChange = (page: number) => {
+    fetchNotifications(page)
+  }
+
+  // Handle export
   const handleExport = async () => {
-    // Build query params for export
-    const params = new URLSearchParams()
+    try {
+      const params = new URLSearchParams(filters)
+      const response = await fetch(`/api/admin/notifications/history/export?${params}`)
 
-    if (filters.type) params.append("type", filters.type)
-    if (filters.status) params.append("status", filters.status)
-    if (filters.startDate) params.append("startDate", filters.startDate.toISOString())
-    if (filters.endDate) params.append("endDate", filters.endDate.toISOString())
-    if (filters.search) params.append("search", filters.search)
-
-    // Trigger download
-    window.open(`/api/admin/notifications/history/export?${params.toString()}`, "_blank")
+      if (response.ok) {
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.style.display = "none"
+        a.href = url
+        a.download = `notification-history-${new Date().toISOString().split("T")[0]}.csv`
+        document.body.appendChild(a)
+        a.click()
+        window.URL.revokeObjectURL(url)
+        toast.success("Export completed successfully")
+      } else {
+        toast.error("Failed to export data")
+      }
+    } catch (error) {
+      console.error("Error exporting data:", error)
+      toast.error("Failed to export data")
+    }
   }
+
+  // Initial data load
+  useEffect(() => {
+    fetchNotifications()
+    fetchStats()
+  }, [])
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Notification History</h1>
-          <p className="text-muted-foreground">Track and monitor all notification activity</p>
-        </div>
-        <Button onClick={handleExport}>
-          <Download className="mr-2 h-4 w-4" />
-          Export
-        </Button>
-      </div>
-
-      <Tabs defaultValue="history">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="history">History</TabsTrigger>
+          <TabsTrigger value="history">Notification History</TabsTrigger>
           <TabsTrigger value="stats">Statistics</TabsTrigger>
         </TabsList>
-        <TabsContent value="history" className="space-y-4 pt-4">
-          <NotificationFilters onFilterChange={handleFilterChange} />
-          <NotificationTable filters={filters} />
+
+        <TabsContent value="history" className="space-y-6">
+          <NotificationFilters onFiltersChange={handleFiltersChange} onExport={handleExport} loading={loading} />
+
+          <NotificationTable
+            notifications={notifications}
+            pagination={pagination}
+            onPageChange={handlePageChange}
+            loading={loading}
+          />
         </TabsContent>
-        <TabsContent value="stats" className="pt-4">
-          <NotificationStats />
+
+        <TabsContent value="stats">
+          <NotificationStats stats={stats} loading={statsLoading} />
         </TabsContent>
       </Tabs>
     </div>

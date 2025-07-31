@@ -1,98 +1,99 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { sql } from "@/lib/database"
+import { neon } from "@neondatabase/serverless"
+
+const sql = neon(process.env.DATABASE_URL!)
 
 export async function GET(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams
+    const { searchParams } = new URL(request.url)
+    const type = searchParams.get("type")
+    const status = searchParams.get("status")
+    const startDate = searchParams.get("startDate")
+    const endDate = searchParams.get("endDate")
 
-    const type = searchParams.get("type") || undefined
-    const status = searchParams.get("status") || undefined
-    const search = searchParams.get("search") || undefined
-
-    let startDate: Date | undefined
-    let endDate: Date | undefined
-
-    if (searchParams.has("startDate")) {
-      startDate = new Date(searchParams.get("startDate") as string)
-    }
-
-    if (searchParams.has("endDate")) {
-      endDate = new Date(searchParams.get("endDate") as string)
-    }
-
-    // Build the WHERE clause
-    let whereClause = sql``
+    // Build WHERE clause
+    const whereConditions = []
+    const params: any[] = []
+    let paramIndex = 1
 
     if (type) {
-      whereClause = sql`${whereClause} AND type = ${type}`
+      whereConditions.push(`type = $${paramIndex}`)
+      params.push(type)
+      paramIndex++
     }
 
     if (status) {
-      whereClause = sql`${whereClause} AND status = ${status}`
+      whereConditions.push(`status = $${paramIndex}`)
+      params.push(status)
+      paramIndex++
     }
 
     if (startDate) {
-      whereClause = sql`${whereClause} AND sent_at >= ${startDate}`
+      whereConditions.push(`created_at >= $${paramIndex}`)
+      params.push(startDate)
+      paramIndex++
     }
 
     if (endDate) {
-      whereClause = sql`${whereClause} AND sent_at <= ${endDate}`
+      whereConditions.push(`created_at <= $${paramIndex}`)
+      params.push(endDate)
+      paramIndex++
     }
 
-    if (search) {
-      whereClause = sql`${whereClause} AND (
-        subject ILIKE ${"%" + search + "%"} OR
-        ${search} = ANY(recipients)
-      )`
-    }
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : ""
 
-    // Get notifications
-    const notifications = await sql`
+    const query = `
       SELECT 
-        id, type, subject, recipients, status, 
-        sent_at, delivered_at, error_message,
-        created_at, updated_at
+        notification_id,
+        type,
+        subject,
+        array_to_string(recipients, ';') as recipients,
+        status,
+        error_message,
+        sent_at,
+        delivered_at,
+        created_at
       FROM notification_history
-      WHERE 1=1 ${whereClause}
-      ORDER BY sent_at DESC
+      ${whereClause}
+      ORDER BY created_at DESC
     `
+
+    const notifications = await sql(query, params)
 
     // Convert to CSV
     const headers = [
-      "ID",
+      "Notification ID",
       "Type",
       "Subject",
       "Recipients",
       "Status",
+      "Error Message",
       "Sent At",
       "Delivered At",
-      "Error Message",
       "Created At",
-      "Updated At",
     ]
 
-    const rows = notifications.map((notification: any) => [
-      notification.id,
-      notification.type,
-      notification.subject,
-      notification.recipients.join(", "),
-      notification.status,
-      notification.sent_at,
-      notification.delivered_at || "",
-      notification.error_message || "",
-      notification.created_at,
-      notification.updated_at,
-    ])
-
-    const csv = [
+    const csvRows = [
       headers.join(","),
-      ...rows.map((row: any[]) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")),
-    ].join("\n")
+      ...notifications.map((notification) =>
+        [
+          `"${notification.notification_id}"`,
+          `"${notification.type}"`,
+          `"${notification.subject.replace(/"/g, '""')}"`,
+          `"${notification.recipients}"`,
+          `"${notification.status}"`,
+          `"${(notification.error_message || "").replace(/"/g, '""')}"`,
+          `"${notification.sent_at || ""}"`,
+          `"${notification.delivered_at || ""}"`,
+          `"${notification.created_at}"`,
+        ].join(","),
+      ),
+    ]
 
-    // Set headers for CSV download
+    const csvContent = csvRows.join("\n")
     const filename = `notification-history-${new Date().toISOString().split("T")[0]}.csv`
 
-    return new NextResponse(csv, {
+    return new NextResponse(csvContent, {
       headers: {
         "Content-Type": "text/csv",
         "Content-Disposition": `attachment; filename="${filename}"`,
@@ -100,6 +101,6 @@ export async function GET(request: NextRequest) {
     })
   } catch (error) {
     console.error("Error exporting notification history:", error)
-    return NextResponse.json({ error: "Failed to export notification history" }, { status: 500 })
+    return NextResponse.json({ success: false, error: "Failed to export notification history" }, { status: 500 })
   }
 }

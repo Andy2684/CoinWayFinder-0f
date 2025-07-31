@@ -1,181 +1,256 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts"
-import { Loader2 } from "lucide-react"
+import { Mail, CheckCircle, XCircle, TrendingUp, AlertTriangle } from "lucide-react"
 
 interface NotificationStats {
-  byType: Record<
-    string,
-    {
-      total: number
-      sent: number
-      delivered: number
-      failed: number
-      first_sent: string
-      last_sent: string
-    }
-  >
-  overall: {
-    total: number
-    sent: number
-    delivered: number
-    failed: number
+  overview: {
+    totalNotifications: number
+    sentCount: number
+    deliveredCount: number
+    failedCount: number
+    pendingCount: number
+    deliveryRate: number
+  }
+  byType: Array<{
+    type: string
+    count: number
+    deliveredCount: number
+    failedCount: number
+    deliveryRate: string
+  }>
+  dailyStats: Array<{
+    date: string
+    count: number
+    deliveredCount: number
+    failedCount: number
+  }>
+  recentFailures: Array<{
+    id: number
+    type: string
+    subject: string
+    recipients: string[]
+    errorMessage: string
+    createdAt: string
+  }>
+}
+
+interface NotificationStatsProps {
+  stats: NotificationStats
+  loading: boolean
+}
+
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"]
+
+const getTypeColor = (type: string) => {
+  switch (type) {
+    case "security":
+      return "destructive"
+    case "admin":
+      return "default"
+    case "system":
+      return "secondary"
+    case "user":
+      return "outline"
+    default:
+      return "default"
   }
 }
 
-export function NotificationStats() {
-  const [stats, setStats] = useState<NotificationStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+const getStatusColor = (status: string) => {
+  switch (status) {
+    case "delivered":
+      return "text-green-600"
+    case "failed":
+      return "text-red-600"
+    case "pending":
+      return "text-yellow-600"
+    case "sent":
+      return "text-blue-600"
+    default:
+      return "text-gray-600"
+  }
+}
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await fetch("/api/admin/notifications/history/stats")
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch notification statistics")
-        }
-
-        const data = await response.json()
-        setStats(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "An error occurred")
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchStats()
-  }, [])
-
+export function NotificationStats({ stats, loading }: NotificationStatsProps) {
   if (loading) {
     return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {[...Array(4)].map((_, i) => (
+          <Card key={i}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <div className="h-4 w-20 bg-muted animate-pulse rounded" />
+              <div className="h-4 w-4 bg-muted animate-pulse rounded" />
+            </CardHeader>
+            <CardContent>
+              <div className="h-8 w-16 bg-muted animate-pulse rounded mb-2" />
+              <div className="h-3 w-24 bg-muted animate-pulse rounded" />
+            </CardContent>
+          </Card>
+        ))}
       </div>
     )
   }
 
-  if (error) {
-    return (
-      <div className="p-4 bg-red-50 text-red-700 rounded-md">
-        <p>Error: {error}</p>
-      </div>
-    )
-  }
-
-  if (!stats) {
-    return (
-      <div className="p-4 bg-yellow-50 text-yellow-700 rounded-md">
-        <p>No statistics available</p>
-      </div>
-    )
-  }
-
-  // Prepare data for charts
-  const typeData = Object.entries(stats.byType).map(([type, data]) => ({
-    name: formatNotificationType(type),
-    total: data.total,
-    sent: data.sent || 0,
-    delivered: data.delivered || 0,
-    failed: data.failed || 0,
-  }))
-
-  const statusData = [
-    { name: "Sent", value: stats.overall.sent },
-    { name: "Delivered", value: stats.overall.delivered },
-    { name: "Failed", value: stats.overall.failed },
-  ]
-
-  const COLORS = ["#8884d8", "#82ca9d", "#ff7c7c"]
+  const pieData = [
+    { name: "Delivered", value: stats.overview.deliveredCount, color: "#00C49F" },
+    { name: "Failed", value: stats.overview.failedCount, color: "#FF8042" },
+    { name: "Pending", value: stats.overview.pendingCount, color: "#FFBB28" },
+    { name: "Sent", value: stats.overview.sentCount, color: "#0088FE" },
+  ].filter((item) => item.value > 0)
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Overview Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-2xl">Total</CardTitle>
-            <CardDescription>All notifications</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Notifications</CardTitle>
+            <Mail className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.overall.total}</div>
+            <div className="text-2xl font-bold">{stats.overview.totalNotifications.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">All time notifications</p>
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-2xl">Delivered</CardTitle>
-            <CardDescription>Successfully delivered</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Delivered</CardTitle>
+            <CheckCircle className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">{stats.overall.delivered}</div>
+            <div className="text-2xl font-bold text-green-600">{stats.overview.deliveredCount.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Successfully delivered</p>
           </CardContent>
         </Card>
+
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-2xl">Failed</CardTitle>
-            <CardDescription>Failed to deliver</CardDescription>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Failed</CardTitle>
+            <XCircle className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-red-600">{stats.overall.failed}</div>
+            <div className="text-2xl font-bold text-red-600">{stats.overview.failedCount.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">Delivery failed</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Delivery Rate</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.overview.deliveryRate}%</div>
+            <Progress value={stats.overview.deliveryRate} className="mt-2" />
           </CardContent>
         </Card>
       </div>
 
-      <Tabs defaultValue="by-type">
-        <TabsList>
-          <TabsTrigger value="by-type">By Type</TabsTrigger>
-          <TabsTrigger value="by-status">By Status</TabsTrigger>
-        </TabsList>
-        <TabsContent value="by-type" className="p-4 border rounded-md mt-2">
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={typeData} margin={{ top: 20, right: 30, left: 20, bottom: 70 }}>
+      {/* Charts */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {/* Notifications by Type */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Notifications by Type</CardTitle>
+            <CardDescription>Distribution of notification types</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={stats.byType}>
                 <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" angle={-45} textAnchor="end" height={70} />
+                <XAxis dataKey="type" />
                 <YAxis />
                 <Tooltip />
-                <Bar dataKey="total" fill="#8884d8" name="Total" />
-                <Bar dataKey="delivered" fill="#82ca9d" name="Delivered" />
-                <Bar dataKey="failed" fill="#ff7c7c" name="Failed" />
+                <Bar dataKey="count" fill="#8884d8" />
               </BarChart>
             </ResponsiveContainer>
-          </div>
-        </TabsContent>
-        <TabsContent value="by-status" className="p-4 border rounded-md mt-2">
-          <div className="h-80">
-            <ResponsiveContainer width="100%" height="100%">
+          </CardContent>
+        </Card>
+
+        {/* Status Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Status Distribution</CardTitle>
+            <CardDescription>Breakdown of notification statuses</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
-                  data={statusData}
+                  data={pieData}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                 >
-                  {statusData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  {pieData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
-          </div>
-        </TabsContent>
-      </Tabs>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Daily Activity */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Daily Activity (Last 7 Days)</CardTitle>
+          <CardDescription>Notification volume over time</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={stats.dailyStats}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="deliveredCount" stackId="a" fill="#00C49F" name="Delivered" />
+              <Bar dataKey="failedCount" stackId="a" fill="#FF8042" name="Failed" />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
+      {/* Recent Failures */}
+      {stats.recentFailures.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
+              Recent Failures
+            </CardTitle>
+            <CardDescription>Latest failed notification deliveries</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {stats.recentFailures.map((failure) => (
+                <div key={failure.id} className="flex items-start justify-between p-3 border rounded-lg">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={getTypeColor(failure.type)}>{failure.type}</Badge>
+                      <span className="font-medium">{failure.subject}</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">To: {failure.recipients.join(", ")}</p>
+                    <p className="text-sm text-red-600">{failure.errorMessage}</p>
+                  </div>
+                  <div className="text-xs text-muted-foreground">{new Date(failure.createdAt).toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
-}
-
-function formatNotificationType(type: string): string {
-  return type
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ")
 }
