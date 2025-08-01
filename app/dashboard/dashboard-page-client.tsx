@@ -1,16 +1,27 @@
-"use client"
+import { DashboardGrid } from "@/components/dashboard/dashboard-grid"
+import { UserActivityWidget } from "@/components/dashboard/user-activity-widget"
+import { SalesOverviewWidget } from "@/components/dashboard/sales-overview-widget"
+import { TaskProgressWidget } from "@/components/dashboard/task-progress-widget"
+import { AchievementProgressWidget } from "@/components/achievements/achievement-progress-widget"
 
-import dynamic from "next/dynamic"
+const DashboardPageClient = () => {
+  return (
+    <div>
+      <DashboardGrid>
+        {/* User Activity Widget */}
+        <UserActivityWidget />
 
-const DashboardClient = dynamic(() => import("./dashboard-client"), {
-  ssr: false,
-  loading: () => (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
-      <div className="text-white">Loading...</div>
+        {/* Sales Overview Widget */}
+        <SalesOverviewWidget />
+
+        {/* Task Progress Widget */}
+        <TaskProgressWidget />
+
+        {/* Achievement Progress Widget */}
+        <AchievementProgressWidget />
+      </DashboardGrid>
     </div>
-  ),
-})
-
-export default function DashboardPageClient() {
-  return <DashboardClient />
+  )
 }
+
+export default DashboardPageClient

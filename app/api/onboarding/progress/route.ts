@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
 import { verifyToken } from "@/lib/auth"
 
+const TOTAL_STEPS = 6
+
 export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get("auth-token")?.value
@@ -19,22 +21,20 @@ export async function GET(request: NextRequest) {
 
     if (!onboarding) {
       return NextResponse.json({
-        totalSteps: 6,
+        totalSteps: TOTAL_STEPS,
         completedSteps: 0,
         currentStep: 0,
         percentComplete: 0,
       })
     }
 
-    const totalSteps = 6
     const completedSteps = onboarding.completedSteps?.length || 0
-    const currentStep = onboarding.currentStep || 0
-    const percentComplete = Math.round((completedSteps / totalSteps) * 100)
+    const percentComplete = Math.round((completedSteps / TOTAL_STEPS) * 100)
 
     return NextResponse.json({
-      totalSteps,
+      totalSteps: TOTAL_STEPS,
       completedSteps,
-      currentStep,
+      currentStep: onboarding.currentStep || 0,
       percentComplete,
     })
   } catch (error) {

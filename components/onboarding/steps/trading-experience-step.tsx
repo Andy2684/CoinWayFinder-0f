@@ -2,13 +2,12 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { Label } from "@/components/ui/label"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { TrendingUp, Target, Shield, Clock, DollarSign, BarChart3 } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
+import { TrendingUp, Target, AlertTriangle } from "lucide-react"
 import type { UserOnboardingData } from "@/types/onboarding"
 
 interface TradingExperienceStepProps {
@@ -17,6 +16,30 @@ interface TradingExperienceStepProps {
   onPrevious: () => void
   isLoading: boolean
 }
+
+const TRADING_PLATFORMS = [
+  "Binance",
+  "Coinbase",
+  "Kraken",
+  "Bybit",
+  "KuCoin",
+  "Huobi",
+  "FTX",
+  "Bitfinex",
+  "Other",
+  "None",
+]
+
+const TRADING_GOALS = [
+  "Long-term investment",
+  "Day trading",
+  "Swing trading",
+  "Arbitrage",
+  "DeFi yield farming",
+  "NFT trading",
+  "Portfolio diversification",
+  "Learning and education",
+]
 
 export function TradingExperienceStep({ data, onNext, isLoading }: TradingExperienceStepProps) {
   const [formData, setFormData] = useState({
@@ -27,269 +50,188 @@ export function TradingExperienceStep({ data, onNext, isLoading }: TradingExperi
     riskTolerance: data?.tradingExperience?.riskTolerance || "medium",
   })
 
-  const experienceLevels = [
-    {
-      value: "beginner",
-      title: "Beginner",
-      description: "New to crypto trading, learning the basics",
-      icon: "🌱",
-      features: ["Guided tutorials", "Risk management tools", "Educational content"],
-    },
-    {
-      value: "intermediate",
-      title: "Intermediate",
-      description: "Some trading experience, ready for advanced features",
-      icon: "📈",
-      features: ["Advanced charting", "Strategy backtesting", "Portfolio analytics"],
-    },
-    {
-      value: "advanced",
-      title: "Advanced",
-      description: "Experienced trader, need professional tools",
-      icon: "🚀",
-      features: ["API access", "Custom indicators", "Institutional features"],
-    },
-  ]
+  const handleLevelChange = (level: string) => {
+    setFormData((prev) => ({ ...prev, level: level as any }))
+  }
 
-  const platforms = ["Binance", "Coinbase", "Kraken", "Bybit", "KuCoin", "Huobi", "FTX", "Bitfinex", "Other"]
+  const handlePlatformChange = (platform: string, checked: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      previousPlatforms: checked
+        ? [...prev.previousPlatforms, platform]
+        : prev.previousPlatforms.filter((p) => p !== platform),
+    }))
+  }
 
-  const goals = [
-    { id: "day-trading", label: "Day Trading", icon: "⚡" },
-    { id: "swing-trading", label: "Swing Trading", icon: "📊" },
-    { id: "long-term", label: "Long-term Investment", icon: "💎" },
-    { id: "defi", label: "DeFi & Yield Farming", icon: "🌾" },
-    { id: "arbitrage", label: "Arbitrage Trading", icon: "🔄" },
-    { id: "portfolio", label: "Portfolio Management", icon: "📈" },
-  ]
+  const handleGoalChange = (goal: string, checked: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      tradingGoals: checked ? [...prev.tradingGoals, goal] : prev.tradingGoals.filter((g) => g !== goal),
+    }))
+  }
 
-  const riskLevels = [
-    {
-      value: "low",
-      title: "Conservative",
-      description: "Prefer stable, low-risk investments",
-      icon: <Shield className="w-5 h-5" />,
-      color: "text-green-400 border-green-400",
-    },
-    {
-      value: "medium",
-      title: "Moderate",
-      description: "Balanced approach to risk and reward",
-      icon: <BarChart3 className="w-5 h-5" />,
-      color: "text-yellow-400 border-yellow-400",
-    },
-    {
-      value: "high",
-      title: "Aggressive",
-      description: "Comfortable with high-risk, high-reward strategies",
-      icon: <TrendingUp className="w-5 h-5" />,
-      color: "text-red-400 border-red-400",
-    },
-  ]
-
-  const handleSubmit = () => {
+  const handleNext = () => {
     onNext({
       tradingExperience: formData,
     })
   }
 
-  const togglePlatform = (platform: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      previousPlatforms: prev.previousPlatforms.includes(platform)
-        ? prev.previousPlatforms.filter((p) => p !== platform)
-        : [...prev.previousPlatforms, platform],
-    }))
+  const getLevelDescription = (level: string) => {
+    switch (level) {
+      case "beginner":
+        return "New to crypto trading or less than 1 year of experience"
+      case "intermediate":
+        return "1-3 years of trading experience with basic strategies"
+      case "advanced":
+        return "3+ years of experience with advanced trading strategies"
+      default:
+        return ""
+    }
   }
 
-  const toggleGoal = (goalId: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      tradingGoals: prev.tradingGoals.includes(goalId)
-        ? prev.tradingGoals.filter((g) => g !== goalId)
-        : [...prev.tradingGoals, goalId],
-    }))
+  const getRiskDescription = (risk: string) => {
+    switch (risk) {
+      case "low":
+        return "Conservative approach, prefer stable investments"
+      case "medium":
+        return "Balanced approach, moderate risk for moderate returns"
+      case "high":
+        return "Aggressive approach, willing to take high risks for high returns"
+      default:
+        return ""
+    }
   }
 
   return (
     <div className="space-y-6">
       <div className="text-center">
-        <h2 className="text-2xl font-bold text-white mb-2">Tell Us About Your Trading Experience</h2>
-        <p className="text-gray-300">This helps us customize CoinWayFinder to match your skill level and goals</p>
+        <h2 className="text-xl font-semibold text-white mb-2">Tell Us About Your Trading Experience</h2>
+        <p className="text-gray-300">This helps us customize your dashboard and recommend suitable strategies</p>
       </div>
 
-      {/* Experience Level */}
-      <Card className="bg-slate-700/50 border-slate-600">
-        <CardContent className="p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-white flex items-center">
-            <TrendingUp className="w-5 h-5 mr-2" />
-            What's your trading experience level?
-          </h3>
-          <RadioGroup
-            value={formData.level}
-            onValueChange={(value) => setFormData((prev) => ({ ...prev, level: value as any }))}
-            className="space-y-3"
-          >
-            {experienceLevels.map((level) => (
-              <div key={level.value} className="flex items-start space-x-3">
-                <RadioGroupItem value={level.value} id={level.value} className="mt-1" />
-                <Label htmlFor={level.value} className="flex-1 cursor-pointer">
-                  <Card
-                    className={`p-4 transition-colors ${
-                      formData.level === level.value
-                        ? "bg-blue-500/20 border-blue-500"
-                        : "bg-slate-600/50 border-slate-500 hover:border-slate-400"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <span className="text-2xl">{level.icon}</span>
-                          <h4 className="font-medium text-white">{level.title}</h4>
-                        </div>
-                        <p className="text-sm text-gray-400 mb-3">{level.description}</p>
-                        <div className="flex flex-wrap gap-1">
-                          {level.features.map((feature, index) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {feature}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                </Label>
-              </div>
-            ))}
-          </RadioGroup>
-        </CardContent>
-      </Card>
-
-      {/* Years of Experience */}
-      <Card className="bg-slate-700/50 border-slate-600">
-        <CardContent className="p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-white flex items-center">
-            <Clock className="w-5 h-5 mr-2" />
-            How many years have you been trading crypto?
-          </h3>
-          <Select
-            value={formData.yearsExperience.toString()}
-            onValueChange={(value) => setFormData((prev) => ({ ...prev, yearsExperience: Number.parseInt(value) }))}
-          >
-            <SelectTrigger className="bg-slate-600 border-slate-500 text-white">
-              <SelectValue placeholder="Select years of experience" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="0">Less than 1 year</SelectItem>
-              <SelectItem value="1">1 year</SelectItem>
-              <SelectItem value="2">2 years</SelectItem>
-              <SelectItem value="3">3 years</SelectItem>
-              <SelectItem value="4">4 years</SelectItem>
-              <SelectItem value="5">5+ years</SelectItem>
-              <SelectItem value="10">10+ years</SelectItem>
-            </SelectContent>
-          </Select>
-        </CardContent>
-      </Card>
-
-      {/* Previous Platforms */}
-      <Card className="bg-slate-700/50 border-slate-600">
-        <CardContent className="p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-white">Which trading platforms have you used? (Optional)</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {platforms.map((platform) => (
-              <div
-                key={platform}
-                onClick={() => togglePlatform(platform)}
-                className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                  formData.previousPlatforms.includes(platform)
-                    ? "bg-blue-500/20 border-blue-500 text-blue-400"
-                    : "bg-slate-600/50 border-slate-500 text-gray-300 hover:border-slate-400"
-                }`}
-              >
-                <div className="flex items-center space-x-2">
-                  <Checkbox checked={formData.previousPlatforms.includes(platform)} onChange={() => {}} />
-                  <span className="text-sm font-medium">{platform}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Trading Goals */}
-      <Card className="bg-slate-700/50 border-slate-600">
-        <CardContent className="p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-white flex items-center">
-            <Target className="w-5 h-5 mr-2" />
-            What are your trading goals? (Select all that apply)
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {goals.map((goal) => (
-              <div
-                key={goal.id}
-                onClick={() => toggleGoal(goal.id)}
-                className={`p-4 rounded-lg border cursor-pointer transition-colors ${
-                  formData.tradingGoals.includes(goal.id)
-                    ? "bg-blue-500/20 border-blue-500"
-                    : "bg-slate-600/50 border-slate-500 hover:border-slate-400"
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <span className="text-2xl">{goal.icon}</span>
-                  <div>
-                    <h4 className="font-medium text-white">{goal.label}</h4>
+      <div className="space-y-6">
+        {/* Experience Level */}
+        <Card className="bg-slate-700/50 border-slate-600">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2 mb-3">
+              <TrendingUp className="w-5 h-5 text-blue-400" />
+              <Label className="text-white font-medium">Trading Experience Level</Label>
+            </div>
+            <RadioGroup value={formData.level} onValueChange={handleLevelChange}>
+              {["beginner", "intermediate", "advanced"].map((level) => (
+                <div key={level} className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value={level} id={level} />
+                    <Label htmlFor={level} className="text-white capitalize cursor-pointer">
+                      {level}
+                    </Label>
                   </div>
-                  <Checkbox checked={formData.tradingGoals.includes(goal.id)} onChange={() => {}} className="ml-auto" />
+                  <p className="text-sm text-gray-400 ml-6">{getLevelDescription(level)}</p>
                 </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </RadioGroup>
+          </CardContent>
+        </Card>
 
-      {/* Risk Tolerance */}
-      <Card className="bg-slate-700/50 border-slate-600">
-        <CardContent className="p-6 space-y-4">
-          <h3 className="text-lg font-semibold text-white flex items-center">
-            <DollarSign className="w-5 h-5 mr-2" />
-            What's your risk tolerance?
-          </h3>
-          <RadioGroup
-            value={formData.riskTolerance}
-            onValueChange={(value) => setFormData((prev) => ({ ...prev, riskTolerance: value as any }))}
-            className="space-y-3"
-          >
-            {riskLevels.map((risk) => (
-              <div key={risk.value} className="flex items-start space-x-3">
-                <RadioGroupItem value={risk.value} id={risk.value} className="mt-1" />
-                <Label htmlFor={risk.value} className="flex-1 cursor-pointer">
-                  <Card
-                    className={`p-4 transition-colors ${
-                      formData.riskTolerance === risk.value
-                        ? `bg-opacity-20 border-opacity-100 ${risk.color.replace("text-", "bg-").replace("border-", "border-")}`
-                        : "bg-slate-600/50 border-slate-500 hover:border-slate-400"
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className={formData.riskTolerance === risk.value ? risk.color : "text-gray-400"}>
-                        {risk.icon}
-                      </div>
-                      <div>
-                        <h4 className="font-medium text-white">{risk.title}</h4>
-                        <p className="text-sm text-gray-400">{risk.description}</p>
-                      </div>
-                    </div>
-                  </Card>
-                </Label>
-              </div>
-            ))}
-          </RadioGroup>
-        </CardContent>
-      </Card>
+        {/* Years of Experience */}
+        <Card className="bg-slate-700/50 border-slate-600">
+          <CardContent className="p-4">
+            <Label className="text-white font-medium mb-3 block">Years of Trading Experience</Label>
+            <Select
+              value={formData.yearsExperience.toString()}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, yearsExperience: Number.parseInt(value) }))}
+            >
+              <SelectTrigger className="bg-slate-600 border-slate-500 text-white">
+                <SelectValue placeholder="Select years of experience" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0">Less than 1 year</SelectItem>
+                <SelectItem value="1">1-2 years</SelectItem>
+                <SelectItem value="3">3-5 years</SelectItem>
+                <SelectItem value="6">6-10 years</SelectItem>
+                <SelectItem value="11">More than 10 years</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardContent>
+        </Card>
+
+        {/* Previous Platforms */}
+        <Card className="bg-slate-700/50 border-slate-600">
+          <CardContent className="p-4">
+            <Label className="text-white font-medium mb-3 block">
+              Which platforms have you used? (Select all that apply)
+            </Label>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {TRADING_PLATFORMS.map((platform) => (
+                <div key={platform} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={platform}
+                    checked={formData.previousPlatforms.includes(platform)}
+                    onCheckedChange={(checked) => handlePlatformChange(platform, checked as boolean)}
+                  />
+                  <Label htmlFor={platform} className="text-white text-sm cursor-pointer">
+                    {platform}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Trading Goals */}
+        <Card className="bg-slate-700/50 border-slate-600">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2 mb-3">
+              <Target className="w-5 h-5 text-green-400" />
+              <Label className="text-white font-medium">What are your trading goals? (Select all that apply)</Label>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {TRADING_GOALS.map((goal) => (
+                <div key={goal} className="flex items-center space-x-2">
+                  <Checkbox
+                    id={goal}
+                    checked={formData.tradingGoals.includes(goal)}
+                    onCheckedChange={(checked) => handleGoalChange(goal, checked as boolean)}
+                  />
+                  <Label htmlFor={goal} className="text-white text-sm cursor-pointer">
+                    {goal}
+                  </Label>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Risk Tolerance */}
+        <Card className="bg-slate-700/50 border-slate-600">
+          <CardContent className="p-4">
+            <div className="flex items-center space-x-2 mb-3">
+              <AlertTriangle className="w-5 h-5 text-yellow-400" />
+              <Label className="text-white font-medium">Risk Tolerance</Label>
+            </div>
+            <RadioGroup
+              value={formData.riskTolerance}
+              onValueChange={(value) => setFormData((prev) => ({ ...prev, riskTolerance: value as any }))}
+            >
+              {["low", "medium", "high"].map((risk) => (
+                <div key={risk} className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <RadioGroupItem value={risk} id={risk} />
+                    <Label htmlFor={risk} className="text-white capitalize cursor-pointer">
+                      {risk} Risk
+                    </Label>
+                  </div>
+                  <p className="text-sm text-gray-400 ml-6">{getRiskDescription(risk)}</p>
+                </div>
+              ))}
+            </RadioGroup>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="flex justify-center">
-        <Button onClick={handleSubmit} disabled={isLoading} size="lg" className="bg-blue-600 hover:bg-blue-700 px-8">
-          {isLoading ? "Saving Experience..." : "Continue to Preferences"}
+        <Button onClick={handleNext} disabled={isLoading} className="bg-blue-600 hover:bg-blue-700 px-8">
+          {isLoading ? "Saving..." : "Continue"}
         </Button>
       </div>
     </div>

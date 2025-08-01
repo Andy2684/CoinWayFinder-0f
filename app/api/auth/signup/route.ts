@@ -69,7 +69,8 @@ export async function POST(request: NextRequest) {
     // Return success response
     return NextResponse.json({
       success: true,
-      message: "Account created successfully",
+      message: "Account created successfully! Welcome to CoinWayFinder!",
+      redirect: "/thank-you", // Redirect to thank you page instead of dashboard
       user: {
         id: result.insertedId,
         email: user.email,
