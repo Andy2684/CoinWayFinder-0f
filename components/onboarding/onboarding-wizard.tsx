@@ -17,6 +17,10 @@ import { CompletionStep } from "./steps/completion-step"
 
 import type { UserOnboardingData, OnboardingProgress } from "@/types/onboarding"
 
+import { RewardNotification } from "@/components/gamification/reward-notification"
+import { ProgressDisplay } from "@/components/gamification/progress-display"
+import { useAchievements } from "@/hooks/use-achievements"
+
 const STEPS = [
   {
     id: "welcome",
@@ -65,11 +69,16 @@ export function OnboardingWizard() {
 
   const router = useRouter()
   const { toast } = useToast()
+  const { currentReward, newLevel, userProgress, unlockAchievement, fetchUserProgress, clearReward } = useAchievements()
 
   useEffect(() => {
     fetchOnboardingData()
     fetchProgress()
   }, [])
+
+  useEffect(() => {
+    fetchUserProgress()
+  }, [fetchUserProgress])
 
   const fetchOnboardingData = async () => {
     try {
@@ -147,12 +156,37 @@ export function OnboardingWizard() {
     if (stepData) {
       const success = await updateOnboardingData(stepData, STEPS[currentStep].id)
       if (!success) return
+
+      // Unlock step-specific achievements
+      const achievementMap: Record<number, string> = {
+        0: "welcome_aboard",
+        1: "profile_master",
+        2: "experience_guru",
+        3: "preference_pro",
+        4: "connection_champion",
+        5: "onboarding_legend",
+      }
+
+      const achievementId = achievementMap[currentStep]
+      if (achievementId) {
+        await unlockAchievement(achievementId, stepData)
+      }
     }
 
     if (currentStep < STEPS.length - 1) {
       setCurrentStep(currentStep + 1)
     } else {
-      // Complete onboarding
+      // Complete onboarding and check for speed runner achievement
+      const onboardingStartTime = onboardingData?.createdAt
+      if (onboardingStartTime) {
+        const completionTime = Date.now() - new Date(onboardingStartTime).getTime()
+        const tenMinutes = 10 * 60 * 1000
+
+        if (completionTime < tenMinutes) {
+          await unlockAchievement("speed_runner")
+        }
+      }
+
       await updateOnboardingData({ completedAt: new Date() })
       toast({
         title: "Onboarding Complete!",
@@ -185,86 +219,101 @@ export function OnboardingWizard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-slate-900 to-slate-800 p-4">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Getting Started</h1>
-          <p className="text-gray-300">Complete your setup to unlock all CoinWayFinder features</p>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm text-gray-300">
-              Step {currentStep + 1} of {STEPS.length}
-            </span>
-            <span className="text-sm text-gray-300">{Math.round(progressPercent)}% Complete</span>
+      <div className="max-w-7xl mx-auto flex">
+        <div className="flex-1 max-w-4xl">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-white mb-2">Getting Started</h1>
+            <p className="text-gray-300">Complete your setup to unlock all CoinWayFinder features</p>
           </div>
-          <Progress value={progressPercent} className="h-2" />
-        </div>
 
-        {/* Step Indicators */}
-        <div className="flex justify-center mb-8">
-          <div className="flex space-x-4">
-            {STEPS.map((step, index) => (
-              <div
-                key={step.id}
-                className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
-                  index < currentStep
-                    ? "bg-green-500 border-green-500 text-white"
-                    : index === currentStep
-                      ? "bg-blue-500 border-blue-500 text-white"
-                      : "bg-gray-700 border-gray-600 text-gray-400"
-                }`}
-              >
-                {index < currentStep ? (
-                  <Check className="w-5 h-5" />
-                ) : (
-                  <span className="text-sm font-medium">{index + 1}</span>
-                )}
-              </div>
-            ))}
+          {/* Progress Bar */}
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm text-gray-300">
+                Step {currentStep + 1} of {STEPS.length}
+              </span>
+              <span className="text-sm text-gray-300">{Math.round(progressPercent)}% Complete</span>
+            </div>
+            <Progress value={progressPercent} className="h-2" />
+          </div>
+
+          {/* Step Indicators */}
+          <div className="flex justify-center mb-8">
+            <div className="flex space-x-4">
+              {STEPS.map((step, index) => (
+                <div
+                  key={step.id}
+                  className={`flex items-center justify-center w-10 h-10 rounded-full border-2 ${
+                    index < currentStep
+                      ? "bg-green-500 border-green-500 text-white"
+                      : index === currentStep
+                        ? "bg-blue-500 border-blue-500 text-white"
+                        : "bg-gray-700 border-gray-600 text-gray-400"
+                  }`}
+                >
+                  {index < currentStep ? (
+                    <Check className="w-5 h-5" />
+                  ) : (
+                    <span className="text-sm font-medium">{index + 1}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Main Content */}
+          <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
+            <CardHeader>
+              <CardTitle className="text-white text-center">{STEPS[currentStep].title}</CardTitle>
+              <p className="text-gray-300 text-center">{STEPS[currentStep].description}</p>
+            </CardHeader>
+            <CardContent>
+              <CurrentStepComponent
+                data={onboardingData}
+                onNext={handleNext}
+                onPrevious={handlePrevious}
+                isLoading={isSaving}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Navigation */}
+          <div className="flex justify-between items-center mt-8">
+            <Button
+              variant="outline"
+              onClick={handlePrevious}
+              disabled={currentStep === 0}
+              className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Previous
+            </Button>
+
+            <Button variant="ghost" onClick={handleSkip} className="text-gray-400 hover:text-white">
+              Skip for now
+            </Button>
+
+            <Button onClick={() => handleNext()} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">
+              {currentStep === STEPS.length - 1 ? "Complete" : "Next"}
+              <ChevronRight className="w-4 h-4 ml-2" />
+            </Button>
           </div>
         </div>
-
-        {/* Main Content */}
-        <Card className="bg-slate-800/50 backdrop-blur-sm border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-white text-center">{STEPS[currentStep].title}</CardTitle>
-            <p className="text-gray-300 text-center">{STEPS[currentStep].description}</p>
-          </CardHeader>
-          <CardContent>
-            <CurrentStepComponent
-              data={onboardingData}
-              onNext={handleNext}
-              onPrevious={handlePrevious}
-              isLoading={isSaving}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Navigation */}
-        <div className="flex justify-between items-center mt-8">
-          <Button
-            variant="outline"
-            onClick={handlePrevious}
-            disabled={currentStep === 0}
-            className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
-          >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Previous
-          </Button>
-
-          <Button variant="ghost" onClick={handleSkip} className="text-gray-400 hover:text-white">
-            Skip for now
-          </Button>
-
-          <Button onClick={() => handleNext()} disabled={isSaving} className="bg-blue-600 hover:bg-blue-700">
-            {currentStep === STEPS.length - 1 ? "Complete" : "Next"}
-            <ChevronRight className="w-4 h-4 ml-2" />
-          </Button>
+        {/* Progress sidebar */}
+        <div className="hidden md:block md:w-80 ml-8">
+          <div className="sticky top-8">
+            <ProgressDisplay userProgress={userProgress} />
+          </div>
         </div>
       </div>
+      {/* Progress Display - Mobile */}
+      <div className="md:hidden mb-6">
+        <ProgressDisplay userProgress={userProgress} />
+      </div>
+
+      {/* Reward Notification */}
+      <RewardNotification reward={currentReward} onClose={clearReward} newLevel={newLevel} />
     </div>
   )
 }

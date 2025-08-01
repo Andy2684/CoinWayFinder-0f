@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { CheckCircle, TrendingUp, Bot, Bell, Link2 } from "lucide-react"
 import type { UserOnboardingData } from "@/types/onboarding"
+import { useAchievements } from "@/hooks/use-achievements"
+import { Badge } from "@/components/ui/badge"
 
 interface CompletionStepProps {
   data: UserOnboardingData | null
@@ -13,6 +15,8 @@ interface CompletionStepProps {
 }
 
 export function CompletionStep({ data, onNext, isLoading }: CompletionStepProps) {
+  const { userProgress } = useAchievements()
+
   const completedFeatures = [
     {
       icon: CheckCircle,
@@ -104,6 +108,66 @@ export function CompletionStep({ data, onNext, isLoading }: CompletionStepProps)
         </div>
       </div>
 
+      {/* Achievements Summary */}
+      {userProgress && userProgress.achievements.filter((a) => a.unlockedAt).length > 0 && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-white">🏆 Achievements Unlocked</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {userProgress.achievements
+              .filter((a) => a.unlockedAt)
+              .map((achievement, index) => (
+                <Card
+                  key={index}
+                  className={`${
+                    achievement.rarity === "legendary"
+                      ? "bg-yellow-400/10 border-yellow-400/20"
+                      : achievement.rarity === "epic"
+                        ? "bg-purple-400/10 border-purple-400/20"
+                        : achievement.rarity === "rare"
+                          ? "bg-blue-400/10 border-blue-400/20"
+                          : "bg-green-400/10 border-green-400/20"
+                  }`}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center space-x-3">
+                      <span className="text-2xl">{achievement.icon}</span>
+                      <div className="flex-1">
+                        <h4
+                          className={`font-medium ${
+                            achievement.rarity === "legendary"
+                              ? "text-yellow-400"
+                              : achievement.rarity === "epic"
+                                ? "text-purple-400"
+                                : achievement.rarity === "rare"
+                                  ? "text-blue-400"
+                                  : "text-green-400"
+                          }`}
+                        >
+                          {achievement.title}
+                        </h4>
+                        <p className="text-sm text-gray-400">{achievement.description}</p>
+                      </div>
+                      <Badge
+                        className={`${
+                          achievement.rarity === "legendary"
+                            ? "bg-yellow-400/20 text-yellow-400"
+                            : achievement.rarity === "epic"
+                              ? "bg-purple-400/20 text-purple-400"
+                              : achievement.rarity === "rare"
+                                ? "bg-blue-400/20 text-blue-400"
+                                : "bg-green-400/20 text-green-400"
+                        }`}
+                      >
+                        +{achievement.points}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+          </div>
+        </div>
+      )}
+
       {/* Next Steps */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-white">🚀 Recommended Next Steps</h3>
@@ -140,24 +204,28 @@ export function CompletionStep({ data, onNext, isLoading }: CompletionStepProps)
         <CardContent className="p-6">
           <div className="text-center">
             <h3 className="text-lg font-semibold text-blue-400 mb-2">Your CoinWayFinder Account</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
               <div>
-                <p className="text-2xl font-bold text-white">{data?.tradingExperience?.level || "Beginner"}</p>
-                <p className="text-sm text-gray-400">Experience Level</p>
+                <p className="text-2xl font-bold text-white">{userProgress?.level || 1}</p>
+                <p className="text-sm text-gray-400">Level</p>
               </div>
               <div>
-                <p className="text-2xl font-bold text-white">{data?.exchanges?.connectedExchanges?.length || 0}</p>
-                <p className="text-sm text-gray-400">Exchanges Selected</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-white">{data?.tradingExperience?.tradingGoals?.length || 0}</p>
-                <p className="text-sm text-gray-400">Trading Goals</p>
+                <p className="text-2xl font-bold text-white">{userProgress?.totalPoints || 0}</p>
+                <p className="text-sm text-gray-400">Points</p>
               </div>
               <div>
                 <p className="text-2xl font-bold text-white">
-                  {Object.values(data?.preferences?.notifications || {}).filter(Boolean).length}
+                  {userProgress?.achievements.filter((a) => a.unlockedAt).length || 0}
                 </p>
-                <p className="text-sm text-gray-400">Notifications On</p>
+                <p className="text-sm text-gray-400">Achievements</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{userProgress?.badges.length || 0}</p>
+                <p className="text-sm text-gray-400">Badges</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-white">{data?.exchanges?.connectedExchanges?.length || 0}</p>
+                <p className="text-sm text-gray-400">Exchanges</p>
               </div>
             </div>
           </div>
