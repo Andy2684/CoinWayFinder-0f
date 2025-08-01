@@ -1,55 +1,52 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Progress } from "@/components/ui/progress"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Trophy, Star, Target, Flame, Users, Bot, BookOpen, TrendingUp } from "lucide-react"
+import { Trophy, Star, Award, Filter } from "lucide-react"
 import { AchievementBadge } from "./achievement-badge"
-import { ACHIEVEMENT_DEFINITIONS, getAchievementsByCategory } from "@/lib/achievement-definitions"
-import { useToast } from "@/hooks/use-toast"
-import type { Achievement, UserAchievement, AchievementProgress } from "@/types/achievements"
+import type { UserAchievement, AchievementProgress } from "@/types/achievements"
+import { ACHIEVEMENTS, RARITY_CONFIG } from "@/lib/achievement-definitions"
 
-export function AchievementDashboard() {
-  const [achievements, setAchievements] = useState<Achievement[]>(ACHIEVEMENT_DEFINITIONS)
+interface AchievementDashboardProps {
+  userId: string
+}
+
+export function AchievementDashboard({ userId }: AchievementDashboardProps) {
   const [userAchievements, setUserAchievements] = useState<UserAchievement[]>([])
   const [progress, setProgress] = useState<AchievementProgress | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>("all")
-  const [sortBy, setSortBy] = useState<string>("rarity")
+  const [selectedRarity, setSelectedRarity] = useState<string>("all")
   const [isLoading, setIsLoading] = useState(true)
 
-  const { toast } = useToast()
-
   useEffect(() => {
-    fetchAchievementData()
-  }, [])
+    fetchAchievements()
+    fetchProgress()
+  }, [userId])
 
-  const fetchAchievementData = async () => {
+  const fetchAchievements = async () => {
     try {
-      const [achievementsRes, progressRes] = await Promise.all([
-        fetch("/api/achievements/user"),
-        fetch("/api/achievements/progress"),
-      ])
-
-      if (achievementsRes.ok) {
-        const userAchievementData = await achievementsRes.json()
-        setUserAchievements(userAchievementData)
-      }
-
-      if (progressRes.ok) {
-        const progressData = await progressRes.json()
-        setProgress(progressData)
+      const response = await fetch(`/api/achievements/user?userId=${userId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setUserAchievements(data.achievements || [])
       }
     } catch (error) {
-      console.error("Failed to fetch achievement data:", error)
-      toast({
-        title: "Error",
-        description: "Failed to load achievements",
-        variant: "destructive",
-      })
+      console.error("Failed to fetch achievements:", error)
+    }
+  }
+
+  const fetchProgress = async () => {
+    try {
+      const response = await fetch(`/api/achievements/progress?userId=${userId}`)
+      if (response.ok) {
+        const data = await response.json()
+        setProgress(data.progress)
+      }
+    } catch (error) {
+      console.error("Failed to fetch progress:", error)
     } finally {
       setIsLoading(false)
     }
@@ -59,74 +56,34 @@ export function AchievementDashboard() {
     try {
       const response = await fetch(`/api/achievements/${achievementId}/claim`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
       })
 
       if (response.ok) {
-        await fetchAchievementData()
-        toast({
-          title: "Reward Claimed!",
-          description: "Your achievement reward has been claimed successfully.",
-        })
+        await fetchAchievements()
+        await fetchProgress()
       }
     } catch (error) {
       console.error("Failed to claim reward:", error)
-      toast({
-        title: "Error",
-        description: "Failed to claim reward",
-        variant: "destructive",
-      })
     }
   }
 
-  const getFilteredAchievements = () => {
-    let filtered = achievements
-
-    if (selectedCategory !== "all") {
-      filtered = getAchievementsByCategory(selectedCategory as Achievement["category"])
-    }
-
-    // Sort achievements
-    filtered.sort((a, b) => {
-      if (sortBy === "rarity") {
-        const rarityOrder = { common: 1, uncommon: 2, rare: 3, epic: 4, legendary: 5 }
-        return rarityOrder[b.rarity] - rarityOrder[a.rarity]
-      } else if (sortBy === "points") {
-        return b.points - a.points
-      } else if (sortBy === "progress") {
-        const aProgress = userAchievements.find((ua) => ua.achievementId === a.id)
-        const bProgress = userAchievements.find((ua) => ua.achievementId === b.id)
-        if (aProgress && bProgress) {
-          return bProgress.progress - aProgress.progress
-        }
-        return aProgress ? -1 : bProgress ? 1 : 0
-      }
-      return 0
-    })
-
-    return filtered
-  }
+  const filteredAchievements = ACHIEVEMENTS.filter((achievement) => {
+    const categoryMatch = selectedCategory === "all" || achievement.category === selectedCategory
+    const rarityMatch = selectedRarity === "all" || achievement.rarity === selectedRarity
+    return categoryMatch && rarityMatch && !achievement.isHidden
+  })
 
   const getUserAchievement = (achievementId: string) => {
     return userAchievements.find((ua) => ua.achievementId === achievementId)
   }
 
-  const unlockedCount = userAchievements.filter((ua) => !!ua).length
-  const totalPoints = progress?.totalPoints || 0
-  const level = progress?.level || 1
-  const nextLevelPoints = progress?.nextLevelPoints || 100
-  const currentLevelPoints = progress?.currentLevelPoints || 0
-  const levelProgress = ((totalPoints - currentLevelPoints) / (nextLevelPoints - currentLevelPoints)) * 100
+  const completedCount = userAchievements.filter((ua) => ua.isCompleted).length
+  const totalCount = ACHIEVEMENTS.filter((a) => !a.isHidden).length
+  const completionRate = totalCount > 0 ? (completedCount / totalCount) * 100 : 0
 
-  const categoryIcons = {
-    trading: TrendingUp,
-    learning: BookOpen,
-    social: Users,
-    portfolio: Target,
-    bot: Bot,
-    milestone: Trophy,
-    streak: Flame,
-    special: Star,
-  }
+  const unclaimedRewards = userAchievements.filter((ua) => ua.isCompleted && !ua.isClaimed).length
 
   if (isLoading) {
     return (
@@ -139,69 +96,64 @@ export function AchievementDashboard() {
   return (
     <div className="space-y-6">
       {/* Progress Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="bg-gradient-to-br from-blue-900 to-blue-800 border-blue-700">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Trophy className="w-5 h-5" />
-              Level {level}
-            </CardTitle>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Level</CardTitle>
+            <Trophy className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm text-blue-200">
-                <span>Progress to Level {level + 1}</span>
-                <span>
-                  {totalPoints}/{nextLevelPoints}
-                </span>
-              </div>
-              <Progress value={levelProgress} className="h-2" />
-              <p className="text-xs text-blue-200">{nextLevelPoints - totalPoints} points to next level</p>
-            </div>
+            <div className="text-2xl font-bold">{progress?.level || 1}</div>
+            <Progress value={progress?.currentLevelProgress || 0} className="mt-2" />
+            <p className="text-xs text-muted-foreground mt-2">
+              {progress?.totalPoints || 0} / {progress?.nextLevelPoints || 1000} XP
+            </p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-yellow-900 to-yellow-800 border-yellow-700">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Star className="w-5 h-5" />
-              Total Points
-            </CardTitle>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Achievements</CardTitle>
+            <Award className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-yellow-100">{totalPoints.toLocaleString()}</div>
-            <p className="text-sm text-yellow-200">Lifetime earned</p>
+            <div className="text-2xl font-bold">
+              {completedCount}/{totalCount}
+            </div>
+            <Progress value={completionRate} className="mt-2" />
+            <p className="text-xs text-muted-foreground mt-2">{completionRate.toFixed(1)}% Complete</p>
           </CardContent>
         </Card>
 
-        <Card className="bg-gradient-to-br from-green-900 to-green-800 border-green-700">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center gap-2">
-              <Target className="w-5 h-5" />
-              Achievements
-            </CardTitle>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Unclaimed Rewards</CardTitle>
+            <Star className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-100">
-              {unlockedCount}/{achievements.length}
-            </div>
-            <p className="text-sm text-green-200">
-              {Math.round((unlockedCount / achievements.length) * 100)}% Complete
+            <div className="text-2xl font-bold text-green-600">{unclaimedRewards}</div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {unclaimedRewards > 0 ? "Click achievements to claim!" : "All rewards claimed"}
             </p>
           </CardContent>
         </Card>
       </div>
 
-      {/* Achievement Browser */}
-      <Card className="bg-slate-800 border-slate-700">
+      {/* Filters */}
+      <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <CardTitle className="text-white">Achievement Gallery</CardTitle>
-
-            <div className="flex flex-col sm:flex-row gap-2">
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filters
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-wrap gap-4">
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Category</label>
               <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                <SelectTrigger className="w-full sm:w-[180px] bg-slate-700 border-slate-600">
-                  <SelectValue placeholder="Category" />
+                <SelectTrigger className="w-40">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Categories</SelectItem>
@@ -215,99 +167,94 @@ export function AchievementDashboard() {
                   <SelectItem value="special">Special</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
 
-              <Select value={sortBy} onValueChange={setSortBy}>
-                <SelectTrigger className="w-full sm:w-[140px] bg-slate-700 border-slate-600">
-                  <SelectValue placeholder="Sort by" />
+            <div className="flex flex-col gap-2">
+              <label className="text-sm font-medium">Rarity</label>
+              <Select value={selectedRarity} onValueChange={setSelectedRarity}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="rarity">Rarity</SelectItem>
-                  <SelectItem value="points">Points</SelectItem>
-                  <SelectItem value="progress">Progress</SelectItem>
+                  <SelectItem value="all">All Rarities</SelectItem>
+                  <SelectItem value="common">Common</SelectItem>
+                  <SelectItem value="uncommon">Uncommon</SelectItem>
+                  <SelectItem value="rare">Rare</SelectItem>
+                  <SelectItem value="epic">Epic</SelectItem>
+                  <SelectItem value="legendary">Legendary</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Achievement Grid */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Achievement Gallery</CardTitle>
+          <CardDescription>Unlock achievements by trading, learning, and engaging with the community</CardDescription>
         </CardHeader>
-
         <CardContent>
-          <Tabs defaultValue="grid" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="grid">Grid View</TabsTrigger>
-              <TabsTrigger value="list">List View</TabsTrigger>
-            </TabsList>
+          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-4">
+            {filteredAchievements.map((achievement) => (
+              <AchievementBadge
+                key={achievement.id}
+                achievement={achievement}
+                userAchievement={getUserAchievement(achievement.id)}
+                size="md"
+                onClaim={handleClaimReward}
+              />
+            ))}
+          </div>
 
-            <TabsContent value="grid">
-              <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-4">
-                {getFilteredAchievements().map((achievement) => (
-                  <AchievementBadge
-                    key={achievement.id}
-                    achievement={achievement}
-                    userAchievement={getUserAchievement(achievement.id)}
-                    interactive={true}
-                    onClaim={handleClaimReward}
-                  />
-                ))}
+          {filteredAchievements.length === 0 && (
+            <div className="text-center py-8 text-gray-500">No achievements found with the selected filters.</div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Recent Achievements */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Achievements</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {userAchievements
+              .filter((ua) => ua.isCompleted)
+              .sort((a, b) => new Date(b.unlockedAt).getTime() - new Date(a.unlockedAt).getTime())
+              .slice(0, 5)
+              .map((userAchievement) => {
+                const achievement = ACHIEVEMENTS.find((a) => a.id === userAchievement.achievementId)
+                if (!achievement) return null
+
+                return (
+                  <div
+                    key={userAchievement.achievementId}
+                    className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg"
+                  >
+                    <div className="text-2xl">{achievement.icon}</div>
+                    <div className="flex-1">
+                      <h4 className="font-medium">{achievement.name}</h4>
+                      <p className="text-sm text-gray-600">{achievement.description}</p>
+                      <p className="text-xs text-gray-400">
+                        Unlocked {new Date(userAchievement.unlockedAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <Badge variant="outline" className={RARITY_CONFIG[achievement.rarity].color}>
+                      +{achievement.points} XP
+                    </Badge>
+                  </div>
+                )
+              })}
+
+            {userAchievements.filter((ua) => ua.isCompleted).length === 0 && (
+              <div className="text-center py-4 text-gray-500">
+                No achievements unlocked yet. Start trading to earn your first achievement!
               </div>
-            </TabsContent>
-
-            <TabsContent value="list">
-              <div className="space-y-3">
-                {getFilteredAchievements().map((achievement) => {
-                  const userAchievement = getUserAchievement(achievement.id)
-                  const isUnlocked = !!userAchievement
-                  const progress = userAchievement?.progress || 0
-                  const maxProgress = achievement.maxProgress || 1
-
-                  return (
-                    <Card key={achievement.id} className="bg-slate-700 border-slate-600">
-                      <CardContent className="p-4">
-                        <div className="flex items-center gap-4">
-                          <AchievementBadge
-                            achievement={achievement}
-                            userAchievement={userAchievement}
-                            size="sm"
-                            showProgress={false}
-                          />
-
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-semibold text-white">{achievement.title}</h4>
-                              <Badge variant="outline" className={`text-xs`}>
-                                {achievement.rarity}
-                              </Badge>
-                              <span className="text-yellow-400 text-sm">{achievement.points} pts</span>
-                            </div>
-
-                            <p className="text-gray-300 text-sm mb-2">{achievement.description}</p>
-
-                            {achievement.type !== "one_time" && (
-                              <div className="flex items-center gap-2">
-                                <Progress value={(progress / maxProgress) * 100} className="h-2 flex-1" />
-                                <span className="text-xs text-gray-400">
-                                  {progress}/{maxProgress}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-
-                          {isUnlocked && !userAchievement?.claimed && achievement.reward && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleClaimReward(achievement.id)}
-                              className="bg-gradient-to-r from-yellow-500 to-orange-500"
-                            >
-                              Claim
-                            </Button>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )
-                })}
-              </div>
-            </TabsContent>
-          </Tabs>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

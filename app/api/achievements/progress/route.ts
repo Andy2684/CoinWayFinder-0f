@@ -1,66 +1,82 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
+import {
+  ACHIEVEMENTS,
+  calculateLevel,
+  getPointsForNextLevel,
+  getCurrentLevelProgress,
+} from "@/lib/achievement-definitions"
 
 export async function GET(request: NextRequest) {
   try {
-    // In a real app, get userId from authentication
-    const userId = request.nextUrl.searchParams.get("userId") || "demo-user"
+    const { searchParams } = new URL(request.url)
+    const userId = searchParams.get("userId")
 
-    const db = await connectToDatabase()
-
-    let progress = await db.collection("user_progress").findOne({ userId })
-
-    if (!progress) {
-      // Create initial progress
-      progress = {
-        userId,
-        totalPoints: 0,
-        totalAchievements: 0,
-        level: 1,
-        currentLevelPoints: 0,
-        nextLevelPoints: 1000,
-        streak: { login: 0, trading: 0, learning: 0 },
-        stats: {
-          tradesCompleted: 0,
-          botsCreated: 0,
-          profitGenerated: 0,
-          coursesCompleted: 0,
-          articlesRead: 0,
-          referralsMade: 0,
-          daysActive: 1,
-        },
-        createdAt: new Date(),
-      }
-
-      await db.collection("user_progress").insertOne(progress)
+    if (!userId) {
+      return NextResponse.json({ success: false, error: "User ID is required" }, { status: 400 })
     }
 
-    return NextResponse.json(progress)
-  } catch (error) {
-    console.error("Failed to fetch user progress:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
-
-export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { userId = "demo-user", updates } = body
-
     const db = await connectToDatabase()
 
-    await db.collection("user_progress").updateOne(
-      { userId },
-      {
-        $set: { ...updates, updatedAt: new Date() },
-      },
-      { upsert: true },
-    )
+    // Get user achievements
+    const userAchievements = await db.collection("user_achievements").find({ userId, isCompleted: true }).toArray()
 
-    const updatedProgress = await db.collection("user_progress").findOne({ userId })
-    return NextResponse.json(updatedProgress)
+    // Calculate total points
+    let totalPoints = 0
+    for (const userAchievement of userAchievements) {
+      const achievement = ACHIEVEMENTS.find((a) => a.id === userAchievement.achievementId)
+      if (achievement) {
+        totalPoints += achievement.points
+      }
+    }
+
+    // Get user statistics (this would come from your user stats system)
+    const userStats = (await db.collection("user_statistics").findOne({ userId })) || {
+      totalTrades: 0,
+      totalProfit: 0,
+      totalVolume: 0,
+      winRate: 0,
+      bestTrade: 0,
+      articlesRead: 0,
+      coursesCompleted: 0,
+      timeSpentLearning: 0,
+      referrals: 0,
+      communityPosts: 0,
+      helpfulVotes: 0,
+      portfolioValue: 0,
+      assetsOwned: 0,
+      diversificationScore: 0,
+      botsCreated: 0,
+      botsDeployed: 0,
+      botProfit: 0,
+      loginStreak: 0,
+      bestLoginStreak: 0,
+      daysActive: 0,
+      accountAge: 0,
+      perfectMonths: 0,
+      betaTester: false,
+      earlyAdopter: false,
+    }
+
+    const level = calculateLevel(totalPoints)
+    const nextLevelPoints = getPointsForNextLevel(totalPoints)
+    const currentLevelProgress = getCurrentLevelProgress(totalPoints)
+
+    const progress = {
+      userId,
+      statistics: userStats,
+      level,
+      totalPoints,
+      nextLevelPoints,
+      currentLevelProgress,
+    }
+
+    return NextResponse.json({
+      success: true,
+      progress,
+    })
   } catch (error) {
-    console.error("Failed to update user progress:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    console.error("Error fetching achievement progress:", error)
+    return NextResponse.json({ success: false, error: "Failed to fetch achievement progress" }, { status: 500 })
   }
 }

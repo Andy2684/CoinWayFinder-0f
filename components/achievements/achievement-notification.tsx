@@ -3,156 +3,220 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { X, Gift, Star } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { RARITY_GRADIENTS } from "@/lib/achievement-definitions"
+import { Badge } from "@/components/ui/badge"
+import { X, Gift, Trophy } from "lucide-react"
 import type { Achievement } from "@/types/achievements"
+import { RARITY_CONFIG } from "@/lib/achievement-definitions"
+import { cn } from "@/lib/utils"
 
 interface AchievementNotificationProps {
   achievement: Achievement
-  onDismiss: () => void
+  onClose: () => void
   onClaim?: () => void
-  autoHide?: boolean
+  autoClose?: boolean
   duration?: number
 }
 
 export function AchievementNotification({
   achievement,
-  onDismiss,
+  onClose,
   onClaim,
-  autoHide = true,
+  autoClose = true,
   duration = 5000,
 }: AchievementNotificationProps) {
-  const [isVisible, setIsVisible] = useState(true)
-  const [isAnimating, setIsAnimating] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
+  const [isClosing, setIsClosing] = useState(false)
 
   useEffect(() => {
-    if (autoHide) {
-      const timer = setTimeout(() => {
-        handleDismiss()
+    // Animate in
+    const timer = setTimeout(() => setIsVisible(true), 100)
+
+    // Auto close
+    if (autoClose) {
+      const closeTimer = setTimeout(() => {
+        handleClose()
       }, duration)
-      return () => clearTimeout(timer)
+
+      return () => {
+        clearTimeout(timer)
+        clearTimeout(closeTimer)
+      }
     }
-  }, [autoHide, duration])
 
-  useEffect(() => {
-    // Trigger entrance animation
-    const timer = setTimeout(() => setIsAnimating(true), 100)
     return () => clearTimeout(timer)
-  }, [])
+  }, [autoClose, duration])
 
-  const handleDismiss = () => {
-    setIsAnimating(false)
+  const handleClose = () => {
+    setIsClosing(true)
     setTimeout(() => {
-      setIsVisible(false)
-      onDismiss()
+      onClose()
     }, 300)
   }
 
   const handleClaim = () => {
-    onClaim?.()
-    handleDismiss()
+    if (onClaim) {
+      onClaim()
+    }
+    handleClose()
   }
 
-  if (!isVisible) return null
+  const rarity = RARITY_CONFIG[achievement.rarity]
 
   return (
-    <div className="fixed top-4 right-4 z-50">
+    <div
+      className={cn(
+        "fixed top-4 right-4 z-50 transition-all duration-300 transform",
+        isVisible && !isClosing ? "translate-x-0 opacity-100" : "translate-x-full opacity-0",
+      )}
+    >
       <Card
         className={cn(
-          "w-80 bg-gradient-to-br border-2 shadow-2xl transition-all duration-500",
-          RARITY_GRADIENTS[achievement.rarity],
-          isAnimating ? "translate-x-0 opacity-100 scale-100" : "translate-x-full opacity-0 scale-95",
+          "w-80 shadow-lg border-2 animate-bounce",
+          rarity.borderColor,
+          "bg-gradient-to-r from-white to-gray-50",
         )}
       >
         <CardContent className="p-4">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <div className="text-2xl">{achievement.icon}</div>
-              <div>
-                <h3 className="font-bold text-white text-sm">Achievement Unlocked!</h3>
-                <div className="flex items-center gap-1">
-                  {achievement.rarity === "legendary" && <Star className="w-3 h-3 text-yellow-300" />}
-                  {achievement.rarity === "epic" && <Star className="w-3 h-3 text-purple-300" />}
-                  <span className="text-xs text-white/80 capitalize">{achievement.rarity}</span>
-                </div>
-              </div>
+          <div className="flex items-start gap-3">
+            {/* Achievement Icon */}
+            <div
+              className={cn(
+                "w-12 h-12 rounded-lg border-2 flex items-center justify-center text-2xl flex-shrink-0",
+                rarity.borderColor,
+                rarity.bgColor,
+              )}
+            >
+              {achievement.icon}
             </div>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleDismiss}
-              className="h-6 w-6 p-0 text-white/60 hover:text-white hover:bg-white/10"
-            >
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <Trophy className="w-4 h-4 text-yellow-500" />
+                <span className="text-sm font-medium text-gray-600">Achievement Unlocked!</span>
+              </div>
+
+              <h3 className="font-bold text-gray-900 truncate">{achievement.name}</h3>
+              <p className="text-sm text-gray-600 line-clamp-2">{achievement.description}</p>
+
+              <div className="flex items-center gap-2 mt-2">
+                <Badge variant="outline" className={rarity.color}>
+                  {achievement.rarity.toUpperCase()}
+                </Badge>
+                <Badge variant="secondary">+{achievement.points} XP</Badge>
+              </div>
+
+              {/* Rewards */}
+              {achievement.rewards && achievement.rewards.length > 0 && (
+                <div className="mt-2">
+                  <div className="flex items-center gap-1 text-xs text-green-600">
+                    <Gift className="w-3 h-3" />
+                    <span>Rewards available!</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Close Button */}
+            <Button variant="ghost" size="sm" onClick={handleClose} className="flex-shrink-0 h-6 w-6 p-0">
               <X className="w-4 h-4" />
             </Button>
           </div>
 
-          <div className="space-y-3">
-            <div>
-              <h4 className="font-semibold text-white">{achievement.title}</h4>
-              <p className="text-sm text-white/80">{achievement.description}</p>
+          {/* Action Buttons */}
+          {achievement.rewards && achievement.rewards.length > 0 && (
+            <div className="flex gap-2 mt-3">
+              <Button size="sm" onClick={handleClaim} className="flex-1 bg-green-600 hover:bg-green-700">
+                <Gift className="w-4 h-4 mr-1" />
+                Claim Rewards
+              </Button>
             </div>
-
-            <div className="flex items-center justify-between">
-              <div className="text-yellow-200 font-semibold text-sm">+{achievement.points} points</div>
-
-              {achievement.reward && onClaim && (
-                <Button
-                  size="sm"
-                  onClick={handleClaim}
-                  className="bg-white/20 hover:bg-white/30 text-white border-white/30"
-                >
-                  <Gift className="w-3 h-3 mr-1" />
-                  Claim Reward
-                </Button>
-              )}
-            </div>
-
-            {achievement.reward && (
-              <div className="bg-white/10 p-2 rounded text-xs text-white/90">
-                <strong>Reward:</strong> {achievement.reward.description}
-              </div>
-            )}
-          </div>
+          )}
         </CardContent>
+
+        {/* Rarity Glow Effect */}
+        <div
+          className={cn(
+            "absolute inset-0 rounded-lg opacity-20 animate-pulse",
+            achievement.rarity === "legendary" && "bg-gradient-to-r from-yellow-400 to-orange-400",
+            achievement.rarity === "epic" && "bg-gradient-to-r from-purple-400 to-pink-400",
+            achievement.rarity === "rare" && "bg-gradient-to-r from-blue-400 to-cyan-400",
+          )}
+        />
       </Card>
     </div>
   )
 }
 
-// Achievement notification queue manager
-export class AchievementNotificationManager {
-  private queue: Achievement[] = []
-  private isShowing = false
-  private showCallback?: (achievement: Achievement) => void
-
-  setShowCallback(callback: (achievement: Achievement) => void) {
-    this.showCallback = callback
-  }
-
-  addNotification(achievement: Achievement) {
-    this.queue.push(achievement)
-    this.processQueue()
-  }
-
-  private async processQueue() {
-    if (this.isShowing || this.queue.length === 0) return
-
-    this.isShowing = true
-    const achievement = this.queue.shift()!
-
-    if (this.showCallback) {
-      this.showCallback(achievement)
-
-      // Wait for notification to be dismissed before showing next
-      setTimeout(() => {
-        this.isShowing = false
-        this.processQueue()
-      }, 5500) // Slightly longer than auto-hide duration
-    }
-  }
+// Notification Manager Component
+interface AchievementNotificationManagerProps {
+  userId: string
 }
 
-export const achievementNotificationManager = new AchievementNotificationManager()
+export function AchievementNotificationManager({ userId }: AchievementNotificationManagerProps) {
+  const [notifications, setNotifications] = useState<
+    Array<{
+      id: string
+      achievement: Achievement
+    }>
+  >([])
+
+  useEffect(() => {
+    // Listen for achievement unlock events
+    const handleAchievementUnlock = (event: CustomEvent) => {
+      const { achievement } = event.detail
+      addNotification(achievement)
+    }
+
+    window.addEventListener("achievementUnlocked", handleAchievementUnlock as EventListener)
+
+    return () => {
+      window.removeEventListener("achievementUnlocked", handleAchievementUnlock as EventListener)
+    }
+  }, [])
+
+  const addNotification = (achievement: Achievement) => {
+    const id = `${achievement.id}-${Date.now()}`
+    setNotifications((prev) => [...prev, { id, achievement }])
+  }
+
+  const removeNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id))
+  }
+
+  const handleClaim = async (achievementId: string, notificationId: string) => {
+    try {
+      const response = await fetch(`/api/achievements/${achievementId}/claim`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId }),
+      })
+
+      if (response.ok) {
+        // Trigger a custom event to update other components
+        window.dispatchEvent(
+          new CustomEvent("achievementClaimed", {
+            detail: { achievementId },
+          }),
+        )
+      }
+    } catch (error) {
+      console.error("Failed to claim achievement:", error)
+    } finally {
+      removeNotification(notificationId)
+    }
+  }
+
+  return (
+    <>
+      {notifications.map(({ id, achievement }) => (
+        <AchievementNotification
+          key={id}
+          achievement={achievement}
+          onClose={() => removeNotification(id)}
+          onClaim={achievement.rewards?.length ? () => handleClaim(achievement.id, id) : undefined}
+        />
+      ))}
+    </>
+  )
+}

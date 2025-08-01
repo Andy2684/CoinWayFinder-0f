@@ -81,7 +81,7 @@ export default function SignupClient() {
         throw new Error(data.error || "Signup failed")
       }
 
-      setSuccess("Account created successfully! Please check your email to verify your account.")
+      setSuccess("Account created successfully! Welcome to CoinWayFinder!")
 
       // Redirect to thank you page instead of dashboard
       setTimeout(() => {
