@@ -1,82 +1,131 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { connectToDatabase } from "@/lib/mongodb"
+import { ObjectId } from "mongodb"
 import { adminNotificationService } from "@/lib/admin-notification-service"
-import { getUser, updateUser, deleteUser } from "@/lib/user"
 
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { id } = params
 
-    // Get user before deletion for notification
-    const user = await getUser(id)
-    if (!user) {
-      return NextResponse.json({ message: "User not found" }, { status: 404 })
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 })
     }
 
-    // Delete the user
-    await deleteUser(id)
+    const db = await connectToDatabase()
+    const collection = db.collection("users")
 
-    // Send admin action notification
-    await adminNotificationService.sendAdminActionNotification({
-      type: "user_deleted",
-      adminId: "admin123", // This should come from auth context
-      adminEmail: "admin@coinwayfinder.com", // This should come from auth context
-      targetUserId: id,
-      targetUserEmail: user.email,
-      details: "User account deleted by administrator",
-      timestamp: new Date(),
-    })
+    const user = await collection.findOne(
+      { _id: new ObjectId(id) },
+      { projection: { password: 0 } }, // Exclude password from response
+    )
 
-    return NextResponse.json({ message: "User deleted successfully" }, { status: 200 })
+    if (!user) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    return NextResponse.json({ user })
   } catch (error) {
-    console.error("Error deleting user:", error)
-    return NextResponse.json({ message: "Internal server error" }, { status: 500 })
+    console.error("Failed to fetch user:", error)
+    return NextResponse.json({ error: "Failed to fetch user" }, { status: 500 })
   }
 }
 
 export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { id } = params
-    const updates = await request.json()
+    const body = await request.json()
 
-    // Get current user data
-    const currentUser = await getUser(id)
-    if (!currentUser) {
-      return NextResponse.json({ message: "User not found" }, { status: 404 })
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 })
     }
 
-    // Update the user
-    const updatedUser = await updateUser(id, updates)
+    const db = await connectToDatabase()
+    const collection = db.collection("users")
 
-    // Check for role changes and send notification
-    if (updates.role && updates.role !== currentUser.role) {
-      await adminNotificationService.sendAdminActionNotification({
-        type: "role_changed",
-        adminId: "admin123", // This should come from auth context
-        adminEmail: "admin@coinwayfinder.com", // This should come from auth context
-        targetUserId: id,
-        targetUserEmail: currentUser.email,
-        details: `User role changed from ${currentUser.role} to ${updates.role}`,
-        timestamp: new Date(),
-      })
+    // Check if user exists
+    const existingUser = await collection.findOne({ _id: new ObjectId(id) })
+    if (!existingUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    // Check for status changes (ban/unban)
-    if (updates.status && updates.status !== currentUser.status) {
-      const actionType = updates.status === "banned" ? "user_banned" : "user_banned"
-      await adminNotificationService.sendAdminActionNotification({
-        type: actionType,
-        adminId: "admin123", // This should come from auth context
-        adminEmail: "admin@coinwayfinder.com", // This should come from auth context
-        targetUserId: id,
-        targetUserEmail: currentUser.email,
-        details: `User status changed from ${currentUser.status} to ${updates.status}${updates.banReason ? `. Reason: ${updates.banReason}` : ""}`,
-        timestamp: new Date(),
-      })
+    // Update user
+    const updateData = {
+      ...body,
+      updated_at: new Date(),
     }
 
-    return NextResponse.json({ message: "User updated successfully", user: updatedUser }, { status: 200 })
+    // Remove sensitive fields that shouldn't be updated via this endpoint
+    delete updateData.password
+    delete updateData._id
+
+    const result = await collection.updateOne({ _id: new ObjectId(id) }, { $set: updateData })
+
+    if (result.modifiedCount === 0) {
+      return NextResponse.json({ error: "No changes made to user" }, { status: 400 })
+    }
+
+    // Send admin notification about user update
+    await adminNotificationService.sendAdminNotification({
+      subject: "User Profile Updated",
+      message: `User ${existingUser.email} profile has been updated by admin.`,
+      recipients: [process.env.ADMIN_EMAIL || "admin@coinwayfinder.com"],
+      metadata: {
+        userId: id,
+        updatedFields: Object.keys(updateData),
+        adminAction: true,
+      },
+    })
+
+    // Fetch updated user
+    const updatedUser = await collection.findOne({ _id: new ObjectId(id) }, { projection: { password: 0 } })
+
+    return NextResponse.json({ user: updatedUser })
   } catch (error) {
-    console.error("Error updating user:", error)
-    return NextResponse.json({ message: "Internal server error" }, { status: 500 })
+    console.error("Failed to update user:", error)
+    return NextResponse.json({ error: "Failed to update user" }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const { id } = params
+
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 })
+    }
+
+    const db = await connectToDatabase()
+    const collection = db.collection("users")
+
+    // Check if user exists
+    const existingUser = await collection.findOne({ _id: new ObjectId(id) })
+    if (!existingUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    // Delete user
+    const result = await collection.deleteOne({ _id: new ObjectId(id) })
+
+    if (result.deletedCount === 0) {
+      return NextResponse.json({ error: "Failed to delete user" }, { status: 500 })
+    }
+
+    // Send security alert about user deletion
+    await adminNotificationService.sendSecurityAlert({
+      subject: "User Account Deleted",
+      message: `User account ${existingUser.email} has been permanently deleted by admin.`,
+      recipients: [process.env.ADMIN_EMAIL || "admin@coinwayfinder.com"],
+      metadata: {
+        userId: id,
+        userEmail: existingUser.email,
+        deletedAt: new Date(),
+        adminAction: true,
+      },
+    })
+
+    return NextResponse.json({ message: "User deleted successfully" })
+  } catch (error) {
+    console.error("Failed to delete user:", error)
+    return NextResponse.json({ error: "Failed to delete user" }, { status: 500 })
   }
 }

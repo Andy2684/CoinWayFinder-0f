@@ -3,13 +3,25 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Users, Shield, FileText, Settings, BarChart3, Mail, Bell, History } from "lucide-react"
+import {
+  Users,
+  Shield,
+  FileText,
+  Bell,
+  Settings,
+  BarChart3,
+  Database,
+  Mail,
+  Activity,
+  Home,
+  ChevronRight,
+} from "lucide-react"
 
-const sidebarItems = [
+const adminNavItems = [
   {
-    title: "Overview",
+    title: "Dashboard",
     href: "/admin",
-    icon: BarChart3,
+    icon: Home,
   },
   {
     title: "Users",
@@ -27,14 +39,29 @@ const sidebarItems = [
     icon: FileText,
   },
   {
+    title: "Notifications",
+    href: "/admin/notifications",
+    icon: Bell,
+    children: [
+      {
+        title: "History",
+        href: "/admin/notifications/history",
+      },
+      {
+        title: "Settings",
+        href: "/admin/notifications/settings",
+      },
+    ],
+  },
+  {
     title: "Reports",
     href: "/admin/reports",
-    icon: FileText,
+    icon: BarChart3,
   },
   {
     title: "Compliance",
     href: "/admin/compliance",
-    icon: Shield,
+    icon: FileText,
   },
   {
     title: "Email Queue",
@@ -42,18 +69,18 @@ const sidebarItems = [
     icon: Mail,
   },
   {
-    title: "Notifications",
-    href: "/admin/notifications",
-    icon: Bell,
+    title: "System Health",
+    href: "/admin/system",
+    icon: Activity,
   },
   {
-    title: "Notification History",
-    href: "/admin/notifications/history",
-    icon: History,
+    title: "Database",
+    href: "/admin/database",
+    icon: Database,
   },
   {
-    title: "OAuth",
-    href: "/admin/oauth",
+    title: "Settings",
+    href: "/admin/settings",
     icon: Settings,
   },
 ]
@@ -62,31 +89,46 @@ export function AdminSidebar() {
   const pathname = usePathname()
 
   return (
-    <div className="fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 lg:block">
-      <div className="flex h-16 items-center border-b px-6">
-        <h2 className="text-lg font-semibold text-gray-900">Admin Panel</h2>
+    <div className="flex h-full w-64 flex-col bg-slate-900 border-r border-slate-700">
+      <div className="flex h-16 items-center px-6 border-b border-slate-700">
+        <h2 className="text-lg font-semibold text-white">Admin Panel</h2>
       </div>
-      <nav className="mt-6">
-        <div className="px-3">
-          {sidebarItems.map((item) => {
-            const Icon = item.icon
-            const isActive = pathname === item.href
-
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center px-3 py-2 text-sm font-medium rounded-md mb-1 transition-colors",
-                  isActive ? "bg-blue-100 text-blue-700" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900",
-                )}
-              >
-                <Icon className="mr-3 h-5 w-5" />
-                {item.title}
-              </Link>
-            )
-          })}
-        </div>
+      <nav className="flex-1 space-y-1 px-3 py-4">
+        {adminNavItems.map((item) => (
+          <div key={item.href}>
+            <Link
+              href={item.href}
+              className={cn(
+                "flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors",
+                pathname === item.href
+                  ? "bg-slate-800 text-white"
+                  : "text-slate-300 hover:bg-slate-800 hover:text-white",
+              )}
+            >
+              <item.icon className="mr-3 h-5 w-5" />
+              {item.title}
+              {item.children && <ChevronRight className="ml-auto h-4 w-4" />}
+            </Link>
+            {item.children && (
+              <div className="ml-6 mt-1 space-y-1">
+                {item.children.map((child) => (
+                  <Link
+                    key={child.href}
+                    href={child.href}
+                    className={cn(
+                      "block px-3 py-2 text-sm rounded-md transition-colors",
+                      pathname === child.href
+                        ? "bg-slate-800 text-white"
+                        : "text-slate-400 hover:bg-slate-800 hover:text-white",
+                    )}
+                  >
+                    {child.title}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
       </nav>
     </div>
   )
