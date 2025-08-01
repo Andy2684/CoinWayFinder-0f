@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, Mail, ArrowRight, Shield, TrendingUp, Users } from "lucide-react"
+import { CheckCircle, Mail, ArrowRight, Shield, TrendingUp, Users, Clock } from "lucide-react"
 
 export default function ThankYouPage() {
   const [countdown, setCountdown] = useState(10)
@@ -153,7 +153,8 @@ export default function ThankYouPage() {
             </div>
 
             {/* Auto Redirect Notice */}
-            <div className="text-center text-sm text-gray-500">
+            <div className="flex items-center justify-center gap-2 text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
+              <Clock className="w-4 h-4" />
               <p>
                 You'll be automatically redirected to sign in in{" "}
                 <span className="font-semibold text-blue-600">{countdown}</span> seconds
