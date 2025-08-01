@@ -1,32 +1,25 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
-import { ObjectId } from "mongodb"
 import { adminNotificationService } from "@/lib/admin-notification-service"
 
 export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { id } = params
-
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 })
-    }
-
     const db = await connectToDatabase()
-    const collection = db.collection("users")
 
-    const user = await collection.findOne(
-      { _id: new ObjectId(id) },
-      { projection: { password: 0 } }, // Exclude password from response
-    )
+    const user = await db.collection("users").findOne({ _id: id })
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
-    return NextResponse.json({ user })
+    // Remove sensitive data
+    const { password, ...safeUser } = user
+
+    return NextResponse.json({ success: true, user: safeUser })
   } catch (error) {
-    console.error("Failed to fetch user:", error)
-    return NextResponse.json({ error: "Failed to fetch user" }, { status: 500 })
+    console.error("Error fetching user:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
@@ -34,98 +27,69 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   try {
     const { id } = params
     const body = await request.json()
-
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 })
-    }
+    const { email, role, status, firstName, lastName } = body
 
     const db = await connectToDatabase()
-    const collection = db.collection("users")
 
     // Check if user exists
-    const existingUser = await collection.findOne({ _id: new ObjectId(id) })
+    const existingUser = await db.collection("users").findOne({ _id: id })
     if (!existingUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
     // Update user
-    const updateData = {
-      ...body,
-      updated_at: new Date(),
+    const updateData: any = {
+      updatedAt: new Date(),
     }
 
-    // Remove sensitive fields that shouldn't be updated via this endpoint
-    delete updateData.password
-    delete updateData._id
+    if (email) updateData.email = email
+    if (role) updateData.role = role
+    if (status) updateData.status = status
+    if (firstName) updateData.firstName = firstName
+    if (lastName) updateData.lastName = lastName
 
-    const result = await collection.updateOne({ _id: new ObjectId(id) }, { $set: updateData })
+    await db.collection("users").updateOne({ _id: id }, { $set: updateData })
 
-    if (result.modifiedCount === 0) {
-      return NextResponse.json({ error: "No changes made to user" }, { status: 400 })
-    }
-
-    // Send admin notification about user update
-    await adminNotificationService.sendAdminNotification({
-      subject: "User Profile Updated",
-      message: `User ${existingUser.email} profile has been updated by admin.`,
-      recipients: [process.env.ADMIN_EMAIL || "admin@coinwayfinder.com"],
-      metadata: {
-        userId: id,
-        updatedFields: Object.keys(updateData),
-        adminAction: true,
-      },
+    // Send admin notification
+    await adminNotificationService.sendAdminAction({
+      action: "User Updated",
+      adminUser: "Admin", // Get from auth context
+      targetUser: existingUser.email,
+      details: `User profile updated: ${Object.keys(updateData).join(", ")}`,
     })
 
-    // Fetch updated user
-    const updatedUser = await collection.findOne({ _id: new ObjectId(id) }, { projection: { password: 0 } })
-
-    return NextResponse.json({ user: updatedUser })
+    return NextResponse.json({ success: true, message: "User updated successfully" })
   } catch (error) {
-    console.error("Failed to update user:", error)
-    return NextResponse.json({ error: "Failed to update user" }, { status: 500 })
+    console.error("Error updating user:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
 export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
   try {
     const { id } = params
-
-    if (!ObjectId.isValid(id)) {
-      return NextResponse.json({ error: "Invalid user ID" }, { status: 400 })
-    }
-
     const db = await connectToDatabase()
-    const collection = db.collection("users")
 
     // Check if user exists
-    const existingUser = await collection.findOne({ _id: new ObjectId(id) })
+    const existingUser = await db.collection("users").findOne({ _id: id })
     if (!existingUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 })
     }
 
     // Delete user
-    const result = await collection.deleteOne({ _id: new ObjectId(id) })
+    await db.collection("users").deleteOne({ _id: id })
 
-    if (result.deletedCount === 0) {
-      return NextResponse.json({ error: "Failed to delete user" }, { status: 500 })
-    }
-
-    // Send security alert about user deletion
-    await adminNotificationService.sendSecurityAlert({
-      subject: "User Account Deleted",
-      message: `User account ${existingUser.email} has been permanently deleted by admin.`,
-      recipients: [process.env.ADMIN_EMAIL || "admin@coinwayfinder.com"],
-      metadata: {
-        userId: id,
-        userEmail: existingUser.email,
-        deletedAt: new Date(),
-        adminAction: true,
-      },
+    // Send admin notification
+    await adminNotificationService.sendAdminAction({
+      action: "User Deleted",
+      adminUser: "Admin", // Get from auth context
+      targetUser: existingUser.email,
+      details: `User account permanently deleted`,
     })
 
-    return NextResponse.json({ message: "User deleted successfully" })
+    return NextResponse.json({ success: true, message: "User deleted successfully" })
   } catch (error) {
-    console.error("Failed to delete user:", error)
-    return NextResponse.json({ error: "Failed to delete user" }, { status: 500 })
+    console.error("Error deleting user:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

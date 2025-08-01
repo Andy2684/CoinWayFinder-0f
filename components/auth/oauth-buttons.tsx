@@ -13,17 +13,17 @@ export function OAuthButtons({ mode }: OAuthButtonsProps) {
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
   const { toast } = useToast()
 
-  const handleOAuthLogin = async (provider: string) => {
-    setLoadingProvider(provider)
-
+  const handleOAuthSignIn = async (provider: string) => {
     try {
+      setLoadingProvider(provider)
+
       // Redirect to OAuth provider
       window.location.href = `/api/auth/oauth/${provider}?mode=${mode}`
     } catch (error) {
       console.error(`${provider} OAuth error:`, error)
       toast({
         title: "Authentication Error",
-        description: `Failed to ${mode} with ${provider}. Please try again.`,
+        description: `Failed to ${mode === "login" ? "sign in" : "sign up"} with ${provider}. Please try again.`,
         variant: "destructive",
       })
       setLoadingProvider(null)
@@ -63,7 +63,7 @@ export function OAuthButtons({ mode }: OAuthButtonsProps) {
         <Button
           key={provider.id}
           variant="outline"
-          onClick={() => handleOAuthLogin(provider.id)}
+          onClick={() => handleOAuthSignIn(provider.id)}
           disabled={loadingProvider !== null}
           className={provider.className}
         >

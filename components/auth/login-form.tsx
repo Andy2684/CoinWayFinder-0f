@@ -66,12 +66,12 @@ export function LoginForm() {
 
       if (response.ok && data.success) {
         toast({
-          title: "Login Successful",
-          description: "Welcome back to CoinWayFinder!",
+          title: "Welcome back!",
+          description: "You have been successfully signed in.",
         })
         router.push("/dashboard")
       } else {
-        throw new Error(data.error || "Invalid email or password")
+        throw new Error(data.error || "Login failed")
       }
     } catch (error) {
       console.error("Login error:", error)
@@ -122,20 +122,15 @@ export function LoginForm() {
                 value={formData.email}
                 onChange={handleInputChange}
                 className="bg-slate-700 border-slate-600 text-white placeholder:text-gray-400"
-                placeholder="john@example.com"
+                placeholder="Enter your email"
               />
             </div>
 
             {/* Password Field */}
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-white">
-                  Password
-                </Label>
-                <Link href="/auth/forgot-password" className="text-sm text-blue-400 hover:text-blue-300">
-                  Forgot password?
-                </Link>
-              </div>
+              <Label htmlFor="password" className="text-white">
+                Password
+              </Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -161,6 +156,13 @@ export function LoginForm() {
                   )}
                 </Button>
               </div>
+            </div>
+
+            {/* Forgot Password Link */}
+            <div className="text-right">
+              <Link href="/auth/forgot-password" className="text-sm text-blue-400 hover:text-blue-300">
+                Forgot password?
+              </Link>
             </div>
 
             {/* Error Message */}
