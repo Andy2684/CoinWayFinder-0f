@@ -1,13 +1,27 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { CheckCircle, Mail, Shield, TrendingUp, Bot, Bell, ArrowRight, Clock, Star, Users, Zap } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import {
+  CheckCircle,
+  Mail,
+  ArrowRight,
+  Bot,
+  TrendingUp,
+  Shield,
+  Clock,
+  Users,
+  Star,
+  Sparkles,
+  ExternalLink,
+  MessageCircle,
+  BookOpen,
+} from "lucide-react"
+import Link from "next/link"
 
 export default function ThankYouPage() {
   const [countdown, setCountdown] = useState(10)
@@ -28,217 +42,231 @@ export default function ThankYouPage() {
     return () => clearInterval(timer)
   }, [router])
 
+  const nextSteps = [
+    {
+      icon: Mail,
+      title: "Check Your Email",
+      description: "We've sent a verification link to your email address. Click it to activate your account.",
+      status: "pending",
+    },
+    {
+      icon: Shield,
+      title: "Secure Your Account",
+      description: "Set up two-factor authentication for enhanced security.",
+      status: "upcoming",
+    },
+    {
+      icon: Bot,
+      title: "Deploy Your First Bot",
+      description: "Create and configure your first AI trading bot.",
+      status: "upcoming",
+    },
+    {
+      icon: TrendingUp,
+      title: "Start Trading",
+      description: "Begin your automated crypto trading journey.",
+      status: "upcoming",
+    },
+  ]
+
   const features = [
     {
       icon: Bot,
       title: "AI Trading Bots",
       description: "Deploy intelligent bots that trade 24/7",
-      color: "text-blue-600",
     },
     {
       icon: TrendingUp,
-      title: "Real-time Analytics",
+      title: "Real-Time Analytics",
       description: "Advanced market analysis and insights",
-      color: "text-green-600",
     },
     {
       icon: Shield,
-      title: "Secure Trading",
+      title: "Enterprise Security",
       description: "Bank-level security for your assets",
-      color: "text-purple-600",
     },
     {
-      icon: Bell,
-      title: "Smart Alerts",
-      description: "Never miss important market movements",
-      color: "text-orange-600",
+      icon: Users,
+      title: "Community Support",
+      description: "Join thousands of successful traders",
     },
   ]
 
-  const nextSteps = [
+  const supportResources = [
     {
-      step: 1,
-      title: "Check Your Email",
-      description: "We've sent a verification link to your email address",
-      icon: Mail,
-      status: "pending",
+      icon: BookOpen,
+      title: "Getting Started Guide",
+      description: "Learn the basics of automated trading",
+      link: "/docs/getting-started",
     },
     {
-      step: 2,
-      title: "Verify Your Account",
-      description: "Click the verification link to activate your account",
-      icon: CheckCircle,
-      status: "pending",
+      icon: MessageCircle,
+      title: "Community Forum",
+      description: "Connect with other traders",
+      link: "/community",
     },
     {
-      step: 3,
-      title: "Complete Your Profile",
-      description: "Set up your trading preferences and risk settings",
-      icon: Users,
-      status: "upcoming",
-    },
-    {
-      step: 4,
-      title: "Start Trading",
-      description: "Deploy your first AI trading bot and begin earning",
-      icon: Zap,
-      status: "upcoming",
+      icon: ExternalLink,
+      title: "Video Tutorials",
+      description: "Watch step-by-step tutorials",
+      link: "/tutorials",
     },
   ]
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 p-4">
-      <div className="max-w-4xl mx-auto py-8">
-        {/* Main Success Card */}
-        <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm mb-8">
-          <CardHeader className="text-center pb-6">
-            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle className="w-8 h-8 text-green-600" />
-            </div>
-            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-              Welcome to CoinWayFinder! 🎉
+      <div className="container mx-auto max-w-4xl py-12">
+        {/* Success Header */}
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-green-500/20 rounded-full mb-6">
+            <CheckCircle className="w-10 h-10 text-green-400" />
+          </div>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Welcome to CoinWayFinder! 🎉</h1>
+          <p className="text-xl text-gray-300 mb-6">
+            Your account has been created successfully. You're now part of the future of crypto trading.
+          </p>
+          <Badge variant="secondary" className="bg-green-500/20 text-green-300 border-green-500/30 px-4 py-2">
+            <Sparkles className="w-4 h-4 mr-2" />
+            Account Created Successfully
+          </Badge>
+        </div>
+
+        {/* Account Status */}
+        <Card className="bg-white/10 border-white/20 backdrop-blur-sm mb-8">
+          <CardHeader>
+            <CardTitle className="text-white flex items-center">
+              <Mail className="w-5 h-5 mr-2 text-blue-400" />
+              Account Status
             </CardTitle>
-            <CardDescription className="text-lg text-gray-600 max-w-md mx-auto">
-              Your account has been created successfully. You're now part of the future of crypto trading.
+          </CardHeader>
+          <CardContent>
+            <Alert className="bg-yellow-500/20 border-yellow-500/30">
+              <Clock className="h-4 w-4 text-yellow-400" />
+              <AlertDescription className="text-yellow-200">
+                <strong>Email Verification Pending:</strong> Please check your email and click the verification link to
+                fully activate your account.
+              </AlertDescription>
+            </Alert>
+          </CardContent>
+        </Card>
+
+        {/* Next Steps */}
+        <Card className="bg-white/10 border-white/20 backdrop-blur-sm mb-8">
+          <CardHeader>
+            <CardTitle className="text-white">Your Next Steps</CardTitle>
+            <CardDescription className="text-gray-300">
+              Follow these steps to get the most out of CoinWayFinder
             </CardDescription>
           </CardHeader>
-
-          <CardContent className="space-y-8">
-            {/* Account Status */}
-            <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6 border border-green-200">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-800">Account Status</h3>
-                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300">
-                  <Clock className="w-3 h-3 mr-1" />
-                  Verification Pending
-                </Badge>
-              </div>
-              <p className="text-gray-600 mb-4">
-                We've sent a verification email to your registered email address. Please check your inbox and click the
-                verification link to activate your account.
-              </p>
-              <div className="flex items-center text-sm text-gray-500">
-                <Mail className="w-4 h-4 mr-2" />
-                Didn't receive the email? Check your spam folder or contact support.
-              </div>
-            </div>
-
-            {/* What's Next */}
-            <div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
-                <Star className="w-5 h-5 mr-2 text-yellow-500" />
-                What's Next?
-              </h3>
-              <div className="grid gap-4">
-                {nextSteps.map((step, index) => (
+          <CardContent>
+            <div className="space-y-4">
+              {nextSteps.map((step, index) => (
+                <div key={index} className="flex items-start space-x-4 p-4 rounded-lg bg-white/5">
                   <div
-                    key={index}
-                    className="flex items-start space-x-4 p-4 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
+                    className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
+                      step.status === "pending" ? "bg-blue-500/20 text-blue-400" : "bg-gray-500/20 text-gray-400"
+                    }`}
                   >
-                    <div
-                      className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
-                        step.status === "pending"
-                          ? "bg-blue-100 text-blue-600"
-                          : step.status === "completed"
-                            ? "bg-green-100 text-green-600"
-                            : "bg-gray-100 text-gray-500"
-                      }`}
-                    >
-                      {step.step}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-2 mb-1">
-                        <step.icon
-                          className={`w-4 h-4 ${
-                            step.status === "pending"
-                              ? "text-blue-600"
-                              : step.status === "completed"
-                                ? "text-green-600"
-                                : "text-gray-400"
-                          }`}
-                        />
-                        <h4 className="font-medium text-gray-800">{step.title}</h4>
-                      </div>
-                      <p className="text-sm text-gray-600">{step.description}</p>
-                    </div>
+                    <step.icon className="w-5 h-5" />
                   </div>
-                ))}
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Features Preview */}
-            <div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
-                <Zap className="w-5 h-5 mr-2 text-blue-500" />
-                What You'll Get Access To
-              </h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                {features.map((feature, index) => (
-                  <div
-                    key={index}
-                    className="flex items-start space-x-3 p-4 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
-                  >
-                    <feature.icon className={`w-6 h-6 ${feature.color} flex-shrink-0 mt-0.5`} />
-                    <div>
-                      <h4 className="font-medium text-gray-800 mb-1">{feature.title}</h4>
-                      <p className="text-sm text-gray-600">{feature.description}</p>
-                    </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-white mb-1">{step.title}</h3>
+                    <p className="text-gray-300 text-sm">{step.description}</p>
                   </div>
-                ))}
-              </div>
+                  <div>
+                    {step.status === "pending" && (
+                      <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+                        Active
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
+          </CardContent>
+        </Card>
 
-            <Separator />
+        {/* Features Preview */}
+        <Card className="bg-white/10 border-white/20 backdrop-blur-sm mb-8">
+          <CardHeader>
+            <CardTitle className="text-white">What You'll Get Access To</CardTitle>
+            <CardDescription className="text-gray-300">
+              Powerful tools and features to maximize your trading success
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-2 gap-4">
+              {features.map((feature, index) => (
+                <div key={index} className="flex items-start space-x-3 p-4 rounded-lg bg-white/5">
+                  <feature.icon className="w-6 h-6 text-blue-400 flex-shrink-0 mt-1" />
+                  <div>
+                    <h3 className="font-semibold text-white mb-1">{feature.title}</h3>
+                    <p className="text-gray-300 text-sm">{feature.description}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
 
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
-              <Button
-                asChild
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-2.5"
-              >
+        {/* Support Resources */}
+        <Card className="bg-white/10 border-white/20 backdrop-blur-sm mb-8">
+          <CardHeader>
+            <CardTitle className="text-white">Need Help Getting Started?</CardTitle>
+            <CardDescription className="text-gray-300">
+              Explore our resources to learn and connect with the community
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid md:grid-cols-3 gap-4">
+              {supportResources.map((resource, index) => (
+                <Link
+                  key={index}
+                  href={resource.link}
+                  className="block p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group"
+                >
+                  <resource.icon className="w-6 h-6 text-blue-400 mb-3 group-hover:text-blue-300 transition-colors" />
+                  <h3 className="font-semibold text-white mb-2 group-hover:text-blue-100 transition-colors">
+                    {resource.title}
+                  </h3>
+                  <p className="text-gray-300 text-sm">{resource.description}</p>
+                </Link>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Auto Redirect Notice */}
+        <Card className="bg-white/10 border-white/20 backdrop-blur-sm">
+          <CardContent className="p-6 text-center">
+            <p className="text-gray-300 mb-4">
+              You'll be automatically redirected to the login page in{" "}
+              <span className="font-bold text-white">{countdown}</span> seconds.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
                 <Link href="/auth/login" className="flex items-center">
                   Sign In Now
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
               </Button>
-
-              <Button variant="outline" asChild className="px-8 py-2.5 bg-transparent">
-                <Link href="/">Back to Homepage</Link>
+              <Button variant="outline" asChild className="border-white/20 text-white hover:bg-white/10 bg-transparent">
+                <Link href="/">Back to Home</Link>
               </Button>
             </div>
-
-            {/* Auto Redirect Notice */}
-            <div className="text-center">
-              <p className="text-sm text-gray-500">
-                You'll be automatically redirected to the sign-in page in{" "}
-                <span className="font-semibold text-blue-600">{countdown}</span> seconds
-              </p>
-            </div>
           </CardContent>
         </Card>
 
-        {/* Support Card */}
-        <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-sm">
-          <CardContent className="p-6">
-            <div className="text-center">
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Need Help?</h3>
-              <p className="text-gray-600 mb-4">Our support team is here to help you get started with CoinWayFinder.</p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/support">Contact Support</Link>
-                </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/docs">View Documentation</Link>
-                </Button>
-                <Button variant="outline" size="sm" asChild>
-                  <Link href="/community">Join Community</Link>
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Trust Indicators */}
+        <div className="text-center mt-12">
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            {[...Array(5)].map((_, i) => (
+              <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
+            ))}
+            <span className="text-white ml-2 font-semibold">4.9/5</span>
+          </div>
+          <p className="text-gray-400">Trusted by over 50,000 traders worldwide</p>
+        </div>
       </div>
     </div>
   )

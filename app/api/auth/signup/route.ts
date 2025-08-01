@@ -1,235 +1,187 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { connectToDatabase } from "@/lib/mongodb"
 import bcrypt from "bcryptjs"
+import { connectToDatabase } from "@/lib/mongodb"
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     const { email, password, firstName, lastName } = body
 
-    // Validate input
+    // Validate required fields
     if (!email || !password || !firstName || !lastName) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "All fields are required. Please fill in your first name, last name, email, and password.",
-        },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: "All fields are required", success: false }, { status: 400 })
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Please enter a valid email address.",
-        },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: "Please enter a valid email address", success: false }, { status: 400 })
     }
 
     // Validate password strength
-    if (password.length < 8) {
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/
+    if (!passwordRegex.test(password)) {
       return NextResponse.json(
         {
+          error:
+            "Password must be at least 8 characters long and contain uppercase, lowercase, number, and special character",
           success: false,
-          error: "Password must be at least 8 characters long.",
         },
         { status: 400 },
       )
     }
 
-    if (!/[A-Z]/.test(password)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Password must contain at least one uppercase letter (A-Z).",
-        },
-        { status: 400 },
-      )
-    }
-
-    if (!/[a-z]/.test(password)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Password must contain at least one lowercase letter (a-z).",
-        },
-        { status: 400 },
-      )
-    }
-
-    if (!/\d/.test(password)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Password must contain at least one number (0-9).",
-        },
-        { status: 400 },
-      )
-    }
-
-    if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Password must contain at least one special character (!@#$%^&*).",
-        },
-        { status: 400 },
-      )
-    }
-
-    // Validate name fields
-    if (firstName.trim().length < 2) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "First name must be at least 2 characters long.",
-        },
-        { status: 400 },
-      )
-    }
-
-    if (lastName.trim().length < 2) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Last name must be at least 2 characters long.",
-        },
-        { status: 400 },
-      )
-    }
-
-    // Connect to database
-    let db
     try {
-      db = await connectToDatabase()
-    } catch (dbError) {
-      console.error("Database connection error:", dbError)
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Unable to connect to database. Please try again later.",
+      // Connect to database with retry logic
+      const { db } = await connectToDatabase()
+      const usersCollection = db.collection("users")
+
+      // Check if user already exists
+      const existingUser = await usersCollection.findOne({
+        email: email.toLowerCase(),
+      })
+
+      if (existingUser) {
+        return NextResponse.json(
+          { error: "An account with this email already exists", success: false },
+          { status: 409 },
+        )
+      }
+
+      // Hash password
+      const saltRounds = 12
+      const hashedPassword = await bcrypt.hash(password, saltRounds)
+
+      // Create user document
+      const newUser = {
+        email: email.toLowerCase(),
+        password_hash: hashedPassword,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        username: `${firstName.toLowerCase()}_${lastName.toLowerCase()}_${Date.now()}`,
+        role: "user",
+        subscription_status: "free",
+        is_email_verified: false,
+        profile_picture: null,
+        phone: null,
+        location: null,
+        website: null,
+        bio: null,
+        preferences: {
+          notifications: {
+            email: true,
+            push: true,
+            sms: false,
+            trading_alerts: true,
+            news_updates: true,
+            price_alerts: true,
+          },
+          trading: {
+            default_exchange: "binance",
+            risk_level: "medium",
+            auto_trading: false,
+            stop_loss_enabled: true,
+            take_profit_enabled: true,
+          },
+          ui: {
+            theme: "dark",
+            language: "en",
+            timezone: "UTC",
+            currency: "USD",
+          },
         },
-        { status: 500 },
-      )
-    }
-
-    // Check if user already exists
-    const existingUser = await db.collection("users").findOne({
-      email: email.toLowerCase(),
-    })
-
-    if (existingUser) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "An account with this email already exists. Please try signing in instead.",
+        security: {
+          two_factor_enabled: false,
+          two_factor_secret: null,
+          backup_codes: [],
+          login_attempts: 0,
+          locked_until: null,
+          last_password_change: new Date(),
+          security_questions: [],
         },
-        { status: 409 },
-      )
-    }
-
-    // Hash password
-    let hashedPassword
-    try {
-      hashedPassword = await bcrypt.hash(password, 12)
-    } catch (hashError) {
-      console.error("Password hashing error:", hashError)
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Unable to process password. Please try again.",
+        activity: {
+          last_login: new Date(),
+          last_active: new Date(),
+          login_count: 0,
+          ip_addresses: [],
+          devices: [],
         },
-        { status: 500 },
-      )
-    }
-
-    // Create user
-    const user = {
-      email: email.toLowerCase().trim(),
-      password: hashedPassword,
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      role: "user",
-      status: "active",
-      emailVerified: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      lastLogin: null,
-      loginAttempts: 0,
-      accountLocked: false,
-      preferences: {
-        notifications: {
-          email: true,
-          push: true,
-          trading: true,
-          news: true,
+        trading_data: {
+          total_trades: 0,
+          total_pnl: 0,
+          win_rate: 0,
+          favorite_pairs: ["BTC/USDT", "ETH/USDT"],
+          active_bots: [],
+          portfolio_value: 0,
+          risk_score: 50,
         },
-        theme: "light",
-        language: "en",
-      },
-      profile: {
-        avatar: null,
-        bio: "",
-        tradingExperience: "beginner",
-        riskTolerance: "medium",
-      },
-    }
+        created_at: new Date(),
+        updated_at: new Date(),
+      }
 
-    let result
-    try {
-      result = await db.collection("users").insertOne(user)
-    } catch (insertError) {
-      console.error("User creation error:", insertError)
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Unable to create account. Please try again.",
-        },
-        { status: 500 },
-      )
-    }
+      // Insert user into database
+      const result = await usersCollection.insertOne(newUser)
 
-    // Return success response (no dashboard redirect)
-    return NextResponse.json(
-      {
+      if (!result.insertedId) {
+        throw new Error("Failed to create user account")
+      }
+
+      // Return success response (without sensitive data)
+      return NextResponse.json({
         success: true,
-        message: "Account created successfully! Welcome to CoinWayFinder!",
-        redirect: "/thank-you", // Redirect to thank you page instead of dashboard
+        message: "Account created successfully",
         user: {
-          id: result.insertedId,
-          email: user.email,
-          firstName: user.firstName,
-          lastName: user.lastName,
-          role: user.role,
-          createdAt: user.createdAt,
-          emailVerified: user.emailVerified,
+          id: result.insertedId.toString(),
+          email: newUser.email,
+          firstName: newUser.first_name,
+          lastName: newUser.last_name,
+          isEmailVerified: newUser.is_email_verified,
         },
-      },
-      { status: 201 },
-    )
+      })
+    } catch (dbError) {
+      console.error("Database error during signup:", dbError)
+
+      // Handle specific database connection errors
+      if (dbError instanceof Error) {
+        if (dbError.message.includes("EBADNAME") || dbError.message.includes("querySrv")) {
+          return NextResponse.json(
+            {
+              error: "Unable to connect to database. Please try again later.",
+              success: false,
+            },
+            { status: 503 },
+          )
+        }
+
+        if (dbError.message.includes("timeout")) {
+          return NextResponse.json(
+            {
+              error: "Database connection timeout. Please try again.",
+              success: false,
+            },
+            { status: 504 },
+          )
+        }
+      }
+
+      return NextResponse.json(
+        {
+          error: "Database error occurred. Please try again later.",
+          success: false,
+        },
+        { status: 500 },
+      )
+    }
   } catch (error) {
     console.error("Signup error:", error)
 
-    // Handle different types of errors
+    // Handle JSON parsing errors
     if (error instanceof SyntaxError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: "Invalid request format. Please try again.",
-        },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: "Invalid request format", success: false }, { status: 400 })
     }
 
     return NextResponse.json(
-      {
-        success: false,
-        error: "An unexpected error occurred. Please try again later.",
-      },
+      { error: "An unexpected error occurred. Please try again.", success: false },
       { status: 500 },
     )
   }

@@ -3,34 +3,33 @@
 import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Eye, EyeOff, CheckCircle, XCircle, AlertCircle, Loader2 } from "lucide-react"
+import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
-import { Eye, EyeOff, Check, X, AlertCircle, Loader2 } from "lucide-react"
 
 interface PasswordRequirement {
   met: boolean
   text: string
-  key: string
 }
 
 export function SignupForm() {
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
+    firstName: "",
+    lastName: "",
   })
-
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
   const [touched, setTouched] = useState({
     firstName: false,
     lastName: false,
@@ -42,37 +41,16 @@ export function SignupForm() {
   const router = useRouter()
   const { toast } = useToast()
 
-  // Password requirements validation
   const passwordRequirements: PasswordRequirement[] = [
-    {
-      key: "length",
-      met: formData.password.length >= 8,
-      text: "At least 8 characters long",
-    },
-    {
-      key: "uppercase",
-      met: /[A-Z]/.test(formData.password),
-      text: "One uppercase letter (A-Z)",
-    },
-    {
-      key: "lowercase",
-      met: /[a-z]/.test(formData.password),
-      text: "One lowercase letter (a-z)",
-    },
-    {
-      key: "number",
-      met: /\d/.test(formData.password),
-      text: "One number (0-9)",
-    },
-    {
-      key: "special",
-      met: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(formData.password),
-      text: "One special character (!@#$%^&*)",
-    },
+    { met: formData.password.length >= 8, text: "At least 8 characters long" },
+    { met: /[A-Z]/.test(formData.password), text: "One uppercase letter (A-Z)" },
+    { met: /[a-z]/.test(formData.password), text: "One lowercase letter (a-z)" },
+    { met: /\d/.test(formData.password), text: "One number (0-9)" },
+    { met: /[!@#$%^&*(),.?":{}|<>]/.test(formData.password), text: "One special character (!@#$%^&*)" },
   ]
 
   const isPasswordValid = passwordRequirements.every((req) => req.met)
-  const passwordsMatch = formData.password === formData.confirmPassword && formData.confirmPassword !== ""
+  const doPasswordsMatch = formData.password === formData.confirmPassword && formData.confirmPassword !== ""
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)
 
   const isFormValid = () => {
@@ -81,25 +59,17 @@ export function SignupForm() {
       formData.lastName.trim() !== "" &&
       isEmailValid &&
       isPasswordValid &&
-      passwordsMatch
+      doPasswordsMatch
     )
-  }
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-    setError("") // Clear error when user starts typing
-  }
-
-  const handleBlur = (field: keyof typeof touched) => {
-    setTouched((prev) => ({ ...prev, [field]: true }))
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    setSuccess("")
+    setIsLoading(true)
 
-    // Mark all fields as touched for validation display
+    // Mark all fields as touched for validation
     setTouched({
       firstName: true,
       lastName: true,
@@ -109,11 +79,10 @@ export function SignupForm() {
     })
 
     if (!isFormValid()) {
-      setError("Please fill in all fields correctly.")
+      setError("Please fill in all fields correctly and meet all requirements.")
+      setIsLoading(false)
       return
     }
-
-    setIsLoading(true)
 
     try {
       const response = await fetch("/api/auth/signup", {
@@ -122,15 +91,15 @@ export function SignupForm() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
           email: formData.email.trim().toLowerCase(),
           password: formData.password,
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
         }),
       })
 
       if (!response.ok) {
-        // Handle different types of errors
+        // Handle network errors
         if (response.status === 0 || !response.status) {
           throw new Error("Failed to fetch - Please check your internet connection and try again.")
         }
@@ -148,13 +117,16 @@ export function SignupForm() {
       const data = await response.json()
 
       if (data.success) {
+        setSuccess("Account created successfully! Welcome to CoinWayFinder!")
         toast({
           title: "Account Created Successfully! 🎉",
-          description: "Welcome to CoinWayFinder! Please check your email to verify your account.",
+          description: "Welcome to CoinWayFinder! Redirecting you to get started...",
         })
 
         // Redirect to thank you page instead of dashboard
-        router.push("/thank-you")
+        setTimeout(() => {
+          router.push("/thank-you")
+        }, 2000)
       } else {
         throw new Error(data.error || "Failed to create account")
       }
@@ -184,19 +156,21 @@ export function SignupForm() {
     }
   }
 
-  const RequirementItem = ({ requirement }: { requirement: PasswordRequirement }) => (
-    <div
-      className={`flex items-center gap-2 text-sm transition-colors ${
-        requirement.met ? "text-green-600" : "text-gray-500"
-      }`}
-    >
-      {requirement.met ? <Check className="h-4 w-4 text-green-500" /> : <X className="h-4 w-4 text-gray-400" />}
-      <span>{requirement.text}</span>
-    </div>
-  )
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }))
+    setError("") // Clear error when user starts typing
+  }
+
+  const handleBlur = (field: keyof typeof touched) => {
+    setTouched((prev) => ({ ...prev, [field]: true }))
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 p-4">
       <Card className="w-full max-w-md shadow-2xl">
         <CardHeader className="space-y-1 text-center">
           <CardTitle className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
@@ -206,10 +180,8 @@ export function SignupForm() {
             Create your account and start your crypto trading journey
           </CardDescription>
         </CardHeader>
-
-        <CardContent className="space-y-6">
+        <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Name Fields */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="firstName" className="text-sm font-medium">
@@ -219,7 +191,7 @@ export function SignupForm() {
                   id="firstName"
                   name="firstName"
                   type="text"
-                  required
+                  placeholder="John"
                   value={formData.firstName}
                   onChange={handleInputChange}
                   onBlur={() => handleBlur("firstName")}
@@ -228,13 +200,12 @@ export function SignupForm() {
                       ? "border-red-500 focus:border-red-500"
                       : "border-gray-300 focus:border-blue-500"
                   }`}
-                  placeholder="John"
+                  required
                 />
                 {touched.firstName && !formData.firstName.trim() && (
                   <p className="text-xs text-red-500">First name is required</p>
                 )}
               </div>
-
               <div className="space-y-2">
                 <Label htmlFor="lastName" className="text-sm font-medium">
                   Last Name *
@@ -243,7 +214,7 @@ export function SignupForm() {
                   id="lastName"
                   name="lastName"
                   type="text"
-                  required
+                  placeholder="Doe"
                   value={formData.lastName}
                   onChange={handleInputChange}
                   onBlur={() => handleBlur("lastName")}
@@ -252,7 +223,7 @@ export function SignupForm() {
                       ? "border-red-500 focus:border-red-500"
                       : "border-gray-300 focus:border-blue-500"
                   }`}
-                  placeholder="Doe"
+                  required
                 />
                 {touched.lastName && !formData.lastName.trim() && (
                   <p className="text-xs text-red-500">Last name is required</p>
@@ -260,7 +231,6 @@ export function SignupForm() {
               </div>
             </div>
 
-            {/* Email Field */}
             <div className="space-y-2">
               <Label htmlFor="email" className="text-sm font-medium">
                 Email Address *
@@ -269,7 +239,7 @@ export function SignupForm() {
                 id="email"
                 name="email"
                 type="email"
-                required
+                placeholder="john@example.com"
                 value={formData.email}
                 onChange={handleInputChange}
                 onBlur={() => handleBlur("email")}
@@ -278,14 +248,13 @@ export function SignupForm() {
                     ? "border-red-500 focus:border-red-500"
                     : "border-gray-300 focus:border-blue-500"
                 }`}
-                placeholder="john@example.com"
+                required
               />
               {touched.email && formData.email && !isEmailValid && (
                 <p className="text-xs text-red-500">Please enter a valid email address</p>
               )}
             </div>
 
-            {/* Password Field */}
             <div className="space-y-2">
               <Label htmlFor="password" className="text-sm font-medium">
                 Password *
@@ -295,7 +264,7 @@ export function SignupForm() {
                   id="password"
                   name="password"
                   type={showPassword ? "text" : "password"}
-                  required
+                  placeholder="Create a strong password"
                   value={formData.password}
                   onChange={handleInputChange}
                   onBlur={() => handleBlur("password")}
@@ -304,7 +273,7 @@ export function SignupForm() {
                       ? "border-red-500 focus:border-red-500"
                       : "border-gray-300 focus:border-blue-500"
                   }`}
-                  placeholder="Create a strong password"
+                  required
                 />
                 <Button
                   type="button"
@@ -313,28 +282,29 @@ export function SignupForm() {
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
-                  )}
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
 
-              {/* Password Requirements */}
               {formData.password && (
                 <div className="space-y-2 p-3 bg-gray-50 rounded-lg border">
                   <p className="text-sm font-medium text-gray-700">Password Requirements:</p>
                   <div className="space-y-1">
-                    {passwordRequirements.map((requirement) => (
-                      <RequirementItem key={requirement.key} requirement={requirement} />
+                    {passwordRequirements.map((req, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        {req.met ? (
+                          <CheckCircle className="h-3 w-3 text-green-500" />
+                        ) : (
+                          <XCircle className="h-3 w-3 text-red-500" />
+                        )}
+                        <span className={`text-xs ${req.met ? "text-green-600" : "text-red-600"}`}>{req.text}</span>
+                      </div>
                     ))}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Confirm Password Field */}
             <div className="space-y-2">
               <Label htmlFor="confirmPassword" className="text-sm font-medium">
                 Confirm Password *
@@ -344,16 +314,16 @@ export function SignupForm() {
                   id="confirmPassword"
                   name="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
-                  required
+                  placeholder="Confirm your password"
                   value={formData.confirmPassword}
                   onChange={handleInputChange}
                   onBlur={() => handleBlur("confirmPassword")}
                   className={`pr-10 transition-colors ${
-                    touched.confirmPassword && !passwordsMatch
+                    touched.confirmPassword && !doPasswordsMatch
                       ? "border-red-500 focus:border-red-500"
                       : "border-gray-300 focus:border-blue-500"
                   }`}
-                  placeholder="Confirm your password"
+                  required
                 />
                 <Button
                   type="button"
@@ -362,26 +332,27 @@ export function SignupForm() {
                   className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 >
-                  {showConfirmPassword ? (
-                    <EyeOff className="h-4 w-4 text-gray-400" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-gray-400" />
-                  )}
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </Button>
               </div>
 
-              {/* Password Match Indicator */}
               {formData.confirmPassword && (
-                <div
-                  className={`flex items-center gap-2 text-sm ${passwordsMatch ? "text-green-600" : "text-red-500"}`}
-                >
-                  {passwordsMatch ? <Check className="h-4 w-4" /> : <X className="h-4 w-4" />}
-                  <span>{passwordsMatch ? "Passwords match" : "Passwords do not match"}</span>
+                <div className="flex items-center gap-2 text-sm">
+                  {doPasswordsMatch ? (
+                    <>
+                      <CheckCircle className="h-3 w-3 text-green-500" />
+                      <span className="text-green-600">Passwords match</span>
+                    </>
+                  ) : (
+                    <>
+                      <XCircle className="h-3 w-3 text-red-500" />
+                      <span className="text-red-600">Passwords do not match</span>
+                    </>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Error Message */}
             {error && (
               <Alert variant="destructive">
                 <AlertCircle className="h-4 w-4" />
@@ -389,7 +360,13 @@ export function SignupForm() {
               </Alert>
             )}
 
-            {/* Submit Button */}
+            {success && (
+              <Alert>
+                <CheckCircle className="h-4 w-4" />
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            )}
+
             <Button
               type="submit"
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-2.5 transition-all duration-200"
@@ -404,32 +381,17 @@ export function SignupForm() {
                 "Create Account"
               )}
             </Button>
-          </form>
 
-          {/* Sign In Link */}
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              Already have an account?{" "}
+            <div className="text-center text-sm">
+              <span className="text-muted-foreground">Already have an account? </span>
               <Link
                 href="/auth/login"
                 className="text-blue-600 hover:text-blue-700 font-medium hover:underline transition-colors"
               >
                 Sign in
               </Link>
-            </p>
-          </div>
-
-          {/* Legal Links */}
-          <div className="text-center text-xs text-gray-500">
-            By creating an account, you agree to our{" "}
-            <Link href="/legal/terms" className="text-blue-600 hover:text-blue-700 hover:underline">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link href="/legal/privacy" className="text-blue-600 hover:text-blue-700 hover:underline">
-              Privacy Policy
-            </Link>
-          </div>
+            </div>
+          </form>
         </CardContent>
       </Card>
     </div>
