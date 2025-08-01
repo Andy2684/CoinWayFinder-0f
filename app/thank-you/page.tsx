@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, Mail, ArrowRight, Shield, TrendingUp, Users, Clock } from "lucide-react"
+import { Separator } from "@/components/ui/separator"
+import { CheckCircle, Mail, Shield, TrendingUp, Bot, Bell, ArrowRight, Clock, Star, Users, Zap } from "lucide-react"
 
 export default function ThankYouPage() {
   const [countdown, setCountdown] = useState(10)
@@ -29,151 +30,212 @@ export default function ThankYouPage() {
 
   const features = [
     {
+      icon: Bot,
+      title: "AI Trading Bots",
+      description: "Deploy intelligent bots that trade 24/7",
+      color: "text-blue-600",
+    },
+    {
       icon: TrendingUp,
-      title: "Advanced Trading Bots",
-      description: "AI-powered bots that trade 24/7",
+      title: "Real-time Analytics",
+      description: "Advanced market analysis and insights",
+      color: "text-green-600",
     },
     {
       icon: Shield,
-      title: "Bank-Level Security",
-      description: "Your funds and data are protected",
+      title: "Secure Trading",
+      description: "Bank-level security for your assets",
+      color: "text-purple-600",
     },
     {
-      icon: Users,
-      title: "Expert Community",
-      description: "Learn from experienced traders",
+      icon: Bell,
+      title: "Smart Alerts",
+      description: "Never miss important market movements",
+      color: "text-orange-600",
     },
   ]
 
   const nextSteps = [
     {
       step: 1,
-      title: "Verify Your Email",
-      description: "Check your inbox and click the verification link",
+      title: "Check Your Email",
+      description: "We've sent a verification link to your email address",
       icon: Mail,
+      status: "pending",
     },
     {
       step: 2,
-      title: "Complete Your Profile",
-      description: "Add your trading preferences and experience level",
-      icon: Users,
+      title: "Verify Your Account",
+      description: "Click the verification link to activate your account",
+      icon: CheckCircle,
+      status: "pending",
     },
     {
       step: 3,
+      title: "Complete Your Profile",
+      description: "Set up your trading preferences and risk settings",
+      icon: Users,
+      status: "upcoming",
+    },
+    {
+      step: 4,
       title: "Start Trading",
-      description: "Connect your exchange and create your first bot",
-      icon: TrendingUp,
+      description: "Deploy your first AI trading bot and begin earning",
+      icon: Zap,
+      status: "upcoming",
     },
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="max-w-4xl w-full space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 p-4">
+      <div className="max-w-4xl mx-auto py-8">
         {/* Main Success Card */}
-        <Card className="text-center shadow-2xl border-0 bg-white/80 backdrop-blur-sm">
-          <CardHeader className="space-y-4 pb-6">
-            <div className="mx-auto w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
-              <CheckCircle className="w-12 h-12 text-green-600" />
+        <Card className="shadow-2xl border-0 bg-white/95 backdrop-blur-sm mb-8">
+          <CardHeader className="text-center pb-6">
+            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+              <CheckCircle className="w-8 h-8 text-green-600" />
             </div>
-            <div className="space-y-2">
-              <CardTitle className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-                Welcome to CoinWayFinder! 🎉
-              </CardTitle>
-              <CardDescription className="text-lg text-gray-600">
-                Your account has been created successfully
-              </CardDescription>
-            </div>
-            <Badge variant="secondary" className="mx-auto bg-green-100 text-green-700 border-green-200">
-              Account Created
-            </Badge>
+            <CardTitle className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+              Welcome to CoinWayFinder! 🎉
+            </CardTitle>
+            <CardDescription className="text-lg text-gray-600 max-w-md mx-auto">
+              Your account has been created successfully. You're now part of the future of crypto trading.
+            </CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-8">
-            {/* Email Verification Notice */}
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center gap-3">
-                <Mail className="w-5 h-5 text-blue-600" />
-                <div className="text-left">
-                  <h3 className="font-semibold text-blue-900">Check Your Email</h3>
-                  <p className="text-sm text-blue-700">
-                    We've sent a verification link to your email address. Please verify your account to get started.
-                  </p>
-                </div>
+            {/* Account Status */}
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-6 border border-green-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-800">Account Status</h3>
+                <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                  <Clock className="w-3 h-3 mr-1" />
+                  Verification Pending
+                </Badge>
+              </div>
+              <p className="text-gray-600 mb-4">
+                We've sent a verification email to your registered email address. Please check your inbox and click the
+                verification link to activate your account.
+              </p>
+              <div className="flex items-center text-sm text-gray-500">
+                <Mail className="w-4 h-4 mr-2" />
+                Didn't receive the email? Check your spam folder or contact support.
               </div>
             </div>
 
-            {/* Features Preview */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-gray-900">What's Next?</h3>
-              <div className="grid md:grid-cols-3 gap-4">
-                {features.map((feature, index) => (
-                  <div key={index} className="bg-gray-50 rounded-lg p-4 text-center">
-                    <feature.icon className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                    <h4 className="font-medium text-gray-900 mb-1">{feature.title}</h4>
-                    <p className="text-sm text-gray-600">{feature.description}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Next Steps */}
-            <div className="space-y-4">
-              <h3 className="text-xl font-semibold text-gray-900">Getting Started</h3>
-              <div className="space-y-3">
+            {/* What's Next */}
+            <div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+                <Star className="w-5 h-5 mr-2 text-yellow-500" />
+                What's Next?
+              </h3>
+              <div className="grid gap-4">
                 {nextSteps.map((step, index) => (
-                  <div key={index} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                  <div
+                    key={index}
+                    className="flex items-start space-x-4 p-4 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
+                  >
+                    <div
+                      className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold ${
+                        step.status === "pending"
+                          ? "bg-blue-100 text-blue-600"
+                          : step.status === "completed"
+                            ? "bg-green-100 text-green-600"
+                            : "bg-gray-100 text-gray-500"
+                      }`}
+                    >
                       {step.step}
                     </div>
-                    <div className="flex-1 text-left">
-                      <h4 className="font-medium text-gray-900">{step.title}</h4>
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <step.icon
+                          className={`w-4 h-4 ${
+                            step.status === "pending"
+                              ? "text-blue-600"
+                              : step.status === "completed"
+                                ? "text-green-600"
+                                : "text-gray-400"
+                          }`}
+                        />
+                        <h4 className="font-medium text-gray-800">{step.title}</h4>
+                      </div>
                       <p className="text-sm text-gray-600">{step.description}</p>
                     </div>
-                    <step.icon className="w-5 h-5 text-gray-400" />
                   </div>
                 ))}
               </div>
             </div>
 
+            <Separator />
+
+            {/* Features Preview */}
+            <div>
+              <h3 className="text-xl font-semibold text-gray-800 mb-6 flex items-center">
+                <Zap className="w-5 h-5 mr-2 text-blue-500" />
+                What You'll Get Access To
+              </h3>
+              <div className="grid md:grid-cols-2 gap-4">
+                {features.map((feature, index) => (
+                  <div
+                    key={index}
+                    className="flex items-start space-x-3 p-4 rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
+                  >
+                    <feature.icon className={`w-6 h-6 ${feature.color} flex-shrink-0 mt-0.5`} />
+                    <div>
+                      <h4 className="font-medium text-gray-800 mb-1">{feature.title}</h4>
+                      <p className="text-sm text-gray-600">{feature.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <Separator />
+
             {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
               <Button
                 asChild
-                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-2.5"
               >
-                <Link href="/auth/login">
+                <Link href="/auth/login" className="flex items-center">
                   Sign In Now
-                  <ArrowRight className="ml-2 w-4 h-4" />
+                  <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
               </Button>
 
-              <Button variant="outline" asChild>
-                <Link href="/">Back to Home</Link>
+              <Button variant="outline" asChild className="px-8 py-2.5 bg-transparent">
+                <Link href="/">Back to Homepage</Link>
               </Button>
             </div>
 
             {/* Auto Redirect Notice */}
-            <div className="flex items-center justify-center gap-2 text-sm text-gray-500 bg-gray-50 rounded-lg p-3">
-              <Clock className="w-4 h-4" />
-              <p>
-                You'll be automatically redirected to sign in in{" "}
+            <div className="text-center">
+              <p className="text-sm text-gray-500">
+                You'll be automatically redirected to the sign-in page in{" "}
                 <span className="font-semibold text-blue-600">{countdown}</span> seconds
               </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Additional Help */}
-        <Card className="bg-white/60 backdrop-blur-sm border-0">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-2">
-              <h3 className="font-semibold text-gray-900">Need Help?</h3>
-              <p className="text-sm text-gray-600">
-                If you don't receive the verification email, check your spam folder or{" "}
-                <Link href="/support" className="text-blue-600 hover:text-blue-700 underline">
-                  contact our support team
-                </Link>
-              </p>
+        {/* Support Card */}
+        <Card className="shadow-lg border-0 bg-white/90 backdrop-blur-sm">
+          <CardContent className="p-6">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-gray-800 mb-2">Need Help?</h3>
+              <p className="text-gray-600 mb-4">Our support team is here to help you get started with CoinWayFinder.</p>
+              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/support">Contact Support</Link>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/docs">View Documentation</Link>
+                </Button>
+                <Button variant="outline" size="sm" asChild>
+                  <Link href="/community">Join Community</Link>
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
