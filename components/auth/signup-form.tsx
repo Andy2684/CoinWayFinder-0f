@@ -6,112 +6,93 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Check, X, Loader2, AlertCircle } from "lucide-react"
-import { cn } from "@/lib/utils"
-
-interface FormData {
-  firstName: string
-  lastName: string
-  email: string
-  password: string
-  confirmPassword: string
-}
-
-interface FormErrors {
-  firstName?: string
-  lastName?: string
-  email?: string
-  password?: string
-  confirmPassword?: string
-  general?: string
-}
+import { Eye, EyeOff, Check, X, Loader2, Mail, Lock, User, AlertCircle } from "lucide-react"
+import { toast } from "sonner"
 
 interface PasswordRequirement {
+  id: string
   label: string
   test: (password: string) => boolean
 }
 
 const passwordRequirements: PasswordRequirement[] = [
-  { label: "At least 8 characters long", test: (p) => p.length >= 8 },
-  { label: "One uppercase letter (A-Z)", test: (p) => /[A-Z]/.test(p) },
-  { label: "One lowercase letter (a-z)", test: (p) => /[a-z]/.test(p) },
-  { label: "One number (0-9)", test: (p) => /\d/.test(p) },
-  { label: "One special character (!@#$%^&*)", test: (p) => /[!@#$%^&*]/.test(p) },
+  {
+    id: "length",
+    label: "At least 8 characters long",
+    test: (password) => password.length >= 8,
+  },
+  {
+    id: "uppercase",
+    label: "One uppercase letter (A-Z)",
+    test: (password) => /[A-Z]/.test(password),
+  },
+  {
+    id: "lowercase",
+    label: "One lowercase letter (a-z)",
+    test: (password) => /[a-z]/.test(password),
+  },
+  {
+    id: "number",
+    label: "One number (0-9)",
+    test: (password) => /\d/.test(password),
+  },
+  {
+    id: "special",
+    label: "One special character (!@#$%^&*)",
+    test: (password) => /[!@#$%^&*(),.?":{}|<>]/.test(password),
+  },
 ]
 
 export function SignupForm() {
   const router = useRouter()
-  const [formData, setFormData] = useState<FormData>({
+  const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
     email: "",
     password: "",
     confirmPassword: "",
   })
-  const [errors, setErrors] = useState<FormErrors>({})
-  const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState("")
+  const [touched, setTouched] = useState({
+    firstName: false,
+    lastName: false,
+    email: false,
+    password: false,
+    confirmPassword: false,
+  })
 
-  const validateField = (name: string, value: string): string | undefined => {
-    switch (name) {
-      case "firstName":
-        if (!value.trim()) return "First name is required"
-        if (value.trim().length < 2) return "First name must be at least 2 characters"
-        break
-      case "lastName":
-        if (!value.trim()) return "Last name is required"
-        if (value.trim().length < 2) return "Last name must be at least 2 characters"
-        break
-      case "email":
-        if (!value.trim()) return "Email is required"
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Please enter a valid email address"
-        break
-      case "password":
-        if (!value) return "Password is required"
-        const failedRequirements = passwordRequirements.filter((req) => !req.test(value))
-        if (failedRequirements.length > 0) return "Password does not meet all requirements"
-        break
-      case "confirmPassword":
-        if (!value) return "Please confirm your password"
-        if (value !== formData.password) return "Passwords do not match"
-        break
-    }
-    return undefined
+  const handleInputChange = (field: string, value: string) => {
+    setFormData((prev) => ({ ...prev, [field]: value }))
+    setError("")
   }
 
-  const handleInputChange = (name: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [name]: value }))
-
-    if (touched[name]) {
-      const error = validateField(name, value)
-      setErrors((prev) => ({ ...prev, [name]: error }))
-    }
-
-    // Special case for confirm password when password changes
-    if (name === "password" && touched.confirmPassword) {
-      const confirmError = formData.confirmPassword !== value ? "Passwords do not match" : undefined
-      setErrors((prev) => ({ ...prev, confirmPassword: confirmError }))
-    }
+  const handleBlur = (field: string) => {
+    setTouched((prev) => ({ ...prev, [field]: true }))
   }
 
-  const handleBlur = (name: string) => {
-    setTouched((prev) => ({ ...prev, [name]: true }))
-    const error = validateField(name, formData[name as keyof FormData])
-    setErrors((prev) => ({ ...prev, [name]: error }))
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    return emailRegex.test(email)
+  }
+
+  const getPasswordStrength = () => {
+    const metRequirements = passwordRequirements.filter((req) => req.test(formData.password))
+    return metRequirements.length
   }
 
   const isFormValid = () => {
-    const requiredFields: (keyof FormData)[] = ["firstName", "lastName", "email", "password", "confirmPassword"]
     return (
-      requiredFields.every((field) => formData[field].trim() !== "") &&
-      Object.values(errors).every((error) => !error) &&
-      passwordRequirements.every((req) => req.test(formData.password)) &&
+      formData.firstName.trim().length >= 2 &&
+      formData.lastName.trim().length >= 2 &&
+      validateEmail(formData.email) &&
+      getPasswordStrength() === 5 &&
       formData.password === formData.confirmPassword
     )
   }
@@ -119,25 +100,13 @@ export function SignupForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    // Mark all fields as touched
-    const allFields = ["firstName", "lastName", "email", "password", "confirmPassword"]
-    const newTouched = allFields.reduce((acc, field) => ({ ...acc, [field]: true }), {})
-    setTouched(newTouched)
-
-    // Validate all fields
-    const newErrors: FormErrors = {}
-    allFields.forEach((field) => {
-      const error = validateField(field, formData[field as keyof FormData])
-      if (error) newErrors[field as keyof FormErrors] = error
-    })
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors)
+    if (!isFormValid()) {
+      setError("Please fill in all fields correctly")
       return
     }
 
     setIsLoading(true)
-    setErrors({})
+    setError("")
 
     try {
       const response = await fetch("/api/auth/signup", {
@@ -145,37 +114,32 @@ export function SignupForm() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          firstName: formData.firstName.trim(),
-          lastName: formData.lastName.trim(),
-          email: formData.email.trim().toLowerCase(),
-          password: formData.password,
-        }),
+        body: JSON.stringify(formData),
       })
 
       const data = await response.json()
 
       if (!response.ok) {
-        if (response.status === 409) {
-          setErrors({ email: "An account with this email already exists" })
-        } else if (response.status === 400) {
-          setErrors({ general: data.error || "Please check your information and try again" })
-        } else if (response.status >= 500) {
-          setErrors({ general: "Unable to connect to database. Please try again later." })
-        } else {
-          setErrors({ general: data.error || "Something went wrong. Please try again." })
-        }
-        return
+        throw new Error(data.error || "Failed to create account")
       }
 
-      // Success - redirect to thank you page
-      router.push("/thank-you")
+      if (data.success) {
+        toast.success("Account created successfully! Welcome to CoinWayFinder!")
+        router.push("/thank-you")
+      } else {
+        throw new Error(data.error || "Failed to create account")
+      }
     } catch (error) {
       console.error("Signup error:", error)
-      if (error instanceof TypeError && error.message === "Failed to fetch") {
-        setErrors({ general: "Unable to connect to the server. Please check your internet connection and try again." })
+
+      if (error instanceof Error) {
+        if (error.message.includes("fetch")) {
+          setError("Unable to connect to server. Please check your internet connection and try again.")
+        } else {
+          setError(error.message)
+        }
       } else {
-        setErrors({ general: "Unable to connect to database. Please try again later." })
+        setError("An unexpected error occurred. Please try again.")
       }
     } finally {
       setIsLoading(false)
@@ -183,204 +147,224 @@ export function SignupForm() {
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
-      <CardHeader className="space-y-1 text-center">
-        <CardTitle className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-          Create Account
-        </CardTitle>
-        <CardDescription className="text-slate-600">Join CoinWayFinder and start your trading journey</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {errors.general && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{errors.general}</AlertDescription>
-            </Alert>
-          )}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px]" />
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="firstName">First Name *</Label>
-              <Input
-                id="firstName"
-                type="text"
-                value={formData.firstName}
-                onChange={(e) => handleInputChange("firstName", e.target.value)}
-                onBlur={() => handleBlur("firstName")}
-                className={cn(
-                  "transition-colors",
-                  errors.firstName && touched.firstName ? "border-red-500 focus:border-red-500" : "",
-                )}
-                disabled={isLoading}
-              />
-              {errors.firstName && touched.firstName && (
-                <p className="text-sm text-red-600 flex items-center gap-1">
-                  <X className="h-3 w-3" />
-                  {errors.firstName}
-                </p>
+      {/* Floating Orbs */}
+      <div className="absolute top-20 left-20 w-32 h-32 bg-blue-500/20 rounded-full blur-xl animate-pulse" />
+      <div className="absolute bottom-20 right-20 w-40 h-40 bg-purple-500/20 rounded-full blur-xl animate-pulse delay-1000" />
+      <div className="absolute top-1/2 left-1/4 w-24 h-24 bg-cyan-500/20 rounded-full blur-xl animate-pulse delay-500" />
+
+      <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
+        <Card className="w-full max-w-md bg-white/10 backdrop-blur-lg border-white/20 shadow-2xl">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold text-white">Create Your Account</CardTitle>
+            <CardDescription className="text-gray-300">
+              Join thousands of traders using AI-powered crypto trading
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {error && (
+                <Alert className="bg-red-500/10 border-red-500/20 text-red-300">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
               )}
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="lastName">Last Name *</Label>
-              <Input
-                id="lastName"
-                type="text"
-                value={formData.lastName}
-                onChange={(e) => handleInputChange("lastName", e.target.value)}
-                onBlur={() => handleBlur("lastName")}
-                className={cn(
-                  "transition-colors",
-                  errors.lastName && touched.lastName ? "border-red-500 focus:border-red-500" : "",
-                )}
-                disabled={isLoading}
-              />
-              {errors.lastName && touched.lastName && (
-                <p className="text-sm text-red-600 flex items-center gap-1">
-                  <X className="h-3 w-3" />
-                  {errors.lastName}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="email">Email Address *</Label>
-            <Input
-              id="email"
-              type="email"
-              value={formData.email}
-              onChange={(e) => handleInputChange("email", e.target.value)}
-              onBlur={() => handleBlur("email")}
-              className={cn(
-                "transition-colors",
-                errors.email && touched.email ? "border-red-500 focus:border-red-500" : "",
-              )}
-              disabled={isLoading}
-            />
-            {errors.email && touched.email && (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <X className="h-3 w-3" />
-                {errors.email}
-              </p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="password">Password *</Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                value={formData.password}
-                onChange={(e) => handleInputChange("password", e.target.value)}
-                onBlur={() => handleBlur("password")}
-                className={cn(
-                  "pr-10 transition-colors",
-                  errors.password && touched.password ? "border-red-500 focus:border-red-500" : "",
-                )}
-                disabled={isLoading}
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowPassword(!showPassword)}
-                disabled={isLoading}
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            </div>
-
-            {formData.password && (
-              <div className="space-y-2 p-3 bg-slate-50 rounded-lg border">
-                <p className="text-sm font-medium text-slate-700">Password Requirements:</p>
-                <ul className="space-y-1">
-                  {passwordRequirements.map((req, index) => {
-                    const isValid = req.test(formData.password)
-                    return (
-                      <li key={index} className="flex items-center gap-2 text-sm">
-                        {isValid ? (
-                          <Check className="h-3 w-3 text-green-600" />
-                        ) : (
-                          <X className="h-3 w-3 text-red-500" />
-                        )}
-                        <span className={isValid ? "text-green-700" : "text-slate-600"}>{req.label}</span>
-                      </li>
-                    )
-                  })}
-                </ul>
+              {/* Name Fields */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName" className="text-white">
+                    First Name *
+                  </Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      id="firstName"
+                      type="text"
+                      value={formData.firstName}
+                      onChange={(e) => handleInputChange("firstName", e.target.value)}
+                      onBlur={() => handleBlur("firstName")}
+                      className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                      placeholder="John"
+                      required
+                    />
+                  </div>
+                  {touched.firstName && formData.firstName.trim().length < 2 && (
+                    <p className="text-red-400 text-sm">First name must be at least 2 characters</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName" className="text-white">
+                    Last Name *
+                  </Label>
+                  <div className="relative">
+                    <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                    <Input
+                      id="lastName"
+                      type="text"
+                      value={formData.lastName}
+                      onChange={(e) => handleInputChange("lastName", e.target.value)}
+                      onBlur={() => handleBlur("lastName")}
+                      className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                      placeholder="Doe"
+                      required
+                    />
+                  </div>
+                  {touched.lastName && formData.lastName.trim().length < 2 && (
+                    <p className="text-red-400 text-sm">Last name must be at least 2 characters</p>
+                  )}
+                </div>
               </div>
-            )}
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="confirmPassword">Confirm Password *</Label>
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                value={formData.confirmPassword}
-                onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
-                onBlur={() => handleBlur("confirmPassword")}
-                className={cn(
-                  "pr-10 transition-colors",
-                  errors.confirmPassword && touched.confirmPassword ? "border-red-500 focus:border-red-500" : "",
+              {/* Email Field */}
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-white">
+                  Email Address *
+                </Label>
+                <div className="relative">
+                  <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => handleInputChange("email", e.target.value)}
+                    onBlur={() => handleBlur("email")}
+                    className="pl-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                    placeholder="john@example.com"
+                    required
+                  />
+                </div>
+                {touched.email && formData.email && !validateEmail(formData.email) && (
+                  <p className="text-red-400 text-sm">Please enter a valid email address</p>
                 )}
-                disabled={isLoading}
-              />
+              </div>
+
+              {/* Password Field */}
+              <div className="space-y-2">
+                <Label htmlFor="password" className="text-white">
+                  Password *
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) => handleInputChange("password", e.target.value)}
+                    onBlur={() => handleBlur("password")}
+                    className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                    placeholder="Enter your password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                  >
+                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* Password Requirements */}
+              {formData.password && (
+                <div className="space-y-2">
+                  <Label className="text-white text-sm">Password Requirements:</Label>
+                  <div className="space-y-1">
+                    {passwordRequirements.map((requirement) => {
+                      const isMet = requirement.test(formData.password)
+                      return (
+                        <div key={requirement.id} className="flex items-center gap-2">
+                          {isMet ? (
+                            <Check className="h-4 w-4 text-green-400" />
+                          ) : (
+                            <X className="h-4 w-4 text-red-400" />
+                          )}
+                          <span className={`text-sm ${isMet ? "text-green-400" : "text-gray-400"}`}>
+                            {requirement.label}
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Confirm Password Field */}
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-white">
+                  Confirm Password *
+                </Label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={formData.confirmPassword}
+                    onChange={(e) => handleInputChange("confirmPassword", e.target.value)}
+                    onBlur={() => handleBlur("confirmPassword")}
+                    className="pl-10 pr-10 bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+                    placeholder="Confirm your password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+                  >
+                    {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                {touched.confirmPassword &&
+                  formData.confirmPassword &&
+                  formData.password !== formData.confirmPassword && (
+                    <div className="flex items-center gap-2">
+                      <X className="h-4 w-4 text-red-400" />
+                      <span className="text-red-400 text-sm">Passwords do not match</span>
+                    </div>
+                  )}
+                {touched.confirmPassword &&
+                  formData.confirmPassword &&
+                  formData.password === formData.confirmPassword && (
+                    <div className="flex items-center gap-2">
+                      <Check className="h-4 w-4 text-green-400" />
+                      <span className="text-green-400 text-sm">Passwords match</span>
+                    </div>
+                  )}
+              </div>
+
+              {/* Submit Button */}
               <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                disabled={isLoading}
+                type="submit"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!isFormValid() || isLoading}
               >
-                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating Account...
+                  </>
+                ) : (
+                  "Create Account"
+                )}
               </Button>
-            </div>
-            {formData.confirmPassword && formData.password === formData.confirmPassword && (
-              <p className="text-sm text-green-600 flex items-center gap-1">
-                <Check className="h-3 w-3" />
-                Passwords match
-              </p>
-            )}
-            {errors.confirmPassword && touched.confirmPassword && (
-              <p className="text-sm text-red-600 flex items-center gap-1">
-                <X className="h-3 w-3" />
-                {errors.confirmPassword}
-              </p>
-            )}
-          </div>
 
-          <Button
-            type="submit"
-            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!isFormValid() || isLoading}
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Creating Account...
-              </>
-            ) : (
-              "Create Account"
-            )}
-          </Button>
-
-          <div className="text-center">
-            <p className="text-sm text-slate-600">
-              Already have an account?{" "}
-              <Link href="/auth/login" className="text-blue-600 hover:text-blue-700 font-medium">
-                Sign in
-              </Link>
-            </p>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+              {/* Sign In Link */}
+              <div className="text-center">
+                <p className="text-gray-300">
+                  Already have an account?{" "}
+                  <Link href="/auth/login" className="text-blue-400 hover:text-blue-300 font-medium">
+                    Sign in
+                  </Link>
+                </p>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }

@@ -1,207 +1,277 @@
-import type { Metadata } from "next"
+"use client"
+
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CheckCircle, Mail, Shield, TrendingUp, Bot, Bell, ArrowRight, Star, Clock, Users, Zap } from "lucide-react"
-
-export const metadata: Metadata = {
-  title: "Welcome to CoinWayFinder - Account Created Successfully",
-  description:
-    "Your CoinWayFinder account has been created successfully. Check your email to verify your account and start trading.",
-}
+import {
+  CheckCircle,
+  Mail,
+  ArrowRight,
+  Star,
+  Users,
+  TrendingUp,
+  Shield,
+  Bot,
+  BarChart3,
+  AlertTriangle,
+  Clock,
+  Gift,
+} from "lucide-react"
 
 export default function ThankYouPage() {
+  const router = useRouter()
+  const [countdown, setCountdown] = useState(10)
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          router.push("/auth/login")
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+
+    return () => clearInterval(timer)
+  }, [router])
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
-      {/* Background Pattern */}
-      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px]" />
 
-      {/* Floating Elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
-      </div>
+      {/* Floating Celebration Elements */}
+      <div className="absolute top-20 left-20 w-32 h-32 bg-green-500/20 rounded-full blur-xl animate-pulse" />
+      <div className="absolute bottom-20 right-20 w-40 h-40 bg-blue-500/20 rounded-full blur-xl animate-pulse delay-1000" />
+      <div className="absolute top-1/2 right-1/4 w-24 h-24 bg-purple-500/20 rounded-full blur-xl animate-pulse delay-500" />
 
-      <div className="relative z-10 w-full max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
-            <CheckCircle className="w-10 h-10 text-green-600" />
+      <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
+        <div className="w-full max-w-4xl space-y-8">
+          {/* Main Success Card */}
+          <Card className="bg-white/10 backdrop-blur-lg border-white/20 shadow-2xl">
+            <CardHeader className="text-center pb-4">
+              <div className="flex justify-center mb-4">
+                <div className="relative">
+                  <CheckCircle className="h-16 w-16 text-green-400 animate-pulse" />
+                  <div className="absolute inset-0 bg-green-400/20 rounded-full animate-ping" />
+                </div>
+              </div>
+              <CardTitle className="text-3xl font-bold text-white mb-2">Welcome to CoinWayFinder! 🎉</CardTitle>
+              <CardDescription className="text-gray-300 text-lg">
+                Your account has been created successfully. You're now part of our growing community of smart crypto
+                traders.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Account Status */}
+              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Mail className="h-5 w-5 text-blue-400" />
+                    <span className="text-white font-medium">Account Status</span>
+                  </div>
+                  <Badge variant="outline" className="bg-yellow-500/10 text-yellow-400 border-yellow-500/20">
+                    Email Verification Pending
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Next Steps */}
+              <div className="space-y-4">
+                <h3 className="text-xl font-semibold text-white flex items-center gap-2">
+                  <Clock className="h-5 w-5 text-blue-400" />
+                  What's Next?
+                </h3>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                        1
+                      </div>
+                      <span className="text-white font-medium">Check Your Email</span>
+                    </div>
+                    <p className="text-gray-400 text-sm">
+                      We've sent a verification link to your email address. Click it to activate your account.
+                    </p>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                        2
+                      </div>
+                      <span className="text-white font-medium">Complete Profile</span>
+                    </div>
+                    <p className="text-gray-400 text-sm">
+                      Set up your trading preferences and connect your favorite exchanges.
+                    </p>
+                  </div>
+                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                        3
+                      </div>
+                      <span className="text-white font-medium">Start Trading</span>
+                    </div>
+                    <p className="text-gray-400 text-sm">
+                      Create your first AI trading bot and start making smarter trades.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Welcome Offer */}
+              <div className="bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-lg p-6 border border-blue-500/20">
+                <div className="flex items-center gap-3 mb-3">
+                  <Gift className="h-6 w-6 text-blue-400" />
+                  <h3 className="text-xl font-semibold text-white">Welcome Offer</h3>
+                </div>
+                <p className="text-gray-300 mb-4">
+                  As a new member, you get <strong className="text-blue-400">30 days of premium features</strong>{" "}
+                  absolutely free! This includes advanced AI trading bots, real-time market analysis, and priority
+                  support.
+                </p>
+                <div className="flex items-center gap-2 text-sm text-gray-400">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span>Offer expires in 7 days. Activate your account to claim!</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Features Preview */}
+          <div className="grid gap-6 md:grid-cols-3">
+            <Card className="bg-white/5 backdrop-blur-lg border-white/10">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <Bot className="h-8 w-8 text-blue-400" />
+                  <CardTitle className="text-white">AI Trading Bots</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-400 text-sm mb-3">
+                  Create intelligent trading bots that work 24/7 to maximize your profits using advanced AI algorithms.
+                </p>
+                <div className="flex items-center gap-2 text-xs text-blue-400">
+                  <TrendingUp className="h-3 w-3" />
+                  <span>Average 23% monthly returns</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/5 backdrop-blur-lg border-white/10">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <BarChart3 className="h-8 w-8 text-purple-400" />
+                  <CardTitle className="text-white">Market Analysis</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-400 text-sm mb-3">
+                  Get real-time market insights, technical analysis, and sentiment data to make informed trading
+                  decisions.
+                </p>
+                <div className="flex items-center gap-2 text-xs text-purple-400">
+                  <BarChart3 className="h-3 w-3" />
+                  <span>99.2% accuracy rate</span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/5 backdrop-blur-lg border-white/10">
+              <CardHeader className="pb-3">
+                <div className="flex items-center gap-3">
+                  <Shield className="h-8 w-8 text-green-400" />
+                  <CardTitle className="text-white">Risk Management</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="text-gray-400 text-sm mb-3">
+                  Advanced risk management tools to protect your investments with stop-loss, take-profit, and portfolio
+                  diversification.
+                </p>
+                <div className="flex items-center gap-2 text-xs text-green-400">
+                  <Shield className="h-3 w-3" />
+                  <span>Bank-grade security</span>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Welcome to CoinWayFinder!</h1>
-          <p className="text-xl text-slate-300 mb-2">Your account has been created successfully</p>
-          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200">
-            <Clock className="w-3 h-3 mr-1" />
-            Email Verification Pending
-          </Badge>
-        </div>
 
-        <div className="grid md:grid-cols-2 gap-6 mb-8">
-          {/* Next Steps Card */}
-          <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <Mail className="w-5 h-5 text-blue-600" />
-                Next Steps
-              </CardTitle>
-              <CardDescription>Complete these steps to get started with your trading journey</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="flex items-center justify-center w-6 h-6 bg-blue-100 text-blue-600 rounded-full text-sm font-medium flex-shrink-0 mt-0.5">
-                  1
+          {/* Trust Indicators */}
+          <Card className="bg-white/5 backdrop-blur-lg border-white/10">
+            <CardContent className="pt-6">
+              <div className="grid gap-6 md:grid-cols-3 text-center">
+                <div className="space-y-2">
+                  <div className="flex justify-center">
+                    <div className="flex text-yellow-400">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <Star key={star} className="h-5 w-5 fill-current" />
+                      ))}
+                    </div>
+                  </div>
+                  <p className="text-white font-semibold">4.9/5 Rating</p>
+                  <p className="text-gray-400 text-sm">From 12,000+ reviews</p>
                 </div>
-                <div>
-                  <h4 className="font-medium text-slate-800">Check Your Email</h4>
-                  <p className="text-sm text-slate-600">
-                    We've sent a verification link to your email address. Click it to activate your account.
-                  </p>
+                <div className="space-y-2">
+                  <Users className="h-8 w-8 text-blue-400 mx-auto" />
+                  <p className="text-white font-semibold">50,000+ Users</p>
+                  <p className="text-gray-400 text-sm">Active traders worldwide</p>
                 </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="flex items-center justify-center w-6 h-6 bg-slate-100 text-slate-400 rounded-full text-sm font-medium flex-shrink-0 mt-0.5">
-                  2
-                </div>
-                <div>
-                  <h4 className="font-medium text-slate-400">Complete Your Profile</h4>
-                  <p className="text-sm text-slate-400">
-                    Add your trading preferences and connect your exchange accounts.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3">
-                <div className="flex items-center justify-center w-6 h-6 bg-slate-100 text-slate-400 rounded-full text-sm font-medium flex-shrink-0 mt-0.5">
-                  3
-                </div>
-                <div>
-                  <h4 className="font-medium text-slate-400">Start Trading</h4>
-                  <p className="text-sm text-slate-400">Create your first trading bot and begin automated trading.</p>
+                <div className="space-y-2">
+                  <TrendingUp className="h-8 w-8 text-green-400 mx-auto" />
+                  <p className="text-white font-semibold">$2.5B+ Volume</p>
+                  <p className="text-gray-400 text-sm">Traded this month</p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Features Preview Card */}
-          <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-slate-800">
-                <Zap className="w-5 h-5 text-purple-600" />
-                What You'll Get Access To
-              </CardTitle>
-              <CardDescription>Powerful tools to enhance your trading experience</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-3">
-                <Bot className="w-5 h-5 text-blue-600" />
-                <span className="text-sm font-medium text-slate-700">AI-Powered Trading Bots</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <TrendingUp className="w-5 h-5 text-green-600" />
-                <span className="text-sm font-medium text-slate-700">Real-time Market Analysis</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Shield className="w-5 h-5 text-purple-600" />
-                <span className="text-sm font-medium text-slate-700">Advanced Risk Management</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Bell className="w-5 h-5 text-orange-600" />
-                <span className="text-sm font-medium text-slate-700">Smart Price Alerts</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Users className="w-5 h-5 text-indigo-600" />
-                <span className="text-sm font-medium text-slate-700">Community Signals</span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Trust Indicators */}
-        <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl mb-8">
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-              <div>
-                <div className="flex items-center justify-center gap-1 mb-2">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-sm font-medium text-slate-700">4.9/5 User Rating</p>
-                <p className="text-xs text-slate-500">Based on 2,847 reviews</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-800 mb-1">50,000+</p>
-                <p className="text-sm font-medium text-slate-700">Active Traders</p>
-                <p className="text-xs text-slate-500">Join our growing community</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-slate-800 mb-1">$2.5B+</p>
-                <p className="text-sm font-medium text-slate-700">Trading Volume</p>
-                <p className="text-xs text-slate-500">Processed this month</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Action Buttons */}
-        <div className="text-center space-y-4">
+          {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button
-              asChild
-              size="lg"
-              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+              onClick={() => router.push("/auth/login")}
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold px-8 py-3"
             >
-              <Link href="/auth/login">
-                Sign In to Your Account
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+              Sign In Now
+              <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="border-white/20 text-white hover:bg-white/10 bg-transparent"
-            >
-              <Link href="/">Back to Homepage</Link>
+            <Button variant="outline" className="border-white/20 text-white hover:bg-white/10 bg-transparent" asChild>
+              <Link href="/features">Explore Features</Link>
             </Button>
           </div>
 
-          <p className="text-sm text-slate-400">
-            Need help? Contact our{" "}
-            <Link href="/support" className="text-blue-400 hover:text-blue-300 underline">
-              support team
-            </Link>{" "}
-            or check our{" "}
-            <Link href="/help" className="text-blue-400 hover:text-blue-300 underline">
-              help center
-            </Link>
-          </p>
-
-          <div className="mt-6 p-4 bg-blue-900/20 rounded-lg border border-blue-500/20">
-            <p className="text-sm text-blue-200 mb-2">
-              🎉 <strong>Special Welcome Offer:</strong> Get 30 days of premium features free!
+          {/* Auto Redirect Notice */}
+          <div className="text-center">
+            <p className="text-gray-400 text-sm">
+              You'll be automatically redirected to the login page in{" "}
+              <span className="text-blue-400 font-semibold">{countdown}</span> seconds
             </p>
-            <p className="text-xs text-blue-300">Automatically applied to your account after email verification</p>
           </div>
-        </div>
 
-        {/* Auto-redirect Notice */}
-        <div className="mt-8 text-center">
-          <p className="text-xs text-slate-400">You'll be automatically redirected to the login page in 10 seconds</p>
+          {/* Support */}
+          <div className="text-center space-y-2">
+            <p className="text-gray-400 text-sm">Need help getting started?</p>
+            <div className="flex justify-center gap-4 text-sm">
+              <Link href="/help" className="text-blue-400 hover:text-blue-300">
+                Help Center
+              </Link>
+              <span className="text-gray-600">•</span>
+              <Link href="/contact" className="text-blue-400 hover:text-blue-300">
+                Contact Support
+              </Link>
+              <span className="text-gray-600">•</span>
+              <Link href="/docs" className="text-blue-400 hover:text-blue-300">
+                Documentation
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
-
-      {/* Auto-redirect Script */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: `
-            setTimeout(function() {
-              window.location.href = '/auth/login';
-            }, 10000);
-          `,
-        }}
-      />
     </div>
   )
 }
