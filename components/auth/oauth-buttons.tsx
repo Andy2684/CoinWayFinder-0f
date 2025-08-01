@@ -3,78 +3,65 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Icons } from "@/components/ui/icons"
-import { useToast } from "@/hooks/use-toast"
+import { Loader2 } from "lucide-react"
 
-interface OAuthButtonsProps {
-  mode?: "login" | "signup"
-  className?: string
-}
+const oauthProviders = [
+  {
+    id: "google",
+    name: "Google",
+    icon: Icons.google,
+    className: "bg-white hover:bg-gray-50 text-gray-900 border border-gray-300",
+  },
+  {
+    id: "github",
+    name: "GitHub",
+    icon: Icons.gitHub,
+    className: "bg-gray-900 hover:bg-gray-800 text-white",
+  },
+  {
+    id: "twitter",
+    name: "Twitter",
+    icon: Icons.twitter,
+    className: "bg-blue-500 hover:bg-blue-600 text-white",
+  },
+  {
+    id: "discord",
+    name: "Discord",
+    icon: Icons.discord,
+    className: "bg-indigo-600 hover:bg-indigo-700 text-white",
+  },
+]
 
-export function OAuthButtons({ mode = "login", className }: OAuthButtonsProps) {
-  const [loading, setLoading] = useState<string | null>(null)
-  const { toast } = useToast()
+export function OAuthButtons() {
+  const [loadingProvider, setLoadingProvider] = useState<string | null>(null)
 
-  const handleOAuthLogin = async (provider: string) => {
+  const handleOAuthLogin = async (providerId: string) => {
+    setLoadingProvider(providerId)
     try {
-      setLoading(provider)
-      window.location.href = `/api/auth/oauth/${provider}`
+      // Redirect to OAuth provider
+      window.location.href = `/api/auth/oauth/${providerId}`
     } catch (error) {
-      console.error(`${provider} OAuth error:`, error)
-      toast({
-        title: "Authentication Error",
-        description: `Failed to ${mode} with ${provider}. Please try again.`,
-        variant: "destructive",
-      })
-      setLoading(null)
+      console.error(`OAuth login error for ${providerId}:`, error)
+      setLoadingProvider(null)
     }
   }
 
-  const providers = [
-    {
-      id: "google",
-      name: "Google",
-      icon: Icons.google,
-      className: "bg-white hover:bg-gray-50 text-gray-900 border-gray-300",
-    },
-    {
-      id: "github",
-      name: "GitHub",
-      icon: Icons.github,
-      className: "bg-gray-900 hover:bg-gray-800 text-white border-gray-700",
-    },
-    {
-      id: "twitter",
-      name: "Twitter",
-      icon: Icons.twitter,
-      className: "bg-blue-500 hover:bg-blue-600 text-white border-blue-600",
-    },
-    {
-      id: "discord",
-      name: "Discord",
-      icon: Icons.discord,
-      className: "bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700",
-    },
-  ]
-
   return (
-    <div className={`space-y-3 ${className}`}>
-      {providers.map((provider) => {
-        const IconComponent = provider.icon
+    <div className="grid grid-cols-2 gap-3">
+      {oauthProviders.map((provider) => {
+        const Icon = provider.icon
+        const isLoading = loadingProvider === provider.id
+
         return (
           <Button
             key={provider.id}
-            type="button"
             variant="outline"
             onClick={() => handleOAuthLogin(provider.id)}
-            disabled={loading !== null}
-            className={`w-full ${provider.className}`}
+            disabled={isLoading}
+            className={`${provider.className} transition-colors`}
           >
-            {loading === provider.id ? (
-              <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <IconComponent className="mr-2 h-4 w-4" />
-            )}
-            Continue with {provider.name}
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Icon className="mr-2 h-4 w-4" />}
+            {provider.name}
           </Button>
         )
       })}

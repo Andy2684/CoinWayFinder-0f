@@ -1,103 +1,82 @@
-import adminNotificationService from "@/lib/admin-notification-service"
+import { type NextRequest, NextResponse } from "next/server"
+import { adminNotificationService } from "@/lib/admin-notification-service"
+import { getUser, updateUser, deleteUser } from "@/lib/user"
 
-export async function DELETE(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params
-  // Assume user deletion logic is here
-  const user = await deleteUser(id)
+export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const { id } = params
 
-  if (user) {
+    // Get user before deletion for notification
+    const user = await getUser(id)
+    if (!user) {
+      return NextResponse.json({ message: "User not found" }, { status: 404 })
+    }
+
+    // Delete the user
+    await deleteUser(id)
+
     // Send admin action notification
     await adminNotificationService.sendAdminActionNotification({
-      action: "user_deleted",
-      adminId: authResult.user.id,
-      adminEmail: authResult.user.email,
+      type: "user_deleted",
+      adminId: "admin123", // This should come from auth context
+      adminEmail: "admin@coinwayfinder.com", // This should come from auth context
       targetUserId: id,
       targetUserEmail: user.email,
-      details: { reason: "Admin deletion" },
+      details: "User account deleted by administrator",
       timestamp: new Date(),
-      ipAddress: request.headers.get("x-forwarded-for") || "unknown",
     })
 
-    return new Response(JSON.stringify({ message: "User deleted successfully" }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    })
-  } else {
-    return new Response(JSON.stringify({ message: "User not found" }), {
-      status: 404,
-      headers: { "Content-Type": "application/json" },
-    })
+    return NextResponse.json({ message: "User deleted successfully" }, { status: 200 })
+  } catch (error) {
+    console.error("Error deleting user:", error)
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 })
   }
 }
 
-export async function PUT(request: Request, { params }: { params: { id: string } }) {
-  const { id } = params
-  const updates = await request.json()
-  // Assume user update logic is here
-  const user = await updateUser(id, updates)
+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+  try {
+    const { id } = params
+    const updates = await request.json()
 
-  if (user) {
+    // Get current user data
+    const currentUser = await getUser(id)
+    if (!currentUser) {
+      return NextResponse.json({ message: "User not found" }, { status: 404 })
+    }
+
+    // Update the user
+    const updatedUser = await updateUser(id, updates)
+
     // Check for role changes and send notification
-    if (updates.role && updates.role !== user.role) {
+    if (updates.role && updates.role !== currentUser.role) {
       await adminNotificationService.sendAdminActionNotification({
-        action: "role_changed",
-        adminId: authResult.user.id,
-        adminEmail: authResult.user.email,
+        type: "role_changed",
+        adminId: "admin123", // This should come from auth context
+        adminEmail: "admin@coinwayfinder.com", // This should come from auth context
         targetUserId: id,
-        targetUserEmail: user.email,
-        details: {
-          oldRole: user.role,
-          newRole: updates.role,
-        },
+        targetUserEmail: currentUser.email,
+        details: `User role changed from ${currentUser.role} to ${updates.role}`,
         timestamp: new Date(),
-        ipAddress: request.headers.get("x-forwarded-for") || "unknown",
       })
     }
 
     // Check for status changes (ban/unban)
-    if (updates.status && updates.status !== user.status) {
-      const action = updates.status === "banned" ? "user_banned" : "user_unbanned"
+    if (updates.status && updates.status !== currentUser.status) {
+      const actionType = updates.status === "banned" ? "user_banned" : "user_banned"
       await adminNotificationService.sendAdminActionNotification({
-        action,
-        adminId: authResult.user.id,
-        adminEmail: authResult.user.email,
+        type: actionType,
+        adminId: "admin123", // This should come from auth context
+        adminEmail: "admin@coinwayfinder.com", // This should come from auth context
         targetUserId: id,
-        targetUserEmail: user.email,
-        details: {
-          oldStatus: user.status,
-          newStatus: updates.status,
-          reason: updates.banReason,
-        },
+        targetUserEmail: currentUser.email,
+        details: `User status changed from ${currentUser.status} to ${updates.status}${updates.banReason ? `. Reason: ${updates.banReason}` : ""}`,
         timestamp: new Date(),
-        ipAddress: request.headers.get("x-forwarded-for") || "unknown",
       })
     }
 
-    return new Response(JSON.stringify({ message: "User updated successfully" }), {
-      status: 200,
-      headers: { "Content-Type": "application/json" },
-    })
-  } else {
-    return new Response(JSON.stringify({ message: "User not found" }), {
-      status: 404,
-      headers: { "Content-Type": "application/json" },
-    })
+    return NextResponse.json({ message: "User updated successfully", user: updatedUser }, { status: 200 })
+  } catch (error) {
+    console.error("Error updating user:", error)
+    return NextResponse.json({ message: "Internal server error" }, { status: 500 })
   }
-}
-
-// Assume deleteUser and updateUser functions are defined here
-async function deleteUser(id: string) {
-  // Implementation for deleting a user
-}
-
-async function updateUser(id: string, updates: any) {
-  // Implementation for updating a user
-}
-
-// Assume authResult is defined here
-const authResult = {
-  user: {
-    id: "admin123",
-    email: "admin@example.com",
-  },
 }
