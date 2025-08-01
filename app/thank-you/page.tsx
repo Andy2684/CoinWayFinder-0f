@@ -1,273 +1,207 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import {
-  CheckCircle,
-  Mail,
-  ArrowRight,
-  Bot,
-  TrendingUp,
-  Shield,
-  Clock,
-  Users,
-  Star,
-  Sparkles,
-  ExternalLink,
-  MessageCircle,
-  BookOpen,
-} from "lucide-react"
+import type { Metadata } from "next"
 import Link from "next/link"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { CheckCircle, Mail, Shield, TrendingUp, Bot, Bell, ArrowRight, Star, Clock, Users, Zap } from "lucide-react"
+
+export const metadata: Metadata = {
+  title: "Welcome to CoinWayFinder - Account Created Successfully",
+  description:
+    "Your CoinWayFinder account has been created successfully. Check your email to verify your account and start trading.",
+}
 
 export default function ThankYouPage() {
-  const [countdown, setCountdown] = useState(10)
-  const router = useRouter()
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          router.push("/auth/login")
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-
-    return () => clearInterval(timer)
-  }, [router])
-
-  const nextSteps = [
-    {
-      icon: Mail,
-      title: "Check Your Email",
-      description: "We've sent a verification link to your email address. Click it to activate your account.",
-      status: "pending",
-    },
-    {
-      icon: Shield,
-      title: "Secure Your Account",
-      description: "Set up two-factor authentication for enhanced security.",
-      status: "upcoming",
-    },
-    {
-      icon: Bot,
-      title: "Deploy Your First Bot",
-      description: "Create and configure your first AI trading bot.",
-      status: "upcoming",
-    },
-    {
-      icon: TrendingUp,
-      title: "Start Trading",
-      description: "Begin your automated crypto trading journey.",
-      status: "upcoming",
-    },
-  ]
-
-  const features = [
-    {
-      icon: Bot,
-      title: "AI Trading Bots",
-      description: "Deploy intelligent bots that trade 24/7",
-    },
-    {
-      icon: TrendingUp,
-      title: "Real-Time Analytics",
-      description: "Advanced market analysis and insights",
-    },
-    {
-      icon: Shield,
-      title: "Enterprise Security",
-      description: "Bank-level security for your assets",
-    },
-    {
-      icon: Users,
-      title: "Community Support",
-      description: "Join thousands of successful traders",
-    },
-  ]
-
-  const supportResources = [
-    {
-      icon: BookOpen,
-      title: "Getting Started Guide",
-      description: "Learn the basics of automated trading",
-      link: "/docs/getting-started",
-    },
-    {
-      icon: MessageCircle,
-      title: "Community Forum",
-      description: "Connect with other traders",
-      link: "/community",
-    },
-    {
-      icon: ExternalLink,
-      title: "Video Tutorials",
-      description: "Watch step-by-step tutorials",
-      link: "/tutorials",
-    },
-  ]
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-900 p-4">
-      <div className="container mx-auto max-w-4xl py-12">
-        {/* Success Header */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-green-500/20 rounded-full mb-6">
-            <CheckCircle className="w-10 h-10 text-green-400" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))]" />
+
+      {/* Floating Elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-3xl animate-pulse delay-1000" />
+      </div>
+
+      <div className="relative z-10 w-full max-w-4xl mx-auto">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-6">
+            <CheckCircle className="w-10 h-10 text-green-600" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Welcome to CoinWayFinder! 🎉</h1>
-          <p className="text-xl text-gray-300 mb-6">
-            Your account has been created successfully. You're now part of the future of crypto trading.
-          </p>
-          <Badge variant="secondary" className="bg-green-500/20 text-green-300 border-green-500/30 px-4 py-2">
-            <Sparkles className="w-4 h-4 mr-2" />
-            Account Created Successfully
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">Welcome to CoinWayFinder!</h1>
+          <p className="text-xl text-slate-300 mb-2">Your account has been created successfully</p>
+          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 border-yellow-200">
+            <Clock className="w-3 h-3 mr-1" />
+            Email Verification Pending
           </Badge>
         </div>
 
-        {/* Account Status */}
-        <Card className="bg-white/10 border-white/20 backdrop-blur-sm mb-8">
-          <CardHeader>
-            <CardTitle className="text-white flex items-center">
-              <Mail className="w-5 h-5 mr-2 text-blue-400" />
-              Account Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Alert className="bg-yellow-500/20 border-yellow-500/30">
-              <Clock className="h-4 w-4 text-yellow-400" />
-              <AlertDescription className="text-yellow-200">
-                <strong>Email Verification Pending:</strong> Please check your email and click the verification link to
-                fully activate your account.
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
-
-        {/* Next Steps */}
-        <Card className="bg-white/10 border-white/20 backdrop-blur-sm mb-8">
-          <CardHeader>
-            <CardTitle className="text-white">Your Next Steps</CardTitle>
-            <CardDescription className="text-gray-300">
-              Follow these steps to get the most out of CoinWayFinder
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {nextSteps.map((step, index) => (
-                <div key={index} className="flex items-start space-x-4 p-4 rounded-lg bg-white/5">
-                  <div
-                    className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                      step.status === "pending" ? "bg-blue-500/20 text-blue-400" : "bg-gray-500/20 text-gray-400"
-                    }`}
-                  >
-                    <step.icon className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-white mb-1">{step.title}</h3>
-                    <p className="text-gray-300 text-sm">{step.description}</p>
-                  </div>
-                  <div>
-                    {step.status === "pending" && (
-                      <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-blue-500/30">
-                        Active
-                      </Badge>
-                    )}
-                  </div>
+        <div className="grid md:grid-cols-2 gap-6 mb-8">
+          {/* Next Steps Card */}
+          <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-slate-800">
+                <Mail className="w-5 h-5 text-blue-600" />
+                Next Steps
+              </CardTitle>
+              <CardDescription>Complete these steps to get started with your trading journey</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="flex items-center justify-center w-6 h-6 bg-blue-100 text-blue-600 rounded-full text-sm font-medium flex-shrink-0 mt-0.5">
+                  1
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Features Preview */}
-        <Card className="bg-white/10 border-white/20 backdrop-blur-sm mb-8">
-          <CardHeader>
-            <CardTitle className="text-white">What You'll Get Access To</CardTitle>
-            <CardDescription className="text-gray-300">
-              Powerful tools and features to maximize your trading success
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-2 gap-4">
-              {features.map((feature, index) => (
-                <div key={index} className="flex items-start space-x-3 p-4 rounded-lg bg-white/5">
-                  <feature.icon className="w-6 h-6 text-blue-400 flex-shrink-0 mt-1" />
-                  <div>
-                    <h3 className="font-semibold text-white mb-1">{feature.title}</h3>
-                    <p className="text-gray-300 text-sm">{feature.description}</p>
-                  </div>
+                <div>
+                  <h4 className="font-medium text-slate-800">Check Your Email</h4>
+                  <p className="text-sm text-slate-600">
+                    We've sent a verification link to your email address. Click it to activate your account.
+                  </p>
                 </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              </div>
 
-        {/* Support Resources */}
-        <Card className="bg-white/10 border-white/20 backdrop-blur-sm mb-8">
-          <CardHeader>
-            <CardTitle className="text-white">Need Help Getting Started?</CardTitle>
-            <CardDescription className="text-gray-300">
-              Explore our resources to learn and connect with the community
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid md:grid-cols-3 gap-4">
-              {supportResources.map((resource, index) => (
-                <Link
-                  key={index}
-                  href={resource.link}
-                  className="block p-4 rounded-lg bg-white/5 hover:bg-white/10 transition-colors group"
-                >
-                  <resource.icon className="w-6 h-6 text-blue-400 mb-3 group-hover:text-blue-300 transition-colors" />
-                  <h3 className="font-semibold text-white mb-2 group-hover:text-blue-100 transition-colors">
-                    {resource.title}
-                  </h3>
-                  <p className="text-gray-300 text-sm">{resource.description}</p>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex items-start gap-3">
+                <div className="flex items-center justify-center w-6 h-6 bg-slate-100 text-slate-400 rounded-full text-sm font-medium flex-shrink-0 mt-0.5">
+                  2
+                </div>
+                <div>
+                  <h4 className="font-medium text-slate-400">Complete Your Profile</h4>
+                  <p className="text-sm text-slate-400">
+                    Add your trading preferences and connect your exchange accounts.
+                  </p>
+                </div>
+              </div>
 
-        {/* Auto Redirect Notice */}
-        <Card className="bg-white/10 border-white/20 backdrop-blur-sm">
-          <CardContent className="p-6 text-center">
-            <p className="text-gray-300 mb-4">
-              You'll be automatically redirected to the login page in{" "}
-              <span className="font-bold text-white">{countdown}</span> seconds.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild className="bg-blue-600 hover:bg-blue-700 text-white">
-                <Link href="/auth/login" className="flex items-center">
-                  Sign In Now
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Link>
-              </Button>
-              <Button variant="outline" asChild className="border-white/20 text-white hover:bg-white/10 bg-transparent">
-                <Link href="/">Back to Home</Link>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex items-start gap-3">
+                <div className="flex items-center justify-center w-6 h-6 bg-slate-100 text-slate-400 rounded-full text-sm font-medium flex-shrink-0 mt-0.5">
+                  3
+                </div>
+                <div>
+                  <h4 className="font-medium text-slate-400">Start Trading</h4>
+                  <p className="text-sm text-slate-400">Create your first trading bot and begin automated trading.</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Features Preview Card */}
+          <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-slate-800">
+                <Zap className="w-5 h-5 text-purple-600" />
+                What You'll Get Access To
+              </CardTitle>
+              <CardDescription>Powerful tools to enhance your trading experience</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-3">
+                <Bot className="w-5 h-5 text-blue-600" />
+                <span className="text-sm font-medium text-slate-700">AI-Powered Trading Bots</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <TrendingUp className="w-5 h-5 text-green-600" />
+                <span className="text-sm font-medium text-slate-700">Real-time Market Analysis</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Shield className="w-5 h-5 text-purple-600" />
+                <span className="text-sm font-medium text-slate-700">Advanced Risk Management</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Bell className="w-5 h-5 text-orange-600" />
+                <span className="text-sm font-medium text-slate-700">Smart Price Alerts</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Users className="w-5 h-5 text-indigo-600" />
+                <span className="text-sm font-medium text-slate-700">Community Signals</span>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Trust Indicators */}
-        <div className="text-center mt-12">
-          <div className="flex items-center justify-center space-x-2 mb-4">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} className="w-5 h-5 text-yellow-400 fill-current" />
-            ))}
-            <span className="text-white ml-2 font-semibold">4.9/5</span>
+        <Card className="bg-white/95 backdrop-blur-sm border-0 shadow-2xl mb-8">
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+              <div>
+                <div className="flex items-center justify-center gap-1 mb-2">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                  ))}
+                </div>
+                <p className="text-sm font-medium text-slate-700">4.9/5 User Rating</p>
+                <p className="text-xs text-slate-500">Based on 2,847 reviews</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-800 mb-1">50,000+</p>
+                <p className="text-sm font-medium text-slate-700">Active Traders</p>
+                <p className="text-xs text-slate-500">Join our growing community</p>
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-slate-800 mb-1">$2.5B+</p>
+                <p className="text-sm font-medium text-slate-700">Trading Volume</p>
+                <p className="text-xs text-slate-500">Processed this month</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Action Buttons */}
+        <div className="text-center space-y-4">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button
+              asChild
+              size="lg"
+              className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+            >
+              <Link href="/auth/login">
+                Sign In to Your Account
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="border-white/20 text-white hover:bg-white/10 bg-transparent"
+            >
+              <Link href="/">Back to Homepage</Link>
+            </Button>
           </div>
-          <p className="text-gray-400">Trusted by over 50,000 traders worldwide</p>
+
+          <p className="text-sm text-slate-400">
+            Need help? Contact our{" "}
+            <Link href="/support" className="text-blue-400 hover:text-blue-300 underline">
+              support team
+            </Link>{" "}
+            or check our{" "}
+            <Link href="/help" className="text-blue-400 hover:text-blue-300 underline">
+              help center
+            </Link>
+          </p>
+
+          <div className="mt-6 p-4 bg-blue-900/20 rounded-lg border border-blue-500/20">
+            <p className="text-sm text-blue-200 mb-2">
+              🎉 <strong>Special Welcome Offer:</strong> Get 30 days of premium features free!
+            </p>
+            <p className="text-xs text-blue-300">Automatically applied to your account after email verification</p>
+          </div>
+        </div>
+
+        {/* Auto-redirect Notice */}
+        <div className="mt-8 text-center">
+          <p className="text-xs text-slate-400">You'll be automatically redirected to the login page in 10 seconds</p>
         </div>
       </div>
+
+      {/* Auto-redirect Script */}
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+            setTimeout(function() {
+              window.location.href = '/auth/login';
+            }, 10000);
+          `,
+        }}
+      />
     </div>
   )
 }

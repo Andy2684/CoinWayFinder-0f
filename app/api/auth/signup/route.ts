@@ -1,198 +1,127 @@
 import { type NextRequest, NextResponse } from "next/server"
-import bcrypt from "bcryptjs"
+import { createUser, getUserByEmail } from "@/lib/auth"
 import { connectToDatabase } from "@/lib/mongodb"
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { email, password, firstName, lastName } = body
+    const { firstName, lastName, email, password } = body
 
     // Validate required fields
-    if (!email || !password || !firstName || !lastName) {
-      return NextResponse.json({ error: "All fields are required", success: false }, { status: 400 })
+    if (!firstName || !lastName || !email || !password) {
+      return NextResponse.json({ error: "All fields are required" }, { status: 400 })
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: "Please enter a valid email address", success: false }, { status: 400 })
+      return NextResponse.json({ error: "Please enter a valid email address" }, { status: 400 })
     }
 
-    // Validate password strength
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/
-    if (!passwordRegex.test(password)) {
-      return NextResponse.json(
-        {
-          error:
-            "Password must be at least 8 characters long and contain uppercase, lowercase, number, and special character",
-          success: false,
-        },
-        { status: 400 },
-      )
+    // Validate password requirements
+    const passwordRequirements = [
+      { test: (p: string) => p.length >= 8, message: "Password must be at least 8 characters long" },
+      { test: (p: string) => /[A-Z]/.test(p), message: "Password must contain at least one uppercase letter" },
+      { test: (p: string) => /[a-z]/.test(p), message: "Password must contain at least one lowercase letter" },
+      { test: (p: string) => /\d/.test(p), message: "Password must contain at least one number" },
+      { test: (p: string) => /[!@#$%^&*]/.test(p), message: "Password must contain at least one special character" },
+    ]
+
+    for (const requirement of passwordRequirements) {
+      if (!requirement.test(password)) {
+        return NextResponse.json({ error: requirement.message }, { status: 400 })
+      }
     }
 
+    // Validate name lengths
+    if (firstName.trim().length < 2) {
+      return NextResponse.json({ error: "First name must be at least 2 characters long" }, { status: 400 })
+    }
+
+    if (lastName.trim().length < 2) {
+      return NextResponse.json({ error: "Last name must be at least 2 characters long" }, { status: 400 })
+    }
+
+    // Try to connect to database with retry logic
+    let dbConnection
+    let retryCount = 0
+    const maxRetries = 3
+
+    while (retryCount < maxRetries) {
+      try {
+        dbConnection = await connectToDatabase()
+        break
+      } catch (error) {
+        retryCount++
+        console.error(`Database connection attempt ${retryCount} failed:`, error)
+
+        if (retryCount === maxRetries) {
+          console.error("Max database connection retries reached")
+          return NextResponse.json({ error: "Unable to connect to database. Please try again later." }, { status: 503 })
+        }
+
+        // Wait before retrying (exponential backoff)
+        await new Promise((resolve) => setTimeout(resolve, Math.pow(2, retryCount) * 1000))
+      }
+    }
+
+    // Check if user already exists
     try {
-      // Connect to database with retry logic
-      const { db } = await connectToDatabase()
-      const usersCollection = db.collection("users")
-
-      // Check if user already exists
-      const existingUser = await usersCollection.findOne({
-        email: email.toLowerCase(),
-      })
-
+      const existingUser = await getUserByEmail(email.toLowerCase().trim())
       if (existingUser) {
-        return NextResponse.json(
-          { error: "An account with this email already exists", success: false },
-          { status: 409 },
-        )
+        return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 })
       }
+    } catch (error) {
+      console.error("Error checking existing user:", error)
+      return NextResponse.json({ error: "Unable to connect to database. Please try again later." }, { status: 503 })
+    }
 
-      // Hash password
-      const saltRounds = 12
-      const hashedPassword = await bcrypt.hash(password, saltRounds)
-
-      // Create user document
-      const newUser = {
-        email: email.toLowerCase(),
-        password_hash: hashedPassword,
-        first_name: firstName.trim(),
-        last_name: lastName.trim(),
-        username: `${firstName.toLowerCase()}_${lastName.toLowerCase()}_${Date.now()}`,
-        role: "user",
-        subscription_status: "free",
-        is_email_verified: false,
-        profile_picture: null,
-        phone: null,
-        location: null,
-        website: null,
-        bio: null,
-        preferences: {
-          notifications: {
-            email: true,
-            push: true,
-            sms: false,
-            trading_alerts: true,
-            news_updates: true,
-            price_alerts: true,
-          },
-          trading: {
-            default_exchange: "binance",
-            risk_level: "medium",
-            auto_trading: false,
-            stop_loss_enabled: true,
-            take_profit_enabled: true,
-          },
-          ui: {
-            theme: "dark",
-            language: "en",
-            timezone: "UTC",
-            currency: "USD",
-          },
+    // Create new user
+    try {
+      const newUser = await createUser({
+        email: email.toLowerCase().trim(),
+        username: `${firstName.trim()}_${lastName.trim()}_${Date.now()}`.toLowerCase(),
+        password,
+        profile: {
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
         },
-        security: {
-          two_factor_enabled: false,
-          two_factor_secret: null,
-          backup_codes: [],
-          login_attempts: 0,
-          locked_until: null,
-          last_password_change: new Date(),
-          security_questions: [],
-        },
-        activity: {
-          last_login: new Date(),
-          last_active: new Date(),
-          login_count: 0,
-          ip_addresses: [],
-          devices: [],
-        },
-        trading_data: {
-          total_trades: 0,
-          total_pnl: 0,
-          win_rate: 0,
-          favorite_pairs: ["BTC/USDT", "ETH/USDT"],
-          active_bots: [],
-          portfolio_value: 0,
-          risk_score: 50,
-        },
-        created_at: new Date(),
-        updated_at: new Date(),
-      }
-
-      // Insert user into database
-      const result = await usersCollection.insertOne(newUser)
-
-      if (!result.insertedId) {
-        throw new Error("Failed to create user account")
-      }
+        isEmailVerified: false,
+      })
 
       // Return success response (without sensitive data)
-      return NextResponse.json({
-        success: true,
-        message: "Account created successfully",
-        user: {
-          id: result.insertedId.toString(),
-          email: newUser.email,
-          firstName: newUser.first_name,
-          lastName: newUser.last_name,
-          isEmailVerified: newUser.is_email_verified,
-        },
-      })
-    } catch (dbError) {
-      console.error("Database error during signup:", dbError)
-
-      // Handle specific database connection errors
-      if (dbError instanceof Error) {
-        if (dbError.message.includes("EBADNAME") || dbError.message.includes("querySrv")) {
-          return NextResponse.json(
-            {
-              error: "Unable to connect to database. Please try again later.",
-              success: false,
-            },
-            { status: 503 },
-          )
-        }
-
-        if (dbError.message.includes("timeout")) {
-          return NextResponse.json(
-            {
-              error: "Database connection timeout. Please try again.",
-              success: false,
-            },
-            { status: 504 },
-          )
-        }
-      }
-
       return NextResponse.json(
         {
-          error: "Database error occurred. Please try again later.",
-          success: false,
+          success: true,
+          message: "Account created successfully",
+          user: {
+            id: newUser.id,
+            email: newUser.email,
+            firstName: newUser.profile?.firstName,
+            lastName: newUser.profile?.lastName,
+            isEmailVerified: newUser.isEmailVerified,
+          },
         },
-        { status: 500 },
+        { status: 201 },
       )
+    } catch (error) {
+      console.error("Error creating user:", error)
+
+      // Check if it's a duplicate key error (race condition)
+      if (error instanceof Error && error.message.includes("duplicate key")) {
+        return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 })
+      }
+
+      return NextResponse.json({ error: "Unable to connect to database. Please try again later." }, { status: 503 })
     }
   } catch (error) {
-    console.error("Signup error:", error)
+    console.error("Signup API error:", error)
 
     // Handle JSON parsing errors
     if (error instanceof SyntaxError) {
-      return NextResponse.json({ error: "Invalid request format", success: false }, { status: 400 })
+      return NextResponse.json({ error: "Invalid request format" }, { status: 400 })
     }
 
-    return NextResponse.json(
-      { error: "An unexpected error occurred. Please try again.", success: false },
-      { status: 500 },
-    )
+    return NextResponse.json({ error: "Unable to connect to database. Please try again later." }, { status: 503 })
   }
-}
-
-export async function GET() {
-  return NextResponse.json(
-    {
-      success: false,
-      error: "Method not allowed. Please use POST to create an account.",
-    },
-    { status: 405 },
-  )
 }
