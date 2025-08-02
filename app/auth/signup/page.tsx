@@ -3,7 +3,8 @@ import SignupClient from "./signup-client"
 
 export const metadata: Metadata = {
   title: "Sign Up - CoinWayFinder",
-  description: "Create your account to start trading with AI-powered bots",
+  description: "Create your account and start your journey to smarter crypto trading with AI-powered bots",
+  keywords: ["crypto", "trading", "AI", "bots", "signup", "register"],
 }
 
 export default function SignupPage() {

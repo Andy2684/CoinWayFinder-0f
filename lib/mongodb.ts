@@ -1,7 +1,7 @@
 import { MongoClient, type Db } from "mongodb"
 
 if (!process.env.MONGODB_URI) {
-  throw new Error("Please add your MongoDB URI to .env.local")
+  throw new Error("Please add your Mongo URI to .env.local")
 }
 
 const uri = process.env.MONGODB_URI
@@ -9,24 +9,22 @@ const options = {
   maxPoolSize: 10,
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
-  maxIdleTimeMS: 30000,
-  retryWrites: true,
-  retryReads: true,
+  family: 4,
 }
 
 let client: MongoClient
 let clientPromise: Promise<MongoClient>
 
-declare global {
-  var _mongoClientPromise: Promise<MongoClient> | undefined
-}
-
 if (process.env.NODE_ENV === "development") {
-  if (!global._mongoClientPromise) {
-    client = new MongoClient(uri, options)
-    global._mongoClientPromise = client.connect()
+  const globalWithMongo = global as typeof globalThis & {
+    _mongoClientPromise?: Promise<MongoClient>
   }
-  clientPromise = global._mongoClientPromise
+
+  if (!globalWithMongo._mongoClientPromise) {
+    client = new MongoClient(uri, options)
+    globalWithMongo._mongoClientPromise = client.connect()
+  }
+  clientPromise = globalWithMongo._mongoClientPromise
 } else {
   client = new MongoClient(uri, options)
   clientPromise = client.connect()
@@ -35,62 +33,38 @@ if (process.env.NODE_ENV === "development") {
 export async function connectToDatabase(): Promise<{ client: MongoClient; db: Db }> {
   try {
     const client = await clientPromise
-    const db = client.db("coinwayfinder")
-
-    // Test the connection
-    await db.admin().ping()
-    console.log("Successfully connected to MongoDB")
-
+    const db = client.db(process.env.DB_NAME || "coinwayfinder")
     return { client, db }
   } catch (error) {
     console.error("Failed to connect to MongoDB:", error)
-    throw new Error("Database connection failed")
+    throw new Error("Unable to connect to database")
   }
 }
 
-export async function closeDatabaseConnection(): Promise<void> {
+export async function checkDatabaseHealth(): Promise<{ status: string; message: string }> {
   try {
-    const client = await clientPromise
-    await client.close()
-    console.log("MongoDB connection closed")
-  } catch (error) {
-    console.error("Error closing MongoDB connection:", error)
-  }
-}
-
-export async function checkDatabaseHealth(): Promise<boolean> {
-  try {
-    const { db } = await connectToDatabase()
-    await db.admin().ping()
-    return true
+    const { client } = await connectToDatabase()
+    await client.db("admin").command({ ping: 1 })
+    return { status: "healthy", message: "Database connection is working" }
   } catch (error) {
     console.error("Database health check failed:", error)
-    return false
+    return { status: "unhealthy", message: "Database connection failed" }
   }
 }
 
-export async function initializeDatabase(): Promise<void> {
+export async function initializeDatabase(): Promise<{ success: boolean; message: string }> {
   try {
     const { db } = await connectToDatabase()
 
     // Create indexes for better performance
     await db.collection("users").createIndex({ email: 1 }, { unique: true })
-    await db.collection("users").createIndex({ username: 1 }, { unique: true, sparse: true })
+    await db.collection("users").createIndex({ username: 1 }, { unique: true })
     await db.collection("users").createIndex({ created_at: 1 })
 
-    // Create other collection indexes
-    await db.collection("trading_bots").createIndex({ created_by: 1 })
-    await db.collection("trading_bots").createIndex({ status: 1 })
-    await db.collection("trade_history").createIndex({ user_id: 1 })
-    await db.collection("trade_history").createIndex({ bot_id: 1 })
-    await db.collection("portfolios").createIndex({ user_id: 1 })
-    await db.collection("news_articles").createIndex({ published_at: -1 })
-    await db.collection("trading_signals").createIndex({ created_at: -1 })
-
-    console.log("Database indexes created successfully")
+    return { success: true, message: "Database initialized successfully" }
   } catch (error) {
-    console.error("Error initializing database:", error)
-    throw error
+    console.error("Database initialization failed:", error)
+    return { success: false, message: "Failed to initialize database" }
   }
 }
 

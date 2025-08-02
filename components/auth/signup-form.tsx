@@ -1,8 +1,7 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -11,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Eye, EyeOff, Check, X, Loader2 } from "lucide-react"
+import { signupAction } from "@/app/actions/auth"
 
 interface PasswordRequirement {
   text: string
@@ -19,6 +19,7 @@ interface PasswordRequirement {
 
 export function SignupForm() {
   const router = useRouter()
+  const [isPending, startTransition] = useTransition()
   const [formData, setFormData] = useState({
     email: "",
     username: "",
@@ -64,6 +65,7 @@ export function SignupForm() {
     setIsLoading(true)
 
     try {
+      // Try API route first
       const response = await fetch("/api/auth/signup", {
         method: "POST",
         headers: {
@@ -85,20 +87,33 @@ export function SignupForm() {
       // Redirect to thank you page instead of dashboard
       router.push("/thank-you")
     } catch (error) {
-      console.error("Signup error:", error)
-      if (error instanceof Error) {
-        if (error.message.includes("Unable to connect to database") || error.message.includes("EBADNAME")) {
-          setError("Unable to connect to database. Please try again later.")
-        } else {
-          setError(error.message)
+      console.error("API signup error:", error)
+
+      // Fallback to server action
+      startTransition(async () => {
+        try {
+          const formDataObj = new FormData()
+          formDataObj.append("email", formData.email)
+          formDataObj.append("username", formData.username)
+          formDataObj.append("password", formData.password)
+
+          const result = await signupAction(formDataObj)
+
+          if (result?.error) {
+            setError(result.error)
+          }
+          // If successful, signupAction will redirect automatically
+        } catch (serverActionError) {
+          console.error("Server action error:", serverActionError)
+          setError("Unable to create account. Please try again later.")
         }
-      } else {
-        setError("An unexpected error occurred. Please try again.")
-      }
+      })
     } finally {
       setIsLoading(false)
     }
   }
+
+  const isFormDisabled = isLoading || isPending
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
@@ -134,7 +149,7 @@ export function SignupForm() {
                   required
                   className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                   placeholder="Enter your email"
-                  disabled={isLoading}
+                  disabled={isFormDisabled}
                 />
               </div>
 
@@ -151,7 +166,7 @@ export function SignupForm() {
                   required
                   className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
                   placeholder="Choose a username"
-                  disabled={isLoading}
+                  disabled={isFormDisabled}
                 />
               </div>
 
@@ -169,7 +184,7 @@ export function SignupForm() {
                     required
                     className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 pr-10"
                     placeholder="Create a password"
-                    disabled={isLoading}
+                    disabled={isFormDisabled}
                   />
                   <Button
                     type="button"
@@ -177,7 +192,7 @@ export function SignupForm() {
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-gray-400 hover:text-white"
                     onClick={() => setShowPassword(!showPassword)}
-                    disabled={isLoading}
+                    disabled={isFormDisabled}
                   >
                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
@@ -214,7 +229,7 @@ export function SignupForm() {
                     required
                     className="bg-white/10 border-white/20 text-white placeholder:text-gray-400 pr-10"
                     placeholder="Confirm your password"
-                    disabled={isLoading}
+                    disabled={isFormDisabled}
                   />
                   <Button
                     type="button"
@@ -222,7 +237,7 @@ export function SignupForm() {
                     size="sm"
                     className="absolute right-0 top-0 h-full px-3 py-2 hover:bg-transparent text-gray-400 hover:text-white"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    disabled={isLoading}
+                    disabled={isFormDisabled}
                   >
                     {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                   </Button>
@@ -248,9 +263,9 @@ export function SignupForm() {
               <Button
                 type="submit"
                 className="w-full bg-purple-600 hover:bg-purple-700 text-white"
-                disabled={isLoading || !isPasswordValid || !doPasswordsMatch}
+                disabled={isFormDisabled || !isPasswordValid || !doPasswordsMatch}
               >
-                {isLoading ? (
+                {isFormDisabled ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Creating Account...
