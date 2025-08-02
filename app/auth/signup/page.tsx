@@ -1,17 +1,9 @@
-import type { Metadata } from "next"
-import { SignupClient } from "./signup-client"
+import SignupClient from "./signup-client"
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "Sign Up - CoinWayFinder",
   description:
-    "Create your CoinWayFinder account and start your crypto trading journey with advanced AI-powered trading bots and real-time market analysis.",
-  keywords: ["signup", "register", "crypto trading", "trading bots", "CoinWayFinder"],
-  openGraph: {
-    title: "Join CoinWayFinder - Advanced Crypto Trading Platform",
-    description:
-      "Create your account and access AI-powered trading bots, real-time market data, and professional trading tools.",
-    type: "website",
-  },
+    "Create your account and start your journey to smarter crypto trading with AI-powered tools and insights.",
 }
 
 export default function SignupPage() {
