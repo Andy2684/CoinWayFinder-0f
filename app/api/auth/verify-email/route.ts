@@ -1,8 +1,5 @@
-import { type NextRequest, NextResponse } from "next/server"
-
-// Mock pending users database
-const pendingUsers: any[] = []
-const users: any[] = []
+import { NextResponse, type NextRequest } from "next/server"
+import { connectToDatabase } from "@/lib/mongodb"
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,23 +9,34 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Verification token is required" }, { status: 400 })
     }
 
-    // Find pending user with this token
-    const pendingUserIndex = pendingUsers.findIndex(
-      (user) => user.verificationToken === token && new Date() < new Date(user.tokenExpiry),
-    )
+    const { db } = await connectToDatabase()
+    const users = db.collection("users")
 
-    if (pendingUserIndex === -1) {
+    // Find user with a valid (non-expired) token
+    const user = await users.findOne({
+      verificationToken: token,
+      verificationTokenExpiresAt: { $gt: new Date() },
+    })
+
+    if (!user) {
       return NextResponse.json({ success: false, error: "Invalid or expired verification token" }, { status: 400 })
     }
 
-    // Move user from pending to verified users
-    const user = pendingUsers[pendingUserIndex]
-    user.isVerified = true
-    user.verificationToken = null
-    user.tokenExpiry = null
-
-    users.push(user)
-    pendingUsers.splice(pendingUserIndex, 1)
+    // Mark verified and clear token fields
+    await users.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          isEmailVerified: true,
+          updated_at: new Date(),
+        },
+        $unset: {
+          verificationToken: "",
+          verificationTokenExpiresAt: "",
+          verificationLastSentAt: "",
+        },
+      },
+    )
 
     return NextResponse.json({
       success: true,

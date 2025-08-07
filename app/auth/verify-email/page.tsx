@@ -1,17 +1,16 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useSearchParams } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CheckCircle, XCircle, Loader2 } from "lucide-react"
+import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
 import Link from "next/link"
 
 export default function VerifyEmailPage() {
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
   const [message, setMessage] = useState("")
-  const router = useRouter()
   const searchParams = useSearchParams()
   const token = searchParams.get("token")
 
@@ -29,9 +28,7 @@ export default function VerifyEmailPage() {
     try {
       const response = await fetch("/api/auth/verify-email", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token: verificationToken }),
       })
 
@@ -44,7 +41,7 @@ export default function VerifyEmailPage() {
         setStatus("error")
         setMessage(data.error || "Email verification failed")
       }
-    } catch (error) {
+    } catch {
       setStatus("error")
       setMessage("An error occurred during verification")
     }

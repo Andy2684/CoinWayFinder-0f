@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { z } from "zod"
-import { getCollection, initializeDatabase } from "@/lib/mongodb"
-import bcrypt from "bcryptjs"
+import { connectToDatabase } from "@/lib/mongodb"
+import { sendVerificationEmail } from "@/lib/email"
+import { randomBytes } from "crypto"
 
 const SignupSchema = z.object({
   firstName: z.string().min(2, "First name must be at least 2 characters"),
@@ -13,8 +14,18 @@ const SignupSchema = z.object({
     .refine((v) => /[A-Z]/.test(v), "Must include an uppercase letter")
     .refine((v) => /[a-z]/.test(v), "Must include a lowercase letter")
     .refine((v) => /\d/.test(v), "Must include a number")
-    .refine((v) => /[!@#$%^&*]/.test(v), "Must include a special character"),
+    .refine((v) => /[!@#$%^&*]/.test(v), "Must include a special character (!@#$%^&*)"),
 })
+
+function hashPasswordBcrypt(password: string) {
+  // Lazy import to keep route load light
+  const bcrypt = require("bcryptjs") as typeof import("bcryptjs")
+  return bcrypt.hash(password, 12)
+}
+
+function generateVerificationToken() {
+  return randomBytes(32).toString("hex")
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,51 +37,93 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: message }, { status: 400 })
     }
 
-    // Ensure DB indexes exist (idempotent)
-    await initializeDatabase()
-    const users = await getCollection("users")
+    const { db } = await connectToDatabase()
+    const users = db.collection("users")
 
+    // Unique email check
     const existing = await users.findOne({ email: parsed.data.email })
     if (existing) {
       return NextResponse.json({ error: "An account with this email already exists" }, { status: 409 })
     }
 
-    const passwordHash = await bcrypt.hash(parsed.data.password, 12)
+    // Create user with email verification fields
+    const passwordHash = await hashPasswordBcrypt(parsed.data.password)
+    const token = generateVerificationToken()
+    const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24) // 24 hours
 
     const now = new Date()
     const userDoc = {
       firstName: parsed.data.firstName,
       lastName: parsed.data.lastName,
       email: parsed.data.email,
+      username: parsed.data.email.split("@")[0],
       passwordHash,
-      emailVerified: false,
-      createdAt: now,
-      updatedAt: now,
+      role: "user" as const,
+      plan: "free" as const,
+      isEmailVerified: false,
+      // email verification fields
+      verificationToken: token,
+      verificationTokenExpiresAt: expiresAt,
+      verificationLastSentAt: now,
+      // extras (consistent with your data model)
       profile: {
-        displayName: `${parsed.data.firstName} ${parsed.data.lastName}`,
-        avatarUrl: null as string | null,
+        firstName: parsed.data.firstName,
+        lastName: parsed.data.lastName,
+        avatar: null as string | null,
+        dateOfBirth: null as Date | null,
       },
-      preferences: {
-        marketingEmails: false,
+      settings: {
+        notifications: true,
+        theme: "dark" as const,
+        language: "en",
       },
-      // no dashboard/profile redirect flags needed; frontend shows thank-you
+      onboarding: {
+        completed: false,
+        currentStep: 0,
+        completedSteps: [] as string[],
+      },
+      achievements: [] as string[],
+      tradingPreferences: {
+        riskTolerance: "medium" as const,
+        tradingExperience: "beginner" as const,
+        preferredAssets: [] as string[],
+        maxInvestmentAmount: null as number | null,
+      },
+      created_at: now,
+      updated_at: now,
     }
 
     const insert = await users.insertOne(userDoc)
 
-    return NextResponse.json(
+    // Send verification email
+    await sendVerificationEmail(parsed.data.email, token)
+
+    // Set a short-lived cookie to show email and allow resend on the thank-you page
+    const res = NextResponse.json(
       {
         success: true,
-        userId: insert.insertedId,
-        message: "Account created successfully",
+        userId: insert.insertedId.toString(),
+        message: "Account created. Please verify your email to continue.",
       },
       { status: 201 }
     )
+
+    // Cookie lives for 30 minutes; HttpOnly to keep it server-only by default
+    res.cookies.set("pending_verification_email", parsed.data.email, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 30,
+      secure: true,
+    })
+
+    return res
   } catch (err: any) {
     // Standardize DB unavailability message for UX
     if (typeof err?.message === "string" && err.message.toLowerCase().includes("failed to connect")) {
       return NextResponse.json({ error: "Unable to connect to database. Please try again later." }, { status: 503 })
     }
+    console.error("Signup error:", err)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

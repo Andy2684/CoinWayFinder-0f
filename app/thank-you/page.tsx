@@ -1,140 +1,126 @@
-"use client"
-
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { cookies } from "next/headers"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { CheckCircle, Sparkles, TrendingUp, Shield, Bot, BarChart3, Users, DollarSign, Star, ArrowRight, Clock, Gift, Zap, Target, BookOpen, MessageCircle, HelpCircle, CheckCircle2 } from 'lucide-react'
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Mail, Loader2, CheckCircle2 } from 'lucide-react'
+import { Suspense } from "react"
 
-export default function ThankYouPage() {
-  const router = useRouter()
-  const [countdown, setCountdown] = useState(10)
-  const [progress, setProgress] = useState(0)
-  const [seconds, setSeconds] = useState(10)
+function maskEmail(email: string) {
+  const [name, domain] = email.split("@")
+  if (!name || !domain) return email
+  const maskedName = name.length <= 2 ? name[0] + "*" : name[0] + "*".repeat(Math.max(1, name.length - 2)) + name.at(-1)
+  return `${maskedName}@${domain}`
+}
 
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer)
-          router.push("/auth/login")
-          return 0
-        }
-        return prev - 1
+function ResendClient({ email }: { email: string }) {
+  "use client"
+  const [loading, setLoading] = require("react").useState(false)
+  const [result, setResult] = require("react").useState<null | { ok: boolean; message: string }>(null)
+
+  async function resend() {
+    try {
+      setLoading(true)
+      setResult(null)
+      const res = await fetch("/api/auth/verify-email/resend", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
       })
-    }, 1000)
-
-    const progressTimer = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(progressTimer)
-          return 100
-        }
-        return prev + 10
-      })
-    }, 1000)
-
-    return () => {
-      clearInterval(timer)
-      clearInterval(progressTimer)
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setResult({ ok: true, message: data.message || "Verification email sent." })
+      } else {
+        setResult({ ok: false, message: data.error || "Failed to resend verification email." })
+      }
+    } catch {
+      setResult({ ok: false, message: "Network error. Please try again." })
+    } finally {
+      setLoading(false)
     }
-  }, [router])
+  }
 
-  useEffect(() => {
-    const t = setInterval(() => setSeconds((s) => Math.max(0, s - 1)), 1000)
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-2">
+        <Mail className="h-5 w-5 text-muted-foreground" />
+        <span className="text-sm text-muted-foreground">Sent to: {maskEmail(email)}</span>
+      </div>
+      <div className="flex gap-2">
+        <Button onClick={resend} disabled={loading}>
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Sending...
+            </>
+          ) : (
+            "Resend verification email"
+          )}
+        </Button>
+        <Button asChild variant="outline">
+          <Link href="/auth/login">Go to Sign In</Link>
+        </Button>
+      </div>
+      {result && (
+        <Alert variant={result.ok ? "default" : "destructive"}>
+          {result.ok ? <CheckCircle2 className="h-4 w-4" /> : null}
+          <AlertDescription>{result.message}</AlertDescription>
+        </Alert>
+      )}
+    </div>
+  )
+}
+
+function AutoRedirect({ seconds = 10 }: { seconds?: number }) {
+  "use client"
+  const [remaining, setRemaining] = require("react").useState(seconds)
+  const router = require("next/navigation").useRouter()
+
+  require("react").useEffect(() => {
+    const t = setInterval(() => setRemaining((s: number) => s - 1), 1000)
     return () => clearInterval(t)
   }, [])
 
-  useEffect(() => {
-    if (seconds === 0) {
-      router.push("/auth/login")
-    }
-  }, [seconds, router])
-
-  const features = [
-    {
-      icon: Bot,
-      title: "AI Trading Bots",
-      description: "Advanced algorithms that trade 24/7",
-      color: "text-blue-400",
-    },
-    {
-      icon: BarChart3,
-      title: "Real-time Analytics",
-      description: "Live market data and performance metrics",
-      color: "text-green-400",
-    },
-    {
-      icon: Shield,
-      title: "Risk Management",
-      description: "Automated stop-loss and portfolio protection",
-      color: "text-purple-400",
-    },
-    {
-      icon: TrendingUp,
-      title: "Smart Signals",
-      description: "AI-powered trading signals and alerts",
-      color: "text-orange-400",
-    },
-  ]
-
-  const steps = [
-    {
-      number: 1,
-      title: "Verify Your Email",
-      description: "Check your inbox for a verification link",
-      completed: false,
-    },
-    {
-      number: 2,
-      title: "Complete Your Profile",
-      description: "Add your trading preferences and experience",
-      completed: false,
-    },
-    {
-      number: 3,
-      title: "Connect Exchange",
-      description: "Link your preferred crypto exchange",
-      completed: false,
-    },
-    {
-      number: 4,
-      title: "Start Trading",
-      description: "Deploy your first AI trading bot",
-      completed: false,
-    },
-  ]
-
-  const trustIndicators = [
-    { icon: Users, value: "50K+", label: "Active Traders" },
-    { icon: DollarSign, value: "$2.5B+", label: "Trading Volume" },
-    { icon: Star, value: "4.9/5", label: "User Rating" },
-    { icon: Shield, value: "99.9%", label: "Uptime" },
-  ]
+  require("react").useEffect(() => {
+    if (remaining <= 0) router.push("/auth/login")
+  }, [remaining, router])
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white flex items-center justify-center p-6">
-      <Card className="w-full max-w-lg bg-white/10 border-white/20 backdrop-blur">
-        <CardHeader className="text-center space-y-2">
-          <div className="mx-auto w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
-            <CheckCircle2 className="h-7 w-7 text-green-400" />
-          </div>
-          <CardTitle className="text-2xl">Welcome to CoinWayFinder!</CardTitle>
-          <CardDescription className="text-blue-100/80">
-            Your account was created successfully. You can sign in and start exploring.
-          </CardDescription>
+    <p className="text-xs text-muted-foreground">{`You will be redirected to Sign In in ${Math.max(0, remaining)}s.`}</p>
+  )
+}
+
+export default function ThankYouPage() {
+  const email = cookies().get("pending_verification_email")?.value || ""
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <Card className="w-full max-w-xl">
+        <CardHeader>
+          <CardTitle className="text-2xl">Thanks for signing up!</CardTitle>
+          <CardDescription>We just sent a verification link to your email.</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col items-center gap-4">
-          <Button asChild className="bg-purple-600 hover:bg-purple-700">
-            <Link href="/auth/login">
-              Go to Sign in
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-          <p className="text-sm text-blue-100/70">Redirecting to sign in in {seconds}s…</p>
+        <CardContent className="space-y-6">
+          <p className="text-sm text-muted-foreground">
+            Please verify your email address to activate your account. This helps us keep your account secure.
+          </p>
+
+          {email ? (
+            <Suspense fallback={<div className="flex items-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading...</div>}>
+              {/* Client-only resend UI */}
+              {/* @ts-expect-error Server/Client boundary */}
+              <ResendClient email={email} />
+            </Suspense>
+          ) : (
+            <Alert>
+              <AlertDescription>
+                We couldn't detect your email from this session. If you just signed up, please check your inbox. Otherwise,
+                go back to the signup page and try again.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          <AutoRedirect seconds={10} />
         </CardContent>
       </Card>
     </div>
