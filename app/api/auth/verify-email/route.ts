@@ -1,45 +1,39 @@
-import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
-import { getDb } from "@/lib/mongo-client"
+import { NextResponse, type NextRequest } from "next/server"
+import { connectToDatabase } from "@/lib/mongodb"
 
-export async function GET(req: Request) {
+export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url)
-    const token = searchParams.get("token")
-
+    const token = request.nextUrl.searchParams.get("token")
     if (!token) {
-      return NextResponse.json({ error: "Missing token" }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Missing token" }, { status: 400 })
     }
 
-    const db = await getDb()
+    const { db } = await connectToDatabase()
     const users = db.collection("users")
 
-    const user = await users.findOne({
-      verificationToken: token,
-      verificationTokenExpiresAt: { $gt: new Date() },
-    })
-
+    const user = await users.findOne({ verificationToken: token })
     if (!user) {
-      return NextResponse.json({ verified: false, error: "Invalid or expired token" }, { status: 400 })
+      return NextResponse.json({ success: false, error: "Invalid or expired token" }, { status: 400 })
+    }
+
+    const expiresAt = user.verificationTokenExpiresAt
+    if (!expiresAt || new Date(expiresAt).getTime() < Date.now()) {
+      return NextResponse.json({ success: false, error: "Token has expired" }, { status: 400 })
     }
 
     await users.updateOne(
       { _id: user._id },
       {
-        $set: { isEmailVerified: true, updatedAt: new Date() },
+        $set: { isEmailVerified: true, updated_at: new Date() },
         $unset: { verificationToken: "", verificationTokenExpiresAt: "" },
       }
     )
 
-    // Clear pending email cookie if it matches
-    const cookieEmail = cookies().get("pending_verification_email")?.value
-    if (cookieEmail && cookieEmail === user.email) {
-      cookies().set("pending_verification_email", "", { maxAge: 0, path: "/" })
-    }
-
-    return NextResponse.json({ verified: true })
-  } catch (err) {
-    console.error("Verify email error:", err)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    const res = NextResponse.json({ success: true, message: "Email verified successfully" })
+    res.cookies.set("pending_verification_email", "", { httpOnly: true, sameSite: "lax", path: "/", secure: true, maxAge: 0 })
+    return res
+  } catch (error) {
+    console.error("Verify email error:", error)
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 500 })
   }
 }

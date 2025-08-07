@@ -1,31 +1,17 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Loader2, Mail } from 'lucide-react'
 
-export default function ResendVerificationClient({ initialEmail = "" }: { initialEmail?: string }) {
-  const [email, setEmail] = useState(initialEmail)
-  const [isLoading, setIsLoading] = useState(false)
-  const [message, setMessage] = useState<string | null>(null)
-  const [error, setError] = useState<string | null>(null)
-  const [countdown, setCountdown] = useState(10)
+export default function ResendClient({ email }: { email: string }) {
+  const [sending, setSending] = useState(false)
+  const [result, setResult] = useState<{ type: "success" | "error"; message: string } | null>(null)
 
-  useEffect(() => {
-    const t = setInterval(() => setCountdown((c) => (c > 0 ? c - 1 : 0)), 1000)
-    return () => clearInterval(t)
-  }, [])
-
-  useEffect(() => {
-    if (countdown === 0) {
-      window.location.href = "/auth/login"
-    }
-  }, [countdown])
-
-  async function resend() {
-    setIsLoading(true)
-    setMessage(null)
-    setError(null)
+  async function onResend() {
+    setSending(true)
+    setResult(null)
     try {
       const res = await fetch("/api/auth/verify-email/resend", {
         method: "POST",
@@ -33,45 +19,38 @@ export default function ResendVerificationClient({ initialEmail = "" }: { initia
         body: JSON.stringify({ email }),
       })
       const data = await res.json()
-      if (!res.ok) {
-        setError(data?.error || "Failed to resend verification email.")
-      } else if (data?.alreadyVerified) {
-        setMessage("Your email is already verified. You can sign in now.")
+      if (res.ok && data.success) {
+        setResult({ type: "success", message: "Verification email has been resent." })
       } else {
-        setMessage("Verification email sent. Please check your inbox.")
+        setResult({ type: "error", message: data.error || "Failed to resend email." })
       }
-    } catch (e: any) {
-      setError(e?.message || "An unexpected error occurred.")
+    } catch {
+      setResult({ type: "error", message: "Failed to resend email." })
     } finally {
-      setIsLoading(false)
+      setSending(false)
     }
   }
 
   return (
     <div className="space-y-3">
-      {!initialEmail && (
-        <input
-          type="email"
-          placeholder="Enter your email"
-          className="w-full rounded-md border px-3 py-2"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-      )}
-      <Button onClick={resend} disabled={isLoading || !email}>
-        {isLoading ? (
+      <Button onClick={onResend} disabled={sending} className="bg-purple-600 hover:bg-purple-700">
+        {sending ? (
           <>
-            <Loader2 className="h-4 w-4 animate-spin mr-2" /> Sending...
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Resending...
           </>
         ) : (
           <>
-            <Mail className="h-4 w-4 mr-2" /> Resend verification email
+            <Mail className="mr-2 h-4 w-4" />
+            Resend Verification Email
           </>
         )}
       </Button>
-      {message && <p className="text-sm text-green-600">{message}</p>}
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <p className="text-xs text-muted-foreground">Redirecting to Sign in in {countdown}s...</p>
+      {result && (
+        <Alert className={result.type === "success" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-200" : "bg-red-500/10 border-red-500/20 text-red-200"}>
+          <AlertDescription>{result.message}</AlertDescription>
+        </Alert>
+      )}
     </div>
   )
 }

@@ -6,7 +6,5 @@ export const metadata = {
 import SignupClient from "./signup-client"
 
 export default function Page() {
-  // Server Component rendering a Client Component is the recommended pattern in App Router.
-  // Avoid using next/dynamic with ssr: false in Server Components [^2].
   return <SignupClient />
 }
