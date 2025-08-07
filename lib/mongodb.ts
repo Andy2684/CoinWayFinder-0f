@@ -1,57 +1,83 @@
-import { MongoClient, type Db, type Collection } from "mongodb"
+import { MongoClient, type Db } from "mongodb"
 
-declare global {
-  // eslint-disable-next-line no-var
-  var __mongoClientPromise: Promise<MongoClient> | undefined
+if (!process.env.MONGODB_URI) {
+  throw new Error('Invalid/Missing environment variable: "MONGODB_URI"')
 }
 
 const uri = process.env.MONGODB_URI
-if (!uri) {
-  // Keep message clear; avoids leaking secrets
-  throw new Error("MONGODB_URI env var is required")
+const DB_NAME = process.env.DB_NAME || "coinwayfinder"
+
+// Use supported options only
+const options = {
+  maxPoolSize: 10,
+  serverSelectionTimeoutMS: 5000,
+  socketTimeoutMS: 45000,
+  // family: 4 // uncomment if you need to force IPv4 on certain hosts
 }
 
 let client: MongoClient
 let clientPromise: Promise<MongoClient>
 
+declare global {
+  // eslint-disable-next-line no-var
+  var _mongoClientPromise: Promise<MongoClient> | undefined
+}
+
 if (process.env.NODE_ENV === "development") {
-  if (!global.__mongoClientPromise) {
-    client = new MongoClient(uri)
-    global.__mongoClientPromise = client.connect()
+  // Reuse connection in dev to avoid creating multiple clients during HMR
+  if (!global._mongoClientPromise) {
+    client = new MongoClient(uri, options)
+    global._mongoClientPromise = client.connect()
   }
-  clientPromise = global.__mongoClientPromise
+  clientPromise = global._mongoClientPromise
 } else {
-  client = new MongoClient(uri)
+  client = new MongoClient(uri, options)
   clientPromise = client.connect()
 }
 
-export async function getMongoClient(): Promise<MongoClient> {
-  return clientPromise
+export interface DatabaseConnection {
+  client: MongoClient
+  db: Db
 }
 
-export async function getDb(dbName?: string): Promise<Db> {
-  const c = await getMongoClient()
-  return c.db(dbName)
+/**
+ * Connect to MongoDB and return a client and db handle.
+ * Keep all calls inside functions/handlers to avoid connecting during module load.
+ */
+export async function connectToDatabase(): Promise<DatabaseConnection> {
+  const client = await clientPromise
+  const db = client.db(DB_NAME)
+  return { client, db }
 }
 
-export async function getCollection<T = any>(name: string, dbName?: string): Promise<Collection<T>> {
-  const db = await getDb(dbName)
-  return db.collection<T>(name)
+/**
+ * Optional health check helper. Doesn't auto-run during import.
+ */
+export async function checkDatabaseHealth(): Promise<{ status: "healthy" | "unhealthy"; message: string }> {
+  try {
+    const { client } = await connectToDatabase()
+    await client.db("admin").command({ ping: 1 })
+    return { status: "healthy", message: "Database connection is working" }
+  } catch (error) {
+    console.error("Database health check failed:", error)
+    return { status: "unhealthy", message: "Database connection failed" }
+  }
 }
 
-export async function checkDatabaseHealth(): Promise<{ ok: boolean; pingMs: number }> {
-  const start = Date.now()
-  const c = await getMongoClient()
-  await c.db().command({ ping: 1 })
-  return { ok: true, pingMs: Date.now() - start }
+/**
+ * Optional one-time initializer: create useful indexes.
+ */
+export async function initializeDatabase(): Promise<{ success: boolean; message: string }> {
+  try {
+    const { db } = await connectToDatabase()
+    await db.collection("users").createIndex({ email: 1 }, { unique: true, name: "uniq_email" })
+    await db.collection("users").createIndex({ created_at: 1 }, { name: "created_at" })
+    return { success: true, message: "Database initialized successfully" }
+  } catch (error) {
+    console.error("Database initialization failed:", error)
+    return { success: false, message: "Failed to initialize database" }
+  }
 }
 
-export async function initializeDatabase() {
-  const db = await getDb()
-  // Users collection indexes
-  const users = db.collection("users")
-  await users.createIndex({ email: 1 }, { unique: true, name: "uniq_email" })
-  await users.createIndex({ createdAt: 1 }, { name: "created_at" })
-
-  return { ok: true }
-}
+// Keep default export for modules that import the promise directly
+export default clientPromise

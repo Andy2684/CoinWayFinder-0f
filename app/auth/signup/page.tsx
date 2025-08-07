@@ -1,11 +1,12 @@
-import SignupClient from "./signup-client"
-
 export const metadata = {
-  title: "Sign Up - CoinWayFinder",
-  description:
-    "Create your account and start your journey to smarter crypto trading with AI-powered tools and insights.",
+  title: "Sign up | CoinWayFinder",
+  description: "Create your CoinWayFinder account and start your journey to smarter crypto trading.",
 }
 
-export default function SignupPage() {
+import SignupClient from "./signup-client"
+
+export default function Page() {
+  // Server Component rendering a Client Component is the recommended pattern in App Router.
+  // Avoid using next/dynamic with ssr: false in Server Components [^2].
   return <SignupClient />
 }

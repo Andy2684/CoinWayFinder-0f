@@ -325,3 +325,5 @@ export default function SignupForm({
     </div>
   )
 }
+
+export { SignupForm }
