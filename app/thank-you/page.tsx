@@ -5,70 +5,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Mail, Loader2, CheckCircle2 } from 'lucide-react'
 import { Suspense } from "react"
+import ResendVerificationClient from "./resend-client"
+
+export const metadata = {
+  title: "Thank you for signing up",
+  description: "Please verify your email address to activate your account.",
+}
 
 function maskEmail(email: string) {
   const [name, domain] = email.split("@")
   if (!name || !domain) return email
   const maskedName = name.length <= 2 ? name[0] + "*" : name[0] + "*".repeat(Math.max(1, name.length - 2)) + name.at(-1)
   return `${maskedName}@${domain}`
-}
-
-function ResendClient({ email }: { email: string }) {
-  "use client"
-  const [loading, setLoading] = require("react").useState(false)
-  const [result, setResult] = require("react").useState<null | { ok: boolean; message: string }>(null)
-
-  async function resend() {
-    try {
-      setLoading(true)
-      setResult(null)
-      const res = await fetch("/api/auth/verify-email/resend", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      })
-      const data = await res.json()
-      if (res.ok && data.success) {
-        setResult({ ok: true, message: data.message || "Verification email sent." })
-      } else {
-        setResult({ ok: false, message: data.error || "Failed to resend verification email." })
-      }
-    } catch {
-      setResult({ ok: false, message: "Network error. Please try again." })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2">
-        <Mail className="h-5 w-5 text-muted-foreground" />
-        <span className="text-sm text-muted-foreground">Sent to: {maskEmail(email)}</span>
-      </div>
-      <div className="flex gap-2">
-        <Button onClick={resend} disabled={loading}>
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Sending...
-            </>
-          ) : (
-            "Resend verification email"
-          )}
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/auth/login">Go to Sign In</Link>
-        </Button>
-      </div>
-      {result && (
-        <Alert variant={result.ok ? "default" : "destructive"}>
-          {result.ok ? <CheckCircle2 className="h-4 w-4" /> : null}
-          <AlertDescription>{result.message}</AlertDescription>
-        </Alert>
-      )}
-    </div>
-  )
 }
 
 function AutoRedirect({ seconds = 10 }: { seconds?: number }) {
@@ -90,39 +38,27 @@ function AutoRedirect({ seconds = 10 }: { seconds?: number }) {
   )
 }
 
-export default function ThankYouPage() {
+export default async function ThankYouPage() {
   const email = cookies().get("pending_verification_email")?.value || ""
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <Card className="w-full max-w-xl">
+    <main className="min-h-[70vh] flex items-center justify-center p-4">
+      <Card className="max-w-lg w-full">
         <CardHeader>
-          <CardTitle className="text-2xl">Thanks for signing up!</CardTitle>
-          <CardDescription>We just sent a verification link to your email.</CardDescription>
+          <CardTitle>Check your inbox</CardTitle>
+          <CardDescription>We sent a verification link to your email</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <p className="text-sm text-muted-foreground">
-            Please verify your email address to activate your account. This helps us keep your account secure.
+        <CardContent className="space-y-4">
+          <p>
+            We&apos;ve sent a verification email{email ? ` to ${email}` : ""}. Please click the link in the email to
+            verify your account. This helps us secure your account and confirm it&apos;s really you.
           </p>
-
-          {email ? (
-            <Suspense fallback={<div className="flex items-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" />Loading...</div>}>
-              {/* Client-only resend UI */}
-              {/* @ts-expect-error Server/Client boundary */}
-              <ResendClient email={email} />
-            </Suspense>
-          ) : (
-            <Alert>
-              <AlertDescription>
-                We couldn't detect your email from this session. If you just signed up, please check your inbox. Otherwise,
-                go back to the signup page and try again.
-              </AlertDescription>
-            </Alert>
-          )}
-
+          <Suspense fallback={null}>
+            <ResendVerificationClient initialEmail={email} />
+          </Suspense>
           <AutoRedirect seconds={10} />
         </CardContent>
       </Card>
-    </div>
+    </main>
   )
 }

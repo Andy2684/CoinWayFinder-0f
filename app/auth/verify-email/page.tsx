@@ -1,100 +1,76 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { CheckCircle, XCircle, Loader2 } from 'lucide-react'
-import Link from "next/link"
+import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
 
 export default function VerifyEmailPage() {
-  const [status, setStatus] = useState<"loading" | "success" | "error">("loading")
-  const [message, setMessage] = useState("")
   const searchParams = useSearchParams()
-  const token = searchParams.get("token")
+  const router = useRouter()
+  const token = searchParams.get("token") || ""
+  const [status, setStatus] = useState<"idle" | "verifying" | "success" | "error">("idle")
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!token) {
-      setStatus("error")
-      setMessage("Invalid verification link")
-      return
-    }
-
-    verifyEmail(token)
-  }, [token])
-
-  const verifyEmail = async (verificationToken: string) => {
-    try {
-      const response = await fetch("/api/auth/verify-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ token: verificationToken }),
-      })
-
-      const data = await response.json()
-
-      if (response.ok && data.success) {
+    async function run() {
+      if (!token) {
+        setStatus("error")
+        setError("Missing verification token.")
+        return
+      }
+      setStatus("verifying")
+      const res = await fetch(`/api/auth/verify-email?token=${encodeURIComponent(token)}`, { cache: "no-store" })
+      const data = await res.json()
+      if (res.ok && data.verified) {
         setStatus("success")
-        setMessage("Email verified successfully! You can now sign in.")
       } else {
         setStatus("error")
-        setMessage(data.error || "Email verification failed")
+        setError(data?.error || "Invalid or expired token.")
       }
-    } catch {
-      setStatus("error")
-      setMessage("An error occurred during verification")
     }
-  }
+    run()
+  }, [token])
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">Email Verification</CardTitle>
-          <CardDescription className="text-center">Verifying your email address</CardDescription>
+    <main className="min-h-[70vh] flex items-center justify-center p-4">
+      <Card className="max-w-md w-full">
+        <CardHeader>
+          <CardTitle>Email Verification</CardTitle>
+          <CardDescription>Confirming your email address</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {status === "loading" && (
-            <div className="flex items-center justify-center space-x-2">
-              <Loader2 className="h-6 w-6 animate-spin" />
-              <span>Verifying your email...</span>
+          {status === "verifying" && (
+            <div className="flex items-center gap-3 text-muted-foreground">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              Verifying your email...
             </div>
           )}
-
           {status === "success" && (
-            <Alert className="border-green-200 bg-green-50 text-green-800">
-              <CheckCircle className="h-4 w-4" />
-              <AlertDescription>{message}</AlertDescription>
-            </Alert>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-green-600">
+                <CheckCircle2 className="h-5 w-5" />
+                <span>Your email has been verified successfully.</span>
+              </div>
+              <Button className="w-full" onClick={() => router.push("/auth/login")}>
+                Continue to Sign in
+              </Button>
+            </div>
           )}
-
           {status === "error" && (
-            <Alert variant="destructive">
-              <XCircle className="h-4 w-4" />
-              <AlertDescription>{message}</AlertDescription>
-            </Alert>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-red-600">
+                <XCircle className="h-5 w-5" />
+                <span>{error || "Verification failed."}</span>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                You can request a new verification email from the Thank You page after signup.
+              </div>
+            </div>
           )}
-
-          <div className="flex flex-col space-y-2">
-            {status === "success" && (
-              <Button asChild>
-                <Link href="/auth/login">Sign In</Link>
-              </Button>
-            )}
-
-            {status === "error" && (
-              <Button asChild variant="outline">
-                <Link href="/auth/signup">Try Again</Link>
-              </Button>
-            )}
-
-            <Button variant="ghost" asChild>
-              <Link href="/">Back to Home</Link>
-            </Button>
-          </div>
         </CardContent>
       </Card>
-    </div>
+    </main>
   )
 }
