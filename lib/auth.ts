@@ -1,6 +1,8 @@
 import jwt from "jsonwebtoken"
 import bcrypt from "bcryptjs"
 import { connectToDatabase } from "./mongodb"
+import { SignJWT, jwtVerify, type JWTPayload } from "jose"
+import { ObjectId } from "mongodb"
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key"
 
@@ -37,16 +39,32 @@ export interface OAuthAccount {
   lastUsed?: Date
 }
 
-export function generateToken(payload: { userId: string; email: string }): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: "7d" })
+function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET
+  if (!secret) {
+    throw new Error("JWT_SECRET env var is required")
+  }
+  return new TextEncoder().encode(secret)
 }
 
-export function verifyToken(token: string): { userId: string; email: string } | null {
-  try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; email: string }
-  } catch {
-    return null
-  }
+export async function generateToken(
+  payload: JWTPayload & { sub?: string },
+  expiresIn: string | number = "7d"
+): Promise<string> {
+  const secret = getJwtSecret()
+  const jwt = await new SignJWT(payload)
+    .setProtectedHeader({ alg: "HS256", typ: "JWT" })
+    .setIssuedAt()
+    .setExpirationTime(expiresIn)
+    .setSubject(payload.sub ?? "")
+    .sign(secret)
+  return jwt
+}
+
+export async function verifyToken<T extends JWTPayload = JWTPayload>(token: string): Promise<T> {
+  const secret = getJwtSecret()
+  const { payload } = await jwtVerify(token, secret)
+  return payload as T
 }
 
 export async function hashPassword(password: string): Promise<string> {
@@ -123,7 +141,6 @@ export async function getUserByEmail(email: string): Promise<User | null> {
 
 export async function getUserById(id: string): Promise<User | null> {
   const { db } = await connectToDatabase()
-  const { ObjectId } = require("mongodb")
 
   const user = await db.collection("users").findOne({ _id: new ObjectId(id) })
 
@@ -146,7 +163,6 @@ export async function getUserById(id: string): Promise<User | null> {
 
 export async function updateUser(id: string, updates: Partial<User>): Promise<User | null> {
   const { db } = await connectToDatabase()
-  const { ObjectId } = require("mongodb")
 
   const result = await db.collection("users").findOneAndUpdate(
     { _id: new ObjectId(id) },
@@ -176,31 +192,25 @@ export async function updateUser(id: string, updates: Partial<User>): Promise<Us
   }
 }
 
-export async function linkOAuthAccount(
-  userId: string,
-  provider: string,
-  providerId: string,
-  userInfo: {
-    email: string
-    name: string
-    avatar?: string
-  },
-): Promise<boolean> {
+export async function linkOAuthAccount(params: {
+  userId: string
+  provider: string
+  providerAccountId: string
+}): Promise<boolean> {
   const { db } = await connectToDatabase()
-  const { ObjectId } = require("mongodb")
 
   const oauthAccount: OAuthAccount = {
-    provider,
-    providerId,
-    email: userInfo.email,
-    name: userInfo.name,
-    avatar: userInfo.avatar,
+    provider: params.provider,
+    providerId: params.providerAccountId,
+    email: "", // TODO: Fetch email from OAuth provider
+    name: "", // TODO: Fetch name from OAuth provider
+    avatar: "", // TODO: Fetch avatar from OAuth provider
     linkedAt: new Date(),
     lastUsed: new Date(),
   }
 
   const result = await db.collection("users").updateOne(
-    { _id: new ObjectId(userId) },
+    { _id: new ObjectId(params.userId) },
     {
       $addToSet: { oauthAccounts: oauthAccount },
       $set: { updated_at: new Date() },
@@ -210,14 +220,17 @@ export async function linkOAuthAccount(
   return result.modifiedCount > 0
 }
 
-export async function unlinkOAuthAccount(userId: string, provider: string): Promise<boolean> {
+export async function unlinkOAuthAccount(params: {
+  userId: string
+  provider: string
+  providerAccountId: string
+}): Promise<boolean> {
   const { db } = await connectToDatabase()
-  const { ObjectId } = require("mongodb")
 
   const result = await db.collection("users").updateOne(
-    { _id: new ObjectId(userId) },
+    { _id: new ObjectId(params.userId) },
     {
-      $pull: { oauthAccounts: { provider } },
+      $pull: { oauthAccounts: { providerId: params.providerAccountId } },
       $set: { updated_at: new Date() },
     },
   )
@@ -226,13 +239,15 @@ export async function unlinkOAuthAccount(userId: string, provider: string): Prom
 }
 
 export async function getUserOAuthAccounts(userId: string): Promise<OAuthAccount[]> {
-  const user = await getUserById(userId)
+  const { db } = await connectToDatabase()
+
+  const user = await db.collection("users").findOne({ _id: new ObjectId(userId) })
+
   return user?.oauthAccounts || []
 }
 
 export async function updateOAuthAccountLastUsed(userId: string, provider: string): Promise<boolean> {
   const { db } = await connectToDatabase()
-  const { ObjectId } = require("mongodb")
 
   const result = await db.collection("users").updateOne(
     {

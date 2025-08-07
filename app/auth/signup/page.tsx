@@ -1,12 +1,16 @@
-import type { Metadata } from "next"
-import SignupClient from "./signup-client"
+import dynamic from "next/dynamic"
 
-export const metadata: Metadata = {
-  title: "Sign Up - CoinWayFinder",
-  description: "Create your account and start your journey to smarter crypto trading with AI-powered bots",
-  keywords: ["crypto", "trading", "AI", "bots", "signup", "register"],
+const SignupForm = dynamic(() => import("@/components/auth/signup-form"), { ssr: false })
+
+export const metadata = {
+  title: "Sign up | CoinWayFinder",
+  description: "Create an account to start your journey to smarter crypto trading.",
 }
 
 export default function SignupPage() {
-  return <SignupClient />
+  return (
+    <main>
+      <SignupForm />
+    </main>
+  )
 }
