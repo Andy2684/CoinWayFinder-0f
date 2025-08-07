@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { useState, useTransition } from "react"
+import { useState, useEffect, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { Eye, EyeOff, Check, X, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Check, X, Loader2 } from 'lucide-react'
 import { signupAction } from "@/app/actions/auth"
 
 interface PasswordRequirement {
@@ -17,14 +17,33 @@ interface PasswordRequirement {
   met: boolean
 }
 
-export function SignupForm() {
+interface SignupFormProps {
+  endpoint?: string
+  initialValues?: Partial<FormData>
+  autoSubmit?: boolean
+}
+
+interface FormData {
+  firstName?: string
+  lastName?: string
+  email: string
+  password: string
+  confirmPassword: string
+}
+
+export default function SignupForm({
+  endpoint = "/api/auth/signup",
+  initialValues,
+  autoSubmit = false,
+}: SignupFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
-  const [formData, setFormData] = useState({
-    email: "",
-    username: "",
-    password: "",
-    confirmPassword: "",
+  const [formData, setFormData] = useState<FormData>({
+    firstName: initialValues?.firstName ?? "",
+    lastName: initialValues?.lastName ?? "",
+    email: initialValues?.email ?? "",
+    password: initialValues?.password ?? "",
+    confirmPassword: initialValues?.confirmPassword ?? "",
   })
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -66,7 +85,7 @@ export function SignupForm() {
 
     try {
       // Try API route first
-      const response = await fetch("/api/auth/signup", {
+      const response = await fetch(endpoint, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -114,6 +133,24 @@ export function SignupForm() {
   }
 
   const isFormDisabled = isLoading || isPending
+
+  const isFormValid = () => {
+    return formData.email !== "" && formData.password !== "" && formData.confirmPassword !== ""
+  }
+
+  useEffect(() => {
+    if (!autoSubmit) return
+    // Only attempt auto-submit when form is valid and fields are present
+    if (formData.email && formData.password && formData.confirmPassword && isFormValid()) {
+      // Call handleSubmit with a minimal synthetic event
+      const event = { preventDefault: () => {} } as unknown as React.FormEvent
+      // Avoid double-submits
+      if (!isLoading) {
+        handleSubmit(event)
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoSubmit, formData])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
