@@ -15,7 +15,7 @@ const DEP_SECTIONS = [
 const LOCKFILES = new Set([
   "package-lock.json",
   "pnpm-lock.yaml",
-  "pnpm-lock.yaml ", // handle trailing-space variant found in logs
+  "pnpm-lock.yaml ", // handle trailing-space variant
   "yarn.lock",
   "bun.lockb",
   "bun.lock",
@@ -31,7 +31,6 @@ function isPlainObject(v) {
 function cleanObjectKeys(obj, parentPath = []) {
   if (!isPlainObject(obj)) return { changed: false, removed: [] };
   let changed = false;
-  /** @type {{path: string[], key: string, value: unknown}[]} */
   const removed = [];
 
   for (const key of Object.keys(obj)) {
@@ -47,16 +46,13 @@ function cleanObjectKeys(obj, parentPath = []) {
       if (sub.changed) changed = true;
       removed.push(...sub.removed);
     } else if (Array.isArray(val)) {
-      // Arrays shouldn’t contain dependency maps, but recurse just in case nested objects exist.
-      let anyChanged = false;
-      for (const idx in val) {
-        if (isPlainObject(val[idx])) {
-          const sub = cleanObjectKeys(val[idx], parentPath.concat(`${key}[${idx}]`));
-          if (sub.changed) anyChanged = true;
+      for (let i = 0; i < val.length; i++) {
+        if (isPlainObject(val[i])) {
+          const sub = cleanObjectKeys(val[i], parentPath.concat(`${key}[${i}]`));
+          if (sub.changed) changed = true;
           removed.push(...sub.removed);
         }
       }
-      if (anyChanged) changed = true;
     }
   }
   return { changed, removed };
@@ -67,7 +63,7 @@ function cleanPackageJson(filePath) {
   let json;
   try {
     json = JSON.parse(raw);
-  } catch (e) {
+  } catch {
     console.error(`Skipping invalid JSON: ${filePath}`);
     return { changed: false, removed: [] };
   }
@@ -76,7 +72,6 @@ function cleanPackageJson(filePath) {
 
   for (const section of DEP_SECTIONS) {
     if (json[section]) {
-      const before = JSON.stringify(json[section]);
       // delete any direct "node:*" keys
       for (const key of Object.keys(json[section])) {
         if (key.startsWith(BAD_PREFIX)) {
@@ -84,13 +79,15 @@ function cleanPackageJson(filePath) {
           delete json[section][key];
         }
       }
-      // deeply clean nested structures (overrides/resolutions can nest)
+      // deeply clean nested structures (e.g., overrides/resolutions can nest)
       const deep = cleanObjectKeys(json[section], [section]);
-      removedAll.push(...deep.removed.map(r => ({ section: r.path.join("."), key: r.key, value: r.value })));
-      const after = JSON.stringify(json[section]);
-      if (before !== after) {
-        // section changed
-      }
+      removedAll.push(
+        ...deep.removed.map((r) => ({
+          section: r.path.join("."),
+          key: r.key,
+          value: r.value
+        }))
+      );
     }
   }
 
@@ -147,7 +144,7 @@ function removeLockfiles(rootDir) {
 
 function main() {
   // 1) Clean every package.json in the repo tree
-  const files = walk(ROOT).filter(f => path.basename(f) === "package.json");
+  const files = walk(ROOT).filter((f) => path.basename(f) === "package.json");
   let totalRemoved = 0;
   for (const pkgFile of files) {
     const res = cleanPackageJson(pkgFile);
@@ -167,7 +164,7 @@ function main() {
     }
   }
 
-  // 3) If we changed anything, log a summary
+  // 3) Summary
   if (totalRemoved > 0 || locksRemoved > 0) {
     console.log(
       `Sanitized repository: removed ${totalRemoved} invalid manifest entr${totalRemoved === 1 ? "y" : "ies"} and deleted ${locksRemoved} lockfile(s).`
