@@ -1,0 +1,169 @@
+// app/api/achievements/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/achievements/progress/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/achievements/user/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/admin/audit-logs/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/admin/audit-logs/stats/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/admin/compliance/frameworks/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/admin/compliance/list/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/admin/notifications/history/export/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/admin/notifications/history/stats/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/admin/notifications/history/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/admin/email-queue/stats/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/admin/oauth/stats/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/admin/reports/list/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/admin/security/live-stats/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/admin/users/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/auth/me/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/auth/verify-email/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/bots/analytics/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/notifications/preferences/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/notifications/status/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/onboarding/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/onboarding/progress/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// app/api/profile/route.ts
+export const dynamic = "force-dynamic"
+export const revalidate = 0
+export const fetchCache = "force-no-store"
+
+// ** rest of code here **/
+
+// lib/websocket-manager.ts
+let hasStarted = false
+export async function startMarketSockets() {
+  if (hasStarted) return
+  hasStarted = true
+  // connectAllExchanges()
+}
+export function isMarketSocketsStarted() { return hasStarted }
