@@ -8,5 +8,7 @@
     "DATABASE_URL": "@database_url",
     "JWT_SECRET": "@jwt_secret",
     "NEXTAUTH_SECRET": "@nextauth_secret"
-  }
+  },
+  "installCommand": "npm install",
+  "buildCommand": "npm run build"
 }

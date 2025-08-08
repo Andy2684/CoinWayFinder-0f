@@ -6,7 +6,6 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "next lint",
-    "scan:node-dns": "node ./scripts/scan-node-dns.mjs",
     "start": "next start",
     "test:signup": "ts-node tests/test-signup.ts"
   },
