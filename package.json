@@ -5,9 +5,9 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
-    "preinstall": "node ./scripts/scan-node-builtins.mjs",
+    "preinstall": "node ./scripts/clean-node-builtins.mjs",
     "lint": "next lint",
-    "scan:node-builtins": "node ./scripts/scan-node-builtins.mjs",
+    "scan:node-builtins": "node ./scripts/clean-node-builtins.mjs --scan-only",
     "start": "next start",
     "test:signup": "ts-node tests/test-signup.ts"
   },
