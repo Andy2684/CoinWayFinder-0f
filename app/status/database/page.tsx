@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { RefreshCcw, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
+import Link from "next/link"
 
 type HealthOk = {
   status: "ok"
@@ -44,23 +45,25 @@ export default async function DatabaseStatusPage() {
     <main className="mx-auto max-w-2xl p-6">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{'Database Status'}</h1>
-
-        {/* Simple refresh via server action to invalidate the page */}
-        <form action="">
-          <Button
-            type="submit"
-            formAction={async () => {
-              "use server"
-              // no-op; submitting this form will refresh the route on the server
-            }}
-            className="gap-2"
-            variant="outline"
-            aria-label="Refresh database status"
-          >
-            <RefreshCcw className="h-4 w-4" />
-            {'Refresh'}
-          </Button>
-        </form>
+        <div className="flex items-center gap-2">
+          <Link href="/status/database/diagnose">
+            <Button variant="outline">{'Diagnose'}</Button>
+          </Link>
+          <form action="">
+            <Button
+              type="submit"
+              formAction={async () => {
+                "use server"
+              }}
+              className="gap-2"
+              variant="outline"
+              aria-label="Refresh database status"
+            >
+              <RefreshCcw className="h-4 w-4" />
+              {'Refresh'}
+            </Button>
+          </form>
+        </div>
       </div>
 
       <Card>

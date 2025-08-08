@@ -12,6 +12,7 @@ const options = {
   maxPoolSize: 10,
   serverSelectionTimeoutMS: 5000,
   socketTimeoutMS: 45000,
+  ...(process.env.MONGODB_FORCE_IPV4 === "1" ? ({ family: 4 } as const) : {}),
 }
 
 let client: MongoClient | null = null
