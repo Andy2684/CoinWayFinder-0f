@@ -5,7 +5,9 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev",
+    "preinstall": "node ./scripts/scan-node-builtins.mjs",
     "lint": "next lint",
+    "scan:node-builtins": "node ./scripts/scan-node-builtins.mjs",
     "start": "next start",
     "test:signup": "ts-node tests/test-signup.ts"
   },
@@ -69,6 +71,7 @@
     "node:dns": "latest",
     "node:fs": "latest",
     "node:path": "latest",
+    "node:process": "latest",
     "nodemailer": "latest",
     "react": "^18",
     "react-day-picker": "latest",
