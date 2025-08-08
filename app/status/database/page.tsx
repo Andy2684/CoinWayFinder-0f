@@ -1,64 +1,128 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
+import { RefreshCcw, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react'
 
-async function getHealth() {
-  // Use relative path by default; NEXT_PUBLIC_BASE_URL if provided
-  const base = process.env.NEXT_PUBLIC_BASE_URL ?? ""
-  const res = await fetch(`${base}/api/database/health`, {
-    // Always check live DB
-    cache: "no-store",
-  })
-  const data = await res.json()
-  return { ok: res.ok, data }
+type HealthOk = {
+  status: "ok"
+  message: string
+  database: string
+  durationMs: number
+  ping: unknown
 }
 
+type HealthErr = {
+  status: "error"
+  message: string
+  durationMs: number
+}
+
+type HealthResponse = HealthOk | HealthErr
+
+async function getHealth(): Promise<{ ok: boolean; data: HealthResponse | null; error?: string }> {
+  try {
+    // Use relative path so it works across environments (local, preview, prod)
+    const res = await fetch(`/api/database/health`, {
+      cache: "no-store",
+      next: { revalidate: 0 },
+    })
+    const data = (await res.json()) as HealthResponse
+    return { ok: res.ok, data }
+  } catch (e: any) {
+    return { ok: false, data: null, error: e?.message || "Failed to fetch health" }
+  }
+}
+
+export const revalidate = 0
+
 export default async function DatabaseStatusPage() {
-  const { ok, data } = await getHealth()
+  const { ok, data, error } = await getHealth()
+  const isHealthy = ok && data && data.status === "ok"
 
   return (
-    <div className="mx-auto max-w-2xl p-6">
+    <main className="mx-auto max-w-2xl p-6">
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-semibold">{'Database Status'}</h1>
+
+        {/* Simple refresh via server action to invalidate the page */}
+        <form action="">
+          <Button
+            type="submit"
+            formAction={async () => {
+              "use server"
+              // no-op; submitting this form will refresh the route on the server
+            }}
+            className="gap-2"
+            variant="outline"
+            aria-label="Refresh database status"
+          >
+            <RefreshCcw className="h-4 w-4" />
+            {'Refresh'}
+          </Button>
+        </form>
+      </div>
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Database Status</CardTitle>
-            <Badge variant={ok ? "default" : "destructive"}>
-              {ok ? "Healthy" : "Unhealthy"}
-            </Badge>
+            <CardTitle>{'MongoDB Connection'}</CardTitle>
+            {isHealthy ? (
+              <Badge className="bg-green-100 text-green-700 hover:bg-green-100">
+                <CheckCircle2 className="mr-1 h-4 w-4" />
+                {'Healthy'}
+              </Badge>
+            ) : (
+              <Badge className="bg-red-100 text-red-700 hover:bg-red-100">
+                <XCircle className="mr-1 h-4 w-4" />
+                {'Unavailable'}
+              </Badge>
+            )}
           </div>
         </CardHeader>
         <Separator />
-        <CardContent className="space-y-3 pt-4">
-          <div className="text-sm">
-            <span className="font-medium">Message:</span>{" "}
-            <span className={ok ? "text-green-600" : "text-red-600"}>
-              {String(data?.message ?? (ok ? "OK" : "Error"))}
-            </span>
-          </div>
-          {ok && typeof data?.durationMs === "number" && (
-            <div className="text-sm">
-              <span className="font-medium">Latency:</span>{" "}
-              <span className="tabular-nums">{data.durationMs} ms</span>
+        <CardContent className="space-y-4 pt-4">
+          {isHealthy && data?.status === "ok" ? (
+            <div className="space-y-2">
+              <div className="text-sm text-muted-foreground">
+                {'Status: Connected and responding to ping'}
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <div className="text-muted-foreground">{'Database'}</div>
+                  <div className="font-medium">{data.database}</div>
+                </div>
+                <div>
+                  <div className="text-muted-foreground">{'Latency (ms)'}</div>
+                  <div className="font-medium tabular-nums">{data.durationMs}</div>
+                </div>
+              </div>
+              <div className="text-sm text-muted-foreground">{data.message}</div>
             </div>
-          )}
-          {ok && data?.database && (
-            <div className="text-sm">
-              <span className="font-medium">Database:</span>{" "}
-              <span>{data.database}</span>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-amber-700">
+                <AlertTriangle className="h-4 w-4" />
+                <span className="font-medium">{'Database not reachable'}</span>
+              </div>
+              <div className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+                {data?.message ?? error ?? "Unknown error"}
+              </div>
+              {typeof data?.durationMs === "number" && (
+                <div className="text-xs text-muted-foreground">
+                  {'Attempt duration: '}
+                  <span className="tabular-nums">{data.durationMs} ms</span>
+                </div>
+              )}
+              <div className="text-sm text-muted-foreground">
+                {
+                  'Tip: Verify MONGODB_URI and Atlas Network Access. After updating environment variables on Vercel, redeploy and refresh this page.'
+                }
+              </div>
             </div>
-          )}
-          {!ok && data?.status === "error" && (
-            <pre className="mt-2 whitespace-pre-wrap rounded-md bg-muted p-3 text-xs leading-relaxed">
-              {JSON.stringify(data, null, 2)}
-            </pre>
           )}
         </CardContent>
       </Card>
-      <p className="mt-4 text-xs text-muted-foreground">
-        Tip: If you still see an error, confirm your MONGODB_URI, that your
-        password is URL-encoded, and that your IP/Serverless environment is
-        allowed in your MongoDB provider’s Network Access.
-      </p>
-    </div>
+    </main>
   )
 }

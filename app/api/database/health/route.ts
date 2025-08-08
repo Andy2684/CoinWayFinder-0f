@@ -1,33 +1,39 @@
 import { NextResponse } from "next/server"
 import { connectToDatabase } from "@/lib/mongodb"
 
+/**
+ * GET /api/database/health
+ * Returns a quick connectivity check with latency and db name.
+ */
 export async function GET() {
+  const startedAt = Date.now()
   try {
-    const startedAt = Date.now()
     const { client, db } = await connectToDatabase()
-    // Ping admin to validate connectivity
+    // Ping the admin DB to verify the connection is actually usable
     const ping = await client.db("admin").command({ ping: 1 })
     const durationMs = Date.now() - startedAt
 
     return NextResponse.json(
       {
-        status: "ok",
-        ping,
+        status: "ok" as const,
+        message: "MongoDB connection healthy",
         database: db.databaseName,
         durationMs,
-        message: "MongoDB connection healthy",
+        ping,
       },
-      { status: 200 }
+      { status: 200 },
     )
-  } catch (error: unknown) {
+  } catch (error) {
+    const durationMs = Date.now() - startedAt
     const message =
       error instanceof Error ? error.message : "Unknown error connecting to MongoDB"
     return NextResponse.json(
       {
-        status: "error",
+        status: "error" as const,
         message,
+        durationMs,
       },
-      { status: 503 }
+      { status: 503 },
     )
   }
 }
