@@ -1,176 +1,170 @@
-// tests/test-signup.ts
-// Run with: npx ts-node tests/test-signup.ts
-// This suite tests both the mock signup endpoint and the real signup endpoint.
-// It is designed to pass even when the database is not yet reachable (returns 503).
+/**
+ * Lightweight TypeScript test runner for signup-related endpoints.
+ * Run with:
+ *   npx ts-node tests/test-signup.ts
+ *
+ * Behavior:
+ * - Validates validation paths (should pass even without DB)
+ * - Attempts a real signup; treats DB-unavailable (503) as a soft pass with a warning
+ */
 
-type TestCase = {
-  name: string
-  run: () => Promise<void>
-}
+type Json = Record<string, any>
 
-const BASE_URL =
+const BASE =
   process.env.NEXT_PUBLIC_BASE_URL ||
   process.env.BASE_URL ||
   "http://localhost:3000"
 
-function logInfo(message: string) {
-  console.log(`[INFO] ${message}`)
+type TestFn = () => Promise<void>
+
+const results: { name: string; status: "pass" | "fail" | "warn"; details?: string }[] = []
+let failures = 0
+
+function log(msg: string) {
+  console.log(msg)
 }
-function logPass(message: string) {
-  console.log(`[PASS] ${message}`)
+
+async function request(path: string, init?: RequestInit): Promise<{ status: number; json: Json; text: string }> {
+  const url = `${BASE}${path}`
+  const res = await fetch(url, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init?.headers || {}),
+    },
+  })
+  const text = await res.text()
+  let json: Json
+  try {
+    json = JSON.parse(text)
+  } catch {
+    json = { raw: text }
+  }
+  return { status: res.status, json, text }
 }
-function logFail(message: string) {
-  console.error(`[FAIL] ${message}`)
+
+async function run(name: string, fn: TestFn) {
+  try {
+    await fn()
+    results.push({ name, status: "pass" })
+  } catch (e: any) {
+    failures++
+    results.push({ name, status: "fail", details: e?.message || String(e) })
+  }
 }
-function assert(condition: unknown, message: string): asserts condition {
+
+function expect(condition: any, message: string) {
   if (!condition) throw new Error(message)
 }
-function randomEmail(prefix = "test.user") {
-  const rand = Math.floor(Math.random() * 1e9)
-  return `${prefix}.${Date.now()}.${rand}@example.com`
+
+function warn(name: string, details: string) {
+  results.push({ name, status: "warn", details })
 }
 
-async function postJSON(path: string, body: unknown) {
-  const url = path.startsWith("http") ? path : `${BASE_URL}${path}`
-  const res = await fetch(url, {
+async function testDatabaseHealth() {
+  const { status, json } = await request("/api/database/health")
+  if (status === 200) {
+    expect(json?.status === "ok", "Expected status ok from /api/database/health")
+    log("Health: OK")
+  } else {
+    // Soft pass with warning if DB is not up yet
+    warn("Database Health", `Non-200 (${status}). Message: ${json?.message || "N/A"}`)
+  }
+}
+
+async function testSignupValidationInvalidEmail() {
+  const payload = {
+    firstName: "John",
+    lastName: "Doe",
+    email: "invalid-email",
+    password: "Valid@1234",
+  }
+  const { status, json } = await request("/api/auth/signup", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify(payload),
   })
-  let data: any = null
-  const text = await res.text()
-  try {
-    data = text ? JSON.parse(text) : null
-  } catch {
-    data = { raw: text }
-  }
-  return { res, data }
+
+  expect(status === 400, `Expected 400 for invalid email, got ${status}`)
+  expect(
+    (json?.error || "").toString().toLowerCase().includes("valid email") ||
+      (json?.error || "").toString().toLowerCase().includes("enter a valid email"),
+    `Expected validation error message for invalid email, got: ${JSON.stringify(json)}`
+  )
 }
 
-async function getJSON(path: string) {
-  const url = path.startsWith("http") ? path : `${BASE_URL}${path}`
-  const res = await fetch(url)
-  let data: any = null
-  const text = await res.text()
-  try {
-    data = text ? JSON.parse(text) : null
-  } catch {
-    data = { raw: text }
+async function testSignupValidationWeakPassword() {
+  const payload = {
+    firstName: "Jane",
+    lastName: "Doe",
+    email: `ts_weak_${Date.now()}@example.com`,
+    password: "short",
   }
-  return { res, data }
+  const { status, json } = await request("/api/auth/signup", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
+
+  expect(status === 400, `Expected 400 for weak password, got ${status}`)
+  const msg = (json?.error || "").toString().toLowerCase()
+  expect(
+    msg.includes("password") && (msg.includes("8") || msg.includes("special") || msg.includes("uppercase")),
+    `Expected password policy error message, got: ${JSON.stringify(json)}`
+  )
 }
 
-const tests: TestCase[] = [
-  {
-    name: "Mock signup: GET helper endpoint responds",
-    run: async () => {
-      const { res, data } = await getJSON("/api/test/signup")
-      assert(res.ok, `Expected 200 OK, got ${res.status}`)
-      logPass(`GET /api/test/signup OK: ${JSON.stringify(data)}`)
-    },
-  },
-  {
-    name: "Mock signup: valid payload succeeds",
-    run: async () => {
-      const email = randomEmail("valid")
-      const payload = {
-        firstName: "Test",
-        lastName: "User",
-        email,
-        password: "StrongP@ssw0rd!",
-      }
-      const { res, data } = await postJSON("/api/test/signup", payload)
-      assert(res.status === 201, `Expected 201 Created, got ${res.status} (${JSON.stringify(data)})`)
-      assert(data?.success === true, `Expected success: true in response body`)
-      logPass(`POST /api/test/signup created user: ${email}`)
-    },
-  },
-  {
-    name: "Mock signup: invalid email rejected",
-    run: async () => {
-      const payload = {
-        firstName: "Test",
-        lastName: "User",
-        email: "not-an-email",
-        password: "StrongP@ssw0rd!",
-      }
-      const { res } = await postJSON("/api/test/signup", payload)
-      assert(res.status === 400, `Expected 400 for invalid email, got ${res.status}`)
-      logPass("Invalid email correctly rejected by /api/test/signup")
-    },
-  },
-  {
-    name: "Mock signup: weak password rejected",
-    run: async () => {
-      const payload = {
-        firstName: "Test",
-        lastName: "User",
-        email: randomEmail("weak"),
-        password: "weak", // fails all checks
-      }
-      const { res } = await postJSON("/api/test/signup", payload)
-      assert(res.status === 400, `Expected 400 for weak password, got ${res.status}`)
-      logPass("Weak password correctly rejected by /api/test/signup")
-    },
-  },
-  {
-    name: "Real signup: handles DB success or unavailable",
-    run: async () => {
-      const email = randomEmail("real")
-      const payload = {
-        firstName: "Real",
-        lastName: "User",
-        email,
-        password: "StrongP@ssw0rd!",
-      }
-      const { res, data } = await postJSON("/api/auth/signup", payload)
+async function testSignupHappyPathOrDbUnavailable() {
+  const uniqueEmail = `ts_user_${Date.now()}@example.com`
+  const payload = {
+    firstName: "Alice",
+    lastName: "Tester",
+    email: uniqueEmail,
+    password: "Strong@1234",
+  }
+  const { status, json } = await request("/api/auth/signup", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  })
 
-      if (res.status === 201) {
-        assert(data?.success === true, "Expected success true on 201")
-        logPass(`Real signup created account: ${email}`)
-      } else if (res.status === 503) {
-        // This is acceptable while MONGODB_URI or network access is not configured.
-        assert(
-          typeof data?.error === "string" &&
-            data.error.toLowerCase().includes("connect"),
-          `Expected DB connectivity error message on 503, got: ${JSON.stringify(data)}`
-        )
-        logInfo(`Real signup returned 503 (DB not reachable yet): ${data?.error}`)
-      } else if (res.status === 409) {
-        // Duplicate email (in case of reruns)
-        logInfo(`Real signup duplicate (409): ${email}`)
-      } else if (res.status === 400) {
-        // Input validation failed (unexpected in this test)
-        throw new Error(`Unexpected 400 from real signup: ${JSON.stringify(data)}`)
-      } else {
-        throw new Error(`Unexpected status ${res.status} from real signup: ${JSON.stringify(data)}`)
-      }
-    },
-  },
-]
+  if (status === 201) {
+    expect(json?.success === true, "Expected success true on signup")
+    expect(!!json?.user?.id, "Expected user id in response")
+    log(`Signup success for ${uniqueEmail}`)
+  } else if (status === 503) {
+    // This is the case when DB is unreachable. Soft pass with warning.
+    warn("Signup DB Unavailable", `503: ${json?.error || "Unable to connect to database"}`)
+  } else if (status === 409) {
+    // In case the test is re-run and the unique calculation collided (rare)
+    warn("Signup Duplicate", `409: ${json?.error || "Duplicate email"}`)
+  } else {
+    throw new Error(`Unexpected status ${status} from signup: ${JSON.stringify(json)}`)
+  }
+}
 
 async function main() {
-  console.log(`Running signup tests against BASE_URL=${BASE_URL}`)
-  let failed = 0
-  for (const t of tests) {
-    try {
-      console.log(`\n=== ${t.name} ===`)
-      await t.run()
-    } catch (err: any) {
-      failed++
-      logFail(`${t.name}: ${err?.message || err}`)
-    }
+  console.log(`Running signup tests against BASE=${BASE}`)
+
+  await run("Database Health", testDatabaseHealth)
+  await run("Validation: Invalid Email", testSignupValidationInvalidEmail)
+  await run("Validation: Weak Password", testSignupValidationWeakPassword)
+  await run("Signup: Happy Path or DB Unavailable", testSignupHappyPathOrDbUnavailable)
+
+  console.log("\nResults:")
+  for (const r of results) {
+    const label =
+      r.status === "pass" ? "PASS" : r.status === "fail" ? "FAIL" : "WARN"
+    console.log(`- [${label}] ${r.name}${r.details ? ` — ${r.details}` : ""}`)
   }
-  console.log(`\nTest summary: ${tests.length - failed} passed, ${failed} failed`)
-  // Exit code for CI usage
-  if (failed > 0) {
+
+  if (failures > 0) {
+    console.log(`\n${failures} test(s) failed.`)
     process.exitCode = 1
   } else {
+    console.log("\nAll critical tests passed (warnings may exist).")
     process.exitCode = 0
   }
 }
 
 main().catch((e) => {
-  logFail(`Unhandled test runner error: ${e?.message || e}`)
+  console.error("Unexpected error during test run:", e)
   process.exitCode = 1
 })

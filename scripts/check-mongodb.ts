@@ -1,13 +1,13 @@
-// Node.js script to verify MONGODB_URI locally.
-// Run: pnpm tsx scripts/check-mongodb.ts  (or) node --loader ts-node/esm scripts/check-mongodb.ts
-
 import { MongoClient } from "mongodb"
 
 async function main() {
   const uri = process.env.MONGODB_URI
+  const dbName = process.env.DB_NAME || "coinwayfinder"
+
   if (!uri) {
-    console.error('MONGODB_URI is not set. Please export it or set it in your environment.')
-    process.exit(1)
+    console.error('MONGODB_URI is not set. Please set it before running this script.')
+    process.exitCode = 1
+    return
   }
 
   const client = new MongoClient(uri, {
@@ -16,31 +16,29 @@ async function main() {
     socketTimeoutMS: 45000,
   })
 
-  const startedAt = Date.now()
+  const start = Date.now()
   try {
     await client.connect()
     await client.db("admin").command({ ping: 1 })
-    const ms = Date.now() - startedAt
-    console.log(`Success: Connected to MongoDB in ${ms}ms`)
-    console.log(`Default DB: ${client.db().databaseName}`)
-    process.exit(0)
+    const elapsed = Date.now() - start
+    console.log('MongoDB connection successful.')
+    console.log(`Database: ${dbName}`)
+    console.log(`Ping latency: ${elapsed} ms`)
+    process.exitCode = 0
   } catch (err: any) {
-    console.error("Connection failed.")
+    console.error('MongoDB connection failed.')
     console.error(err?.message || err)
-    console.error(
-      [
-        "",
-        "Troubleshooting:",
-        "- Ensure your username/password are correct and URL-encoded.",
-        "- If using MongoDB Atlas (SRV URI), verify DNS works from your environment.",
-        "- Allow this machine/IP in Network Access (Atlas) or VPC firewall.",
-        "- Try increasing serverSelectionTimeoutMS if your cluster is slow to respond.",
-      ].join("\n")
-    )
-    process.exit(2)
+    process.exitCode = 2
   } finally {
-    await client.close().catch(() => {})
+    try {
+      await client.close()
+    } catch {
+      // ignore
+    }
   }
 }
 
-main()
+main().catch((e) => {
+  console.error('Unexpected error:', e)
+  process.exitCode = 3
+})
