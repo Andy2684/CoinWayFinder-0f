@@ -1,14 +1,12 @@
 "use client"
 
 import type React from "react"
-
 import { useState } from "react"
-import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Eye, EyeOff, Check, X, Loader2, Sparkles } from 'lucide-react'
+import { Eye, EyeOff, Check, X, Loader2, Sparkles, MailCheck, Mail, Home } from "lucide-react"
 import { toast } from "sonner"
 
 interface FormData {
@@ -43,13 +41,19 @@ const passwordRequirements: PasswordRequirement[] = [
 ]
 
 export default function SignupForm() {
-  const router = useRouter()
-  const [formData, setFormData] = useState<FormData>({ firstName: "", lastName: "", email: "", password: "", confirmPassword: "" })
+  const [formData, setFormData] = useState<FormData>({
+    firstName: "",
+    lastName: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+  })
   const [errors, setErrors] = useState<FormErrors>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [successEmail, setSuccessEmail] = useState<string | null>(null)
 
   const validateField = (name: string, value: string): string | undefined => {
     switch (name) {
@@ -139,22 +143,23 @@ export default function SignupForm() {
 
       if (!response.ok) {
         if (response.status === 409) setErrors({ email: "An account with this email already exists" })
-        else if (response.status === 400) setErrors({ general: data.error || "Please check your information and try again" })
-        else if (response.status >= 500) setErrors({ general: "Unable to connect to database. Please try again later." })
+        else if (response.status === 400)
+          setErrors({ general: data.error || "Please check your information and try again" })
+        else if (response.status >= 500)
+          setErrors({ general: "Unable to connect to database. Please try again later." })
         else setErrors({ general: data.error || "An unexpected error occurred. Please try again." })
         return
       }
 
+      // Prevent redirect after signup: show success state inline
+      setSuccessEmail(data?.user?.email || formData.email.trim().toLowerCase())
       toast.success("Account created successfully! Please verify your email.")
-      // Important: Do not redirect to a dashboard/profile page.
-      // Send the user to Thank You page per your requirement.
-      const url = "/thank-you"
-      // Prefer a client-side navigation
-      window.location.href = url
     } catch (error) {
       console.error("Signup error:", error)
-      if (error instanceof TypeError && error.message.includes("fetch")) {
-        setErrors({ general: "Unable to connect to server. Please check your internet connection and try again." })
+      if (error instanceof TypeError && (error as Error).message.includes("fetch")) {
+        setErrors({
+          general: "Unable to connect to server. Please check your internet connection and try again.",
+        })
       } else {
         setErrors({ general: "An unexpected error occurred. Please try again later." })
       }
@@ -164,156 +169,271 @@ export default function SignupForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 relative overflow-hidden">
-      {/* Animated background elements */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(59,130,246,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(59,130,246,0.1)_1px,transparent_1px)] bg-[size:50px_50px]" />
-      <div className="absolute top-20 left-20 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl animate-pulse" />
-      <div className="absolute bottom-20 right-20 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-neutral-900 to-slate-950 relative overflow-hidden">
+      {/* Background elements (lighter than before) */}
+      <div className="absolute inset-0 [background-image:linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] [background-size:42px_42px] opacity-[0.06]" />
+      <div className="absolute -top-32 -left-32 h-[28rem] w-[28rem] rounded-full bg-emerald-500/20 blur-3xl" />
+      <div className="absolute -bottom-40 -right-40 h-[32rem] w-[32rem] rounded-full bg-fuchsia-500/20 blur-3xl" />
 
       <div className="relative z-10 flex items-center justify-center min-h-screen p-4">
         <div className="w-full max-w-md">
-          <div className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/20 p-8 shadow-2xl">
-            {/* Header */}
-            <div className="text-center mb-8">
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <Sparkles className="w-8 h-8 text-blue-400" />
-                <h1 className="text-3xl font-bold text-white">Join CoinWayFinder</h1>
-              </div>
-              <p className="text-blue-100/80">Create your account and start your journey to smarter crypto trading</p>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* General Error */}
-              {errors.general && <div className="bg-red-500/20 border border-red-500/30 rounded-lg p-3 text-red-200 text-sm">{errors.general}</div>}
-
-              {/* Name Fields */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="firstName" className="text-white font-medium">First Name *</Label>
-                  <Input
-                    id="firstName" name="firstName" type="text" value={formData.firstName}
-                    onChange={handleInputChange} onBlur={handleBlur}
-                    className={`mt-1 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-blue-400 focus:ring-blue-400/20 ${errors.firstName ? "border-red-500 focus:border-red-500" : ""}`}
-                    placeholder="John" disabled={isLoading}
-                  />
-                  {errors.firstName && <p className="mt-1 text-sm text-red-400">{errors.firstName}</p>}
+          <div className="bg-white/10 backdrop-blur-lg rounded-2xl border border-white/15 p-8 shadow-2xl">
+            {!successEmail ? (
+              <>
+                {/* Header */}
+                <div className="text-center mb-8">
+                  <div className="flex items-center justify-center gap-2 mb-4">
+                    <Sparkles className="w-8 h-8 text-emerald-400" />
+                    <h1 className="text-3xl font-bold text-white">Join CoinWayFinder</h1>
+                  </div>
+                  <p className="text-white/70">Create your account and start your journey to smarter crypto trading</p>
                 </div>
-                <div>
-                  <Label htmlFor="lastName" className="text-white font-medium">Last Name *</Label>
-                  <Input
-                    id="lastName" name="lastName" type="text" value={formData.lastName}
-                    onChange={handleInputChange} onBlur={handleBlur}
-                    className={`mt-1 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-blue-400 focus:ring-blue-400/20 ${errors.lastName ? "border-red-500 focus:border-red-500" : ""}`}
-                    placeholder="Doe" disabled={isLoading}
-                  />
-                  {errors.lastName && <p className="mt-1 text-sm text-red-400">{errors.lastName}</p>}
-                </div>
-              </div>
 
-              {/* Email Field */}
-              <div>
-                <Label htmlFor="email" className="text-white font-medium">Email Address *</Label>
-                <Input
-                  id="email" name="email" type="email" value={formData.email}
-                  onChange={handleInputChange} onBlur={handleBlur}
-                  className={`mt-1 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-blue-400 focus:ring-blue-400/20 ${errors.email ? "border-red-500 focus:border-red-500" : ""}`}
-                  placeholder="john@example.com" disabled={isLoading}
-                />
-                {errors.email && <p className="mt-1 text-sm text-red-400">{errors.email}</p>}
-              </div>
+                {/* Form */}
+                <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+                  {/* General Error */}
+                  {errors.general && (
+                    <div className="bg-red-500/15 border border-red-500/30 rounded-lg p-3 text-red-200 text-sm">
+                      {errors.general}
+                    </div>
+                  )}
 
-              {/* Password Field */}
-              <div>
-                <Label htmlFor="password" className="text-white font-medium">Password *</Label>
-                <div className="relative mt-1">
-                  <Input
-                    id="password" name="password" type={showPassword ? "text" : "password"}
-                    value={formData.password} onChange={handleInputChange} onBlur={handleBlur}
-                    className={`bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-blue-400 focus:ring-blue-400/20 pr-10 ${errors.password ? "border-red-500 focus:border-red-500" : ""}`}
-                    placeholder="Enter your password" disabled={isLoading}
-                  />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors">
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {errors.password && <p className="mt-1 text-sm text-red-400">{errors.password}</p>}
-              </div>
+                  {/* Name Fields */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="firstName" className="text-white font-medium">
+                        First Name *
+                      </Label>
+                      <Input
+                        id="firstName"
+                        name="firstName"
+                        type="text"
+                        value={formData.firstName}
+                        onChange={handleInputChange}
+                        onBlur={handleBlur}
+                        className={`mt-1 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-emerald-400 focus:ring-emerald-400/20 ${
+                          errors.firstName ? "border-red-500 focus:border-red-500" : ""
+                        }`}
+                        placeholder="John"
+                        disabled={isLoading}
+                        autoComplete="given-name"
+                      />
+                      {errors.firstName && <p className="mt-1 text-sm text-red-400">{errors.firstName}</p>}
+                    </div>
+                    <div>
+                      <Label htmlFor="lastName" className="text-white font-medium">
+                        Last Name *
+                      </Label>
+                      <Input
+                        id="lastName"
+                        name="lastName"
+                        type="text"
+                        value={formData.lastName}
+                        onChange={handleInputChange}
+                        onBlur={handleBlur}
+                        className={`mt-1 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-emerald-400 focus:ring-emerald-400/20 ${
+                          errors.lastName ? "border-red-500 focus:border-red-500" : ""
+                        }`}
+                        placeholder="Doe"
+                        disabled={isLoading}
+                        autoComplete="family-name"
+                      />
+                      {errors.lastName && <p className="mt-1 text-sm text-red-400">{errors.lastName}</p>}
+                    </div>
+                  </div>
 
-              {/* Password Requirements */}
-              <div className="bg-white/5 rounded-lg p-4 border border-white/10">
-                <h4 className="text-white font-medium mb-3">Password Requirements:</h4>
-                <div className="space-y-2">
-                  {passwordRequirements.map((requirement) => {
-                    const isValid = requirement.test(formData.password)
-                    return (
-                      <div key={requirement.id} className="flex items-center gap-2">
-                        {isValid ? <Check className="w-4 h-4 text-green-400" /> : <X className="w-4 h-4 text-red-400" />}
-                        <span className={`text-sm ${isValid ? "text-green-300" : "text-white/70"}`}>{requirement.text}</span>
+                  {/* Email Field */}
+                  <div>
+                    <Label htmlFor="email" className="text-white font-medium">
+                      Email Address *
+                    </Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      onBlur={handleBlur}
+                      className={`mt-1 bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-emerald-400 focus:ring-emerald-400/20 ${
+                        errors.email ? "border-red-500 focus:border-red-500" : ""
+                      }`}
+                      placeholder="john@example.com"
+                      disabled={isLoading}
+                      autoComplete="email"
+                    />
+                    {errors.email && <p className="mt-1 text-sm text-red-400">{errors.email}</p>}
+                  </div>
+
+                  {/* Password Field */}
+                  <div>
+                    <Label htmlFor="password" className="text-white font-medium">
+                      Password *
+                    </Label>
+                    <div className="relative mt-1">
+                      <Input
+                        id="password"
+                        name="password"
+                        type={showPassword ? "text" : "password"}
+                        value={formData.password}
+                        onChange={handleInputChange}
+                        onBlur={handleBlur}
+                        className={`bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-emerald-400 focus:ring-emerald-400/20 pr-10 ${
+                          errors.password ? "border-red-500 focus:border-red-500" : ""
+                        }`}
+                        placeholder="Enter your password"
+                        disabled={isLoading}
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {errors.password && <p className="mt-1 text-sm text-red-400">{errors.password}</p>}
+                  </div>
+
+                  {/* Password Requirements */}
+                  <div className="bg-white/5 rounded-lg p-4 border border-white/10">
+                    <h4 className="text-white font-medium mb-3">Password Requirements:</h4>
+                    <div className="space-y-2">
+                      {passwordRequirements.map((requirement) => {
+                        const isValid = requirement.test(formData.password)
+                        return (
+                          <div key={requirement.id} className="flex items-center gap-2">
+                            {isValid ? (
+                              <Check className="w-4 h-4 text-emerald-400" />
+                            ) : (
+                              <X className="w-4 h-4 text-red-400" />
+                            )}
+                            <span className={`text-sm ${isValid ? "text-emerald-300" : "text-white/70"}`}>
+                              {requirement.text}
+                            </span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Confirm Password Field */}
+                  <div>
+                    <Label htmlFor="confirmPassword" className="text-white font-medium">
+                      Confirm Password *
+                    </Label>
+                    <div className="relative mt-1">
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type={showConfirmPassword ? "text" : "password"}
+                        value={formData.confirmPassword}
+                        onChange={handleInputChange}
+                        onBlur={handleBlur}
+                        className={`bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-emerald-400 focus:ring-emerald-400/20 pr-10 ${
+                          errors.confirmPassword ? "border-red-500 focus:border-red-500" : ""
+                        }`}
+                        placeholder="Confirm your password"
+                        disabled={isLoading}
+                        autoComplete="new-password"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors"
+                        aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {formData.confirmPassword && (
+                      <div className="mt-1 flex items-center gap-2">
+                        {formData.password === formData.confirmPassword ? (
+                          <>
+                            <Check className="w-4 h-4 text-emerald-400" />
+                            <span className="text-sm text-emerald-300">Passwords match</span>
+                          </>
+                        ) : (
+                          <>
+                            <X className="w-4 h-4 text-red-400" />
+                            <span className="text-sm text-red-400">Passwords do not match</span>
+                          </>
+                        )}
                       </div>
-                    )
-                  })}
-                </div>
-              </div>
+                    )}
+                    {errors.confirmPassword && <p className="mt-1 text-sm text-red-400">{errors.confirmPassword}</p>}
+                  </div>
 
-              {/* Confirm Password Field */}
-              <div>
-                <Label htmlFor="confirmPassword" className="text-white font-medium">Confirm Password *</Label>
-                <div className="relative mt-1">
-                  <Input
-                    id="confirmPassword" name="confirmPassword" type={showConfirmPassword ? "text" : "password"}
-                    value={formData.confirmPassword} onChange={handleInputChange} onBlur={handleBlur}
-                    className={`bg-white/10 border-white/20 text-white placeholder:text-white/50 focus:border-blue-400 focus:ring-blue-400/20 pr-10 ${errors.confirmPassword ? "border-red-500 focus:border-red-500" : ""}`}
-                    placeholder="Confirm your password" disabled={isLoading}
-                  />
-                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/60 hover:text-white transition-colors">
-                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                  </button>
-                </div>
-                {formData.confirmPassword && (
-                  <div className="mt-1 flex items-center gap-2">
-                    {formData.password === formData.confirmPassword ? (
+                  {/* Submit Button */}
+                  <Button
+                    type="submit"
+                    disabled={!isFormValid() || isLoading}
+                    className="w-full bg-gradient-to-r from-emerald-600 to-fuchsia-600 hover:from-emerald-700 hover:to-fuchsia-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isLoading ? (
                       <>
-                        <Check className="w-4 h-4 text-green-400" />
-                        <span className="text-sm text-green-300">Passwords match</span>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Creating Account...
                       </>
                     ) : (
-                      <>
-                        <X className="w-4 h-4 text-red-400" />
-                        <span className="text-sm text-red-400">Passwords do not match</span>
-                      </>
+                      "Create Account"
                     )}
+                  </Button>
+
+                  {/* Sign In Link */}
+                  <div className="text-center">
+                    <p className="text-white/70">
+                      Already have an account?{" "}
+                      <Link
+                        href="/auth/login"
+                        className="text-emerald-300 hover:text-emerald-200 font-medium transition-colors"
+                      >
+                        Sign in
+                      </Link>
+                    </p>
                   </div>
-                )}
-                {errors.confirmPassword && <p className="mt-1 text-sm text-red-400">{errors.confirmPassword}</p>}
-              </div>
-
-              {/* Submit Button */}
-              <Button
-                type="submit"
-                disabled={!isFormValid() || isLoading}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold py-3 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Creating Account...
-                  </>
-                ) : (
-                  "Create Account"
-                )}
-              </Button>
-
-              {/* Sign In Link */}
-              <div className="text-center">
-                <p className="text-white/70">
-                  Already have an account?{" "}
-                  <Link href="/auth/login" className="text-blue-400 hover:text-blue-300 font-medium transition-colors">
-                    Sign in
+                </form>
+              </>
+            ) : (
+              // Success state (no redirect)
+              <div className="text-center space-y-6">
+                <div className="flex items-center justify-center gap-3">
+                  <MailCheck className="w-8 h-8 text-emerald-400" />
+                  <h2 className="text-2xl font-semibold text-white">Check your email</h2>
+                </div>
+                <p className="text-white/80">
+                  We sent a verification link to <span className="font-medium text-white">{successEmail}</span>. Please
+                  verify your email to activate your account.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                  <a
+                    href="mailto:"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/10 px-4 py-2 text-white hover:bg-white/15 transition"
+                  >
+                    <Mail className="w-4 h-4" />
+                    Open email app
+                  </a>
+                  <Link
+                    href="/"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700 transition"
+                  >
+                    <Home className="w-4 h-4" />
+                    Back to Home
                   </Link>
+                  <Link
+                    href="/thank-you"
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-white/20 px-4 py-2 text-white hover:bg-white/10 transition"
+                  >
+                    View details
+                  </Link>
+                </div>
+                <p className="text-xs text-white/60">
+                  Didn{"'"}t receive the email? It may take a few minutes to arrive. You can also check your spam
+                  folder.
                 </p>
               </div>
-            </form>
+            )}
           </div>
         </div>
       </div>
