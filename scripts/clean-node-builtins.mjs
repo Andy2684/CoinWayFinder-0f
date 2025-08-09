@@ -3,13 +3,17 @@ import path from "node:path";
 import process from "node:process";
 
 /**
- * This script runs before "npm install".
- * It:
- * - Scans every package.json in the repo
- * - Removes any keys starting with "node:" from dependency sections (built-ins are not packages)
- * - Deep-cleans nested overrides/resolutions
- * - Deletes foreign lockfiles that may reintroduce bad entries
- * - Supports --scan-only to fail fast without modifying files
+ * Preinstall cleaner for CI/Vercel:
+ * - Scans every package.json in the repo tree (root + nested)
+ * - Removes any keys starting with "node:" from dependency sections
+ *   (dependencies/devDependencies/peer/optional/overrides/resolutions)
+ * - Deep-cleans nested objects (overrides/resolutions often nest)
+ * - Deletes lockfiles that may reintroduce bad entries (npm/pnpm/yarn/bun)
+ * - Prints a CLEANER REPORT with exact file paths and keys found/removed
+ * - Supports --scan-only to fail fast and list offenders without modifying
+ *
+ * If npm still errors, the logs from this script will include the precise
+ * file path(s) and section(s) to patch manually.
  */
 
 const ROOT = process.cwd();
@@ -19,24 +23,44 @@ const DEP_SECTIONS = [
   "devDependencies",
   "optionalDependencies",
   "peerDependencies",
-  // npm supports "overrides"; Yarn uses "resolutions". Clean both if present.
+  // npm supports "overrides"; Yarn uses "resolutions"
   "overrides",
   "resolutions"
 ];
 
-const FOREIGN_LOCKFILES = new Set([
+// Delete any lockfile type that could carry bad entries across tools
+const LOCKFILES = new Set([
+  "package-lock.json",
   "pnpm-lock.yaml",
-  "pnpm-lock.yaml ", // handle trailing-space variant
   "yarn.lock",
   "bun.lock",
-  "bun.lockb",
-  "bun.lock " // just in case
+  "bun.lockb"
 ]);
 
 const scanOnly = process.argv.includes("--scan-only");
 
 function isPlainObject(v) {
   return v && typeof v === "object" && !Array.isArray(v);
+}
+
+function walk(dir, out = []) {
+  let entries;
+  try {
+    entries = fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const ent of entries) {
+    // skip large/vendor directories
+    if (ent.name === "node_modules" || ent.name === ".next" || ent.name === ".git") continue;
+    const full = path.join(dir, ent.name);
+    if (ent.isDirectory()) {
+      walk(full, out);
+    } else {
+      out.push(full);
+    }
+  }
+  return out;
 }
 
 function cleanNested(obj, parentPath = []) {
@@ -83,100 +107,69 @@ function cleanPackageJson(filePath) {
   for (const section of DEP_SECTIONS) {
     if (!json[section]) continue;
 
-    // Remove any direct "node:*" entries in section
+    // Remove any direct "node:*" entries in the section
     for (const depName of Object.keys(json[section])) {
       if (depName.startsWith(BAD_PREFIX)) {
         removed.push({ section, key: depName, value: json[section][depName] });
         delete json[section][depName];
       }
     }
-    // Deep clean nested structures
+    // Deep clean nested structures (overrides/resolutions can nest)
     const deep = cleanNested(json[section], [section]);
-    removed.push(...deep.removed);
+    removed.push(...deep.removed.map((r) => ({ section: r.path, key: r.key, value: r.value })));
   }
 
-  if (removed.length > 0) {
-    if (scanOnly) {
-      console.error(`Found invalid node:* entries in ${filePath}`);
-      for (const r of removed) {
-        console.error(`- ${r.section} -> ${r.key} : ${JSON.stringify(r.value)}`);
-      }
-    } else {
-      fs.writeFileSync(filePath, JSON.stringify(json, null, 2) + "\n", "utf8");
-      console.log(`Cleaned ${filePath}: removed ${removed.length} invalid node:* entr${removed.length === 1 ? "y" : "ies"}.`);
-    }
+  if (removed.length > 0 && !scanOnly) {
+    fs.writeFileSync(filePath, JSON.stringify(json, null, 2) + "\n", "utf8");
   }
-  return { changed: removed.length > 0 && !scanOnly, removed };
+  return { changed: removed.length > 0 && !scanOnly, removed, filePath };
 }
 
-function walk(dir, out = []) {
-  let entries = [];
-  try {
-    entries = fs.readdirSync(dir, { withFileTypes: true });
-  } catch {
-    return out;
-  }
-  for (const ent of entries) {
-    if (ent.name === "node_modules" || ent.name === ".next" || ent.name === ".git") continue;
-    const full = path.join(dir, ent.name);
-    if (ent.isDirectory()) {
-      walk(full, out);
-    } else {
-      out.push(full);
-    }
-  }
-  return out;
-}
-
-function removeForeignLockfiles(rootDir) {
+function removeLockfiles(rootDir) {
   const files = walk(rootDir);
-  let removed = 0;
+  const deleted = [];
   for (const filePath of files) {
     const base = path.basename(filePath);
-    if (FOREIGN_LOCKFILES.has(base)) {
+    if (LOCKFILES.has(base)) {
       try {
-        if (scanOnly) {
-          console.error(`Would delete lockfile: ${filePath}`);
-        } else {
-          fs.rmSync(filePath, { force: true });
-          console.log(`Deleted lockfile: ${filePath}`);
-        }
-        removed++;
+        if (!scanOnly) fs.rmSync(filePath, { force: true });
+        deleted.push(filePath);
       } catch (e) {
         console.error(`Failed to delete lockfile ${filePath}: ${e?.message || e}`);
       }
     }
   }
-  return removed;
+  return deleted;
 }
 
 function main() {
-  // 1) Clean every package.json in the repo (root + nested)
-  const files = walk(ROOT).filter((f) => path.basename(f) === "package.json");
-  let totalRemoved = 0;
-  for (const pkg of files) {
-    const res = cleanPackageJson(pkg);
-    totalRemoved += res.removed.length;
-  }
+  const pkgFiles = walk(ROOT).filter((f) => path.basename(f) === "package.json");
 
-  // 2) Remove foreign lockfiles that may reintroduce bad entries
-  const locksRemoved = removeForeignLockfiles(ROOT);
+  const results = pkgFiles.map(cleanPackageJson);
+  const offenders = results.filter((r) => r.removed.length > 0);
 
-  if (scanOnly) {
-    if (totalRemoved === 0 && locksRemoved === 0) {
-      console.log("OK: No node:* entries and no foreign lockfiles detected.");
-      process.exit(0);
-    } else {
-      console.error("Scan detected issues (see details above).");
-      process.exit(1);
+  const deletedLocks = removeLockfiles(ROOT);
+
+  // Cleaner report
+  if (offenders.length > 0 || deletedLocks.length > 0) {
+    console.log("==== CLEANER REPORT START ====");
+    for (const r of offenders) {
+      console.log(`File: ${r.filePath}`);
+      for (const item of r.removed) {
+        console.log(`  - Removed "${item.key}" from section "${item.section}" (value: ${JSON.stringify(item.value)})`);
+      }
     }
+    for (const lf of deletedLocks) {
+      console.log(`Deleted lockfile: ${lf}`);
+    }
+    console.log("==== CLEANER REPORT END ====");
+  } else {
+    console.log("Cleaner: No invalid node:* entries or lockfiles found.");
   }
 
-  // 3) Summary (when not scanning)
-  if (totalRemoved > 0 || locksRemoved > 0) {
-    console.log(`Sanitized repo: removed ${totalRemoved} invalid entr${totalRemoved === 1 ? "y" : "ies"}; deleted ${locksRemoved} foreign lockfile(s).`);
-  } else {
-    console.log("No invalid node:* entries or foreign lockfiles found.");
+  // In scan-only mode, exit non-zero if issues detected (to surface paths)
+  if (scanOnly && (offenders.length > 0 || deletedLocks.length > 0)) {
+    process.exit(1);
   }
 }
 
