@@ -9,6 +9,6 @@
     "JWT_SECRET": "@jwt_secret",
     "NEXTAUTH_SECRET": "@nextauth_secret"
   },
-  "installCommand": "npm install",
+  "installCommand": "npm install --no-audit --no-fund",
   "buildCommand": "npm run build"
 }
