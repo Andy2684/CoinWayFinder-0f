@@ -1,70 +1,28 @@
-import { MongoClient, type Db } from "mongodb"
+const { MongoClient, ServerApiVersion } = require('mongodb');
 
-const uri = process.env.MONGODB_URI
-if (!uri) {
-  throw new Error('Invalid/Missing environment variable: "MONGODB_URI"')
+if (!process.env.MONGODB_URI) {
+  throw new Error("❌ MONGODB_URI is not set in .env.local");
 }
 
-const DB_NAME = process.env.DB_NAME || "coinwayfinder"
+const uri = process.env.MONGODB_URI;
 
-// Only supported options; avoid deprecated ones that caused previous errors.
-const options = {
-  maxPoolSize: 10,
-  serverSelectionTimeoutMS: 5000,
-  socketTimeoutMS: 45000,
-  ...(process.env.MONGODB_FORCE_IPV4 === "1" ? ({ family: 4 } as const) : {}),
-}
-
-let client: MongoClient | null = null
-let clientPromise: Promise<MongoClient> | null = null
-
-async function getMongoClient(): Promise<MongoClient> {
-  if (client) return client
-  if (!clientPromise) {
-    const c = new MongoClient(uri, options)
-    clientPromise = c.connect().then((connected) => {
-      client = connected
-      return connected
-    })
+const client = new MongoClient(uri, {
+  serverApi: {
+    version: ServerApiVersion.v1,
+    strict: true,
+    deprecationErrors: true,
   }
-  return clientPromise
-}
+});
 
-export interface DatabaseConnection {
-  client: MongoClient
-  db: Db
-}
+let clientPromise;
 
-/**
- * Lazily create and reuse a single MongoDB connection.
- * Importing this module will NOT connect to MongoDB at build time.
- * We only connect when this function is actually called at runtime.
- */
-export async function connectToDatabase(): Promise<DatabaseConnection> {
-  const c = await getMongoClient()
-  const db = c.db(DB_NAME)
-  return { client: c, db }
-}
-
-export async function checkDatabaseHealth(): Promise<{ status: "healthy" | "unhealthy"; message: string }> {
-  try {
-    const { client } = await connectToDatabase()
-    await client.db("admin").command({ ping: 1 })
-    return { status: "healthy", message: "Database connection is working" }
-  } catch (error) {
-    console.error("Database health check failed:", error)
-    return { status: "unhealthy", message: "Database connection failed" }
+if (process.env.NODE_ENV === "development") {
+  if (!global._mongoClientPromise) {
+    global._mongoClientPromise = client.connect();
   }
+  clientPromise = global._mongoClientPromise;
+} else {
+  clientPromise = client.connect();
 }
 
-export async function initializeDatabase(): Promise<{ success: boolean; message: string }> {
-  try {
-    const { db } = await connectToDatabase()
-    await db.collection("users").createIndex({ email: 1 }, { unique: true, name: "uniq_email" })
-    await db.collection("users").createIndex({ created_at: 1 }, { name: "created_at" })
-    return { success: true, message: "Database initialized successfully" }
-  } catch (error) {
-    console.error("Database initialization failed:", error)
-    return { success: false, message: "Failed to initialize database" }
-  }
-}
+module.exports = clientPromise;
